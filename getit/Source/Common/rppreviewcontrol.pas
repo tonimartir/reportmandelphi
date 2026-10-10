@@ -84,6 +84,11 @@ begin
  begin
   FReport.BeginPrint(ndriver);
   Metafile:=FReport.metafile;
+  if Assigned(Metafile) then
+  begin
+   Metafile.Copies:=FReport.Copies;
+   Metafile.CollateCopies:=FReport.CollateCopies;
+  end;
  end;
 end;
 

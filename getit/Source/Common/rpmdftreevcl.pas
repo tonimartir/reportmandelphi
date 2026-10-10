@@ -493,6 +493,9 @@ begin
  curnode:=ATree.Selected;
  if Not assigned(curnode) then
   exit;
+ // The root is the library itself (freeing it cleared the whole tree)
+ if curnode.Parent=nil then
+  exit;
  ninfo:=TRpNodeInfo(curnode.data);
  params:=TStringList.Create;
  try
@@ -511,6 +514,7 @@ begin
    end;
    //
    lobjects.Remove(curnode.Data);
+   TObject(curnode.Data).Free;
    curnode.Free;
 //   EditTree(dbinfo,doreadonly);
   end
@@ -552,6 +556,7 @@ begin
      ' WHERE GROUP_CODE='+IntToStr(ninfo.Group_Code);
    dbinfo.OpenDatasetFromSQL(astring,nil,true,nil);
    lobjects.Remove(curnode.Data);
+   TObject(curnode.Data).Free;
    curnode.Free;
 //   EditTree(dbinfo,doreadonly);
   end;
@@ -1035,6 +1040,10 @@ begin
    finally
     areport.free;
    end;
+   // A report selected: the new one goes to its group, not under it
+   if Assigned(curnode) and Assigned(curnode.Data) and
+    (Length(TRpNodeInfo(curnode.Data).ReportName)>0) then
+    curnode:=curnode.Parent;
    NewNode:=ATree.Items.AddChild(curnode,reportname);
    NewNode.ImageIndex:=10;
    NewNode.SelectedIndex:=10;
@@ -1155,6 +1164,9 @@ begin
   exit;
  end;
  ANode:=ATree.Selected;
+ // The root is the library itself, not a group
+ if ANode.Parent=nil then
+  exit;
  if Assigned(Anode.Data) then
  begin
   ninfo:=TRpNodeInfo(ANode.Data);
@@ -1184,6 +1196,7 @@ begin
        ANode.Text:=newname;
       finally
        aparam.free;
+       aparam2.free;
       end;
      finally
       params.free;
@@ -1255,6 +1268,12 @@ begin
  if not assigned(nodesource.Data) then
   exit;
  if not assigned(nodedest.Data) then
+  exit;
+ // The root (the library) does not move, and a group never goes into its
+ // own branch (dropped on a report of it, PARENT_GROUP made a cycle)
+ if nodesource.Parent=nil then
+  exit;
+ if nodedest.HasAsParent(nodesource) then
   exit;
  if not nodedest.Expanded then
  begin
@@ -1393,7 +1412,7 @@ begin
     if dbinfo.ReportGroupsTable='GINFORME' then
      astring:=Astring+ ' SET GRUPO=:GROUP WHERE NOMBRE=:REPNAME  '
     else
-     astring:=Astring+ ' SET REPORT_GROUP=:GROUP WHERE REPORT_NAME=:REPNAME';
+     astring:=Astring+ ' SET REPORT_GROUP=:GROUP WHERE '+dbinfo.ReportSearchField+'=:REPNAME';
     dbinfo.OpenDatasetFromSQL(astring,params,true,nil);
     // If it's a report change to his parent
     // else add as child

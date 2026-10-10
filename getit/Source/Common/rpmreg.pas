@@ -28,6 +28,7 @@ uses
   rpclientdataset,
 {$ENDIF}
 {$ENDIF}
+{$IFNDEF FPC}
 {$IFNDEF USEVARIANTS}
   rpvclreport,rpmaskedit,rppreviewcontrol,rpdbdatetimepicker,
   {$IFNDEF BUILDER4}
@@ -38,11 +39,18 @@ uses
   {$ENDIF}
    DsgnIntf,
 {$ENDIF}
+{$ENDIF}
   rplastsav;
 
 procedure Register;
 
 implementation
+
+{$IFDEF FPC}
+// The icons of the Lazarus component palette in 24, 36 and 48 pixels
+// (packages/icons/make_icons.sh); the Delphi ones are the .dcr of each unit
+{$R rtl_fpc/rpmregicons.res}
+{$ENDIF}
 
 procedure Register;
 begin
@@ -56,6 +64,7 @@ begin
   RegisterComponents('Reportman', [TRpClientDataset]);
 {$ENDIF}
 {$ENDIF}
+{$IFNDEF FPC}
 {$IFNDEF USEVARIANTS}
   RegisterComponents('Reportman', [TVCLReport]);
   RegisterComponents('Reportman', [TRpDateTimePicker]);
@@ -69,6 +78,7 @@ begin
    RegisterComponents('Reportman', [TRpTwainWeb]);
   {$ENDIF}
   {$ENDIF}
+{$ENDIF}
 {$ENDIF}
 
 

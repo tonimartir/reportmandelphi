@@ -64,6 +64,8 @@ type
    function ComponentToTMessageButton(Sender:TObject):TMessageButton;
   public
     { Public declarations }
+   // The whole message: Ctrl+C (or Ctrl+Insert) copies it
+   MessageText:WideString;
   end;
 
 procedure DrawGrid(Canvas:TCanvas;XWidth,XHeight,PixelsWidth,PixelsHeight:integer;Color:TColor;lines:boolean;XOffset,YOffset:integer;scale:double);
@@ -89,6 +91,8 @@ procedure GetRegisteredGraphicFormats(AFormats: TStrings);
 function GetImageFilters(): string;
 
 implementation
+
+uses Clipbrd;
 
 {$R *.dfm}
 
@@ -168,7 +172,6 @@ var
  i:integer;
  possep:integer;
  list:TStrings;
- parts: TArray<string>;
  part:string;
  extension: string;
  description: string;
@@ -484,6 +487,7 @@ begin
   if smbIgnore in Buttons then
    dia.BIgnore.Visible:=true;
   dia.EscapeButton:=Escape;
+  dia.MessageText:=Text;
   if (longtext) then
   begin
     dia.LMessage.Visible:= false;
@@ -603,6 +607,16 @@ begin
  begin
   Buttonpressed:=EscapeButton;
   Close;
+ end
+ else
+ // Ctrl+C or Ctrl+Insert copies the whole message (the label can not be
+ // selected); not in the input box, nor over a selection of the long text
+ if (Shift=[ssCtrl]) and ((Key=Ord('C')) or (Key=VK_INSERT)) and
+  (not EInput.Visible) and
+  (not ((ActiveControl=EMessage) and (EMessage.SelLength>0))) then
+ begin
+  Clipboard.AsText:=MessageText;
+  Key:=0;
  end;
 end;
 

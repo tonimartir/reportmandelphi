@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -66,11 +66,25 @@ uses
 {$ENDIF}
  rpmdconsts,rpmdshfolder;
 
+type
+ IPropertiesItem = interface
+  ['{F8A7B6C5-D4E3-42F1-A0B9-C8D7E6F5A4B3}']
+  procedure SetItemProperty(const propName: string; const value: Variant);
+  function GetItemProperty(const propName: string): Variant;
+ end;
 
 const
  REP_C_WHEELINC=5;
  REP_C_WHEELSCALE=4;
  LINE_FEED=#13+#10;
+
+ HUB_API_URL_DEBUG = 'https://api.reportman.es:7006';
+ HUB_API_URL_RELEASE = 'https://aiapi.reportman.es';
+{$IFDEF DEBUG}
+ HUB_API_URL = HUB_API_URL_DEBUG;
+{$ELSE}
+ HUB_API_URL = HUB_API_URL_RELEASE;
+{$ENDIF}
 
 
  {$IFNDEF USEVARIANTS}
@@ -79,6 +93,16 @@ const
  varInt64    = $0014;
  varShortInt = $0010;
 {$ENDIF}
+
+const
+  AlignmentFlags_SingleLine = 64;
+  AlignmentFlags_AlignHCenter = 4 { $4 };
+  AlignmentFlags_AlignHJustify = 1024 { $400 };
+  AlignmentFlags_AlignTop = 8 { $8 };
+  AlignmentFlags_AlignBottom = 16 { $10 };
+  AlignmentFlags_AlignVCenter = 32 { $20 };
+  AlignmentFlags_AlignLeft = 1 { $1 };
+  AlignmentFlags_AlignRight = 2 { $2 };
 
 type
 {$IFNDEF USEVARIANTS}
@@ -111,6 +135,11 @@ type
    Cluster: Cardinal;
    LineCluster: Cardinal;
    FontFamily: string;
+   FontSize: Single;
+   HasFontSize: Boolean;
+   Style: Integer;
+   Color: Integer;
+   HasColor: Boolean;
  end;
  TGlyphPosArray = array of TGlyphPos;
  TRpLineInfo=record
@@ -157,6 +186,15 @@ type
  TRpOrientation=(rpOrientationDefault,rpOrientationPortrait,rpOrientationLandscape);
 
  TRpStreamFormat=(rpStreamzlib,rpStreamText,rpStreambinary,rpStreamXML,rpStreamXMLZlib);
+
+ TOperationType = (
+  otAdd,
+  otModify,
+  otRemove,
+  otSwapDown,
+  otSwapUp,
+  otRename
+ );
 
  TRpBidiMode=(rpBidiNo,rpBidiPartial,rpBidiFull);
 
@@ -285,7 +323,7 @@ type
    public ModificationDate: string;
    public function AFRelationShipToString(): string;
    public function Clone(): TEmbeddedFile;
-   destructor Destroy;
+   destructor Destroy;override;
  end;
 
 
@@ -425,6 +463,9 @@ function StrToBool(const S: string): Boolean;
 function StrToBoolDef(const S: string; const Default: Boolean): Boolean;
 function TryStrToBool(const S: string; out Value: Boolean): Boolean;
 function TryStrToFloat(const S: string; out Value: Double): Boolean;
+{$IFDEF FPC}
+procedure VerifyBoolStrArray;
+{$ENDIF}
 var
   TrueBoolStrs: array of String;
   FalseBoolStrs: array of String;
@@ -765,7 +806,6 @@ begin
  GetMem(buffer,buflen);
  try
   pending:=source.Size;
-  toread:=pending;
   if (pending>buflen) then
   begin
    toread:=buflen;
@@ -1577,6 +1617,7 @@ begin
  begin
   IsWindows10:=true;
  end;
+ Result:=isWindows10;
 end;
 
 function IsWindowsNT:Boolean;
@@ -1602,6 +1643,11 @@ end;
 
 
 procedure WriteWideString(Writer:TWriter;Value:WideString);
+{$IFDEF FPC}
+begin
+ Writer.WriteWideString(Value);
+end;
+{$ELSE}
 {$IFDEF DOTNETD}
 var
   L: Integer;
@@ -1636,19 +1682,12 @@ var
   aval:TValueType;
 begin
  aval:=vaWString;
-{$IFDEF FPC}
-// Writer.Write(aval);
-// L := Length(Value);
-// Writer.Write(L, SizeOf(Integer));
-// Writer.Write(Pointer(Value)^, L * 2);
-{$ENDIF}
-{$IFNDEF FPC}
  Writer.Write(aval,SizeOf(aval));
  L := Length(Value);
  Writer.Write(L, SizeOf(Integer));
  Writer.Write(Pointer(Value)^, L * 2);
-{$ENDIF}
 end;
+{$ENDIF}
 {$ENDIF}
 
 
@@ -1748,9 +1787,14 @@ end;
 {$ENDIF}
 
 function ReadWideString(Reader:TReader):WideString;
-{$IFDEF DELPHI2009UP}
+{$IFDEF FPC}
 begin
  Result:=Reader.ReadWideString;
+end;
+{$ELSE}
+{$IFDEF DELPHI2009UP}
+begin
+ Result:=Reader.ReadString;
 end;
 {$ENDIF}
 {$IFNDEF DELPHI2009UP}
@@ -1759,7 +1803,6 @@ var
   aResult:String;
   avalue:TValueType;
 begin
-{$IFNDEF FPC}
   L := 0;
   avalue:=Reader.ReadValue;
   if  avalue<> vaWString then
@@ -1803,8 +1846,8 @@ begin
    SetLength(Result, L);
    Reader.Read(Pointer(Result)^, L * 2);
   end;
-{$ENDIF}
 end;
+{$ENDIF}
 {$ENDIF}
 
 
@@ -2386,7 +2429,7 @@ montados }
       for i := 36 downto 1 do begin
           Resto := ( Inteiro div valores[i] ) * valores[i];
           if ( Resto = valores[i] ) and ( Inteiro >= Resto ) then begin
-             Resposta := Resposta + Nomes[i] + ' e ';
+             Resposta := Resposta + String(Nomes[i]) + ' e ';
              Inteiro  := Inteiro - Valores[i];
           end;
       end;
@@ -2432,6 +2475,7 @@ sempre
 boolean;
           Inteiro       : extended;
           NumStr        : string;
+          NumStrS       : ShortString;
           TriosUsados   : set of CasaDosTrilhoes..CasaDosCentavos;
           NumTriosInt   : byte;
 
@@ -2461,7 +2505,8 @@ casas:
 sexta)
         cont m apenas os centavos, com duas casas
       }
-      Str( Inteiro : 17 : 0, NumStr );
+      Str( Inteiro : 17 : 0, NumStrS );
+      NumStr := String(NumStrS);
       TrioAtual    := 1;
       Inteiro      := Int( Inteiro / 100 ); { remove os centavos }
 
@@ -4071,10 +4116,10 @@ begin
         if readed=0 then
          finish:=true;
 {$ELSE}
-         raise Exception.Create('Read from handle not implemented');
-  // readed:=__read(0,pbuf^,1);
-  // if readed=0 then
-  //  finish:=true;
+        // FileRead returns bytes read, 0 at EOF and -1 on error
+        readed:=SysUtils.FileRead(handle,pbuf^,1);
+        if readed<=0 then
+         finish:=true;
 {$ENDIF}
 {$ENDIF}
    if readed>0 then
@@ -4167,7 +4212,6 @@ var
  handle:integer;
 {$ENDIF}
  astream:TMemoryStream;
- i:integer;
    Bytes: TBytes;
 begin
 {$IFDEF MSWINDOWS}
@@ -4184,7 +4228,12 @@ begin
  astream:=TMemoryStream.Create;
  try
   Bytes:=BytesOf(UTF8String(astring));
+{$IFDEF FPC}
+  // FPC TStream.Write has no TBytes overload
+  astream.Write(Pointer(bytes)^,Length(bytes));
+{$ELSE}
   astream.Write(bytes,Length(bytes));
+{$ENDIF}
   WriteStreamToHandle(astream,handle);
  finally
   astream.free;
@@ -4238,7 +4287,11 @@ begin
 end;
 {$ELSE}
 begin
+{$IFDEF FPC}
+ Result := SysUtils.GetTempDir;
+{$ELSE}
  Result:=System.IOUtils.TPath.GetTempPath;
+{$ENDIF}
 end;
 {$ENDIF}
 
@@ -4248,7 +4301,6 @@ function RpTempFileName:String;
 var
  apath:array [0..MAX_PATH] of char;
  afilename:array [0..MAX_PATH] of char;
- alen:DWord;
 begin
 // apath:=AllocMem(alen+1);
  try
@@ -4263,7 +4315,11 @@ begin
 end;
 {$ELSE}
 begin
+{$IFDEF FPC}
+ Result := SysUtils.GetTempFileName('', 'REP');
+{$ELSE}
  Result:=System.IOUtils.TPath.GetTempFileName();
+{$ENDIF}
 end;
 {$ENDIF}
 
@@ -4528,8 +4584,8 @@ begin
  try
   if (Length(originalfile)>0) then
   begin
-   files.Add(filename);
-   origfiles.Add(originalfile);
+   files.Add(String(filename));
+   origfiles.Add(String(originalfile));
   end;
   SendMail(destination,subject,content,files,origfiles);
  finally
@@ -4544,12 +4600,6 @@ var
   SendMailInt: TFNMapiSendMail = nil;
 
 procedure InitMapiInt;
-var
-  OSVersionInfo: TOSVersionInfo;
-  hkWMS: HKEY;
-  MAPIValueSize: Longint;
-  MAPIValueBuf: array[0..8] of Char;
-  rType: Longint;
 begin
   if not MAPIChecked then
   begin
@@ -4632,11 +4682,8 @@ begin
 end;
 
 var
- Sessionh:LHandle;
  amessage:MapiMessage;
  i:integer;
- npfile:PAnsiChar;
- npfile2:PAnsiChar;
  PtrMapiFileDescs : PMapiFileDescs;
  how:Cardinal;
 begin
@@ -5073,7 +5120,7 @@ begin
  leftmask:='';
  while index>0 do
  begin
-  if mask[index] in ['#',',','0'] then
+  if CharInSet(mask[index],['#',',','0']) then
    leftmask:=leftmask+mask[index];
   dec(index);
  end;
@@ -5218,12 +5265,12 @@ begin
  abuf:=AllocMem(Length(source)*2+2);
  try
   CharToOemA(PAnsiChar(source),abuf);
-  Result:=string.Copy(abuf);
+  Result:=AnsiString(abuf);
   for i:=1 to Length(Result) do
   begin
    // The Euro symbol
-   if Source[i]=chr(128) then
-    Result[i]:=chr($D5);
+   if Source[i]=AnsiChar($80) then
+    Result[i]:=AnsiChar($D5);
   end;
  finally
   FreeMem(abuf);
@@ -5293,6 +5340,8 @@ var
  alist:TRpWideStrings;
 begin
  if index<0 then
+  index:=0
+ else if index>256 then
   index:=0;
  if Length(astring)<0 then
  begin
@@ -5317,6 +5366,8 @@ var
  alist:TRpWideStrings;
  defvalue:widestring;
 begin
+ if index > 256 then
+  index := 0;
  defvalue:=astring;
  alist:=TRPWideStrings.Create;
  try
@@ -5587,6 +5638,10 @@ end;
 
 initialization
 
+{$IFDEF FPC}
+VerifyBoolStrArray;
+{$ENDIF}
+
 {$IFNDEF DOTNETD}
 {$IFDEF MSWINDOWS}
 obtainedversion:=false;
@@ -5607,3 +5662,4 @@ end;
 
 
 end.
+

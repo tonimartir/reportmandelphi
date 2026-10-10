@@ -64,6 +64,8 @@ type
    property Text:widestring read GetText write SetText;
    destructor Destroy;override;
    property WideText:WideString read FWideText write FWideText;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    // Compatibility with RC1,RC2
    property AllText:TStrings read FAllText write SetAllText;
@@ -96,6 +98,7 @@ type
    FPrintNulls:boolean;
    FIsPartial:Boolean;
    FPartialPos:Integer;
+  FHtmlPartialText:WideString;
    FExportExpression:WideString;
    FExportLine:Integer;
    FExportPosition:Integer;
@@ -104,6 +107,8 @@ type
    FIsPageCount:Boolean;
    FIsGroupPageCount:Boolean;
    forcedpartial:boolean;
+  function TrySplitHtmlForMultipage(adriver:TRpPrintDriver;const TextObj:TRpTextObject;
+   MaxExtent:TPoint;out CurrentHtml,RemainingHtml:WideString):Boolean;
    procedure SetIdentifier(Value:string);
    procedure Evaluate;
    procedure WriteExpression(Writer:TWriter);
@@ -137,6 +142,8 @@ type
    //
    property ExportExpression:widestring read FExportExpression write FExportExpression;
    property IsGroupPageCount:Boolean read FIsGroupPageCount write FIsGroupPageCount;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property DataType:TRpParamType read FDataType write FDataType default rpParamUnknown;
    property DisplayFormat:Widestring read FDisplayformat write FDisplayFormat;
@@ -171,7 +178,187 @@ type
 implementation
 
 
-uses rpbasereport,Math;
+uses rpbasereport,Math,rphtmlparser;
+
+function CloneHtmlSegment(Segment:THtmlSegment):THtmlSegment;
+begin
+ Result:=THtmlSegment.Create(Segment.Text,Segment.Styles,Segment.FontFamily,
+  Segment.FontSize,Segment.HasFontSize,Segment.Color,Segment.HasColor);
+end;
+
+function GetTotalPlainTextLength(Segments:THtmlSegmentList):Integer;
+var
+ Segment:THtmlSegment;
+begin
+ Result:=0;
+ for Segment in Segments do
+  Inc(Result,Length(Segment.Text));
+end;
+
+procedure SplitHtmlSegments(Segments:THtmlSegmentList;VisibleLength:Integer;
+ CurrentSegments,RemainingSegments:THtmlSegmentList);
+var
+ Segment,CurrentSegment,NextSegment:THtmlSegment;
+ RunText:WideString;
+ RemainingVisibleLength:Integer;
+begin
+ RemainingVisibleLength:=VisibleLength;
+ for Segment in Segments do
+ begin
+  RunText:=Segment.Text;
+  if RemainingVisibleLength<=0 then
+  begin
+   if Length(RunText)>0 then
+    RemainingSegments.Add(CloneHtmlSegment(Segment));
+   continue;
+  end;
+
+  if Length(RunText)<=RemainingVisibleLength then
+  begin
+   if Length(RunText)>0 then
+    CurrentSegments.Add(CloneHtmlSegment(Segment));
+   RemainingVisibleLength:=RemainingVisibleLength-Length(RunText);
+   continue;
+  end;
+
+  CurrentSegment:=CloneHtmlSegment(Segment);
+  CurrentSegment.Text:=Copy(RunText,1,RemainingVisibleLength);
+  CurrentSegments.Add(CurrentSegment);
+
+  NextSegment:=CloneHtmlSegment(Segment);
+  NextSegment.Text:=Copy(RunText,RemainingVisibleLength+1,Length(RunText));
+  RemainingSegments.Add(NextSegment);
+  RemainingVisibleLength:=0;
+ end;
+end;
+
+procedure SkipLeadingPartialWhitespace(Segments:THtmlSegmentList);
+var
+ Index:Integer;
+ Segment:THtmlSegment;
+ FirstChar:WideChar;
+begin
+ for Index:=0 to Segments.Count-1 do
+ begin
+  Segment:=Segments[Index];
+  if Length(Segment.Text)=0 then
+   continue;
+
+  FirstChar:=Segment.Text[1];
+  if (FirstChar=' ') or (FirstChar=#10) then
+  begin
+   Segment.Text:=Copy(Segment.Text,2,Length(Segment.Text));
+   if Length(Segment.Text)=0 then
+    Segments.Delete(Index);
+  end;
+  break;
+ end;
+end;
+
+function HasPrintableHtmlContent(Segments:THtmlSegmentList):Boolean;
+var
+ Segment:THtmlSegment;
+ Index:Integer;
+ Character:WideChar;
+begin
+ Result:=False;
+ for Segment in Segments do
+ begin
+  for Index:=1 to Length(Segment.Text) do
+  begin
+   Character:=Segment.Text[Index];
+   if not CharInSet(Character,[#9,#10,#11,#12,#13,' ',#160]) then
+   begin
+    Result:=True;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function EncodeHtmlText(const Text:WideString):WideString;
+var
+ Index:Integer;
+ Character:WideChar;
+begin
+ Result:='';
+ for Index:=1 to Length(Text) do
+ begin
+  Character:=Text[Index];
+  case Character of
+   '&': Result:=Result+'&amp;';
+   '<': Result:=Result+'&lt;';
+   '>': Result:=Result+'&gt;';
+   '"': Result:=Result+'&quot;';
+   #13: ;
+   #10: Result:=Result+'<br>';
+   WideChar($00A0): Result:=Result+'&nbsp;';
+  else
+   Result:=Result+Character;
+  end;
+ end;
+end;
+
+function EncodeHtmlAttribute(const Value:WideString):WideString;
+begin
+ Result:=StringReplace(Value,'&','&amp;',[rfReplaceAll]);
+ Result:=StringReplace(Result,'"','&quot;',[rfReplaceAll]);
+ Result:=StringReplace(Result,'<','&lt;',[rfReplaceAll]);
+ Result:=StringReplace(Result,'>','&gt;',[rfReplaceAll]);
+end;
+
+function HtmlSegmentToTextStyle(Segment:THtmlSegment):WideString;
+begin
+ Result:='';
+ if Segment.HasFontSize then
+  Result:='font-size:'+StringReplace(FormatFloat('0.##',Segment.FontSize),',','.',[rfReplaceAll])+'pt';
+end;
+
+function BuildHtmlFromSegments(Segments:THtmlSegmentList):WideString;
+var
+ Segment:THtmlSegment;
+ HtmlSegment,StyleText:WideString;
+ ColorValue:Longint;
+begin
+ Result:='';
+ for Segment in Segments do
+ begin
+  if Length(Segment.Text)=0 then
+   continue;
+
+  HtmlSegment:=EncodeHtmlText(Segment.Text);
+  if Length(HtmlSegment)=0 then
+   continue;
+
+  if Segment.HasColor then
+  begin
+   ColorValue:=Longint(Segment.Color);
+   HtmlSegment:='<font color="#'
+    +IntToHex(ColorValue and $FF,2)
+    +IntToHex((ColorValue shr 8) and $FF,2)
+    +IntToHex((ColorValue shr 16) and $FF,2)+'">'
+    +HtmlSegment+'</font>';
+  end;
+
+  StyleText:=HtmlSegmentToTextStyle(Segment);
+  if Length(StyleText)>0 then
+   HtmlSegment:='<span style="'+StyleText+'">'+HtmlSegment+'</span>';
+
+  if Length(Segment.FontFamily)>0 then
+   HtmlSegment:='<font face="'+EncodeHtmlAttribute(Segment.FontFamily)+'">'+HtmlSegment+'</font>';
+
+  if hsStrikeOut in Segment.Styles then
+   HtmlSegment:='<strike>'+HtmlSegment+'</strike>';
+  if hsUnderline in Segment.Styles then
+   HtmlSegment:='<u>'+HtmlSegment+'</u>';
+  if hsItalic in Segment.Styles then
+   HtmlSegment:='<i>'+HtmlSegment+'</i>';
+  if hsBold in Segment.Styles then
+   HtmlSegment:='<b>'+HtmlSegment+'</b>';
+
+  Result:=Result+HtmlSegment;
+ end;
+end;
 
 function TIdenRpExpression.GeTRpValue:TRpValue;
 begin
@@ -205,8 +392,11 @@ var
  langindex:integer;
  acopy:WideString;
 begin
+ AssertCanModify(ClassName+'.Text');
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  acopy:='';
  if FAllStrings.Count>0 then
@@ -227,6 +417,8 @@ var
 begin
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  acopy:='';
  if FAllStrings.Count>0 then
@@ -344,7 +536,10 @@ var
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
  apage:=metafile.Pages[metafile.CurrentPage];
- aTextObj.Text:=Text;
+ if IsHtml then
+  aTextObj.Text:=EvaluateHtmlExpressions(Text)
+ else
+  aTextObj.Text:=Text;
  aTextObj.LFontName:=LFontName;
  aTextObj.WFontName:=WFontName;
  aTextObj.FontSize:=FontSize;
@@ -356,6 +551,7 @@ begin
  aTextObj.WordWrap:=WordWrap;
  aTextObj.RightToLeft:=RightToLeft;
  aTextObj.PrintStep:=PrintStep;
+ aTextObj.IsHtml:=IsHtml;
  aalign:=PrintAlignment or VAlignment;
  if SingleLine then
   aalign:=aalign or AlignmentFlags_SingleLine;
@@ -456,16 +652,26 @@ begin
   Evaluate;
   try
    Result:=FormatVariant(displayformat,FValue,FDataType,FPrintNulls);
+   if IsHtml then
+    Result:=EvaluateHtmlExpressions(Result);
   except
    on E:Exception do
    begin
     Raise TRpReportException.Create(E.Message+':'+SRpSDisplayFormat+' '+Name,self,SRpSDisplayFormat);
    end;
   end;
+  if IsHtml and FIsPartial and (Length(FHtmlPartialText)>0) then
+  begin
+   Result:=FHtmlPartialText;
+   exit;
+  end;
   if FIsPartial then
   begin
-   // Skip one space if necessary
-   if ((Result[FPartialPos]=Widechar(' ')) or (Result[FPartialPos]=chr(10))) then
+   // Skip one space if necessary. Guard the index: if the evaluated text is
+   // shorter on a later pass (e.g. two-pass / total-pages substitution),
+   // FPartialPos may exceed Length(Result) -> ERangeError under {$R+}.
+   if (FPartialPos>=1) and (FPartialPos<=Length(Result)) and
+      ((Result[FPartialPos]=Widechar(' ')) or (Result[FPartialPos]=chr(10))) then
     FPartialPos:=FPartialPos+1;
    Result:=Copy(Result,FPartialPos,Length(Result));
   end;
@@ -479,6 +685,7 @@ var
  Textobj:TRpTextObject;
  newposition:Integer;
  avalue:WideString;
+ CurrentHtml,RemainingHtml:WideString;
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
  LastMetaIndex:=-1;
@@ -493,24 +700,55 @@ begin
  if (MultiPage or forcedpartial) then
  begin
   maxextent.X:=PrintWidth;
-  newposition:=CalcTextExtent(adriver.GetFontDriver,maxextent,Textobj);
-
-  if newposition<Length(TextObj.Text) then
+  if IsHtml then
   begin
-   if Not FIsPartial then
-    FPartialPos:=1;
-   FIsPartial:=true;
-   PartialPrint:=true;
-   FPartialPos:=FPartialPos+newposition;
-   // Next line partial skip one space o one line
-   if ((TextObj.Text[FPartialPos]=chr(10)) or (TextObj.Text[FPartialPos]=' ')) then
-    Inc(FPartialpos);
-   TextObj.Text:=Copy(TextObj.Text,1,newposition);
+   if not TrySplitHtmlForMultipage(adriver,TextObj,MaxExtent,CurrentHtml,RemainingHtml) then
+   begin
+    CurrentHtml:=TextObj.Text;
+    RemainingHtml:='';
+   end;
+
+   TextObj.Text:=CurrentHtml;
+   if Length(RemainingHtml)>0 then
+   begin
+    FIsPartial:=true;
+    PartialPrint:=true;
+    FHtmlPartialText:=RemainingHtml;
+   end
+   else
+   begin
+    FIsPartial:=false;
+    forcedpartial:=false;
+    FHtmlPartialText:='';
+   end;
   end
   else
   begin
-   FIsPartial:=false;
-   forcedpartial:=false;
+   FHtmlPartialText:='';
+   newposition:=CalcTextExtent(adriver.GetFontDriver,maxextent,Textobj);
+
+   if newposition<Length(TextObj.Text) then
+   begin
+    if Not FIsPartial then
+     FPartialPos:=1;
+    FIsPartial:=true;
+    PartialPrint:=true;
+    FPartialPos:=FPartialPos+newposition;
+    // Next page partial: skip one boundary space/newline so the continuation does
+    // not start with it. The boundary char must be tested in the CURRENT (remaining)
+    // text domain at newposition+1 -- NOT at FPartialPos, which indexes the full
+    // original string and overruns TextObj.Text (the remaining substring) on the
+    // 2nd and later continuation pages -> ERangeError under {$R+}.
+    if (newposition+1<=Length(TextObj.Text)) and
+       ((TextObj.Text[newposition+1]=chr(10)) or (TextObj.Text[newposition+1]=' ')) then
+     Inc(FPartialpos);
+    TextObj.Text:=Copy(TextObj.Text,1,newposition);
+   end
+   else
+   begin
+    FIsPartial:=false;
+    forcedpartial:=false;
+   end;
   end;
  end;
  metafile.Pages[metafile.CurrentPage].NewTextObject(aposy,
@@ -566,6 +804,7 @@ begin
     FExportValue:=Null;
     FIsPartial:=false;
     forcedpartial:=false;
+    FHtmlPartialText:='';
     FOldString:='';
     FUpdated:=false;
     FDataCount:=0;
@@ -592,6 +831,7 @@ begin
     FExportValue:=Null;
     FIsPartial:=false;
     forcedpartial:=false;
+    FHtmlPartialText:='';
     FOldString:='';
     FUpdated:=false;
     FDataCount:=0;
@@ -617,6 +857,7 @@ begin
    begin
     FIsPartial:=false;
     forcedpartial:=false;
+    FHtmlPartialText:='';
     FUpdated:=false;
     inc(FDataCount);
     if (FAggregate<>rpAgNone) then
@@ -696,6 +937,7 @@ begin
    begin
     FIsPartial:=false;
     forcedpartial:=false;
+    FHtmlPartialText:='';
     FUpdated:=false;
     FOldString:='';
     if (FAggregate=rpAgGroup) then
@@ -752,6 +994,7 @@ begin
    begin
     FIsPartial:=false;
     forcedpartial:=false;
+    FHtmlPartialText:='';
     FOldString:='';
     FUpdated:=false;
    end;
@@ -778,6 +1021,7 @@ begin
  Result.WordWrap:=WordWrap;
  Result.RightToLeft:=RightToLeft;
  Result.PrintStep:=PrintStep;
+ Result.IsHtml:=IsHtml;
  Result.Annotation:=GetAnnotation;
 end;
 
@@ -786,6 +1030,7 @@ var
  aText:TRpTextObject;
  aposition:integer;
  IsPartial:Boolean;
+ CurrentHtml,RemainingHtml:WideString;
 begin
  aText:=GetTextObject;
  if PrintOnlyOne then
@@ -805,11 +1050,25 @@ begin
  if (MultiPage or forcepartial) then
  begin
   maxextent.X:=Result.X;
-  aposition:=CalcTextExtent(adriver.GetFontDriver,maxextent,aText);
-  if aposition<Length(aText.Text) then
-   ispartial:=true;
-  aText.Text:=Copy(aText.Text,1,aposition);
-  adriver.TextExtent(aText,Result);
+  if IsHtml then
+  begin
+   if not TrySplitHtmlForMultipage(adriver,aText,MaxExtent,CurrentHtml,RemainingHtml) then
+   begin
+    CurrentHtml:=aText.Text;
+    RemainingHtml:='';
+   end;
+   IsPartial:=Length(RemainingHtml)>0;
+   aText.Text:=CurrentHtml;
+   adriver.TextExtent(aText,Result);
+  end
+  else
+  begin
+   aposition:=CalcTextExtent(adriver.GetFontDriver,maxextent,aText);
+   if aposition<Length(aText.Text) then
+    ispartial:=true;
+   aText.Text:=Copy(aText.Text,1,aposition);
+   adriver.TextExtent(aText,Result);
+  end;
 
   if ispartial then
   begin
@@ -912,7 +1171,10 @@ function TRpLabel.GetTextObject:TRpTextObject;
 var
  aalign:Integer;
 begin
- Result.Text:=GetText;
+ if IsHtml then
+  Result.Text:=EvaluateHtmlExpressions(GetText)
+ else
+  Result.Text:=GetText;
  Result.LFontName:=LFontName;
  Result.WFontName:=WFontName;
  Result.FontSize:=FontSize;
@@ -928,6 +1190,7 @@ begin
  Result.WordWrap:=WordWrap;
  Result.RightToLeft:=RightToLeft;
  Result.PrintStep:=PrintStep;
+ Result.IsHtml:=IsHtml;
 end;
 
 
@@ -939,6 +1202,98 @@ begin
  aText:=GetTextObject;
  adriver.TextExtent(aText,Result);
  LastExtent:=Result;
+end;
+
+function TRpExpression.TrySplitHtmlForMultipage(adriver:TRpPrintDriver;const TextObj:TRpTextObject;
+ MaxExtent:TPoint;out CurrentHtml,RemainingHtml:WideString):Boolean;
+var
+ MeasureExtent:TPoint;
+ Lines:TRpLineInfoArray;
+ VisibleLength:Integer;
+ ConsumedHeight:Integer;
+ LineHeight:Integer;
+ LineEnd:Integer;
+ Index:Integer;
+ Segments,CurrentSegments,RemainingSegments:THtmlSegmentList;
+ TotalPlainLength:Integer;
+begin
+ CurrentHtml:=TextObj.Text;
+ RemainingHtml:='';
+ Result:=True;
+
+ if (Length(TextObj.Text)=0) or (MaxExtent.Y<=0) then
+  exit;
+
+ MeasureExtent:=MaxExtent;
+ MeasureExtent.X:=PrintWidth;
+ Lines:=adriver.TextExtentLineInfo(TextObj,MeasureExtent);
+ if Length(Lines)=0 then
+ begin
+  Result:=False;
+  exit;
+ end;
+
+ VisibleLength:=0;
+ ConsumedHeight:=0;
+ for Index:=Low(Lines) to High(Lines) do
+ begin
+  if Lines[Index].Height>0 then
+   LineHeight:=Lines[Index].Height
+  else
+   LineHeight:=Round(Lines[Index].LineHeight);
+  if LineHeight<=0 then
+   continue;
+  if (ConsumedHeight+LineHeight)>MaxExtent.Y then
+   break;
+
+  ConsumedHeight:=ConsumedHeight+LineHeight;
+  LineEnd:=Lines[Index].Position+Lines[Index].Size-1;
+  if LineEnd>VisibleLength then
+   VisibleLength:=LineEnd;
+ end;
+
+ if VisibleLength<=0 then
+ begin
+  Result:=False;
+  exit;
+ end;
+
+ Segments:=ParseHtml(TextObj.Text,WFontName);
+ try
+  TotalPlainLength:=GetTotalPlainTextLength(Segments);
+  if TotalPlainLength<=0 then
+   exit;
+
+  if VisibleLength>=TotalPlainLength then
+   exit;
+
+  CurrentSegments:=THtmlSegmentList.Create(True);
+  try
+   RemainingSegments:=THtmlSegmentList.Create(True);
+   try
+    SplitHtmlSegments(Segments,VisibleLength,CurrentSegments,RemainingSegments);
+    SkipLeadingPartialWhitespace(RemainingSegments);
+
+    if not HasPrintableHtmlContent(RemainingSegments) then
+     exit;
+
+    CurrentHtml:=BuildHtmlFromSegments(CurrentSegments);
+    RemainingHtml:=BuildHtmlFromSegments(RemainingSegments);
+
+    if (Length(CurrentHtml)=0) or (Length(RemainingHtml)=0) then
+    begin
+      Result:=False;
+      exit;
+    end;
+   finally
+    RemainingSegments.Free;
+   end;
+  finally
+   CurrentSegments.Free;
+  end;
+ finally
+  Segments.Free;
+ end;
 end;
 
 procedure TRpExpression.UpdateIsPageCount;
@@ -953,6 +1308,7 @@ end;
 
 procedure TRpExpression.SetExpression(avalue:WideString);
 begin
+ AssertCanModify(ClassName+'.Expression');
  FExpression:=avalue;
  UpdateIsPageCount;
 end;
@@ -961,6 +1317,225 @@ procedure TRpExpression.Loaded;
 begin
  inherited Loaded;
  UpdateIsPageCount;
+end;
+
+{ TRpLabel - IPropertiesItem }
+
+procedure TRpLabel.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Text') or SameText(propName, SRpSText) then
+ begin
+  FWideText := value;
+  UpdateAllStrings;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpLabel.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Text') or SameText(propName, SRpSText) then
+ begin
+  Result := FWideText;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
+
+{ TRpExpression - IPropertiesItem }
+
+procedure TRpExpression.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  // Through the setter so PAGECOUNT/GROUPPAGECOUNT flags follow the new text
+  // (undo/redo and the inspector set the expression here)
+  SetExpression(value);
+  exit;
+ end;
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
+ begin
+  FDisplayFormat := value;
+  exit;
+ end;
+ if SameText(propName, 'DataType') or SameText(propName, SRpSDataType) then
+ begin
+  FDataType := TRpParamType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'Identifier') or SameText(propName, SRpSIdentifier) then
+ begin
+  SetIdentifier(value);
+  exit;
+ end;
+ if SameText(propName, 'Aggregate') or SameText(propName, SRpSAggregate) then
+ begin
+  FAggregate := TRpAggregate(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
+ begin
+  FGroupName := value;
+  exit;
+ end;
+ if SameText(propName, 'AgType') or SameText(propName, SRpSAgeType) then
+ begin
+  FAgType := TRpAggregateType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'AgIniValue') then
+ begin
+  FAgIniValue := value;
+  exit;
+ end;
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
+ begin
+  FAutoExpand := value;
+  exit;
+ end;
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
+ begin
+  FAutoContract := value;
+  exit;
+ end;
+ if SameText(propName, 'PrintOnlyOne') or SameText(propName, SRpSOnlyOne) then
+ begin
+  FPrintOnlyOne := value;
+  exit;
+ end;
+ if SameText(propName, 'PrintNulls') then
+ begin
+  FPrintNulls := value;
+  exit;
+ end;
+ if SameText(propName, 'ExportDisplayFormat') then
+ begin
+  FExportDisplayFormat := value;
+  exit;
+ end;
+ if SameText(propName, 'ExportExpression') then
+ begin
+  FExportExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'ExportLine') then
+ begin
+  FExportLine := value;
+  exit;
+ end;
+ if SameText(propName, 'ExportPosition') then
+ begin
+  FExportPosition := value;
+  exit;
+ end;
+ if SameText(propName, 'ExportSize') then
+ begin
+  FExportSize := value;
+  exit;
+ end;
+ if SameText(propName, 'ExportDoNewLine') then
+ begin
+  FExportDoNewLine := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpExpression.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  Result := FExpression;
+  exit;
+ end;
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
+ begin
+  Result := FDisplayFormat;
+  exit;
+ end;
+ if SameText(propName, 'DataType') or SameText(propName, SRpSDataType) then
+ begin
+  Result := Integer(FDataType);
+  exit;
+ end;
+ if SameText(propName, 'Identifier') or SameText(propName, SRpSIdentifier) then
+ begin
+  Result := FIdentifier;
+  exit;
+ end;
+ if SameText(propName, 'Aggregate') or SameText(propName, SRpSAggregate) then
+ begin
+  Result := Integer(FAggregate);
+  exit;
+ end;
+ if SameText(propName, 'GroupName') or SameText(propName, SRpSGroupName) then
+ begin
+  Result := FGroupName;
+  exit;
+ end;
+ if SameText(propName, 'AgType') or SameText(propName, SRpSAgeType) then
+ begin
+  Result := Integer(FAgType);
+  exit;
+ end;
+ if SameText(propName, 'AgIniValue') then
+ begin
+  Result := FAgIniValue;
+  exit;
+ end;
+ if SameText(propName, 'AutoExpand') or SameText(propName, SRpSAutoExpand) then
+ begin
+  Result := FAutoExpand;
+  exit;
+ end;
+ if SameText(propName, 'AutoContract') or SameText(propName, SRpSAutoContract) then
+ begin
+  Result := FAutoContract;
+  exit;
+ end;
+ if SameText(propName, 'PrintOnlyOne') or SameText(propName, SRpSOnlyOne) then
+ begin
+  Result := FPrintOnlyOne;
+  exit;
+ end;
+ if SameText(propName, 'PrintNulls') then
+ begin
+  Result := FPrintNulls;
+  exit;
+ end;
+ if SameText(propName, 'ExportDisplayFormat') then
+ begin
+  Result := FExportDisplayFormat;
+  exit;
+ end;
+ if SameText(propName, 'ExportExpression') then
+ begin
+  Result := FExportExpression;
+  exit;
+ end;
+ if SameText(propName, 'ExportLine') then
+ begin
+  Result := FExportLine;
+  exit;
+ end;
+ if SameText(propName, 'ExportPosition') then
+ begin
+  Result := FExportPosition;
+  exit;
+ end;
+ if SameText(propName, 'ExportSize') then
+ begin
+  Result := FExportSize;
+  exit;
+ end;
+ if SameText(propName, 'ExportDoNewLine') then
+ begin
+  Result := FExportDoNewLine;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
 end;
 
 end.

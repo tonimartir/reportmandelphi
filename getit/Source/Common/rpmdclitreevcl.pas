@@ -158,7 +158,7 @@ end;
 procedure TFRpCliTreeVCL.OnError(Sender:TObject;aMessage:WideString);
 begin
  OnLog(Sender,aMessage);
- ShowMessage(aMessage);
+ RpMessageBox(aMessage, SRpError, [smbOK], smsCritical, smbOK, smbOK);
 end;
 
 procedure TFRpCliTreeVCL.OnAuthorization(Sender:TObject);

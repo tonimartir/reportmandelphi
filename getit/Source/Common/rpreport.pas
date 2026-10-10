@@ -324,15 +324,8 @@ begin
  begin
   if collate then
   begin
-   if Driver.SupportsCopies(copies) then
-   begin
-    if Driver.SupportsCollation then
-    begin
-     hardwarecopies:=copies;
-     hardwarecollate:=true;
-     collate:=false;
-    end;
-   end;
+   hardwarecopies:=1;
+   hardwarecollate:=false;
   end
   else
   begin
@@ -992,6 +985,9 @@ begin
   metafile.PreviewMargins:=PreviewMargins;
   metafile.LinesPerInch:=LinesPerInch;
   metafile.TouchEnabled:=TouchEnabled;
+  // The metafile carries PrinterFonts so stored metafiles (saved as format 4.1
+  // when Recalculate) keep the glyph-exact pipeline when printed later.
+  metafile.PrinterFonts:=PrinterFonts;
   ClearTotalPagesList;
   // Sets page orientation
   currentorientation:=PageOrientation;
@@ -1110,6 +1106,12 @@ begin
   end;
  end;
 
+
+ for i:=0 to DataInfo.Count-1 do
+ begin
+  DataInfo.Items[i].OnConnect:=nil;
+  DataInfo.Items[i].OnDisConnect:=nil;
+ end;
 
  FDataAlias.List.Clear;
  for i:=0 to DataInfo.Count-1 do

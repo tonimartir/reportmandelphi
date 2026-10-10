@@ -311,3 +311,6 @@ examples/lazarus/preview/preview
 examples/lazarus/designer/designer
 build/macos/out/
 build/macos/package-build.log
+
+# GetIt package zip (build/getit/make-getit.ps1)
+build/getit/out/

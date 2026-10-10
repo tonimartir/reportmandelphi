@@ -126,6 +126,7 @@ type
    procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
    procedure SetOrientation(Orientation:TRpOrientation);override;
    function GetOrientation:TRpOrientation;override;
+   procedure RestoreOrientation;override;
    procedure SelectPrinter(printerindex:TRpPrinterSelect);override;
    function SupportsCopies(maxcopies:integer):boolean;override;
    function SupportsCollation:boolean;override;
@@ -581,6 +582,10 @@ begin
  end;
 end;
 
+procedure TRpTextDriver.RestoreOrientation;
+begin
+ // No printer orientation to restore
+end;
 
 {$IFNDEF FORWEBAX}
 procedure TRpTextDriver.RepProgress(Sender:TRpBaseReport;var docancel:boolean);
@@ -1202,7 +1207,7 @@ end;
 
 function CalcCharWidth(charcode:char;step:TRpFOntStep):double;
 begin
- if charcode in [#0,#13,#10] then
+ if CharInSet(charcode,[#0,#13,#10]) then
  begin
   Result:=0;
   exit;
@@ -1261,7 +1266,7 @@ begin
  while i<=Length(astring) do
  begin
   newsize:=CalcCharWidth(astring[i],fontstep);
-  if (Not (astring[i] in [' ',#10,#13])) then
+  if (Not CharInSet(astring[i],[' ',#10,#13])) then
    lockspace:=false;
   if wordbreak then
   begin
@@ -1277,7 +1282,7 @@ begin
    end
    else
    begin
-    if astring[i] in ['.',',','-',' '] then
+    if CharInSet(astring[i],['.',',','-',' ']) then
     begin
      linebreakpos:=i;
      if astring[i]=' ' then
@@ -1880,7 +1885,7 @@ begin
 {$IFDEF MSWINDOWS}
  if OemConvert then
  begin
-  Line.Value:=RpCharToOem(Line.Value);
+  Line.Value:=String(RpCharToOem(AnsiString(Line.Value)));
  end;
 {$ENDIF}
  encoded:='';

@@ -20,7 +20,10 @@ unit rpeval;
 interface
 
 {$I rpconf.inc}
+{$IFNDEF FPC}
+// Lazarus takes the palette icon from rtl_fpc/rpmregicons.res (rpmreg)
 {$R rpeval.dcr}
+{$ENDIF}
 
 uses
   SysUtils, Classes,DB,rptypeval,
@@ -51,7 +54,7 @@ type
   // The parser
   Rpparser:TRpparser;
   // The expresion to evaluate
-  FExpression:string;
+  FExpression:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF};
   // Result of the evaluation
   FEvalResult:TRpValue;
 {$IFDEF USEEVALHASH}
@@ -75,7 +78,7 @@ type
   FOnNewLanguage:TRpNewLanguage;
   FOnGetSQLValue:TRpOnGetSQLValue;
   FOnParamInfo:TRpParamInfoProc;
-  procedure SetExpression(Value:string);
+  procedure SetExpression(Value:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF});
   // Recursive functions to evaluate the expresion
   procedure variables(var Value:TRpValue);
   procedure separator(var Value:TRpValue);
@@ -115,12 +118,12 @@ type
   // The evaluation procedure
   procedure Evaluate;
   // The evaluation procedure without Expression property
-  function EvaluateText(text:string):TRpValue;
+  function EvaluateText(text:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF}):TRpValue;
   function GetStreamFromExpression(atext:WideString):TMemoryStream;
 
   // Checking Syntax
   procedure CheckSyntax;
-  property Expression:string Read FExpression write SetExpression;
+  property Expression:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF} Read FExpression write SetExpression;
   property EvalResult:TRpValue Read FEvalResult;
   // The identifiers including functions
 {$IFDEF USEEVALHASH}
@@ -185,13 +188,32 @@ type
     Size: Longint;              { Size not including header }
   end;
 
+// "Unknown identifier: FOO", whatever the translation ends with (a colon, a
+// space or nothing): the identifier once, after one colon and one space
+function UnknownIdentifierMessage(const AIdentifier:string):string;
+var
+ amessage:string;
+ alen:integer;
+begin
+ amessage:=SRpEvalDescIden;
+ alen:=Length(amessage);
+ while (alen>0) and ((amessage[alen]=' ') or (amessage[alen]=':') or
+  (amessage[alen]=#13)) do
+  Dec(alen);
+ Result:=Copy(amessage,1,alen)+': '+AIdentifier;
+end;
+
 // TRpCustomEvaluator
 
 constructor TRpCustomEvaluator.CreateWithoutiden(AOwner:TComponent;AddIdens:boolean);
 begin
  inherited Create(AOwner);
  Evaluating:=false;
+{$IFDEF FPC}
+ FExpression:='';
+{$ELSE}
  FExpression:=String(chr(0));
+{$ENDIF}
  // Creates de parser
  Rpparser:=TRpparser.Create;
  // The identifiers list
@@ -212,7 +234,11 @@ begin
  inherited Create(AOwner);
  InitRpFunctions;
  Evaluating:=false;
+{$IFDEF FPC}
+ FExpression:='';
+{$ELSE}
  FExpression:=String(chr(0));
+{$ENDIF}
  // The parser
  Rpparser:=TRpparser.Create;
  // The identifiers
@@ -430,7 +456,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TRpCustomEvaluator.SetExpression(Value:string);
+procedure TRpCustomEvaluator.SetExpression(Value:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF});
 begin
  if Evaluating then
   Raise Exception.Create(SRpsetexpression);
@@ -438,7 +464,7 @@ begin
 end;
 
 // To evaluate a text we must create another evaluator
-function TRpCustomEvaluator.EvaluateText(text:string):TRpValue;
+function TRpCustomEvaluator.EvaluateText(text:{$IFDEF FPC}WideString{$ELSE}string{$ENDIF}):TRpValue;
 var eval:TRpCustomEvaluator;
 {$IFDEF USEEVALHASH}
     oldiden:TStringHash;
@@ -497,7 +523,7 @@ procedure TRpCustomEvaluator.Evaluate;
 begin
  Rpparser.Expression:=FExpression;
  FChecking:=False;
- if ((Rpparser.TokenString='') AND (Not (Rpparser.Token in [tkString,toWString]))) then
+ if ((Rpparser.TokenString='') AND (Not CharInSet(Rpparser.Token,[tkString,toWString]))) then
  begin
   FEvalResult:=True;
   Exit;
@@ -531,8 +557,13 @@ begin
    FError:=E.ErrorMessage;
    FLineError:=Rpparser.SourceLine;
    FPosError:=Rpparser.SourcePos;
-   Raise TRpEvalException.Create(FError+' '''+E.ElementError+'''',
-        Rpparser.TokenString,FLineError,FPosError)
+   // The element once: the message of an unknown identifier already has it
+   if Pos(E.ElementError,FError)>0 then
+    Raise TRpEvalException.Create(FError,
+         Rpparser.TokenString,FLineError,FPosError)
+   else
+    Raise TRpEvalException.Create(FError+' '''+E.ElementError+'''',
+         Rpparser.TokenString,FLineError,FPosError)
    end;
   on EParserError do
    begin
@@ -547,7 +578,8 @@ begin
     FError:=E.ErrorMessage;
     FLineError:=E.ErrorLine;
     FPosError:=E.ErrorPosition;
-    Raise;
+    Raise TRpEvalException.Create(Ferror,
+         Rpparser.TokenString,FLineError,FPosError);
    end;
   on E:EVariantError do
    begin
@@ -567,20 +599,30 @@ begin
       FPosError:=Rpparser.SourcePos;
       Raise TRpEvalException.Create(Ferror,
          Rpparser.TokenString,FLineError,FPosError);
+     end
+     else
+     begin
+      FError:=E.Message;
+      FLineError:=Rpparser.SourceLine;
+      FPosError:=Rpparser.SourcePos;
+      Raise TRpEvalException.Create(Ferror,
+         Rpparser.TokenString,FLineError,FPosError);
      end;
    end;
-  else
-  begin
-   FError:=SRpEvalSyntax;
+  on E:Exception do
+   begin
+   FError:=SRpEvalSyntax + ' ' + E.Message;
    FLineError:=Rpparser.SourceLine;
    FPosError:=Rpparser.SourcePos;
-   Raise;
-  end;
+   Raise TRpEvalException.Create(Ferror,
+         Rpparser.TokenString,FLineError,FPosError);
+   end;
  end;
 
  if Rpparser.Token<>toEOF then
  begin
-  FError:=SRpEvalSyntax;
+  if Length(Ferror)=0 then
+   FError:=SRpEvalSyntax;
   FLineError:=Rpparser.SourceLine;
   FPosError:=Rpparser.SourcePos;
   Raise TRpEvalException.Create(SRpEvalSyntax+Rpparser.TokenString,
@@ -599,8 +641,8 @@ begin
   iden:=Searchidentifier(Rpparser.TokenString);
   if iden=nil then
   begin
-   Raise TRpEvalException.Create(SRpEvalDescIden+':'+
-         Rpparser.TokenString,Rpparser.TokenString,
+   Raise TRpEvalException.Create(UnknownIdentifierMessage(
+         Rpparser.TokenString),Rpparser.TokenString,
         Rpparser.SourceLine,Rpparser.SourcePos);
   end
   else
@@ -650,7 +692,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   while (operador='OR') do
   begin
    Auxiliar2:=Value;
@@ -662,7 +704,7 @@ begin
    if Rpparser.Token<>toOperator then
     Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -675,7 +717,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   while (operador='AND') do
   begin
    Rpparser.NextToken;
@@ -687,7 +729,7 @@ begin
    if Rpparser.Token<>toOperator then
     Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -723,7 +765,7 @@ begin
  sum_dif(Value);
  while Rpparser.Token=tooperator do
  begin
-  operation:=Rpparser.TokenString;
+  operation:=ShortString(AnsiString(Rpparser.TokenString));
   if operation='=' then
     begin
      Rpparser.NextToken;
@@ -806,7 +848,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   while ((operador='+') or (operador='-')) do
   begin
    Rpparser.NextToken;
@@ -822,7 +864,7 @@ begin
    if Rpparser.Token<>toOperator then
     Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -835,7 +877,7 @@ begin
 
  if Rpparser.Token=toOperator then
  begin
-  operador:=Uppercase(Rpparser.TokenString);
+  operador:=ShortString(Uppercase(Rpparser.TokenString));
   while ((operador='*') or (operador='/')) do
   begin
    Rpparser.NextToken;
@@ -849,7 +891,7 @@ begin
    if Rpparser.Token<>toOperator then
       Exit
    else
-    operador:=UpperCase(Rpparser.TokenString);
+    operador:=ShortString(UpperCase(Rpparser.TokenString));
   end;
  end;
 end;
@@ -864,7 +906,7 @@ begin
  operador:='';
  if Rpparser.Token=toOperator then
  begin
-  operador:=UpperCase(Rpparser.TokenString);
+  operador:=ShortString(UpperCase(Rpparser.TokenString));
   if ((operador='+') or (operador='-')
        or (operador='NOT') or (operador='IIF')) then
    Rpparser.NextToken;
@@ -875,8 +917,8 @@ begin
  begin
   iden:=Searchidentifier(Rpparser.TokenString);
   if iden=nil then
-   Raise TRpEvalException.Create(SRpEvalDescIden+
-       Rpparser.TokenString,Rpparser.TokenString,
+   Raise TRpEvalException.Create(UnknownIdentifierMessage(
+       Rpparser.TokenString),Rpparser.TokenString,
       Rpparser.SourceLine,Rpparser.SourcePos);
   if iden.RType=RTypeidenfunction then
   begin
@@ -974,8 +1016,8 @@ begin
     iden:=Searchidentifier(Rpparser.TokenString);
     if iden=nil then
     begin
-     Raise TRpEvalException.Create(SRpEvalDescIden+
-         Rpparser.TokenString,Rpparser.TokenString,
+     Raise TRpEvalException.Create(UnknownIdentifierMessage(
+         Rpparser.TokenString),Rpparser.TokenString,
         Rpparser.SourceLine,Rpparser.SourcePos);
     end;
     iden.evaluator:=self;
@@ -1196,7 +1238,9 @@ function TRpCustomEvaluator.Searchidentifier(name1:WideString):TRpIdentifier;
 var
 pospunt:byte;
 primer,sensepunt:string;
+{$IFDEF USEREPORTFUNC}
 doble:Boolean;
+{$ENDIF}
 {$IFNDEF USEEVALHASH}
  index:integer;
 {$ENDIF}
@@ -1381,7 +1425,6 @@ begin
     afilename:=Trim(aValue);
     if (Length(afilename)=0) then
     begin
-     FMStream:=nil;
     end
     else
     begin

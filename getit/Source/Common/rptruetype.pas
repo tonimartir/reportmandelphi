@@ -172,7 +172,6 @@ var
 begin
   FullFontSize := 0;
   TablesUsed := 2;
-  Len := 0;
 
   for K := Low(TableNameConst) to High(TableNameConst) do
   begin
@@ -268,7 +267,6 @@ var
   ID, NumTables, NIndex, Checksum, Location, Length: Integer;
   Tag: string;
   TData: TTableData;
-  MajorVersion, MinorVersion: Word;
   NumFonts, I: Cardinal;
   TTcfHeader, PSName, PSNameNorm, PostNorm: string;
   Offsets: TArray<Cardinal>;
@@ -278,6 +276,7 @@ begin
 
   ID := ByteArrayToInt(FRFArray, FDirectoryOffset, 4);  // Usamos ByteArrayToInt con tres parámetros
   NIndex := FDirectoryOffset + 4;
+  Result:=true;
 
   if ID <> $00010000 then
   begin
@@ -290,9 +289,7 @@ begin
     if TTcfHeader = 'ttcf' then
     begin
       Inc(FDirectoryOffset, 4);
-      MajorVersion := ByteArrayToUShort(FRFArray, FDirectoryOffset, 2);  // Usamos ByteArrayToUShort con tres parámetros
       Inc(FDirectoryOffset, 2);
-      MinorVersion := ByteArrayToUShort(FRFArray, FDirectoryOffset, 2);  // Usamos ByteArrayToUShort con tres parámetros
       Inc(FDirectoryOffset, 2);
       NumFonts := ByteArrayToUInt(FRFArray, FDirectoryOffset, 4);  // Usamos ByteArrayToUInt con tres parámetros
       Inc(FDirectoryOffset, 4);
@@ -364,7 +361,6 @@ begin
 
   NIndex := TData.Location + HeadLocaFormatOffset;
   FLocaShortTable := ByteArrayToUShort(FRFArray, NIndex, 2) = 0;  // Usamos ByteArrayToUShort con tres parámetros
-  Inc(NIndex, 4);
 
   // Cached Loca Tables
   CachedLocaTables := TDictionary<string, TArray<Integer>>.Create;
@@ -495,7 +491,11 @@ var
 begin
   SetLength(FNewLocaTable, Length(FLocaTable));
   ActiveGlyphs := FGlyphsInList.ToArray;
+{$IFDEF FPC}
+  TArrayHelper<Integer>.Sort(ActiveGlyphs);
+{$ELSE}
   TArray.Sort<Integer>(ActiveGlyphs);
+{$ENDIF}
 
   GlyfSize := 0;
   for K := 0 to High(ActiveGlyphs) do
@@ -634,7 +634,7 @@ end;
 function TTrueTypeFontSubSet.GetPostcriptName(Offset: Integer): string;
 var
   ID, NumTables, NIndex, Checksum, Location, Length, NameOffset, StringOffset, I: Integer;
-  Format, NameCount, PlatformId, PlatformSpecificId, LanguageId, NameId, Offset2, Len: Word;
+  NameCount, PlatformId, NameId, Offset2, Len: Word;
   TData: TTableData;
   ByteName: TBytes;
   Name, PostName: string;
@@ -674,7 +674,6 @@ begin
     Exit('');
 
   Offset := TData.Location;
-  Format := ByteArrayToUShort(FRFArray, Offset, 2);  // Usamos ByteArrayToUShort con tres parámetros
   Inc(Offset, 2);
   NameCount := ByteArrayToUShort(FRFArray, Offset, 2); // Usamos ByteArrayToUShort con tres parámetros
   Inc(Offset, 2);
@@ -687,9 +686,7 @@ begin
   begin
     PlatformId := ByteArrayToUShort(FRFArray, Offset, 2); // Usamos ByteArrayToUShort con tres parámetros
     Inc(Offset, 2);
-    PlatformSpecificId := ByteArrayToUShort(FRFArray, Offset, 2); // Usamos ByteArrayToUShort con tres parámetros
     Inc(Offset, 2);
-    LanguageId := ByteArrayToUShort(FRFArray, Offset, 2); // Usamos ByteArrayToUShort con tres parámetros
     Inc(Offset, 2);
     NameId := ByteArrayToUShort(FRFArray, Offset, 2); // Usamos ByteArrayToUShort con tres parámetros
     Inc(Offset, 2);

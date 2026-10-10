@@ -22,7 +22,7 @@ interface
 {$I rpconf.inc}
 
 uses Windows, Messages,SysUtils, Classes, Graphics, Forms, Controls, StdCtrls,
-  Buttons, ExtCtrls,Printers,rpmdconsts,WinSpool,Dialogs,rptypes,
+  Buttons, ExtCtrls,Printers,rpmdconsts,WinSpool,Dialogs,rptypes,rpgraphutilsvcl,
   rpmunits;
 
 type
@@ -174,7 +174,7 @@ var
  maxcopies:Integer;
  FPrinterHandle:THandle;
  DeviceMode: THandle;
- Device, Driver, Port: array[0..1023] of char;
+ Device, Driver, Port: string;
  pdevmode:^DEVMODE;
  buf:PChar;
  pforminfo:^Form_info_1;
@@ -217,7 +217,7 @@ begin
   try
    dc:=Printer.Handle;
    if (dc <> 0) then
-    Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+    RpGetPrinter(Device, Driver, Port, DeviceMode);
   except
    on E:Exception do
    begin
@@ -232,9 +232,9 @@ begin
   else
   begin
    EStatus.Text:=SRpSReady;
-   EDevice.Text:=StrPas(Device);
-   EDriver.Text:=StrPas(Driver);
-   EPort.Text:=StrPas(Port);
+   EDevice.Text:=Device;
+   EDriver.Text:=Driver;
+   EPort.Text:=Port;
    maxcopies:=PrinterMaxCopiesSupport;
    if PrinterDuplexSupport then
     LDuplex.Caption:=SRpYes
@@ -251,14 +251,14 @@ begin
    begin
     try
      pdevmode:=nil;
-     asize:=DocumentProperties(0,fprinterhandle,Device,pdevmode^,pdevmode^,0);
+     asize:=DocumentProperties(0,fprinterhandle,PChar(Device),pdevmode^,pdevmode^,0);
      pdevmode:=AllocMem(sizeof(asize));
      try
       if asize>0 then
       begin
        FreeMem(pdevmode);
        pdevmode:=AllocMem(asize);
-       if IDOK=DocumentProperties(0,fprinterhandle,Device,pdevmode^,pdevmode^,DM_OUT_BUFFER) then
+       if IDOK=DocumentProperties(0,fprinterhandle,PChar(Device),pdevmode^,pdevmode^,DM_OUT_BUFFER) then
        begin
         // Orientation
         if (pdevmode^.dmFields AND DM_ORIENTATION)>0 then
@@ -311,16 +311,17 @@ begin
                 pforminfo:=AllocMem(needed);
                 if Not GetForm(fprinterhandle,Pchar(LFormName.Caption),1,pforminfo,needed,needed) then
                  RaiseLastOSError;
-                Pagesize.x:=pforminfo.Size.cy div 100;
-                Pagesize.y:=pforminfo.Size.cx div 100;
+                // Width x height, as the page size above (cx is the width)
+                Pagesize.x:=pforminfo.Size.cx div 100;
+                Pagesize.y:=pforminfo.Size.cy div 100;
                end;
               end;
              end;
             end
             else
             begin
-             Pagesize.x:=pforminfo.Size.cy div 100;
-             PageSize.y:=pforminfo.Size.cx div 100;
+             Pagesize.x:=pforminfo.Size.cx div 100;
+             PageSize.y:=pforminfo.Size.cy div 100;
             end;
            finally
             freemem(pforminfo);
@@ -375,7 +376,7 @@ begin
        except
         on E:Exception do
         begin
-         ShowMessage(E.Message);
+         RpMessageBox(E.Message, SRpError, [smbOK], smsCritical, smbOK, smbOK);
         end;
 
        end;
@@ -384,7 +385,7 @@ begin
 
       // Se obtienen las posibles bandejas de entrada
       ComboSource.Items.Clear;
-      numbins:=DeviceCapabilities(Device,Port,DC_BINS,nil,nil);
+      numbins:=DeviceCapabilities(PChar(Device),PChar(Port),DC_BINS,nil,nil);
       if numbins=0 then
       begin
        ComboSource.Items.Add(SRpNo);
@@ -392,13 +393,13 @@ begin
       else
       begin
        SetLength(bufint,numbins);
-       DeviceCapabilities(Device,Port,DC_BINS,@bufint[0],nil);
+       DeviceCapabilities(PChar(Device),PChar(Port),DC_BINS,@bufint[0],nil);
        for i:=0 to numbins-1 do
        begin
         ComboSource.Items.Add(IntToStr(bufint[i]));
        end;
        SetLength(bufchar,numbins);
-       DeviceCapabilities(Device,Port,DC_BINNAMES,@bufchar[0],nil);
+       DeviceCapabilities(PChar(Device),PChar(Port),DC_BINNAMES,@bufchar[0],nil);
        for i:=0 to numbins-1 do
        begin
         ComboSource.Items.Strings[i]:=ComboSource.Items.Strings[i]

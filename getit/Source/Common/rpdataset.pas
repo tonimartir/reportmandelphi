@@ -27,10 +27,17 @@ interface
 
 uses Sysutils,Classes,
 {$IFDEF FPC}
- memds,
+ memds, bufdataset,
+{$ENDIF}
+{$IFDEF USERPFDMEM}
+ FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
+ FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async,
+ FireDAC.DApt, FireDAC.Comp.DataSet, FireDAC.Comp.Client,
 {$ENDIF}
 {$IFNDEF FPC}
+{$IFNDEF USERPFDMEM}
  DBClient,
+{$ENDIF}
 {$ENDIF}
  db;
 
@@ -41,19 +48,22 @@ resourcestring
 
 type
 
-{$IFDEF FPC}
- TRpDataset=class(TMemDataset)
+{$IFDEF USERPFDMEM}
+  TRpMemDataSet = TFDMemTable;
+{$ELSE}
+ {$IFDEF FPC}
+  TRpMemDataSet = class(TBufDataset)
+  protected
+    procedure LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField); override;
+  end;
+ {$ELSE}
+  TRpMemDataSet = TClientDataSet;
+ {$ENDIF}
 {$ENDIF}
-{$IFNDEF FPC}
- TRpDataset=class(TClientDataSet)
-{$ENDIF}
+
+ TRpDataset=class(TRpMemDataSet)
   private
-{$IFDEF FPC}
-   FCopyDataset:TMemDataset;
-{$ENDIF}
-{$IFNDEF FPC}
-   FCopyDataset:TClientDataset;
-{$ENDIF}
+   FCopyDataset:TRpMemDataSet;
    FDataset:TDataset;
    procedure SetDataset(Value:TDataset);
   protected
@@ -71,6 +81,13 @@ type
  end;
 
 implementation
+
+{$IFDEF FPC}
+procedure TRpMemDataSet.LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField);
+begin
+  // Blobs in TRpMemDataSet reside in memory buffers; no external loading needed
+end;
+{$ENDIF}
 
 // Assign field source to destinaton (Assign not works well in Delphi 7)
 // The bug appears when you edit a already assigned record and assign
@@ -135,12 +152,7 @@ end;
 constructor TRpDataSet.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
-{$IFDEF FPC}
- FCopyDataset:=TMemDataset.Create(Self);
-{$ENDIF}
-{$IFNDEF FPC}
-  FCopyDataset:=TCLientDataset.Create(Self);
-{$ENDIF}
+ FCopyDataset:=TRpMemDataSet.Create(Self);
 end;
 
 procedure TRpDataSet.DoOpen;
@@ -215,20 +227,14 @@ begin
        adef.Precision:=TBCDField(FDataset.Fields[i]).Precision;
    {$ENDIF}
      end;
-{$IFDEF FPC}
-     CreateTable;
-{$ENDIF}
-{$IFNDEF FPC}
      CreateDataset;
-{$ENDIF}
      FCopyDataset.Close;
      FCopyDataset.FieldDefs.Assign(FieldDefs);
-{$IFDEF FPC}
-     FCopyDataset.CreateTable;
-{$ENDIF}
-{$IFNDEF FPC}
      FCopyDataset.CreateDataSet;
+{$IFNDEF FPC}
+ {$IFNDEF USERPFDMEM}
      FCopyDataset.LogChanges:=false;
+ {$ENDIF}
 {$ENDIF}
     end
     else
@@ -365,7 +371,9 @@ procedure TRpDataSet.DoAfterOpen;
 begin
  inherited DoAfterOpen;
 {$IFNDEF FPC}
+ {$IFNDEF USERPFDMEM}
  LogChanges:=false;
+ {$ENDIF}
 {$ENDIF}
 end;
 

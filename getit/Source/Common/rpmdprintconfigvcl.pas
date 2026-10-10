@@ -106,7 +106,6 @@ end;
 
 procedure TFRpPrinterConfigVCL.FormCreate(Sender: TObject);
 var
-  i: TStrings;
   j:integer;
 begin
  printernames:=TStringList.Create;

@@ -21,7 +21,10 @@ unit rplastsav;
 
 interface
 
+{$IFNDEF FPC}
+// Lazarus takes the palette icon from rtl_fpc/rpmregicons.res (rpmreg)
 {$R rplastsav.dcr}
+{$ENDIF}
 
 uses Classes,Sysutils,IniFiles;
 
@@ -163,8 +166,8 @@ begin
   end
   else
   begin
-   width:=width-3;
-   astring:=Copy(astring,length(astring)-width,width+1);
+   // The width of the next names must not change
+   astring:=Copy(astring,length(astring)-(width-3),width-2);
    astring:='...'+astring;
    alist.Add(astring);
   end;

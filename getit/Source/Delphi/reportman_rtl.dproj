@@ -226,22 +226,14 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="dbexpress.dcp"/>
         <DCCReference Include="FireDACMSAccDriver.dcp"/>
-        <DCCReference Include="FireDACDBXDriver.dcp"/>
-        <DCCReference Include="FireDACDSDriver.dcp"/>
         <DCCReference Include="adortl.dcp"/>
-        <DCCReference Include="DataSnapClient.dcp"/>
-        <DCCReference Include="DataSnapCommon.dcp"/>
         <DCCReference Include="FireDACPgDriver.dcp"/>
         <DCCReference Include="FireDACCommonODBC.dcp"/>
         <DCCReference Include="FireDACMySQLDriver.dcp"/>
         <DCCReference Include="FireDACADSDriver.dcp"/>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="dbrtl.dcp"/>
-        <DCCReference Include="DbxCommonDriver.dcp"/>
-        <DCCReference Include="DbxClientDriver.dcp"/>
-        <DCCReference Include="CustomIPTransport.dcp"/>
         <DCCReference Include="dsnap.dcp"/>
         <DCCReference Include="FireDAC.dcp"/>
         <DCCReference Include="FireDACCommonDriver.dcp"/>
@@ -306,6 +298,21 @@
         <DCCReference Include="..\Common\rplastsav.pas"/>
         <DCCReference Include="..\Common\rptruetype.pas"/>
         <DCCReference Include="..\Common\rpDelphiZXIngQRCode.pas"/>
+        <DCCReference Include="..\Common\rpaireportcontracts.pas"/>
+        <DCCReference Include="..\Common\rpauthmanager.pas"/>
+        <DCCReference Include="..\Common\rpdatadirect.pas"/>
+        <DCCReference Include="..\Common\rpdatahttp.pas"/>
+        <DCCReference Include="..\Common\rpdchub.pas"/>
+        <DCCReference Include="..\Common\rpdcintegration.pas"/>
+        <DCCReference Include="..\Common\rpdcpool.pas"/>
+        <DCCReference Include="..\Common\rpfastserializer.pas"/>
+        <DCCReference Include="..\Common\rphtmlparser.pas"/>
+        <DCCReference Include="..\Common\rplibdatachannel.pas"/>
+        <DCCReference Include="..\Common\rpmdundocue.pas"/>
+        <DCCReference Include="..\Common\rpreportdesignercontracts.pas"/>
+        <DCCReference Include="..\Common\rpdesignerclientsql.pas"/>
+        <DCCReference Include="..\Common\rplocalschemas.pas"/>
+        <DCCReference Include="..\Common\rpwebdbxadmin.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -23,7 +23,8 @@ interface
 
 {$I rpconf.inc}
 
-uses SysUtils, Classes,
+uses Winapi.Windows, Winapi.Messages,
+  SysUtils, Classes, Types,
   Graphics, Forms,ComCtrls, ImgList,
   Buttons, ExtCtrls, Controls, StdCtrls,Dialogs,
   rpgraphutilsvcl,rpdatainfo,
@@ -51,7 +52,7 @@ uses SysUtils, Classes,
 {$IFDEF FIREDAC}
   FireDAC.VCLUI.ConnEdit,FireDAC.Comp.Client,
 {$ENDIF}
-  Vcl.BaseImageCollection, Vcl.ImageCollection;
+  Vcl.BaseImageCollection, Vcl.ImageCollection, rpdatahttp, Vcl.Menus;
 
 const
  CONTROL_DISTANCEY=5;
@@ -60,6 +61,17 @@ const
  CONTROL_WIDTHX=200;
  LABEL_INCY=4;
 type
+  TRpQueuedHubDiscoveryPayload = class(TObject)
+  public
+    RequestVersion: Integer;
+    PopupPoint: TPoint;
+    TriggerControl: TControl;
+    Databases: TStringList;
+    ErrorMessage: string;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   TFRpDBXConfigVCL = class(TForm)
     Panel1: TPanel;
     LDriversFile: TLabel;
@@ -101,36 +113,185 @@ type
     DriversFile:string;
     params:TStringList;
     connectionname:string;
-    onlyibx:boolean;
+    FHubDiscoveryRequestVersion: Integer;
 {$IFDEF USESQLEXPRESS}
     SQLConnection1: TSQLConnection;
 {$ENDIF}
     conadmin:TRpConnAdmin;
+    FAgentInfo: TLabel;
+    FAgentLink: TLabel;
+    procedure WMHubDiscoveryComplete(var Message: TMessage); message WM_USER + 220;
     procedure FreeParamsControls;
     procedure CreateParamsControls;
+    procedure AddAgentInfo(ATop: Integer);
+    procedure AgentLinkClick(Sender: TObject);
     procedure Edit1Change(Sender:TObject);
-    procedure UpdateIBX;
+    procedure BSelectHubConnectionClick(Sender: TObject);
+    procedure HubConnectionMenuItemClick(Sender: TObject);
   public
     { Public declarations }
     ConnectionsFile:string;
   end;
 
-procedure ShowDBXConfig(onlyibx:boolean;ConnectionsFile:string='');
+procedure ShowDBXConfig(ConnectionsFile:string='');
+function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
 
 implementation
 
 {$R *.dfm}
 
+uses System.JSON, rpreport,  rpauthmanager
+{$IFDEF MSWINDOWS}
+  , rpdatadirect, rpdcintegration
+{$ENDIF}
+  ;
 
-procedure ShowDBXConfig(onlyibx:boolean;ConnectionsFile:string);
+const
+  HTTP_TEST_CONNECTION_TIMEOUT_MS = 10000;
+
+function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
+begin
+ if SameText(ADriverName, 'FireDac') then
+  Result:=rpfiredac
+ else if SameText(ADriverName, 'ZeosLib') then
+  Result:=rpdatazeos
+ else if SameText(ADriverName, 'Interbase') or SameText(ADriverName, 'Firebird') then
+  Result:=rpdataibx
+ else if SameText(ADriverName, 'Reportman AI Agent') then
+  Result:=rpdbHttp
+ else
+  Result:=rpdatadbexpress;
+end;
+
+function ExtractHttpConnectionTestMessage(const AResponseText: string): string;
+var
+ LResponseJson: TJSONObject;
+ LDataJson: TJSONObject;
+ LValue: TJSONValue;
+begin
+ Result := '';
+ if Length(Trim(AResponseText)) = 0 then
+  Exit;
+ LResponseJson := TJSONObject.ParseJSONValue(AResponseText) as TJSONObject;
+ try
+  if not Assigned(LResponseJson) then
+   Exit;
+  LDataJson := LResponseJson.Values['data'] as TJSONObject;
+  if Assigned(LDataJson) then
+  begin
+   LValue := LDataJson.Values['message'];
+   if Assigned(LValue) then
+    Exit(LValue.Value);
+  end;
+  LValue := LResponseJson.Values['message'];
+  if Assigned(LValue) then
+   Result := LValue.Value;
+ finally
+  LResponseJson.Free;
+ end;
+end;
+
+function BuildHttpConnectionFailureMessage(const AErrorText: string): string;
+begin
+ Result := 'Agent Connection: Fail' + sLineBreak +
+  'Database Connection: Fail';
+ if Length(Trim(AErrorText)) > 0 then
+  Result := Result + sLineBreak + 'Error: ' + Trim(AErrorText);
+end;
+
+function ExecuteHttpConnectionTest(AParams: TStrings; out AMessageText: string): Boolean;
+var
+ LDatabase: TRpDatabaseHttp;
+ LRequestBody: TJSONObject;
+ LResponseStream: TStringStream;
+{$IFDEF MSWINDOWS}
+ LMode: TRpDcConnectionMode;
+ LFallback: Boolean;
+ LHubDbId: Int64;
+{$ENDIF}
+begin
+ AMessageText := '';
+ LDatabase:=TRpDatabaseHttp.Create;
+ try
+  LDatabase.ApiKey:=AParams.Values['ApiKey'];
+  LDatabase.HubDatabaseId:=StrToInt64Def(AParams.Values['HubDatabaseId'],0);
+  if (LDatabase.ApiKey='') and (TRpAuthManager.Instance.Token<>'') then
+   LDatabase.Token:=TRpAuthManager.Instance.Token;
+  LRequestBody:=TJSONObject.Create;
+  try
+   LRequestBody.AddPair('hubDatabaseId',TJSONNumber.Create(LDatabase.HubDatabaseId));
+   LResponseStream:=TStringStream.Create('', TEncoding.UTF8);
+   try
+    try
+     Result:=LDatabase.InternalRequest('api/agent/testconnection',
+       LRequestBody,LResponseStream,HTTP_TEST_CONNECTION_TIMEOUT_MS);
+     if Result then
+     begin
+      AMessageText := ExtractHttpConnectionTestMessage(LResponseStream.DataString);
+      if Length(Trim(AMessageText)) = 0 then
+       AMessageText := 'Agent Connection: Success' + sLineBreak +
+        'Database Connection: Success';
+
+{$IFDEF MSWINDOWS}
+      // After a successful HTTP test, probe the Direct Channel so
+      // the user knows which transport they would actually get when
+      // they start using this database. The SetConnected(True)
+      // triggers rpdcintegration's hook which negotiates a session
+      // through the pool; PeekConnectionMode then reports the live
+      // ICE outcome.
+      LHubDbId := LDatabase.HubDatabaseId;
+      if LHubDbId > 0 then
+      try
+       LDatabase.Connected := True;
+       LMode := GetLastTransportForDatabase(LHubDbId);
+       LFallback := DidFallBackToApiForDatabase(LHubDbId);
+       AMessageText := AMessageText + sLineBreak +
+                        'Transport: ' + FormatTransportMode(LMode, LFallback);
+      except
+       on E: Exception do
+        AMessageText := AMessageText + sLineBreak +
+                         'Transport: API (probe failed: ' + E.Message + ')';
+      end;
+{$ENDIF}
+     end;
+    except
+     on E: Exception do
+     begin
+      Result := False;
+      AMessageText := BuildHttpConnectionFailureMessage(E.Message);
+     end;
+    end;
+   finally
+    LResponseStream.Free;
+   end;
+  finally
+   LRequestBody.Free;
+  end;
+ finally
+  LDatabase.Free;
+ end;
+end;
+
+constructor TRpQueuedHubDiscoveryPayload.Create;
+begin
+  inherited Create;
+  Databases := TStringList.Create;
+end;
+
+destructor TRpQueuedHubDiscoveryPayload.Destroy;
+begin
+  Databases.Free;
+  inherited Destroy;
+end;
+
+
+procedure ShowDBXConfig(ConnectionsFile:string);
 var
  dia:TFRpDBXCOnfigVCL;
 begin
  dia:=TFRpDBXConfigVCL.Create(Application);
  try
-  dia.onlyibx:=onlyibx;
   dia.ConnectionsFile:=Trim(ConnectionsFile);
-  dia.UpdateIBX;
   dia.showmodal;
  finally
   dia.free;
@@ -143,9 +304,6 @@ begin
  ConAdmin:=TRpConnAdmin.Create;
 {$IFDEF USESQLEXPRESS}
  SQLConnection1:=TSQLConnection.Create(Self);
-{$ENDIF}
-{$IFNDEF USESQLEXPRESS}
- BConnect.Enabled:=false;
 {$ENDIF}
  LDriversFile.Caption:=TranslateStr(169,LDriversFile.Caption);
  LConnsFile.Caption:=TranslateStr(170,LConnsFile.Caption);
@@ -197,6 +355,8 @@ procedure TFRpDBXConfigVCL.FreeParamsControls;
 var
  i:integer;
 begin
+ FAgentInfo:=nil;
+ FAgentLink:=nil;
  i:=0;
  While  ScrollParams.ControlCount>0 do
  begin
@@ -243,6 +403,21 @@ begin
      TEdit(Edit1).OnChange:=Edit1Change;
     if AnsiUpperCase(params.Names[i])='PASSWORD' then
      TEdit(Edit1).PasswordChar:='*';
+    // Special discovery button for HubDatabaseId
+    if AnsiUpperCase(params.Names[i])='HUBDATABASEID' then
+    begin
+      with TSpeedButton.Create(Self) do
+      begin
+        Parent := ScrollParams;
+        Caption := 'Select Connection...';
+        Width := ScaleDPI(130);
+        Top := 0; // Will be set after Edit1.Top
+        Left := ScrollParams.Width - Width - ScaleDPI(6);
+        Anchors := [akRight, akTop];
+        OnClick := BSelectHubConnectionClick;
+        Tag := i;
+      end;
+    end;
    end
    else
    begin
@@ -260,24 +435,75 @@ begin
    Edit1.Tag:=i;
    Edit1.Top:=Top;
    Edit1.Left:=ScaleDPi(CONTROL_DISTANCEX2);
-   //Edit1.Width:=CONTROL_WIDTHX;
    Edit1.Width := ScrollParams.Width-ScaleDPI(30)-ScaleDPi(CONTROL_DISTANCEX2);
-   Edit1.Anchors := [akLeft,akTop,akRight];
+   // Shrink if button exists
+   if AnsiUpperCase(params.Names[i])='HUBDATABASEID' then
+     Edit1.Width := Edit1.Width - ScaleDPI(136);
 
+   Edit1.Anchors := [akLeft,akTop,akRight];
    Edit1.Visible:=True;
+
+   // Fix button top if created
+   for index := 0 to ScrollParams.ControlCount - 1 do
+     if (ScrollParams.Controls[index] is TSpeedButton) and (ScrollParams.Controls[index].Tag = i) then
+     begin
+       ScrollParams.Controls[index].Top := Edit1.Top;
+       ScrollParams.Controls[index].Height := Edit1.Height;
+     end;
 
    top:=top+Edit1.Height+ScaleDPi(CONTROL_DISTANCEY);
   end;
+  if SameText(params.Values['DriverName'],'Reportman AI Agent') then
+   AddAgentInfo(top);
  finally
   alist.free;
  end;
+end;
+
+// What the Reportman Agent is and its download page, under the parameters
+// of an Agent connection or alone when the Agent driver has none yet
+procedure TFRpDBXConfigVCL.AddAgentInfo(ATop: Integer);
+begin
+ FAgentInfo:=TLabel.Create(Self);
+ FAgentInfo.Parent:=ScrollParams;
+ FAgentInfo.Left:=ScaleDPi(CONTROL_DISTANCEX);
+ FAgentInfo.Top:=ATop+ScaleDPi(8);
+ FAgentInfo.Width:=ScrollParams.Width-ScaleDPI(30)-ScaleDPi(CONTROL_DISTANCEX);
+ FAgentInfo.Anchors:=[akLeft,akTop,akRight];
+ FAgentInfo.WordWrap:=True;
+ FAgentInfo.ShowAccelChar:=False;
+ FAgentInfo.Caption:=TranslateStr(1823,'The Reportman Agent is installed as a service '+
+  'on a Windows or Linux computer that can reach your database and gives the designer '+
+  'secure access to it through ai.reportman.es.');
+
+ FAgentLink:=TLabel.Create(Self);
+ FAgentLink.Parent:=ScrollParams;
+ FAgentLink.Left:=FAgentInfo.Left;
+ FAgentLink.Top:=FAgentInfo.Top+FAgentInfo.Height+ScaleDPi(4);
+ FAgentLink.ShowAccelChar:=False;
+ FAgentLink.Caption:=TranslateStr(1822,'Download Reportman Agent');
+ FAgentLink.Cursor:=crHandPoint;
+ FAgentLink.ParentFont:=False;
+ FAgentLink.Font.Color:=clBlue;
+ FAgentLink.Font.Style:=[fsUnderline];
+ FAgentLink.OnClick:=AgentLinkClick;
+end;
+
+procedure TFRpDBXConfigVCL.AgentLinkClick(Sender: TObject);
+begin
+ TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
 procedure TFRpDBXConfigVCL.LConnectionsClick(Sender: TObject);
 begin
  if LConnections.ItemIndex<0 then
  begin
-  ScrollParams.Visible:=false;
+  FreeParamsControls;
+  // No Agent connection yet: tell where the Agent comes from
+  ScrollParams.Visible:=(ComboDrivers.ItemIndex>0) and
+   SameText(ComboDrivers.Text,'Reportman AI Agent');
+  if ScrollParams.Visible then
+   AddAgentInfo(0);
   exit;
  end;
  ScrollParams.Visible:=true;
@@ -376,6 +602,7 @@ begin
     FDConnEditor.Execute(FDConnection1,SRpSParamList);
   finally
     FDConnEditor.Free;
+    FDConnection1.Free;
   end;
 {$ENDIF}
  end
@@ -388,131 +615,52 @@ end;
 
 procedure TFRpDBXConfigVCL.BConnectClick(Sender: TObject);
 var
-{$IFDEF USESQLEXPRESS}
  conname:string;
- funcname,drivername,vendorlib,libraryname:string;
+ drivername:string;
  alist:TStringList;
-{$IFDEF USEZEOS}
- FZConnection:TZConnection;
- transiso:String;
-{$ENDIF}
-{$ENDIF}
-{$IFDEF USEIBX}
-  FIBDatabase:TIBDatabase;
-{$ENDIF}
-{$IFDEF FIREDAC}
- FDConnection:TFDConnection;
-{$ENDIF}
- databasename:string;
- indexDriver:integer;
+ report:TRpReport;
+ dbinfo:TRpDatabaseInfoItem;
+ LMessageText: string;
 begin
-{$IFDEF USESQLEXPRESS}
  if Not Assigned(ConAdmin) then
   exit;
  if LConnections.ItemIndex<0 then
   Raise Exception.Create(SRpSelectConnectionFirst);
  conname:=LConnections.Items.strings[Lconnections.itemindex];
- // Assigns properties to SQLCOn.
- SQLConnection1.ConnectionName:=conname;
  alist:=TStringList.Create;
  try
   ConAdmin.GetConnectionParams(conname,alist);
-  SQLConnection1.params.Assign(alist);
+  drivername:=Trim(alist.Values['DriverName']);
+    if SameText(drivername,'Reportman AI Agent') then
+    begin
+     ExecuteHttpConnectionTest(alist, LMessageText);
+     if Length(Trim(LMessageText)) = 0 then
+      LMessageText := SRpConnectionOk;
+     RpShowMessage(LMessageText);
+     exit;
+    end;
  finally
-  alist.free;
+  alist.Free;
  end;
- drivername:=SQLConnection1.params.Values['DriverName'];
-{$IFDEF FIREDAC}
- if (drivername='FireDac') then
- begin
-   FDConnection:=TFDConnection.Create(nil);
-   try
-    FDConnection.Params.Assign(SQLConnection1.Params);
-    ConvertParamsFromDBXToFDac(FDConnection);
-    FDConnection.Connected:=True;
-    RpShowMessage(SRpConnectionOk);
-    FDConnection.Connected:=False;
-   finally
-    FDConnection.Free;
-   end;
- end
- else
-{$ENDIF}
-{$IFDEF USEZEOS}
- if drivername='ZeosLib' then
- begin
-  FZConnection:=TZConnection.Create(nil);
-  try
-   FZConnection.LoginPrompt:=False;
-   FZConnection.HostName:=SQLConnection1.params.Values['HostName'];
-   FZConnection.Protocol:=SQLConnection1.params.Values['Database Protocol'];
-   FZConnection.Database:=SQLConnection1.params.Values['Database'];
-   FZConnection.User:=SQLConnection1.params.Values['User_Name'];
-   FZConnection.Password:=SQLConnection1.params.Values['Password'];
-   if Length(Trim(SQLConnection1.params.Values['Port']))>0 then
-    FZConnection.Port:=StrToInt(SQLConnection1.params.Values['Port']);
-   transiso:=SQLConnection1.params.Values['Zeos TransIsolation'];
-   if (transiso='ReadCommited') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiReadCommitted
-   else
-   if (transiso='ReadUnCommited') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiReadUnCommitted
-   else
-   if (transiso='RepeatableRead') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiRepeatableRead
-   else
-   if (transiso='Serializable') then
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiSerializable
-   else
-    FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiNone;
-   FZConnection.Connected:=True;
-   RpShowMessage(SRpConnectionOk);
-   FZConnection.Connected:=False;
-  finally
-   FZConnection.free;
-  end;
- end
- else
-{$ENDIF}
- begin
-{$IFDEF USEIBX}
- if (drivername = 'Interbase') then
- begin
-   FIBDatabase:=TIBDatabase.Create(nil);
-   try
-    FIBDatabase.Params.Assign(SQLConnection1.Params);
-    ConvertParamsFromDBXToIBX(FIBDatabase);
-    FIBDatabase.Connected:=True;
-    RpShowMessage(SRpConnectionOk);
-    FIBDatabase.Connected:=False;
-   finally
-    FIBDatabase.Free;
-   end;
- end
- else
-{$ENDIF}
-  begin
 
-  //funcname:=ConAdmin.Drivers.ReadString(drivername,'GetDriverFunc','');
-  //ConAdmin.GetDriverLibNames(drivername,LibraryName,VendorLib);
-  if UpperCase(drivername)='SQLITE' then
-  begin
-    drivername:='Sqlite';
-    indexDriver:=SQlConnection1.Params.IndexOfName('DriverName');
-    if (indexDriver>=0) then
-      SQlConnection1.Params.Delete(indexDriver);
-    SQLConnection1.LoginPrompt := false;
-  end;
-  SQLConnection1.DriverName:=drivername;
-  //SQLConnection1.VendorLib:=vendorlib;
-  //SQLConnection1.LibraryName:=libraryname;
-  //SQLConnection1.GetDriverFunc:=funcname;
-   SQLConnection1.Connected:=true;
+ report:=TRpReport.Create(nil);
+ try
+  if Length(Trim(ConnectionsFile))>0 then
+   report.Params.Add('DBXCONNECTIONS').AsString:=Trim(ConnectionsFile);
+  if Length(Trim(DriversFile))>0 then
+   report.Params.Add('DBXDRIVERS').AsString:=Trim(DriversFile);
+  dbinfo:=report.DatabaseInfo.Add(conname);
+  dbinfo.Driver:=ResolveDbxConnectionDriver(drivername);
+  dbinfo.LoginPrompt:=False;
+    dbinfo.Connect(nil);
+  try
    RpShowMessage(SRpConnectionOk);
-   SQLConnection1.Connected:=false;
+  finally
+   dbinfo.DisConnect;
   end;
+ finally
+  report.Free;
  end;
-{$ENDIF}
 end;
 
 procedure TFRpDBXConfigVCL.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -527,6 +675,17 @@ begin
    RpMessageBox(E.MEssage);
   end;
  end;
+{$IFDEF MSWINDOWS}
+ // The user may have changed connection settings (e.g. ApiKey or
+ // HubDatabaseId). Invalidate the cached Direct Channel sessions so the next
+ // data fetch / report run re-authenticates with the new values instead of
+ // reusing a stale pooled channel until the application is restarted.
+ try
+  ResetHubChannelPool;
+ except
+  on E:Exception do ; // never let cache cleanup block closing the dialog
+ end;
+{$ENDIF}
 end;
 
 
@@ -535,17 +694,142 @@ begin
  Close;
 end;
 
-procedure TFRpDBXConfigVCL.UpdateIBX;
+procedure TFRpDBXConfigVCL.BSelectHubConnectionClick(Sender: TObject);
+var
+  LApiKey: string;
+  LButton: TSpeedButton;
+  LPopupPoint: TPoint;
+  LRequestVersion: Integer;
+  LWorker: TThread;
+  i: Integer;
 begin
- if OnlyIBX then
- begin
-  ComboDrivers.ItemIndex:=ComboDrivers.Items.IndexOf('Interbase');
-  if ComboDrivers.ItemIndex>=0 then
-   ComboDrivers.Enabled:=False;
- end;
- if ComboDrivers.ItemIndex<0 then
-  ComboDrivers.ItemIndex:=0;
- ComboDriversClick(Self);
+  LApiKey := '';
+  // Find ApiKey value in other edits
+  for i := 0 to ScrollParams.ControlCount - 1 do
+  begin
+    if (ScrollParams.Controls[i] is TEdit) and
+       (AnsiUpperCase(params.Names[ScrollParams.Controls[i].Tag]) = 'APIKEY') then
+    begin
+      LApiKey := TEdit(ScrollParams.Controls[i]).Text;
+      break;
+    end;
+  end;
+
+  if Length(LApiKey) < 5 then
+  begin
+    RpShowMessage('Please enter a valid API Key first.');
+    Exit;
+  end;
+
+  if not (Sender is TSpeedButton) then
+    Exit;
+
+  LButton := TSpeedButton(Sender);
+  LPopupPoint := LButton.ClientToScreen(Point(0, LButton.Height));
+  Inc(FHubDiscoveryRequestVersion);
+  LRequestVersion := FHubDiscoveryRequestVersion;
+
+  LButton.Enabled := False;
+  LButton.Caption := 'Loading...';
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      LPayload: TRpQueuedHubDiscoveryPayload;
+    begin
+      LPayload := TRpQueuedHubDiscoveryPayload.Create;
+      try
+        LPayload.RequestVersion := LRequestVersion;
+        LPayload.PopupPoint := LPopupPoint;
+        LPayload.TriggerControl := LButton;
+        try
+          if not TRpDatabaseHttp.GetHubDatabases(LApiKey, LPayload.Databases) then
+            LPayload.ErrorMessage := 'Failed to connect to Hub for discovery. Check your API Key and internet connection.';
+        except
+          on E: Exception do
+            LPayload.ErrorMessage := E.Message;
+        end;
+
+        if HandleAllocated then
+        begin
+          if not PostMessage(Handle, WM_USER + 220, WPARAM(LPayload), 0) then
+            LPayload.Free;
+        end
+        else
+          LPayload.Free;
+      except
+        LPayload.Free;
+      end;
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
+procedure TFRpDBXConfigVCL.WMHubDiscoveryComplete(var Message: TMessage);
+var
+  LPayload: TRpQueuedHubDiscoveryPayload;
+  LPopupMenu: TPopupMenu;
+  LMenuItem: TMenuItem;
+  I: Integer;
+begin
+  LPayload := TRpQueuedHubDiscoveryPayload(Message.WParam);
+  try
+    if LPayload = nil then
+      Exit;
+    if LPayload.RequestVersion <> FHubDiscoveryRequestVersion then
+      Exit;
+
+    if Assigned(LPayload.TriggerControl) and (LPayload.TriggerControl is TSpeedButton) then
+    begin
+      TSpeedButton(LPayload.TriggerControl).Enabled := True;
+      TSpeedButton(LPayload.TriggerControl).Caption := 'Select Connection...';
+    end;
+
+    if LPayload.ErrorMessage <> '' then
+    begin
+      RpShowMessage(LPayload.ErrorMessage);
+      Exit;
+    end;
+
+    if LPayload.Databases.Count = 0 then
+    begin
+      RpShowMessage('No databases found for this API Key.');
+      Exit;
+    end;
+
+    LPopupMenu := TPopupMenu.Create(Self);
+    for I := 0 to LPayload.Databases.Count - 1 do
+    begin
+      LMenuItem := TMenuItem.Create(LPopupMenu);
+      LMenuItem.Caption := LPayload.Databases.Names[I];
+      // The id, before the state of the Agent (RpHubDatabaseLine)
+      LMenuItem.Hint := RpHubLineField(LPayload.Databases.ValueFromIndex[I], 0);
+      LMenuItem.Tag := StrToIntDef(LMenuItem.Hint, 0);
+      LMenuItem.OnClick := HubConnectionMenuItemClick;
+      LPopupMenu.Items.Add(LMenuItem);
+    end;
+    LPopupMenu.Popup(LPayload.PopupPoint.X, LPayload.PopupPoint.Y);
+  finally
+    LPayload.Free;
+  end;
+end;
+
+procedure TFRpDBXConfigVCL.HubConnectionMenuItemClick(Sender: TObject);
+var
+  LId: Integer;
+  j: Integer;
+begin
+  LId := TMenuItem(Sender).Tag;
+  for j := 0 to ScrollParams.ControlCount - 1 do
+  begin
+     if (ScrollParams.Controls[j] is TEdit) and
+        (AnsiUpperCase(params.Names[ScrollParams.Controls[j].Tag]) = 'HUBDATABASEID') then
+     begin
+       TEdit(ScrollParams.Controls[j]).Text := IntToStr(LId);
+       Edit1Change(ScrollParams.Controls[j]);
+       break;
+     end;
+  end;
 end;
 
 end.

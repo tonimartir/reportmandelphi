@@ -1,0 +1,2774 @@
+{*******************************************************}
+{                                                       }
+{       Report Manager                                  }
+{                                                       }
+{       rpdatahttp                                      }
+{       Remote HTTP Hub-Agent Driver                    }
+{                                                       }
+{       Copyright (c) 1994-2025 Toni Martir             }
+{       toni@reportman.es                               }
+{                                                       }
+{*******************************************************}
+unit rpdatahttp;
+interface
+{$I rpconf.inc}
+
+{$IFDEF FPC}
+// In this unit FIREDAC selects the System.Net HTTP client code (Delphi
+// XE8 and later); in FPC rphttpclientfpc provides that client
+{$DEFINE FIREDAC}
+{$ENDIF}
+
+uses
+{$IFDEF FPC}
+  SysUtils, Classes, DB, StrUtils, Variants, rpioutilsfpc,
+  rphttpclientfpc, rpjsonfpc, DateUtils, rpsysutilsfpc, rpnetencodingfpc,
+  Generics.Collections,
+  rpdataset,
+  rpparams,
+  rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
+  rpaireportcontracts;
+{$ELSE}
+  SysUtils, Classes, DB, StrUtils, Variants, System.IOUtils,
+{$IFDEF FIREDAC}
+  System.Net.HttpClient, System.Net.HttpClientComponent, System.Net.URLClient,
+{$ELSE}
+  // Fallback to Indy if TNetHTTPClient is not available
+  IdHTTP, IdSSLOpenSSL,
+{$ENDIF}
+  System.JSON,
+  System.DateUtils,
+  System.NetEncoding,
+  System.Generics.Collections,
+{$IFDEF USERPFDMEM}
+  FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
+  FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async,
+  FireDAC.DApt, FireDAC.Comp.DataSet, FireDAC.Comp.Client,
+{$ENDIF}
+{$IFDEF USERPDATASET}
+{$IFNDEF USERPFDMEM}
+  DBClient,
+{$ENDIF}
+{$ENDIF}
+  rpdataset,
+  rpparams,
+  rptypes, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
+  rpaireportcontracts;
+{$ENDIF}
+
+const
+  // Log key of a line that is REWRITTEN instead of appended to: the wait in the
+  // queue of the AI provider (stage Queued, Reportman.AI.Api), which comes every
+  // second with its whole text ("Queued: 3 s"). The log views (rpwebmarkdownvcl,
+  // rpwebmarkdownlcl) replace the line of such a key while it is the last one.
+  RpReplaceLogKeyPrefix = 'replace:';
+  DBTYPE_BOOLEAN = 3;
+  DBTYPE_CURRENCY = 4;
+  DBTYPE_DATE = 5;
+  DBTYPE_DATETIME = 6;
+  DBTYPE_DOUBLE = 8;
+  DBTYPE_INT32 = 11;
+  DBTYPE_STRING = 16;
+  DBTYPE_TIME = 17;
+type
+{$IFDEF MSWINDOWS}
+  // Direct WebRTC DataChannel is Windows-only for now (depends on
+  // libdatachannel.dll, libssl, libcrypto, plus the rpdcintegration
+  // resource bundle). On Linux / FPC builds (printreptopdf and any
+  // future cross-platform tool) the hook types are not declared so
+  // the binary cannot accidentally pull the WebRTC stack in.
+
+  // Generic try-direct hook. If installed (typically by
+  // rpdcintegration.EnableDirectChannel) it is called at the top of
+  // TRpDatasetHttp.Open. Returning True means the handler already
+  // populated ATarget and Open() should NOT continue to HTTP.
+  // Returning False (or any exception bubbling out) means the handler
+  // could not satisfy this query; Open() falls back to the standard
+  // HTTP path. Kept as a plain global so rpdatahttp does not have to
+  // depend on the (much heavier) WebRTC stack.
+  TRpDatasetDirectTryFunc = function(ADatabaseHttp: TObject;
+                                      const ASql: string;
+                                      AParams: TObject;
+                                      ATarget: TObject): Boolean;
+
+  // Hook called after a successful TRpDatabaseHttp.SetConnected(True).
+  // rpdcintegration registers itself here (via initialization) and
+  // uses the callback to extract the embedded datachannel.dll, load
+  // the library and spin up the per-database session pool. The hook
+  // receives the TRpDatabaseHttp as TObject and as-casts back. A
+  // True return means the direct channel is up; False / exception
+  // means HTTP-only operation (no popup, silent log via AuthManager).
+  TRpDcDatabaseConnectFunc = function(ADatabaseHttp: TObject): Boolean;
+{$ENDIF}
+
+  // A Reportman AI Agent connection that can not be opened: no Hub database
+  // in the connections file, or neither API key nor Reportman AI session.
+  // The designer offers to configure the connection when it catches it.
+  ERpAgentConnectionError = class(Exception)
+  private
+    FConnectionName: string;
+  public
+    constructor CreateFor(const AMessage, AConnectionName: string);
+    property ConnectionName: string read FConnectionName;
+  end;
+
+  TRpExpressionStreamProgressEvent = procedure(Sender: TObject; const AActor, AStage,
+    AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+    const AProgressId: string; APrefillPercent: Integer) of object;
+  TRpExpressionStreamResultEvent = procedure(Sender: TObject;
+    AResultJson: TJSONObject; const AErrorMessage: string) of object;
+  TRpExpressionStreamCancelEvent = function(Sender: TObject): Boolean of object;
+
+  { TRpDatabaseHttp }
+  TRpDatabaseHttp = class(TObject)
+  private
+    FApiKey: string;
+    FToken: string;
+    FInstallId: string;
+    FHubDatabaseId: Int64;
+    FHubSchemaId: Int64;
+    FRuntimeDb: string;
+    FAITier: string;
+    FAgentSecret: string;
+    FAgentAiId: Int64;
+    FConnected: Boolean;
+    FInlineConfigJson: string;
+    procedure SetConnected(Value: Boolean);
+  public
+    // The Hub databases of api/agent/databases, one line per schema (the
+    // same line once): RpHubDatabaseLine
+    class function GetHubDatabases(const AApiKey: string; AList: TStrings): Boolean;
+    constructor Create;
+    function TestConnection: Boolean;
+    property ApiKey: string read FApiKey write FApiKey;
+    property Token: string read FToken write FToken;
+    property InstallId: string read FInstallId write FInstallId;
+    property HubDatabaseId: Int64 read FHubDatabaseId write FHubDatabaseId;
+    property HubSchemaId: Int64 read FHubSchemaId write FHubSchemaId;
+    property RuntimeDb: string read FRuntimeDb write FRuntimeDb;
+    property AITier: string read FAITier write FAITier;
+    property AgentSecret: string read FAgentSecret write FAgentSecret;
+    property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
+    // A database that is not in the Hub: the JSON of the config of
+    // TranslateToSql with its schema inline (TRpApiDatabaseConfig, see
+    // RpResolveLocalSchemaConfig) instead of the Hub ids
+    property InlineConfigJson: string read FInlineConfigJson write FInlineConfigJson;
+    property Connected: Boolean read FConnected write SetConnected;
+    function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function TranslateToSql(const AUserPrompt, ASqlToRefine, AMode,
+      AUserLanguage: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function ExplainSql(const ASql: string; const AMode, AUserLanguage: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function GetTableSchema(const ASql: string): TJSONObject;
+    function ModifyReport(ARequest: TRpApiModifyReportRequest;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TRpApiModifyReportResult;
+    function PreprocessSqlContext(ARequest: TRpApiPreprocessSqlContextRequest;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TRpApiPreprocessSqlContextResult;
+    function SubmitAIReport(AReport: TRpAIReport): Boolean;
+    function SuggestExpressionStream(const APrompt, ACurrentExpression: string;
+      ACursorPosition: Integer; const AMode: string; AFix: Boolean;
+      const ASemanticContextJson: string; Sender: TObject;
+      AOnProgress: TRpExpressionStreamProgressEvent;
+      AOnResult: TRpExpressionStreamResultEvent;
+      ACancel: TRpExpressionStreamCancelEvent): Boolean;
+    function GetSchemas(AList: TStrings): Boolean;
+    // The schemas of api/agent/databases (RpHubSchemaLine):
+    // '<label>=<hubDatabaseId>|<hubSchemaId>', and the state of the Agent and
+    // its name when the cloud says them (RpHubLineField)
+    function GetUserSchemas(AList: TStrings): Boolean; overload;
+    // With the size of each schema in ASizes (nil = not wanted), from its
+    // schemaTables: 'hubSchemaId=<tables>,<columns of the widest table>'
+    function GetUserSchemas(AList, ASizes: TStrings): Boolean; overload;
+    function GetUserAgents(AList: TStrings): Boolean;
+    // The schema library of Reportman AI (the wizard of database-config):
+    // GET api/schema/list, the categories with their schemas,
+    // [{ id, name, description, schemas: [{ id, name, version, categoryId }] }]
+    // (the caller frees it). Raises with the reason when it can not be read
+    function GetSchemaLibrary: TJSONArray;
+    // A schema of the library: GET api/schema/{id}, its fullSchema (the JSON
+    // of a database config with its schemaTables). Raises with the reason.
+    // The library is only read: api/schema/save is never called
+    function GetLibrarySchema(AId: Int64): string;
+    // The AI reads the schema of AConfig (inline: a local schema) and says
+    // what it does not understand (NlToSql/AnalyzeSchemaStream) with the
+    // tier and the agent of this client, in the language of the AI. The
+    // final frame: result.explanation (Markdown) or errorMessage/errorCode,
+    // and userProfile. nil when cancelled
+    function AnalyzeSchema(AConfig: TRpApiDatabaseConfig; const AMode: string;
+      Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    function InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean; overload;
+    function InternalRequest(const AAction: string; const RequestBody: TJSONObject;
+      ResponseStream: TStream; ATimeoutMs: Integer): Boolean; overload;
+    function InternalGetRequest(const AAction: string; ResponseStream: TStream): Boolean; overload;
+    // The same with the HTTP status of the answer
+    function InternalGetRequest(const AAction: string; ResponseStream: TStream;
+      out AStatusCode: Integer): Boolean; overload;
+  end;
+  { TRpDatasetHttp }
+  TRpDatasetHttp = class(TPersistent)
+  private
+    FDatabase: TRpDatabaseHttp;
+    FSql: string;
+    FDataset: TRpMemDataSet;
+    FParams: TRpParamList;
+    function CreateParameterObject(AParam: TRpParam): TJSONObject;
+  public
+    class function CreateForQuery(ADatabase: TRpDatabaseHttp;
+      ADataset: TRpMemDataSet; AParams: TRpParamList = nil): TRpDatasetHttp; static;
+    constructor Create(ADatabase: TRpDatabaseHttp; ADataset: TRpMemDataSet; AParams: TRpParamList = nil);
+    destructor Destroy; override;
+    procedure Open;
+    property Sql: string read FSql write FSql;
+    property Dataset: TRpMemDataSet read FDataset;
+    // Exposed so the optional direct-channel hook can read the
+    // request shape (the hook is in another unit; it receives
+    // TObject and as-casts back to the concrete TRpDatasetHttp).
+    property Params: TRpParamList read FParams;
+    property Database: TRpDatabaseHttp read FDatabase;
+  end;
+
+{$IFDEF MSWINDOWS}
+var
+  // Optional hook installed by rpdcintegration.EnableDirectChannel.
+  // When set, TRpDatasetHttp.Open tries it first and only falls back
+  // to HTTP if the hook returns False or raises.
+  RpDatasetDirectTry: TRpDatasetDirectTryFunc = nil;
+
+  // Optional hook called from TRpDatabaseHttp.SetConnected(True). If
+  // the host binary uses rpdcintegration, its initialization section
+  // installs this; otherwise SetConnected behaves exactly as before
+  // and Reportman runs in HTTP-only mode.
+  RpDcDatabaseConnectHook: TRpDcDatabaseConnectFunc = nil;
+{$ENDIF}
+
+type
+  // The state of "Analyze with AI" (RpStartSchemaAnalysis)
+  TRpSchemaAnalysisState = record
+    Finished: Boolean;
+    // Stopped: there is no result
+    Cancelled: Boolean;
+    // The stage of the last progress of the cloud (SendingRequest, Queued,
+    // ReceivingResponse...) and its tokens
+    Stage: string;
+    InputTokens: Integer;
+    OutputTokens: Integer;
+    // The final frame: result.explanation or errorMessage/errorCode, and
+    // userProfile
+    ResultJson: string;
+    // The request failed (HTTP, network)
+    ErrorMessage: string;
+  end;
+
+  IRpSchemaAnalysis = interface
+    ['{8C4A2E61-3B7D-4F0A-9E15-6D2C7B1A9F43}']
+    procedure Cancel;
+    function GetState: TRpSchemaAnalysisState;
+  end;
+
+  // Whether the Agent of a schema (or a database) of api/agent/databases is
+  // connected: its isOnline. hosUnknown when the cloud does not say it (an
+  // older one): the lists draw nothing then
+  TRpHubOnlineState = (hosUnknown, hosOnline, hosOffline);
+
+// HUB_API_URL constants moved to rptypes.pas
+
+// The lines of the schemas and databases of api/agent/databases
+// (GetUserSchemas, GetHubDatabases): '<label>=<hubDatabaseId>|<hubSchemaId>'
+// for a schema and '<label>=<hubDatabaseId>' for a database. When the cloud
+// says whether the Agent is connected or names it, the line ends with
+// '|<online>|<agentName>': <online> is '1', '0' or '' (not known), and a '|'
+// in the name is written '/'. The label is '<schema> - <Agent>' and
+// '<database> - <Agent>'; without the name of the Agent, the ones of before
+// ('<database> / <schema>' and the displayName)
+function RpHubSchemaLine(AItem: TJSONObject): string;
+function RpHubDatabaseLine(AItem: TJSONObject): string;
+// The field AIndex (from 0) of the value of such a line ('' when it has
+// fewer)
+function RpHubLineField(const AValue: string; AIndex: Integer): string;
+// The state of an <online> field
+function RpHubOnlineState(const AField: string): TRpHubOnlineState;
+// The Hub database and schema of the value of a schema line,
+// '<hubDatabaseId>|<hubSchemaId>': the key that merges the lists read with
+// several API keys
+function RpHubSchemaKey(const AValue: string): string;
+// A schema line with the API key it was read with right after the ids, as
+// the lists of the designer keep it ('' = the session):
+// '<label>=<hubDatabaseId>|<hubSchemaId>|<apiKey>' and then the rest of the
+// line ('|<online>|<agentName>')
+function RpHubSchemaLineWithApiKey(const ALine, AApiKey: string): string;
+
+// "Analyze with AI" of the local schema screens: AnalyzeSchema in a thread
+// of its own with the session of TRpAuthManager. The screen reads GetState
+// with a timer (VCL and LCL alike) and may be closed while it runs: the
+// thread keeps the task alive and ends on its own after Cancel
+function RpStartSchemaAnalysis(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string;
+  AAgentAiId: Int64): IRpSchemaAnalysis;
+
+// The body of NlToSql/AnalyzeSchemaStream (AnalyzeSchemaRequest of the
+// cloud): the config of AConfig (TRpApiDatabaseConfig.ToJsonObject), the
+// tier and mode of the AI, the agent (when there is one) and the language of
+// the answer (a language of the AI: 'Spanish', 'es'...)
+function RpAnalyzeSchemaRequestJson(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string; AAgentAiId: Int64;
+  const AApiKey, AUserLanguage: string): TJSONObject;
+
+implementation
+
+uses
+{$IFDEF FPC}
+  SyncObjs;
+{$ELSE}
+  System.SyncObjs;
+{$ENDIF}
+
+const
+  MODIFY_REPORT_TIMEOUT_MS = 10 * 60 * 1000;
+
+{$IFNDEF FIREDAC}
+type
+  TRpHttpCertificateValidator = class(TComponent)
+  public
+    function VerifyPeer(Certificate: TIdX509; AOk: Boolean; ADepth,
+      AError: Integer): Boolean;
+  end;
+
+function TRpHttpCertificateValidator.VerifyPeer(Certificate: TIdX509;
+  AOk: Boolean; ADepth, AError: Integer): Boolean;
+begin
+{$IFDEF DEBUG}
+  Result := True;
+{$ELSE}
+  Result := AOk;
+{$ENDIF}
+end;
+
+procedure ConfigureIdHttpClientForUrl(AIdHttp: TIdHTTP; const AUrl: string);
+var
+  LTrimmedUrl: string;
+  LSslHandler: TIdSSLIOHandlerSocketOpenSSL;
+  LValidator: TRpHttpCertificateValidator;
+begin
+  if AIdHttp = nil then
+    Exit;
+  LTrimmedUrl := Trim(AUrl);
+  if not StartsText('https://', LTrimmedUrl) then
+    Exit;
+  if Assigned(AIdHttp.IOHandler) then
+    Exit;
+
+  LSslHandler := TIdSSLIOHandlerSocketOpenSSL.Create(AIdHttp);
+  LSslHandler.SSLOptions.Mode := sslmClient;
+  LSslHandler.SSLOptions.Method := sslvSSLv23;
+  LSslHandler.SSLOptions.VerifyMode := [sslvrfPeer];
+  LSslHandler.SSLOptions.VerifyDepth := 3;
+
+  LValidator := TRpHttpCertificateValidator.Create(AIdHttp);
+  LSslHandler.OnVerifyPeer := LValidator.VerifyPeer;
+  AIdHttp.IOHandler := LSslHandler;
+end;
+{$ENDIF}
+
+function NormalizeUserLanguage(const AUserLanguage: string): string;
+var
+  LValue: string;
+begin
+  LValue := Trim(AUserLanguage);
+  if LValue = '' then
+    Exit('English');
+
+  if SameText(LValue, 'English') or SameText(LValue, 'en') or
+    SameText(LValue, 'en-US') or SameText(LValue, 'en-GB') then
+    Exit('English');
+  if SameText(LValue, 'Spanish') or SameText(LValue, 'es') or
+    SameText(LValue, 'es-ES') then
+    Exit('Spanish');
+  if SameText(LValue, 'Italian') or SameText(LValue, 'it') or
+    SameText(LValue, 'it-IT') then
+    Exit('Italian');
+  if SameText(LValue, 'French') or SameText(LValue, 'fr') or
+    SameText(LValue, 'fr-FR') then
+    Exit('French');
+  if SameText(LValue, 'German') or SameText(LValue, 'de') or
+    SameText(LValue, 'de-DE') then
+    Exit('German');
+  if SameText(LValue, 'Portuguese') or SameText(LValue, 'pt') or
+    SameText(LValue, 'pt-PT') or SameText(LValue, 'pt-BR') then
+    Exit('Portuguese');
+  if SameText(LValue, 'Chinese') or SameText(LValue, 'zh') or
+    SameText(LValue, 'zh-CN') or SameText(LValue, 'zh-TW') then
+    Exit('Chinese');
+  if SameText(LValue, 'Catalan') or SameText(LValue, 'ca') or
+    SameText(LValue, 'ca-ES') then
+    Exit('Catalan');
+
+  Result := 'English';
+end;
+
+// The ISO code of a language of the AI ('Spanish', 'es-ES'...): 'en' when
+// not known
+function UserLanguageIsoCode(const AUserLanguage: string): string;
+const
+  CNames: array[0..7] of string = ('English', 'Spanish', 'Italian', 'French',
+    'German', 'Portuguese', 'Chinese', 'Catalan');
+  CCodes: array[0..7] of string = ('en', 'es', 'it', 'fr', 'de', 'pt', 'zh', 'ca');
+var
+  I: Integer;
+  LLanguage: string;
+begin
+  Result := 'en';
+  LLanguage := NormalizeUserLanguage(AUserLanguage);
+  for I := Low(CNames) to High(CNames) do
+    if SameText(CNames[I], LLanguage) then
+      Exit(CCodes[I]);
+end;
+
+// Accept-Language of the requests: the messages of the API (the error of the
+// plan among them) in the language of the AI
+function RpApiAcceptLanguage: string;
+begin
+  Result := UserLanguageIsoCode(TRpAuthManager.Instance.AILanguage);
+end;
+
+function ResolveTranscribeLanguage(const AUserLanguage: string): string;
+begin
+  Result := NormalizeUserLanguage(AUserLanguage);
+  if Trim(Result) = '' then
+    Result := 'Auto';
+end;
+
+procedure AddOptionalRuntime(ARequest: TJSONObject; const ARuntimeDb: string);
+begin
+  if (ARequest <> nil) and (Trim(ARuntimeDb) <> '') then
+    ARequest.AddPair('runtime', ARuntimeDb);
+end;
+
+type
+  TRpExpressionStreamContext = class
+  private
+    FCancelled: Boolean;
+    FLastReadPos: Int64;
+    FPendingBytes: TBytes;
+    FChunkedAIResponseIds: TStringList;
+    FResponseStream: TMemoryStream;
+    FSender: TObject;
+    FOnCancel: TRpExpressionStreamCancelEvent;
+    FOnProgress: TRpExpressionStreamProgressEvent;
+    FOnResult: TRpExpressionStreamResultEvent;
+    procedure AppendBytes(const ASource: TBytes; ACount: Integer);
+    procedure DispatchDone;
+    procedure DispatchJson(const AJsonText: string);
+    procedure ProcessPendingBytes;
+  public
+    constructor Create(AResponseStream: TMemoryStream; ASender: TObject;
+      AOnProgress: TRpExpressionStreamProgressEvent;
+      AOnResult: TRpExpressionStreamResultEvent;
+      AOnCancel: TRpExpressionStreamCancelEvent);
+    destructor Destroy; override;
+    procedure HandleReceiveData(const SenderHttp: TObject; AContentLength,
+      AReadCount: Int64; var Abort: Boolean);
+    procedure ReadNewBytes;
+    property Cancelled: Boolean read FCancelled;
+  end;
+
+  TRpApiStreamCapture = class
+  private
+    FErrorMessage: string;
+    FForwardCancel: TRpExpressionStreamCancelEvent;
+    FForwardProgress: TRpExpressionStreamProgressEvent;
+    FResultJson: TJSONObject;
+    FSender: TObject;
+  public
+    constructor Create(ASender: TObject;
+      AOnProgress: TRpExpressionStreamProgressEvent;
+      AOnCancel: TRpExpressionStreamCancelEvent);
+    destructor Destroy; override;
+    function HandleCancel(Sender: TObject): Boolean;
+    procedure HandleProgress(Sender: TObject; const AActor, AStage, AChunkType,
+      AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string; APrefillPercent: Integer);
+    procedure HandleResult(Sender: TObject; AResultJson: TJSONObject;
+      const AErrorMessage: string);
+    function TakeResultJson: TJSONObject;
+    property ErrorMessage: string read FErrorMessage;
+  end;
+
+{ ERpAgentConnectionError }
+
+constructor ERpAgentConnectionError.CreateFor(const AMessage, AConnectionName: string);
+begin
+  inherited Create(AMessage);
+  FConnectionName := AConnectionName;
+end;
+
+{ TRpDatabaseHttp }
+
+constructor TRpExpressionStreamContext.Create(AResponseStream: TMemoryStream;
+  ASender: TObject; AOnProgress: TRpExpressionStreamProgressEvent;
+  AOnResult: TRpExpressionStreamResultEvent;
+  AOnCancel: TRpExpressionStreamCancelEvent);
+begin
+  inherited Create;
+  FResponseStream := AResponseStream;
+  FSender := ASender;
+  FOnProgress := AOnProgress;
+  FOnResult := AOnResult;
+  FOnCancel := AOnCancel;
+  FCancelled := False;
+  FLastReadPos := 0;
+  FChunkedAIResponseIds := TStringList.Create;
+  FChunkedAIResponseIds.Sorted := True;
+  FChunkedAIResponseIds.Duplicates := dupIgnore;
+  SetLength(FPendingBytes, 0);
+end;
+
+destructor TRpExpressionStreamContext.Destroy;
+begin
+  FChunkedAIResponseIds.Free;
+  inherited;
+end;
+
+procedure TRpExpressionStreamContext.AppendBytes(const ASource: TBytes;
+  ACount: Integer);
+var
+  LOldLen: Integer;
+begin
+  if ACount <= 0 then
+    Exit;
+  LOldLen := Length(FPendingBytes);
+  SetLength(FPendingBytes, LOldLen + ACount);
+  Move(ASource[0], FPendingBytes[LOldLen], ACount);
+end;
+
+procedure TRpExpressionStreamContext.DispatchDone;
+begin
+  if Assigned(FOnResult) then
+    FOnResult(FSender, nil, '');
+end;
+
+procedure TRpExpressionStreamContext.DispatchJson(const AJsonText: string);
+var
+  LJson: TJSONObject;
+  LActor: string;
+  LStage: string;
+  LChunkType: string;
+  LChunk: string;
+  LProgressId: string;
+  LInputTokens: Integer;
+  LOutputTokens: Integer;
+  LPrefillPercent: Integer;
+  LVal: TJSONValue;
+begin
+  try
+    try
+      LJson := TJSONObject.ParseJSONValue(AJsonText) as TJSONObject;
+      if LJson = nil then
+      begin
+        TFile.AppendAllText(ExtractFilePath(ParamStr(0)) + 'sse_debug.log', 'FAILED TO PARSE JSON' + #13#10);
+        Exit;
+      end;
+      
+      try
+        if (LJson.Values['actor'] <> nil) and (LJson.Values['stage'] <> nil) then
+        begin
+          if Assigned(FOnProgress) then
+          begin
+            LActor := LJson.Values['actor'].Value;
+            LStage := LJson.Values['stage'].Value;
+            if LJson.Values['chunkType'] <> nil then
+              LChunkType := LJson.Values['chunkType'].Value
+            else
+              LChunkType := '';
+            if LJson.Values['id'] <> nil then
+              LProgressId := LJson.Values['id'].Value
+            else
+              LProgressId := '';
+            if LJson.Values['chunk'] <> nil then
+              LChunk := LJson.Values['chunk'].Value
+            else
+              LChunk := '';
+            // The wait in the AI provider's queue: one line rewritten each second
+            if SameText(LStage, 'Queued') then
+              LProgressId := RpReplaceLogKeyPrefix + LProgressId;
+
+            if SameText(LActor, 'AI') and SameText(LStage, 'ReceivingResponse') then
+            begin
+              if SameText(LChunkType, 'Start') or SameText(LChunkType, 'Partial') or
+                SameText(LChunkType, 'End') then
+              begin
+                if LProgressId <> '' then
+                  FChunkedAIResponseIds.Add(LProgressId);
+              end
+              else if SameText(LChunkType, 'Full') and (LProgressId <> '') then
+              begin
+                if FChunkedAIResponseIds.IndexOf(LProgressId) >= 0 then
+                  Exit;
+              end;
+            end;
+              
+            LVal := LJson.Values['inputTokens'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              try
+                LInputTokens := StrToIntDef(LVal.Value, 0);
+              except
+                LInputTokens := 0;
+              end;
+            end
+            else
+              LInputTokens := 0;
+
+            LVal := LJson.Values['outputTokens'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              try
+                LOutputTokens := StrToIntDef(LVal.Value, 0);
+              except
+                LOutputTokens := 0;
+              end;
+            end
+            else
+              LOutputTokens := 0;
+
+            LVal := LJson.Values['prefillPercentage'];
+            if (LVal <> nil) and not (LVal is TJSONNull) then
+            begin
+              try
+                if LVal is TJSONNumber then
+                  LPrefillPercent := Round(TJSONNumber(LVal).AsDouble * 100)
+                else
+                  LPrefillPercent := StrToIntDef(LVal.Value, 0);
+              except
+                LPrefillPercent := 0;
+              end;
+            end
+            else
+              LPrefillPercent := 0;
+
+            if LPrefillPercent < 0 then
+              LPrefillPercent := 0
+            else if LPrefillPercent > 100 then
+              LPrefillPercent := 100;
+              
+            FOnProgress(FSender, LActor, LStage, LChunkType, LChunk,
+              LInputTokens, LOutputTokens, LProgressId, LPrefillPercent);
+          end;
+        end
+        else if (LJson.Values['result'] <> nil) or (LJson.Values['errorMessage'] <> nil) then
+        begin
+          if Assigned(FOnResult) then
+            FOnResult(FSender, TJSONObject(LJson.Clone), '');
+        end;
+      finally
+        LJson.Free;
+      end;
+    except
+      on E: Exception do
+        TFile.AppendAllText(ExtractFilePath(ParamStr(0)) + 'sse_debug.log', 'EXCEPTION in DispatchJson: ' + E.Message + #13#10);
+    end;
+  except
+  end;
+end;
+
+procedure TRpExpressionStreamContext.ProcessPendingBytes;
+var
+  I: Integer;
+  LLineBytes: TBytes;
+  LLineText: string;
+  LRemaining: TBytes;
+  LLineLen: Integer;
+begin
+  I := 0;
+  while I < Length(FPendingBytes) do
+  begin
+    if FPendingBytes[I] = 10 then
+    begin
+      LLineLen := I;
+      if (LLineLen > 0) and (FPendingBytes[LLineLen - 1] = 13) then
+        Dec(LLineLen);
+      SetLength(LLineBytes, LLineLen);
+      if LLineLen > 0 then
+        Move(FPendingBytes[0], LLineBytes[0], LLineLen);
+      LLineText := TEncoding.UTF8.GetString(LLineBytes);
+
+      if StartsText('data: ', LLineText) then
+      begin
+        LLineText := Copy(LLineText, 7, MaxInt);
+        if LLineText = '[DONE]' then
+          DispatchDone
+        else if LLineText <> '' then
+          DispatchJson(LLineText);
+      end;
+
+      SetLength(LRemaining, Length(FPendingBytes) - (I + 1));
+      if Length(LRemaining) > 0 then
+        Move(FPendingBytes[I + 1], LRemaining[0], Length(LRemaining));
+      FPendingBytes := LRemaining;
+      I := 0;
+    end
+    else
+      Inc(I);
+  end;
+end;
+
+procedure TRpExpressionStreamContext.ReadNewBytes;
+var
+  LNewSize: Int64;
+  LChunkBytes: TBytes;
+  LChunkCount: Integer;
+begin
+  LNewSize := FResponseStream.Size - FLastReadPos;
+  if LNewSize <= 0 then
+    Exit;
+
+  SetLength(LChunkBytes, LNewSize);
+  FResponseStream.Position := FLastReadPos;
+  LChunkCount := FResponseStream.Read(LChunkBytes[0], LNewSize);
+  if LChunkCount > 0 then
+  begin
+    AppendBytes(LChunkBytes, LChunkCount);
+    Inc(FLastReadPos, LChunkCount);
+    ProcessPendingBytes;
+  end;
+end;
+
+procedure TRpExpressionStreamContext.HandleReceiveData(const SenderHttp: TObject;
+  AContentLength, AReadCount: Int64; var Abort: Boolean);
+begin
+  FCancelled := Assigned(FOnCancel) and FOnCancel(FSender);
+  if FCancelled then
+  begin
+    Abort := True;
+    Exit;
+  end;
+  ReadNewBytes;
+end;
+
+constructor TRpApiStreamCapture.Create(ASender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  AOnCancel: TRpExpressionStreamCancelEvent);
+begin
+  inherited Create;
+  FSender := ASender;
+  FForwardProgress := AOnProgress;
+  FForwardCancel := AOnCancel;
+  FResultJson := nil;
+  FErrorMessage := '';
+end;
+
+destructor TRpApiStreamCapture.Destroy;
+begin
+  FResultJson.Free;
+  inherited Destroy;
+end;
+
+function TRpApiStreamCapture.HandleCancel(Sender: TObject): Boolean;
+begin
+  Result := Assigned(FForwardCancel) and FForwardCancel(FSender);
+end;
+
+procedure TRpApiStreamCapture.HandleProgress(Sender: TObject; const AActor, AStage,
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string; APrefillPercent: Integer);
+begin
+  if Assigned(FForwardProgress) then
+    FForwardProgress(FSender, AActor, AStage, AChunkType, AChunk, AInputTokens,
+      AOutputTokens, AProgressId, APrefillPercent);
+end;
+
+procedure TRpApiStreamCapture.HandleResult(Sender: TObject;
+  AResultJson: TJSONObject; const AErrorMessage: string);
+begin
+  if AErrorMessage <> '' then
+    FErrorMessage := AErrorMessage;
+  if AResultJson <> nil then
+  begin
+    FreeAndNil(FResultJson);
+    FResultJson := AResultJson;
+  end;
+end;
+
+function TRpApiStreamCapture.TakeResultJson: TJSONObject;
+begin
+  Result := FResultJson;
+  FResultJson := nil;
+end;
+
+{$IFDEF FIREDAC}
+// 'HTTP Error <code>: <text>' and, when the server said why (the credits of a
+// 402, for instance), its answer
+function HttpErrorText(AStatusCode: Integer; const AStatusText: string;
+  AResponse: TStream): string;
+var
+  LBody: TStringStream;
+begin
+  Result := Format('HTTP Error %d: %s', [AStatusCode, AStatusText]);
+  if (AResponse = nil) or (AResponse.Size = 0) then
+    Exit;
+  LBody := TStringStream.Create('', TEncoding.UTF8);
+  try
+    AResponse.Position := 0;
+    LBody.CopyFrom(AResponse, 0);
+    if Trim(LBody.DataString) <> '' then
+      Result := Result + ' - ' + Trim(LBody.DataString);
+  finally
+    LBody.Free;
+  end;
+end;
+
+function StreamJsonRequest(AClient: TRpDatabaseHttp; const AAction: string;
+  const RequestBody: TJSONObject; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LCapture: TRpApiStreamCapture;
+  LContext: TRpExpressionStreamContext;
+  LHttpClient: TNetHTTPClient;
+  LRequestStream: TStringStream;
+  LResponse: IHTTPResponse;
+  LResponseStream: TMemoryStream;
+  LUrl: string;
+  LStartedAt: TDateTime;
+begin
+  LHttpClient := TNetHTTPClient.Create(nil);
+  LResponseStream := TMemoryStream.Create;
+  LCapture := TRpApiStreamCapture.Create(Sender, AOnProgress, ACancel);
+  LContext := TRpExpressionStreamContext.Create(LResponseStream, LCapture,
+    LCapture.HandleProgress, LCapture.HandleResult, LCapture.HandleCancel);
+  try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
+    if SameText(AAction, 'ReportDesigner/ModifyReportStream') then
+    begin
+      LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      TRpAuthManager.Instance.Log('HTTP Request Body: ' + RequestBody.ToJSON);
+    end
+    else if SameText(AAction, 'NlToSql/AnalyzeSchemaStream') then
+    begin
+      // A large schema with a reasoning model takes minutes
+      LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
+    end;
+
+    LRequestStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
+    try
+      LHttpClient.ContentType := 'application/json';
+      LHttpClient.Accept := 'text/event-stream';
+      LHttpClient.AcceptLanguage := RpApiAcceptLanguage;
+
+      if AClient.ApiKey <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AClient.ApiKey;
+
+      if AClient.Token <> '' then
+        LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + AClient.Token;
+
+      if AClient.InstallId <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := AClient.InstallId;
+
+      LUrl := HUB_API_URL;
+      if not LUrl.EndsWith('/') then
+        LUrl := LUrl + '/';
+      LUrl := LUrl + AAction;
+      TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
+
+      LHttpClient.OnReceiveData := LContext.HandleReceiveData;
+      LStartedAt := Now;
+      LResponse := LHttpClient.Post(LUrl, LRequestStream, LResponseStream);
+      LContext.ReadNewBytes;
+
+      TRpAuthManager.Instance.Log('HTTP Response Status: ' +
+        IntToStr(LResponse.StatusCode) + ' (' +
+        IntToStr(MilliSecondsBetween(Now, LStartedAt)) + ' ms)');
+
+      if LContext.Cancelled then
+        Exit(nil);
+
+      if (LResponse.StatusCode < 200) or (LResponse.StatusCode >= 300) then
+        raise Exception.Create(HttpErrorText(LResponse.StatusCode,
+          LResponse.StatusText, LResponseStream));
+
+      if LCapture.ErrorMessage <> '' then
+        raise Exception.Create(LCapture.ErrorMessage);
+
+      Result := LCapture.TakeResultJson;
+    finally
+      LRequestStream.Free;
+    end;
+  finally
+    LContext.Free;
+    LCapture.Free;
+    LResponseStream.Free;
+    LHttpClient.Free;
+  end;
+end;
+{$ENDIF}
+
+constructor TRpDatabaseHttp.Create;
+begin
+  inherited Create;
+  FConnected := False;
+  FInstallId := TRpAuthManager.Instance.InstallId;
+  ;
+  FAITier := 'Standard';
+end;
+procedure TRpDatabaseHttp.SetConnected(Value: Boolean);
+{$IFDEF MSWINDOWS}
+var
+  LDirectEnabled: Boolean;
+{$ENDIF}
+begin
+  if Value <> FConnected then
+  begin
+    if Value then
+    begin
+      if not TestConnection then
+         raise Exception.Create(SRpConnectionFailed);
+
+{$IFDEF MSWINDOWS}
+      // Bring up the WebRTC Direct Channel transparently when the
+      // host binary includes rpdcintegration. On Linux / FPC builds
+      // (printreptopdf and any other cross-platform tool) the whole
+      // block is compiled out: those binaries continue talking to
+      // the Agent over plain HTTP, which is already multiplatform.
+      if Assigned(RpDcDatabaseConnectHook) then
+      begin
+        try
+          LDirectEnabled := RpDcDatabaseConnectHook(Self);
+          if LDirectEnabled then
+            TRpAuthManager.Instance.Log(
+              'Direct Channel enabled for database ' + IntToStr(FHubDatabaseId));
+        except
+          on E: Exception do
+            TRpAuthManager.Instance.Log(
+              'Direct Channel setup error (HTTP fallback only): ' + E.Message);
+        end;
+      end;
+{$ENDIF}
+    end;
+    FConnected := Value;
+  end;
+end;
+function TRpDatabaseHttp.TestConnection: Boolean;
+var
+  LRequestBody: TJSONObject;
+  LResponseStream: TMemoryStream;
+begin
+  LRequestBody := TJSONObject.Create;
+  try
+    LRequestBody.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    LResponseStream := TMemoryStream.Create;
+    try
+      // The endpoint is as defined in HubApiClient.Sql.cs
+      Result := InternalRequest('api/agent/testconnection', LRequestBody, LResponseStream);
+      // We could also parse the response to check { success: true, message: ... }
+      // But InternalRequest already checks for HTTP 200/201
+    finally
+      LResponseStream.Free;
+    end;
+  finally
+    LRequestBody.Free;
+  end;
+end;
+function TRpDatabaseHttp.SuggestSql(const ASql: string;
+  ACursorPosition: Integer; AMode: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LRequest, LConfig: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+{$ENDIF}
+begin
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('sql', ASql);
+    LRequest.AddPair('cursorPosition', TJSONNumber.Create(ACursorPosition));
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('aiTier', FAITier);
+    if FAgentSecret <> '' then
+      LRequest.AddPair('agentSecret', FAgentSecret);
+    if FAgentAiId <> 0 then
+      LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
+    AddOptionalRuntime(LRequest, FRuntimeDb);
+    
+    // Config sub-object
+    LConfig := TJSONObject.Create;
+    LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    if FHubSchemaId <> 0 then
+      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    LRequest.AddPair('config', LConfig);
+
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/SuggestSqlCodeStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
+    Result := nil;
+    LResponseStream := TStringStream.Create;
+    try
+      if InternalRequest('NlToSql/SuggestSqlCode', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        if LResponseJson <> nil then
+          Result := LResponseJson; // Caller owns it
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.TranslateToSql(const AUserPrompt, ASqlToRefine,
+  AMode, AUserLanguage: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LRequest, LConfig: TJSONObject;
+  LConfigValue: TJSONValue;
+  LQueries: TJSONArray;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+{$ENDIF}
+begin
+  LRequest := TJSONObject.Create;
+  try
+    LQueries := TJSONArray.Create;
+    LQueries.Add(AUserPrompt);
+    LRequest.AddPair('userQuery', LQueries);
+    LRequest.AddPair('sqlToRefine', ASqlToRefine);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('complex', TJSONBool.Create(False));
+    LRequest.AddPair('transcribeLanguage',
+      ResolveTranscribeLanguage(AUserLanguage));
+    LRequest.AddPair('aiTier', FAITier);
+    if FAgentSecret <> '' then
+      LRequest.AddPair('agentSecret', FAgentSecret);
+    if FAgentAiId <> 0 then
+      LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
+    AddOptionalRuntime(LRequest, FRuntimeDb);
+
+    LConfig := nil;
+    if Trim(FInlineConfigJson) <> '' then
+    begin
+      LConfigValue := TJSONObject.ParseJSONValue(FInlineConfigJson);
+      if LConfigValue is TJSONObject then
+        LConfig := TJSONObject(LConfigValue)
+      else
+        LConfigValue.Free;
+    end;
+    if LConfig = nil then
+    begin
+      LConfig := TJSONObject.Create;
+      LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+      if FHubSchemaId <> 0 then
+        LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    end;
+    LRequest.AddPair('config', LConfig);
+
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/TranslateToSQLStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
+    Result := nil;
+    LResponseStream := TStringStream.Create;
+    try
+      if InternalRequest('NlToSql/TranslateToSQL', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        if LResponseJson <> nil then
+          Result := LResponseJson;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.ExplainSql(const ASql: string; const AMode,
+  AUserLanguage: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LRequest, LConfig: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+{$ENDIF}
+begin
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('sqlToExplain', ASql);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('aiTier', FAITier);
+    LRequest.AddPair('tecnicalExplanation', TJSONBool.Create(True));
+    LRequest.AddPair('transcribeLanguage',
+      ResolveTranscribeLanguage(AUserLanguage));
+    if Trim(AUserLanguage) <> '' then
+      LRequest.AddPair('userLanguage',
+        NormalizeUserLanguage(AUserLanguage));
+    if FAgentSecret <> '' then
+      LRequest.AddPair('agentSecret', FAgentSecret);
+    if FAgentAiId <> 0 then
+      LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
+    AddOptionalRuntime(LRequest, FRuntimeDb);
+
+    LConfig := TJSONObject.Create;
+    LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    if FHubSchemaId <> 0 then
+      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    LRequest.AddPair('config', LConfig);
+
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/ExplainSQLStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
+    Result := nil;
+    LResponseStream := TStringStream.Create;
+    try
+      if InternalRequest('NlToSql/ExplainSQL', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        if LResponseJson <> nil then
+          Result := LResponseJson;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
+function RpAnalyzeSchemaRequestJson(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string; AAgentAiId: Int64;
+  const AApiKey, AUserLanguage: string): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  try
+    if Trim(AAITier) <> '' then
+      Result.AddPair('aiTier', AAITier)
+    else
+      Result.AddPair('aiTier', 'Standard');
+    // AIMode of the cloud: Fast or Reasoning
+    if SameText(Trim(AMode), 'Reasoning') then
+      Result.AddPair('mode', 'Reasoning')
+    else
+      Result.AddPair('mode', 'Fast');
+    if AAgentSecret <> '' then
+      Result.AddPair('agentSecret', AAgentSecret);
+    if AAgentAiId <> 0 then
+      Result.AddPair('agentAiId', TJSONNumber.Create(AAgentAiId));
+    if AApiKey <> '' then
+      Result.AddPair('apiKey', AApiKey);
+    if AConfig <> nil then
+      Result.AddPair('config', AConfig.ToJsonObject)
+    else
+      Result.AddPair('config', TJSONObject.Create);
+    Result.AddPair('languageCodeIso', UserLanguageIsoCode(AUserLanguage));
+    Result.AddPair('transcribeLanguage', ResolveTranscribeLanguage(AUserLanguage));
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TRpDatabaseHttp.AnalyzeSchema(AConfig: TRpApiDatabaseConfig;
+  const AMode: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  LRequest: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+{$ENDIF}
+begin
+  LRequest := RpAnalyzeSchemaRequestJson(AConfig, FAITier, AMode, FAgentSecret,
+    FAgentAiId, FApiKey, TRpAuthManager.Instance.AILanguage);
+  try
+    AddOptionalRuntime(LRequest, FRuntimeDb);
+{$IFDEF FIREDAC}
+    Result := StreamJsonRequest(Self, 'NlToSql/AnalyzeSchemaStream', LRequest,
+      Sender, AOnProgress, ACancel);
+{$ELSE}
+    Result := nil;
+    LResponseStream := TStringStream.Create;
+    try
+      if InternalRequest('NlToSql/AnalyzeSchema', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        Result := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequest.Free;
+  end;
+end;
+
+{ "Analyze with AI" in a thread }
+
+type
+  TRpSchemaAnalysis = class(TInterfacedObject, IRpSchemaAnalysis)
+  private
+    FLock: TCriticalSection;
+    FState: TRpSchemaAnalysisState;
+    FCancelRequested: Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Cancel;
+    function GetState: TRpSchemaAnalysisState;
+    function CancelRequested: Boolean;
+    // The events of the stream (the worker thread)
+    function StreamCancel(Sender: TObject): Boolean;
+    procedure StreamProgress(Sender: TObject; const AActor, AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string; APrefillPercent: Integer);
+    procedure Finish(const AResultJson, AErrorMessage: string;
+      ACancelled: Boolean);
+  end;
+
+  TRpSchemaAnalysisThread = class(TThread)
+  private
+    // Keeps the task alive while the thread runs
+    FTask: IRpSchemaAnalysis;
+    FAnalysis: TRpSchemaAnalysis;
+    FConfig: TRpApiDatabaseConfig;
+    FToken: string;
+    FInstallId: string;
+    FAITier: string;
+    FMode: string;
+    FAgentSecret: string;
+    FAgentAiId: Int64;
+  protected
+    procedure Execute; override;
+  public
+    constructor CreateFor(AAnalysis: TRpSchemaAnalysis;
+      AConfig: TRpApiDatabaseConfig; const AAITier, AMode,
+      AAgentSecret: string; AAgentAiId: Int64);
+    destructor Destroy; override;
+  end;
+
+constructor TRpSchemaAnalysis.Create;
+begin
+  inherited Create;
+  FLock := TCriticalSection.Create;
+end;
+
+destructor TRpSchemaAnalysis.Destroy;
+begin
+  FLock.Free;
+  inherited Destroy;
+end;
+
+procedure TRpSchemaAnalysis.Cancel;
+begin
+  FLock.Enter;
+  try
+    FCancelRequested := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaAnalysis.CancelRequested: Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := FCancelRequested;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaAnalysis.GetState: TRpSchemaAnalysisState;
+begin
+  FLock.Enter;
+  try
+    Result := FState;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaAnalysis.StreamCancel(Sender: TObject): Boolean;
+begin
+  Result := CancelRequested;
+end;
+
+procedure TRpSchemaAnalysis.StreamProgress(Sender: TObject; const AActor,
+  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string; APrefillPercent: Integer);
+begin
+  FLock.Enter;
+  try
+    FState.Stage := AStage;
+    if AInputTokens > 0 then
+      FState.InputTokens := AInputTokens;
+    if AOutputTokens > 0 then
+      FState.OutputTokens := AOutputTokens;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpSchemaAnalysis.Finish(const AResultJson, AErrorMessage: string;
+  ACancelled: Boolean);
+begin
+  FLock.Enter;
+  try
+    FState.ResultJson := AResultJson;
+    FState.ErrorMessage := AErrorMessage;
+    FState.Cancelled := ACancelled or FCancelRequested;
+    FState.Finished := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+constructor TRpSchemaAnalysisThread.CreateFor(AAnalysis: TRpSchemaAnalysis;
+  AConfig: TRpApiDatabaseConfig; const AAITier, AMode, AAgentSecret: string;
+  AAgentAiId: Int64);
+begin
+  inherited Create(True);
+  FreeOnTerminate := True;
+  FAnalysis := AAnalysis;
+  FTask := AAnalysis;
+  FConfig := TRpApiDatabaseConfig.Create;
+  FConfig.Assign(AConfig);
+  FAITier := AAITier;
+  FMode := AMode;
+  FAgentSecret := AAgentSecret;
+  FAgentAiId := AAgentAiId;
+  // The session is read here, in the thread of the screen
+  FToken := TRpAuthManager.Instance.Token;
+  FInstallId := TRpAuthManager.Instance.InstallId;
+end;
+
+destructor TRpSchemaAnalysisThread.Destroy;
+begin
+  FConfig.Free;
+  FTask := nil;
+  inherited Destroy;
+end;
+
+procedure TRpSchemaAnalysisThread.Execute;
+var
+  LHttp: TRpDatabaseHttp;
+  LResult: TJSONObject;
+begin
+  LResult := nil;
+  LHttp := nil;
+  try
+    try
+      LHttp := TRpDatabaseHttp.Create;
+      LHttp.Token := FToken;
+      LHttp.InstallId := FInstallId;
+      LHttp.AITier := FAITier;
+      LHttp.AgentSecret := FAgentSecret;
+      LHttp.AgentAiId := FAgentAiId;
+      LResult := LHttp.AnalyzeSchema(FConfig, FMode, FAnalysis,
+        FAnalysis.StreamProgress, FAnalysis.StreamCancel);
+      if LResult = nil then
+        FAnalysis.Finish('', '', True)
+      else
+        FAnalysis.Finish(LResult.ToJSON, '', False);
+    finally
+      LResult.Free;
+      LHttp.Free;
+    end;
+  except
+    on E: Exception do
+      FAnalysis.Finish('', E.Message, FAnalysis.CancelRequested);
+  end;
+end;
+
+function RpStartSchemaAnalysis(AConfig: TRpApiDatabaseConfig;
+  const AAITier, AMode, AAgentSecret: string;
+  AAgentAiId: Int64): IRpSchemaAnalysis;
+var
+  LAnalysis: TRpSchemaAnalysis;
+  LThread: TRpSchemaAnalysisThread;
+begin
+  LAnalysis := TRpSchemaAnalysis.Create;
+  Result := LAnalysis;
+  LThread := TRpSchemaAnalysisThread.CreateFor(LAnalysis, AConfig, AAITier,
+    AMode, AAgentSecret, AAgentAiId);
+  LThread.Start;
+end;
+
+function TRpDatabaseHttp.GetTableSchema(const ASql: string): TJSONObject;
+var
+  LRequest: TJSONObject;
+  LResponseStream: TStringStream;
+begin
+  Result := nil;
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('sql', ASql);
+    if FHubDatabaseId <> 0 then
+      LRequest.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      if InternalRequest('api/agent/gettableschema', LRequest, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        Result := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+  finally
+    LRequest.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.ModifyReport(
+  ARequest: TRpApiModifyReportRequest; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TRpApiModifyReportResult;
+var
+  LRequestJson: TJSONObject;
+  LResponseJson: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+{$ENDIF}
+begin
+  Result := nil;
+  if ARequest = nil then
+    raise Exception.Create('ModifyReport request not assigned');
+
+  LRequestJson := ARequest.ToJsonObject;
+  try
+{$IFDEF FIREDAC}
+    LResponseJson := StreamJsonRequest(Self, 'ReportDesigner/ModifyReportStream',
+      LRequestJson, Sender, AOnProgress, ACancel);
+    try
+      if LResponseJson <> nil then
+      begin
+        Result := TRpApiModifyReportResult.Create;
+        try
+          Result.FromJsonObject(LResponseJson);
+        except
+          Result.Free;
+          raise;
+        end;
+      end;
+    finally
+      LResponseJson.Free;
+    end;
+{$ELSE}
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      if InternalRequest('ReportDesigner/ModifyReport', LRequestJson, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        try
+          if LResponseJson = nil then
+            raise Exception.Create('Invalid JSON response from ReportDesigner/ModifyReport');
+
+          Result := TRpApiModifyReportResult.Create;
+          try
+            Result.FromJsonObject(LResponseJson);
+          except
+            Result.Free;
+            raise;
+          end;
+        finally
+          LResponseJson.Free;
+        end;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequestJson.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.PreprocessSqlContext(
+  ARequest: TRpApiPreprocessSqlContextRequest; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TRpApiPreprocessSqlContextResult;
+var
+  LRequestJson: TJSONObject;
+  LResponseJson: TJSONObject;
+{$IFNDEF FIREDAC}
+  LResponseStream: TStringStream;
+{$ENDIF}
+begin
+  Result := nil;
+  if ARequest = nil then
+    raise Exception.Create('PreprocessSqlContext request not assigned');
+
+  LRequestJson := ARequest.ToJsonObject;
+  try
+{$IFDEF FIREDAC}
+    LResponseJson := StreamJsonRequest(Self, 'ReportDesigner/PreprocessSqlContextStream',
+      LRequestJson, Sender, AOnProgress, ACancel);
+    try
+      if LResponseJson <> nil then
+      begin
+        Result := TRpApiPreprocessSqlContextResult.Create;
+        try
+          Result.FromJsonObject(LResponseJson);
+        except
+          Result.Free;
+          raise;
+        end;
+      end;
+    finally
+      LResponseJson.Free;
+    end;
+{$ELSE}
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      if InternalRequest('ReportDesigner/PreprocessSqlContext', LRequestJson, LResponseStream) then
+      begin
+        LResponseStream.Position := 0;
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        try
+          if LResponseJson = nil then
+            raise Exception.Create('Invalid JSON response from ReportDesigner/PreprocessSqlContext');
+
+          Result := TRpApiPreprocessSqlContextResult.Create;
+          try
+            Result.FromJsonObject(LResponseJson);
+          except
+            Result.Free;
+            raise;
+          end;
+        finally
+          LResponseJson.Free;
+        end;
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+{$ENDIF}
+  finally
+    LRequestJson.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.SubmitAIReport(AReport: TRpAIReport): Boolean;
+var
+  LRequestJson: TJSONObject;
+  LResponseStream: TStringStream;
+begin
+  if AReport = nil then
+    raise Exception.Create('AI report not assigned');
+
+  LRequestJson := AReport.ToJsonObject;
+  try
+    LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      Result := InternalRequest('api/aireport', LRequestJson, LResponseStream);
+    finally
+      LResponseStream.Free;
+    end;
+  finally
+    LRequestJson.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.SuggestExpressionStream(const APrompt,
+  ACurrentExpression: string; ACursorPosition: Integer; const AMode: string;
+  AFix: Boolean; const ASemanticContextJson: string; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  AOnResult: TRpExpressionStreamResultEvent;
+  ACancel: TRpExpressionStreamCancelEvent): Boolean;
+{$IFDEF FIREDAC}
+var
+  LHttpClient: TNetHTTPClient;
+  LContext: TRpExpressionStreamContext;
+  LRequestStream: TStringStream;
+  LResponseStream: TMemoryStream;
+  LResponse: IHTTPResponse;
+  LRequest: TJSONObject;
+  LConfig: TJSONObject;
+  LUserQuery: TJSONArray;
+  LUrl: string;
+begin
+  LHttpClient := TNetHTTPClient.Create(nil);
+  LResponseStream := TMemoryStream.Create;
+  LContext := TRpExpressionStreamContext.Create(LResponseStream, Sender,
+    AOnProgress, AOnResult, ACancel);
+  LRequest := TJSONObject.Create;
+  try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
+    LRequest.AddPair('currentExpression', ACurrentExpression);
+    LRequest.AddPair('fix', TJSONBool.Create(AFix));
+    LRequest.AddPair('cursorPosition', TJSONNumber.Create(ACursorPosition));
+    LRequest.AddPair('aiTier', FAITier);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('semanticContextJson', ASemanticContextJson);
+    if FAgentSecret <> '' then
+      LRequest.AddPair('agentSecret', FAgentSecret);
+    if FAgentAiId <> 0 then
+      LRequest.AddPair('agentAiId', TJSONNumber.Create(FAgentAiId));
+    if FApiKey <> '' then
+      LRequest.AddPair('apiKey', FApiKey);
+
+    LUserQuery := TJSONArray.Create;
+    LUserQuery.Add(APrompt);
+    LRequest.AddPair('userQuery', LUserQuery);
+
+    LConfig := TJSONObject.Create;
+    if FHubDatabaseId <> 0 then
+      LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    if FHubSchemaId <> 0 then
+      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+    LRequest.AddPair('config', LConfig);
+
+    LRequestStream := TStringStream.Create(LRequest.ToJSON, TEncoding.UTF8);
+    try
+      LHttpClient.ContentType := 'application/json';
+      LHttpClient.Accept := 'text/event-stream';
+      if FApiKey <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := FApiKey;
+      if FToken <> '' then
+        LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+      if FInstallId <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+
+      LHttpClient.OnReceiveData := LContext.HandleReceiveData;
+      LUrl := HUB_API_URL;
+      if not LUrl.EndsWith('/') then
+        LUrl := LUrl + '/';
+      LUrl := LUrl + 'ReportmanExpression/SuggestExpressionStream';
+
+      TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
+      LResponse := LHttpClient.Post(LUrl, LRequestStream, LResponseStream);
+      LContext.ReadNewBytes;
+
+      if LContext.Cancelled then
+        Exit(False);
+
+      if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
+        Result := True
+      else
+        raise Exception.Create(HttpErrorText(LResponse.StatusCode,
+          LResponse.StatusText, LResponseStream));
+    finally
+      LRequestStream.Free;
+    end;
+  finally
+    LRequest.Free;
+    LContext.Free;
+    LResponseStream.Free;
+    LHttpClient.Free;
+  end;
+end;
+{$ELSE}
+var
+  LRequest: TJSONObject;
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+begin
+  Result := False;
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('currentExpression', ACurrentExpression);
+    LRequest.AddPair('fix', TJSONBool.Create(AFix));
+    LRequest.AddPair('cursorPosition', TJSONNumber.Create(ACursorPosition));
+    LRequest.AddPair('aiTier', FAITier);
+    LRequest.AddPair('mode', AMode);
+    LRequest.AddPair('semanticContextJson', ASemanticContextJson);
+    LRequest.AddPair('userQuery', TJSONArray.Create(APrompt));
+    LRequest.AddPair('config', TJSONObject.Create);
+    LResponseStream := TStringStream.Create;
+    try
+      Result := InternalRequest('ReportmanExpression/SuggestExpression', LRequest, LResponseStream);
+      if Result and Assigned(AOnResult) then
+      begin
+        LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+        if LResponseJson <> nil then
+          AOnResult(Sender, LResponseJson, '')
+        else
+          AOnResult(Sender, nil, 'Invalid JSON response');
+      end;
+    finally
+      LResponseStream.Free;
+    end;
+  finally
+    LRequest.Free;
+  end;
+end;
+{$ENDIF}
+
+function TRpDatabaseHttp.GetSchemas(AList: TStrings): Boolean;
+var
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+  LDataArray: TJSONArray;
+  I: Integer;
+  LItem: TJSONObject;
+begin
+  Result := False;
+  AList.Clear;
+  LResponseStream := TStringStream.Create;
+  try
+    // api/agent/databases returns all schemas/databases (a GET, as in
+    // GetUserSchemas: InternalRequest needs a request body)
+    if InternalGetRequest('api/agent/databases', LResponseStream) then
+    begin
+       LResponseStream.Position := 0;
+       LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+       try
+         // Same response as GetUserSchemas: the list is "databases" (there is
+         // no "data"), and the display name may be empty
+         if (LResponseJson <> nil) and (LResponseJson.Values['databases'] is TJSONArray) then
+         begin
+            LDataArray := LResponseJson.Values['databases'] as TJSONArray;
+            for I := 0 to LDataArray.Count - 1 do
+            begin
+               LItem := LDataArray.Items[I] as TJSONObject;
+               if (LItem.Values['displayName'] <> nil) and
+                  (LItem.Values['displayName'].Value <> '') then
+                 AList.Add(LItem.Values['displayName'].Value)
+               else
+               if LItem.Values['name'] <> nil then
+                 AList.Add(LItem.Values['name'].Value);
+            end;
+            Result := True;
+         end;
+       finally
+         LResponseJson.Free;
+       end;
+    end;
+  finally
+    LResponseStream.Free;
+  end;
+end;
+function TRpDatabaseHttp.InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean;
+begin
+  Result := InternalRequest(AAction, RequestBody, ResponseStream, 0);
+end;
+
+function TRpDatabaseHttp.InternalRequest(const AAction: string;
+  const RequestBody: TJSONObject; ResponseStream: TStream;
+  ATimeoutMs: Integer): Boolean;
+{$IFDEF FIREDAC}
+var
+  LHttpClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LSourceStream: TStringStream;
+  LErrorStream: TStringStream;
+  LUrl: string;
+  LStartedAt: TDateTime;
+begin
+  LHttpClient := TNetHTTPClient.Create(nil);
+  try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
+    if ATimeoutMs > 0 then
+    begin
+      LHttpClient.ConnectionTimeout := ATimeoutMs;
+      LHttpClient.SendTimeout := ATimeoutMs;
+      LHttpClient.ResponseTimeout := ATimeoutMs;
+    end
+    else if SameText(AAction, 'ReportDesigner/ModifyReport') then
+    begin
+      LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
+    end;
+
+    LSourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
+    try
+      LHttpClient.ContentType := 'application/json';
+      LHttpClient.AcceptLanguage := RpApiAcceptLanguage;
+      if SameText(AAction, 'ReportDesigner/ModifyReport') then
+        TRpAuthManager.Instance.Log('HTTP Request Body: ' + RequestBody.ToJSON);
+      
+      // Authentication Headers - Match AgentController.cs / TokenAuthenticationMiddleware.cs
+      if FApiKey <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := FApiKey;
+      
+      if FToken <> '' then
+        LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+      
+      if FInstallId <> '' then
+        LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+      LUrl := HUB_API_URL;
+      if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
+      LUrl := LUrl + AAction;
+      TRpAuthManager.Instance.Log('HTTP Request: POST ' + LUrl);
+      LStartedAt := Now;
+      LResponse := LHttpClient.Post(LUrl, LSourceStream, ResponseStream);
+      TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LResponse.StatusCode) +
+        ' (' + IntToStr(MilliSecondsBetween(Now, LStartedAt)) + ' ms)');
+      
+      if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
+         Result := True
+      else
+      begin
+         LErrorStream := TStringStream.Create;
+         try
+           ResponseStream.Position := 0;
+           LErrorStream.CopyFrom(ResponseStream, 0);
+           TRpAuthManager.Instance.Log('HTTP Error Body: ' + LErrorStream.DataString);
+           
+           if LResponse.StatusCode = 401 then
+           begin
+             TRpAuthManager.Instance.Log('Unauthorized (401) detected in InternalRequest. Logging out.');
+             TRpAuthManager.Instance.Logout;
+           end;
+
+           raise Exception.CreateFmt('HTTP Error %d: %s'#13#10'%s', [LResponse.StatusCode, LResponse.StatusText, LErrorStream.DataString]);
+         finally
+           LErrorStream.Free;
+         end;
+      end;
+    finally
+      LSourceStream.Free;
+    end;
+  finally
+    LHttpClient.Free;
+  end;
+end;
+{$ELSE}
+var
+  LIdHttp: TIdHTTP;
+  LSourceStream: TStringStream;
+  LErrorStream: TStringStream;
+  LUrl: string;
+begin
+  Result := False;
+  LIdHttp := TIdHTTP.Create(nil);
+  try
+    if ATimeoutMs > 0 then
+    begin
+      LIdHttp.ConnectTimeout := ATimeoutMs;
+      LIdHttp.ReadTimeout := ATimeoutMs;
+    end
+    else if SameText(AAction, 'ReportDesigner/ModifyReport') then
+    begin
+      LIdHttp.ConnectTimeout := MODIFY_REPORT_TIMEOUT_MS;
+      LIdHttp.ReadTimeout := MODIFY_REPORT_TIMEOUT_MS;
+    end;
+
+    LSourceStream := TStringStream.Create(RequestBody.ToJSON, TEncoding.UTF8);
+    try
+      LIdHttp.Request.ContentType := 'application/json';
+      LIdHttp.Request.AcceptLanguage := RpApiAcceptLanguage;
+
+      if FApiKey <> '' then
+        LIdHttp.Request.CustomHeaders.Values['X-Reportman-ApiKey'] := FApiKey;
+      
+      if FToken <> '' then
+        LIdHttp.Request.CustomHeaders.Values['Authorization'] := 'Bearer ' + FToken;
+      
+      if FInstallId <> '' then
+        LIdHttp.Request.CustomHeaders.Values['X-Reportman-WebInstallId'] := FInstallId;
+      LUrl := HUB_API_URL;
+      if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
+      LUrl := LUrl + AAction;
+      ConfigureIdHttpClientForUrl(LIdHttp, LUrl);
+      LIdHttp.Post(LUrl, LSourceStream, ResponseStream);
+      
+      if (LIdHttp.ResponseCode >= 200) and (LIdHttp.ResponseCode < 300) then
+         Result := True
+      else
+      begin
+         LErrorStream := TStringStream.Create;
+         try
+           ResponseStream.Position := 0;
+           LErrorStream.CopyFrom(ResponseStream, 0);
+           raise Exception.CreateFmt('HTTP Error %d: %s'#13#10'%s', [LIdHttp.ResponseCode, LIdHttp.ResponseText, LErrorStream.DataString]);
+         finally
+           LErrorStream.Free;
+         end;
+      end;
+    finally
+      LSourceStream.Free;
+    end;
+  finally
+    LIdHttp.Free;
+  end;
+end;
+{$ENDIF}
+{ TRpDatasetHttp }
+constructor TRpDatasetHttp.Create(ADatabase: TRpDatabaseHttp; ADataset: TRpMemDataSet; AParams: TRpParamList = nil);
+begin
+  inherited Create;
+  FDatabase := ADatabase;
+  FDataset := ADataset;
+  FParams := AParams;
+end;
+
+class function TRpDatasetHttp.CreateForQuery(ADatabase: TRpDatabaseHttp;
+  ADataset: TRpMemDataSet; AParams: TRpParamList = nil): TRpDatasetHttp;
+begin
+  Result := TRpDatasetHttp.Create(ADatabase, ADataset, AParams);
+end;
+
+function TRpDatasetHttp.CreateParameterObject(AParam: TRpParam): TJSONObject;
+var
+  LValue: Variant;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', '@' + AParam.Name);
+  case AParam.ParamType of
+    rpParamBool:
+      begin
+        Result.AddPair('value', TJSONBool.Create(AParam.Value));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_BOOLEAN));
+      end;
+    rpParamInteger:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', TJSONNumber.Create(Int64(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_INT32));
+      end;
+    rpParamDouble:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', TJSONNumber.Create(Double(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_DOUBLE));
+      end;
+    rpParamCurrency:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', TJSONNumber.Create(Currency(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_CURRENCY));
+      end;
+    rpParamDate:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', FormatDateTime('yyyy-mm-dd', VarToDateTime(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_DATE));
+      end;
+    rpParamTime:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', FormatDateTime('hh:nn:ss', VarToDateTime(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_TIME));
+      end;
+    rpParamDateTime:
+      begin
+        LValue := AParam.Value;
+        Result.AddPair('value', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', VarToDateTime(LValue)));
+        Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_DATETIME));
+      end;
+  else
+    Result.AddPair('value', VarToStr(AParam.Value));
+    Result.AddPair('dbType', TJSONNumber.Create(DBTYPE_STRING));
+  end;
+end;
+
+destructor TRpDatasetHttp.Destroy;
+begin
+  inherited Destroy;
+end;
+procedure TRpDatasetHttp.Open;
+var
+  ColType, ColName: string;
+  FDef: TFieldDef;
+  Field: TField;
+  RowData: TJSONArray;
+  Val: TJSONValue;
+  Buffer: TBytes;
+  RequestBody: TJSONObject;
+  Parameters: TJSONArray;
+  ResponseStream: TMemoryStream;
+  ResponseJson: TJSONObject;
+  Columns, Rows: TJSONArray;
+  I, J: Integer;
+  ColObj: TJSONObject;
+  LData: TJSONObject;
+  jsonString: String;
+  LFloatValue: Double;
+  LDateTimeValue: TDateTime;
+  LBlobBytes: TBytes;
+  LBlobStream: TBytesStream;
+  LByteIndex: Integer;
+  LInvariantFormatSettings: TFormatSettings;
+begin
+  if FDatabase = nil then
+    raise Exception.Create('Database not assigned');
+
+  // The HTTP path below lazy-creates FDataset further down; the
+  // direct-channel hook needs it populated NOW, so create it up
+  // front. Both paths end up writing into the same TRpMemDataSet.
+  if not Assigned(FDataset) then
+    FDataset := TRpMemDataSet.Create(nil);
+
+{$IFDEF MSWINDOWS}
+  // Try the direct WebRTC DataChannel path if a handler has been
+  // installed (typically by rpdcintegration). The handler is
+  // responsible for populating FDataset; if it returns True we are
+  // done. Any False / exception transparently falls back to the HTTP
+  // path below. A handler exception is logged via AuthManager but
+  // never propagates - the user just sees the slower HTTP path.
+  if Assigned(RpDatasetDirectTry) then
+  begin
+    try
+      if RpDatasetDirectTry(FDatabase, FSql, FParams, FDataset) then
+        Exit;
+    except
+      on E: Exception do
+        TRpAuthManager.Instance.Log('Direct channel handler failed: ' +
+                                    E.ClassName + ': ' + E.Message);
+    end;
+  end;
+{$ENDIF}
+
+  LInvariantFormatSettings := TFormatSettings.Invariant;
+  RequestBody := TJSONObject.Create;
+  try
+    RequestBody.AddPair('hubDatabaseId', TJSONNumber.Create(FDatabase.HubDatabaseId));
+    RequestBody.AddPair('sql', FSql);
+    Parameters := TJSONArray.Create;
+    if Assigned(FParams) then
+    begin
+      for I := 0 to FParams.Count - 1 do
+      begin
+        if (FParams[I] <> nil) and (Trim(FParams[I].Name) <> '') then
+          Parameters.AddElement(CreateParameterObject(FParams[I]));
+      end;
+    end;
+    RequestBody.AddPair('parameters', Parameters);
+    ResponseStream := TMemoryStream.Create;
+    try
+      if FDatabase.InternalRequest('api/agent/execute', RequestBody, ResponseStream) then
+      begin
+        ResponseStream.Position := 0;
+        SetLength(Buffer, ResponseStream.Size);
+        if ResponseStream.Size > 0 then
+          ResponseStream.Read(Buffer[0], ResponseStream.Size);
+        jsonString:=TEncoding.UTF8.GetString(Buffer);
+        ResponseJson := TJSONObject.ParseJSONValue(jsonString) as TJSONObject;
+      try
+        if ResponseJson = nil then
+          raise Exception.Create('Invalid JSON response from Hub');
+        if (ResponseJson.Values['success'] <> nil) and (not (ResponseJson.Values['success'] as TJSONBool).AsBoolean) then
+        begin
+             if ResponseJson.Values['error'] <> nil then
+                raise Exception.Create(ResponseJson.Values['error'].Value)
+             else
+                raise Exception.Create('Request failed');
+        end;
+        LData := ResponseJson.GetValue('data') as TJSONObject;
+        if not Assigned(LData) then
+           raise Exception.Create('No data property in result');
+        Columns := LData.GetValue('columns') as TJSONArray;
+        if not Assigned(Columns) then
+           raise Exception.Create('No columns in the result');
+        Rows := LData.GetValue('rows') as TJSONArray;
+        if not Assigned(Rows) then
+           raise Exception.Create('No rows in result');
+        if not Assigned(FDataset) then
+        begin
+          FDataset:=TRpMemDataSet.Create(nil);
+        end;
+        FDataset.Close;
+        FDataset.FieldDefs.Clear;
+        
+        // Setup fields
+        for I := 0 to Columns.Count - 1 do
+        begin
+          ColObj := Columns.Items[I] as TJSONObject;
+          ColName := ColObj.Values['name'].Value;
+          ColType := ColObj.Values['dataType'].Value;
+          
+          FDef := FDataset.FieldDefs.AddFieldDef;
+          FDef.Name := ColName;
+          
+          // Map .NET types to Delphi TFieldType
+          if ColType = 'Int32' then
+            FDef.DataType := ftInteger
+          else if ColType = 'Int64' then
+            FDef.DataType := ftLargeint
+          else if (ColType = 'Double') or (ColType = 'Decimal') or (ColType = 'Single') then
+            FDef.DataType := ftFloat
+          else if (ColType = 'DateTime') then
+            FDef.DataType := ftDateTime
+          else if (ColType = 'Boolean') then
+            FDef.DataType := ftBoolean
+          else if (ColType = 'Byte[]') then
+            FDef.DataType := ftBlob
+          else
+          begin
+            FDef.DataType := ftString;
+            FDef.Size := 255;
+          end;
+        end;
+        FDataset.CreateDataSet;
+        // Populate rows
+        for I := 0 to Rows.Count - 1 do
+        begin
+          FDataset.Append;
+          RowData := Rows.Items[I] as TJSONArray;
+          for J := 0 to Columns.Count - 1 do
+          begin
+            Val := RowData.Items[J];
+            Field := FDataset.Fields[J];
+            if Val is TJSONNull then
+              Field.Clear
+            else
+            begin
+              case Field.DataType of
+                ftSmallint, ftInteger, ftWord, ftAutoInc:
+                  Field.AsInteger := StrToIntDef(Val.Value, 0);
+                ftLargeint:
+                  Field.AsLargeInt := StrToInt64Def(Val.Value, 0);
+{$IFDEF FPC}
+                // FPC has no ftSingle/ftExtended; rptypes' TryStrToFloat
+                // (BOOLFUNC) hides the SysUtils overloads
+                ftFloat, ftCurrency, ftBCD, ftFMTBcd:
+                  begin
+                    if Val is TJSONNumber then
+                      Field.AsFloat := TJSONNumber(Val).AsDouble
+                    else if SysUtils.TryStrToFloat(Val.Value, LFloatValue, LInvariantFormatSettings) then
+                      Field.AsFloat := LFloatValue
+{$ELSE}
+                ftFloat, ftCurrency, ftBCD, ftFMTBcd, ftSingle, ftExtended:
+                  begin
+                    if Val is TJSONNumber then
+                      Field.AsFloat := TJSONNumber(Val).AsDouble
+                    else if TryStrToFloat(Val.Value, LFloatValue, LInvariantFormatSettings) then
+                      Field.AsFloat := LFloatValue
+{$ENDIF}
+                    else
+                      raise Exception.CreateFmt('Invalid floating point value ''%s'' for field ''%s''', [Val.Value, Field.FieldName]);
+                  end;
+                ftDate, ftTime, ftDateTime, ftTimeStamp:
+                  begin
+                    if not TryISO8601ToDate(Val.Value, LDateTimeValue, True) then
+                      raise Exception.CreateFmt('Invalid datetime value ''%s'' for field ''%s''', [Val.Value, Field.FieldName]);
+                    Field.AsDateTime := LDateTimeValue;
+                  end;
+                ftBoolean:
+                  begin
+                    if SameText(Val.Value, 'true') then
+                      Field.AsBoolean := True
+                    else if SameText(Val.Value, 'false') then
+                      Field.AsBoolean := False
+                    else
+                      Field.AsBoolean := StrToIntDef(Val.Value, 0) <> 0;
+                  end;
+                ftBlob:
+                  begin
+                    if Val is TJSONString then
+                      LBlobBytes := TNetEncoding.Base64.DecodeStringToBytes(Val.Value)
+                    else if Val is TJSONArray then
+                    begin
+                      SetLength(LBlobBytes, TJSONArray(Val).Count);
+                      for LByteIndex := 0 to TJSONArray(Val).Count - 1 do
+                        LBlobBytes[LByteIndex] := Byte(StrToIntDef(TJSONArray(Val).Items[LByteIndex].Value, 0));
+                    end
+                    else
+                      raise Exception.CreateFmt('Invalid binary value for field ''%s''', [Field.FieldName]);
+
+                    LBlobStream := TBytesStream.Create(LBlobBytes);
+                    try
+                      TBlobField(Field).LoadFromStream(LBlobStream);
+                    finally
+                      LBlobStream.Free;
+                    end;
+                  end;
+              else
+                Field.AsString := Val.Value;
+              end;
+            end;
+          end;
+          FDataset.Post;
+        end;
+        FDataset.First;
+        
+      finally
+        ResponseJson.Free;
+      end;
+    end;
+    finally
+      ResponseStream.Free;
+    end;
+  finally
+    RequestBody.Free;
+  end;
+end;
+
+{ The lines of the schemas and databases of api/agent/databases }
+
+// A text of a schema of the list ('' when missing or null)
+function HubItemText(AItem: TJSONObject; const AName: string): string;
+var
+  LValue: TJSONValue;
+begin
+  Result := '';
+  LValue := AItem.Values[AName];
+  if (LValue <> nil) and not (LValue is TJSONNull) then
+    Result := LValue.Value;
+end;
+
+// The <online> field of a schema: '1', '0' or '' (the cloud does not say it)
+function HubItemOnline(AItem: TJSONObject): string;
+var
+  LValue: TJSONValue;
+begin
+  Result := '';
+  LValue := AItem.Values['isOnline'];
+  if LValue is TJSONBool then
+  begin
+    if TJSONBool(LValue).AsBoolean then
+      Result := '1'
+    else
+      Result := '0';
+  end
+  else if (LValue <> nil) and not (LValue is TJSONNull) then
+  begin
+    if SameText(LValue.Value, 'true') then
+      Result := '1'
+    else if SameText(LValue.Value, 'false') then
+      Result := '0';
+  end;
+end;
+
+// The name of the Agent of a schema ('' when the cloud does not name it)
+function HubItemAgentName(AItem: TJSONObject): string;
+begin
+  Result := StringReplace(Trim(HubItemText(AItem, 'agentName')), '|', '/',
+    [rfReplaceAll]);
+end;
+
+// '|<online>|<agentName>' when the cloud says either of them; nothing
+// otherwise, so the line of an older cloud is the one of before
+function HubItemAgentFields(AItem: TJSONObject): string;
+var
+  LOnline, LAgentName: string;
+begin
+  Result := '';
+  LOnline := HubItemOnline(AItem);
+  LAgentName := HubItemAgentName(AItem);
+  if (LOnline <> '') or (LAgentName <> '') then
+    Result := '|' + LOnline + '|' + LAgentName;
+end;
+
+function RpHubSchemaLine(AItem: TJSONObject): string;
+var
+  LLabel, LAgentName: string;
+begin
+  LAgentName := HubItemAgentName(AItem);
+  LLabel := HubItemText(AItem, 'name');
+  if (LAgentName <> '') and (LLabel <> '') then
+    LLabel := LLabel + ' - ' + LAgentName
+  else if HubItemText(AItem, 'displayName') <> '' then
+    LLabel := StringReplace(HubItemText(AItem, 'displayName'), ' - ', ' / ', []);
+  Result := LLabel + '=' + HubItemText(AItem, 'hubDatabaseId') + '|' +
+    HubItemText(AItem, 'hubSchemaId') + HubItemAgentFields(AItem);
+end;
+
+function RpHubDatabaseLine(AItem: TJSONObject): string;
+var
+  LLabel, LAgentName, LSuffix: string;
+  LPos: Integer;
+begin
+  LLabel := HubItemText(AItem, 'displayName');
+  LAgentName := HubItemAgentName(AItem);
+  if (LAgentName <> '') and (LLabel <> '') then
+  begin
+    // The database of the displayName, '<database> - <schema>'
+    LSuffix := ' - ' + HubItemText(AItem, 'name');
+    if (Length(LLabel) > Length(LSuffix)) and
+      (Copy(LLabel, Length(LLabel) - Length(LSuffix) + 1, MaxInt) = LSuffix) then
+      LLabel := Copy(LLabel, 1, Length(LLabel) - Length(LSuffix))
+    else
+    begin
+      LPos := Pos(' - ', LLabel);
+      if LPos > 0 then
+        LLabel := Copy(LLabel, 1, LPos - 1);
+    end;
+    LLabel := LLabel + ' - ' + LAgentName;
+  end;
+  if LLabel = '' then
+    LLabel := HubItemText(AItem, 'name');
+  Result := LLabel + '=' + HubItemText(AItem, 'hubDatabaseId') +
+    HubItemAgentFields(AItem);
+end;
+
+function RpHubLineField(const AValue: string; AIndex: Integer): string;
+var
+  I, LStart, LPos: Integer;
+begin
+  Result := '';
+  LStart := 1;
+  for I := 1 to AIndex do
+  begin
+    LPos := PosEx('|', AValue, LStart);
+    if LPos = 0 then
+      Exit;
+    LStart := LPos + 1;
+  end;
+  LPos := PosEx('|', AValue, LStart);
+  if LPos = 0 then
+    Result := Copy(AValue, LStart, MaxInt)
+  else
+    Result := Copy(AValue, LStart, LPos - LStart);
+end;
+
+function RpHubOnlineState(const AField: string): TRpHubOnlineState;
+begin
+  if AField = '1' then
+    Result := hosOnline
+  else if AField = '0' then
+    Result := hosOffline
+  else
+    Result := hosUnknown;
+end;
+
+function RpHubSchemaKey(const AValue: string): string;
+begin
+  Result := RpHubLineField(AValue, 0) + '|' + RpHubLineField(AValue, 1);
+end;
+
+function RpHubSchemaLineWithApiKey(const ALine, AApiKey: string): string;
+var
+  LPos: Integer;
+  LValue: string;
+begin
+  LPos := Pos('=', ALine);
+  LValue := Copy(ALine, LPos + 1, MaxInt);
+  Result := Copy(ALine, 1, LPos) + RpHubSchemaKey(LValue) + '|' + AApiKey;
+  // The state of the Agent and its name, after the two ids
+  LPos := Pos('|', LValue);
+  if LPos > 0 then
+    LPos := PosEx('|', LValue, LPos + 1);
+  if LPos > 0 then
+    Result := Result + Copy(LValue, LPos, MaxInt);
+end;
+
+class function TRpDatabaseHttp.GetHubDatabases(const AApiKey: string;
+  AList: TStrings): Boolean;
+var
+  LHttpClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LResponseStream: TMemoryStream;
+  LJson: TJSONObject;
+  LDatabases: TJSONArray;
+  LBuffer: TBytes;
+  LLine: string;
+  i: Integer;
+begin
+  Result := False;
+  LHttpClient := TNetHTTPClient.Create(nil);
+  LResponseStream := TMemoryStream.Create;
+  try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
+    LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AApiKey;
+    if TRpAuthManager.Instance.Token <> '' then
+      LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + TRpAuthManager.Instance.Token;
+    if TRpAuthManager.Instance.InstallId <> '' then
+      LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := TRpAuthManager.Instance.InstallId;
+    // Use the compiled URL for discovery
+    try
+      LResponse := LHttpClient.Get(HUB_API_URL + '/api/agent/databases', LResponseStream);
+      if (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300) then
+      begin
+        LResponseStream.Position := 0;
+        SetLength(LBuffer, LResponseStream.Size);
+        if LResponseStream.Size > 0 then
+          LResponseStream.Read(LBuffer[0], LResponseStream.Size);
+        LJson := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(LBuffer)) as TJSONObject;
+        if Assigned(LJson) then
+        try
+          LDatabases := LJson.GetValue('databases') as TJSONArray;
+          if Assigned(LDatabases) then
+          begin
+            AList.Clear;
+            for i := 0 to LDatabases.Count - 1 do
+            begin
+              // The schemas of a database named by its Agent make the same
+              // line: once
+              LLine := RpHubDatabaseLine(LDatabases.Items[i] as TJSONObject);
+              if AList.IndexOf(LLine) < 0 then
+                AList.Add(LLine);
+            end;
+            Result := True;
+          end;
+        finally
+          LJson.Free;
+        end;
+      end;
+    except
+      // Handle connection errors
+    end;
+  finally
+    LResponseStream.Free;
+    LHttpClient.Free;
+  end;
+end;
+function TRpDatabaseHttp.InternalGetRequest(const AAction: string; ResponseStream: TStream): Boolean;
+var
+  LStatusCode: Integer;
+begin
+  Result := InternalGetRequest(AAction, ResponseStream, LStatusCode);
+end;
+
+function TRpDatabaseHttp.InternalGetRequest(const AAction: string;
+  ResponseStream: TStream; out AStatusCode: Integer): Boolean;
+{$IFDEF FIREDAC}
+var
+  LHttpClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+  LUrl: string;
+  LStartedAt: TDateTime;
+begin
+  AStatusCode := 0;
+  LHttpClient := TNetHTTPClient.Create(nil);
+  try
+    TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
+    LHttpClient.ContentType := 'application/json';
+    // The messages of the API in the language of the AI, as the POSTs
+    LHttpClient.AcceptLanguage := RpApiAcceptLanguage;
+    if FApiKey <> '' then
+      LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := FApiKey;
+    if FToken <> '' then
+      LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FToken;
+    if FInstallId <> '' then
+      LHttpClient.CustomHeaders['X-Reportman-WebInstallId'] := FInstallId;
+    LUrl := HUB_API_URL;
+    if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
+    LUrl := LUrl + AAction;
+    TRpAuthManager.Instance.Log('HTTP Request: GET ' + LUrl);
+    LStartedAt := Now;
+    LResponse := LHttpClient.Get(LUrl, ResponseStream);
+    TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LResponse.StatusCode) +
+      ' (' + IntToStr(MilliSecondsBetween(Now, LStartedAt)) + ' ms)');
+    AStatusCode := LResponse.StatusCode;
+    Result := (LResponse.StatusCode >= 200) and (LResponse.StatusCode < 300);
+  finally
+    LHttpClient.Free;
+  end;
+end;
+{$ELSE}
+var
+  LIdHttp: TIdHTTP;
+  LErrorStream: TStringStream;
+  LUrl: string;
+begin
+  Result := False;
+  AStatusCode := 0;
+  LIdHttp := TIdHTTP.Create(nil);
+  try
+    LIdHttp.Request.ContentType := 'application/json';
+    LIdHttp.Request.AcceptLanguage := RpApiAcceptLanguage;
+    if FApiKey <> '' then
+      LIdHttp.Request.CustomHeaders.Values['X-Reportman-ApiKey'] := FApiKey;
+    if FToken <> '' then
+      LIdHttp.Request.CustomHeaders.Values['Authorization'] := 'Bearer ' + FToken;
+    if FInstallId <> '' then
+      LIdHttp.Request.CustomHeaders.Values['X-Reportman-WebInstallId'] := FInstallId;
+    LUrl := HUB_API_URL;
+    if not LUrl.EndsWith('/') then
+      LUrl := LUrl + '/';
+    LUrl := LUrl + AAction;
+    ConfigureIdHttpClientForUrl(LIdHttp, LUrl);
+    TRpAuthManager.Instance.Log('HTTP Request: GET ' + LUrl);
+    LIdHttp.Get(LUrl, ResponseStream);
+    TRpAuthManager.Instance.Log('HTTP Response Status: ' + IntToStr(LIdHttp.ResponseCode));
+    AStatusCode := LIdHttp.ResponseCode;
+    if (LIdHttp.ResponseCode >= 200) and (LIdHttp.ResponseCode < 300) then
+      Result := True
+    else
+    begin
+      LErrorStream := TStringStream.Create;
+      try
+        ResponseStream.Position := 0;
+        LErrorStream.CopyFrom(ResponseStream, 0);
+        raise Exception.CreateFmt('HTTP Error %d: %s'#13#10'%s',
+          [LIdHttp.ResponseCode, LIdHttp.ResponseText, LErrorStream.DataString]);
+      finally
+        LErrorStream.Free;
+      end;
+    end;
+  finally
+    LIdHttp.Free;
+  end;
+end;
+{$ENDIF}
+
+function TRpDatabaseHttp.GetUserSchemas(AList: TStrings): Boolean;
+begin
+  Result := GetUserSchemas(AList, nil);
+end;
+
+// The tables of the schemaTables of a schema of the list and the columns of
+// the widest one
+function SchemaTablesSizeText(AItem: TJSONObject): string;
+var
+  I, LWidest: Integer;
+  LColumns: TJSONValue;
+  LTables: TJSONValue;
+begin
+  Result := '';
+  LTables := AItem.Values['schemaTables'];
+  if LTables = nil then
+    LTables := AItem.Values['SchemaTables'];
+  if not (LTables is TJSONArray) then
+    Exit;
+  LWidest := 0;
+  for I := 0 to TJSONArray(LTables).Count - 1 do
+  begin
+    if not (TJSONArray(LTables).Items[I] is TJSONObject) then
+      Continue;
+    LColumns := TJSONObject(TJSONArray(LTables).Items[I]).Values['columns'];
+    if LColumns = nil then
+      LColumns := TJSONObject(TJSONArray(LTables).Items[I]).Values['Columns'];
+    if (LColumns is TJSONArray) and (TJSONArray(LColumns).Count > LWidest) then
+      LWidest := TJSONArray(LColumns).Count;
+  end;
+  Result := IntToStr(TJSONArray(LTables).Count) + ',' + IntToStr(LWidest);
+end;
+
+function TRpDatabaseHttp.GetUserSchemas(AList, ASizes: TStrings): Boolean;
+var
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+  LDatabases: TJSONArray;
+  I: Integer;
+  LItem: TJSONObject;
+  LSize: string;
+begin
+  Result := False;
+  AList.Clear;
+  if ASizes <> nil then
+    ASizes.Clear;
+  LResponseStream := TStringStream.Create;
+  try
+    if InternalGetRequest('api/agent/databases', LResponseStream) then
+    begin
+      LResponseStream.Position := 0;
+      LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+      if LResponseJson <> nil then
+      try
+        if LResponseJson.Values['databases'] is TJSONArray then
+        begin
+          LDatabases := LResponseJson.Values['databases'] as TJSONArray;
+          for I := 0 to LDatabases.Count - 1 do
+          begin
+            LItem := LDatabases.Items[I] as TJSONObject;
+            AList.Add(RpHubSchemaLine(LItem));
+            if ASizes <> nil then
+            begin
+              LSize := SchemaTablesSizeText(LItem);
+              if LSize <> '' then
+                ASizes.Add(LItem.Values['hubSchemaId'].Value + '=' + LSize);
+            end;
+          end;
+          Result := True;
+        end;
+      finally
+        LResponseJson.Free;
+      end;
+    end;
+  finally
+    LResponseStream.Free;
+  end;
+end;
+function TRpDatabaseHttp.GetUserAgents(AList: TStrings): Boolean;
+var
+  LResponseStream: TStringStream;
+  LResponseJson: TJSONObject;
+  LAiEndpoints: TJSONArray;
+  I: Integer;
+  LItem: TJSONObject;
+  LName: string;
+  LAgentName: string;
+  LIsOnline: string;
+  LIsOnlineValue: TJSONValue;
+begin
+  Result := False;
+  AList.Clear;
+  LResponseStream := TStringStream.Create;
+  try
+    if InternalGetRequest('api/agent/databases', LResponseStream) then
+    begin
+      LResponseStream.Position := 0;
+      LResponseJson := TJSONObject.ParseJSONValue(LResponseStream.DataString) as TJSONObject;
+      if LResponseJson <> nil then
+      try
+        if LResponseJson.Values['aiEndpoints'] is TJSONArray then
+        begin
+          LAiEndpoints := LResponseJson.Values['aiEndpoints'] as TJSONArray;
+          for I := 0 to LAiEndpoints.Count - 1 do
+          begin
+            LItem := LAiEndpoints.Items[I] as TJSONObject;
+            if LItem.Values['name'] <> nil then
+              LName := LItem.Values['name'].Value
+            else
+              LName := 'Agent';
+
+            if LItem.Values['agentName'] <> nil then
+              LAgentName := LItem.Values['agentName'].Value
+            else
+              LAgentName := 'Agent';
+
+            LIsOnlineValue := LItem.Values['isOnline'];
+            if (LIsOnlineValue is TJSONBool) and TJSONBool(LIsOnlineValue).AsBoolean then
+              LIsOnline := '1'
+            else if Assigned(LIsOnlineValue) and SameText(LIsOnlineValue.Value, 'true') then
+              LIsOnline := '1'
+            else
+              LIsOnline := '0';
+
+            AList.Add(Format('%s (%s)=%s|%s|%s', [
+              LName,
+              LAgentName,
+              LItem.Values['id'].Value,
+              LItem.Values['agentSecret'].Value,
+              LIsOnline
+            ]));
+          end;
+          Result := True;
+        end;
+      finally
+        LResponseJson.Free;
+      end;
+    end;
+  finally
+    LResponseStream.Free;
+  end;
+end;
+
+{ The schema library }
+
+// The text of an answer (UTF-8)
+function ResponseText(AStream: TMemoryStream): string;
+{$IFNDEF FPC}
+var
+  LBytes: TBytes;
+{$ENDIF}
+begin
+{$IFDEF FPC}
+  // The strings of Lazarus are UTF-8 already
+  SetString(Result, PChar(AStream.Memory), AStream.Size);
+{$ELSE}
+  SetLength(LBytes, AStream.Size);
+  if AStream.Size > 0 then
+    Move(AStream.Memory^, LBytes[0], AStream.Size);
+  Result := TEncoding.UTF8.GetString(LBytes);
+{$ENDIF}
+end;
+
+// GET of the library: the text of the answer, or an exception with the
+// reason (the message of the API when it gives one, else the HTTP status)
+function LibraryGet(AHttp: TRpDatabaseHttp; const AAction: string): string;
+var
+  LStream: TMemoryStream;
+  LStatusCode: Integer;
+  LJson: TJSONValue;
+  LReason: string;
+begin
+  LStream := TMemoryStream.Create;
+  try
+    if AHttp.InternalGetRequest(AAction, LStream, LStatusCode) then
+    begin
+      Result := ResponseText(LStream);
+      Exit;
+    end;
+    LReason := '';
+    try
+      LJson := TJSONObject.ParseJSONValue(ResponseText(LStream));
+    except
+      LJson := nil;
+    end;
+    try
+      if LJson is TJSONObject then
+      begin
+        if TJSONObject(LJson).Values['message'] <> nil then
+          LReason := TJSONObject(LJson).Values['message'].Value
+        else if TJSONObject(LJson).Values['title'] <> nil then
+          LReason := TJSONObject(LJson).Values['title'].Value;
+      end;
+    finally
+      LJson.Free;
+    end;
+    if Trim(LReason) = '' then
+      LReason := 'HTTP ' + IntToStr(LStatusCode)
+    else
+      LReason := 'HTTP ' + IntToStr(LStatusCode) + ': ' + LReason;
+    raise Exception.Create(LReason);
+  finally
+    LStream.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.GetSchemaLibrary: TJSONArray;
+var
+  LValue: TJSONValue;
+begin
+  LValue := TJSONObject.ParseJSONValue(LibraryGet(Self, 'api/schema/list'));
+  if not (LValue is TJSONArray) then
+  begin
+    LValue.Free;
+    raise Exception.Create('The answer of api/schema/list is not a list');
+  end;
+  Result := TJSONArray(LValue);
+end;
+
+function TRpDatabaseHttp.GetLibrarySchema(AId: Int64): string;
+var
+  I: Integer;
+  LRoot, LFull: TJSONValue;
+begin
+  Result := '';
+  LRoot := TJSONObject.ParseJSONValue(LibraryGet(Self,
+    'api/schema/' + IntToStr(AId)));
+  try
+    if not (LRoot is TJSONObject) then
+      raise Exception.Create('The answer of api/schema/' + IntToStr(AId) +
+        ' is not a schema');
+    // fullSchema, whatever the case of its name
+    LFull := TJSONObject(LRoot).Values['fullSchema'];
+    if LFull = nil then
+      for I := 0 to TJSONObject(LRoot).Count - 1 do
+        if SameText(TJSONObject(LRoot).Pairs[I].JsonString.Value, 'fullSchema') then
+          LFull := TJSONObject(LRoot).Pairs[I].JsonValue;
+    // A JSON text; an object is taken as it is
+    if (LFull is TJSONObject) or (LFull is TJSONArray) then
+      Result := LFull.ToJSON
+    else if (LFull <> nil) and not (LFull is TJSONNull) then
+      Result := LFull.Value;
+    if Trim(Result) = '' then
+      raise Exception.Create('The schema ' + IntToStr(AId) +
+        ' of the library has no fullSchema');
+  finally
+    LRoot.Free;
+  end;
+end;
+end.

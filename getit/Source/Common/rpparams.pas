@@ -33,9 +33,10 @@ uses Classes, SysUtils,rpmdconsts,
  rptypes;
 
 type
-  TRpParam=class(TCollectionitem)
+  TRpParam=class(TCollectionitem, IPropertiesItem)
    private
     FName:string;
+    FIntName:string;
     FDescription:widestring;
     FHint:widestring;
     FIsReadOnly:Boolean;
@@ -54,11 +55,13 @@ type
     FSearchParam:String;
     FValidation:WideString;
     FErrorMessage:WideString;
+    procedure AssertCanModify(const AReason:string);
     procedure SetVisible(AVisible:boolean);
     procedure SetIsReadOnly(AReadOnly:boolean);
     procedure SetNeverVisible(ANeverVisible:boolean);
     procedure SetAllowNulls(AAllowNulls:boolean);
     procedure SetName(AName:String);
+    procedure SetIntName(AIntName:String);
     procedure SetValue(AValue:variant);
     procedure SetDescription(ADescription:widestring);
     procedure SetErrorMessage(AMessage:widestring);
@@ -92,6 +95,25 @@ type
     Constructor Create(Collection:TCollection);override;
     procedure Assign(Source:TPersistent);override;
     destructor Destroy;override;
+    { IInterface }
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+    function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+  {$ELSE}
+    function QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+    function _AddRef: Integer; cdecl;
+    function _Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+{$ENDIF}
+    { IPropertiesItem }
+    procedure SetItemProperty(const propName: string; const value: Variant);
+    function GetItemProperty(const propName: string): Variant;
     procedure SetDatasets(AList:TStrings);
     procedure SetItems(AList:TStrings);
     procedure SetValues(AList:TStrings);
@@ -111,6 +133,7 @@ type
     property Search:widestring read FSearch write SetSearch;
     property AsString:WideString read GetAsString write SetAsString;
     property MultiValue:String read GetMultiValue;
+    property IntName:string read FIntName write SetIntName;
    published
     property Name:string read FName write SetName;
     property Visible:Boolean read FVisible write SetVisible default True;
@@ -136,6 +159,7 @@ type
    private
     FReport:TComponent;
     FLanguage:integer;
+    procedure AssertCanModify(const AReason:string);
    public
     function GetItem(Index:Integer):TRpParam;
     procedure SetItem(index:integer;Value:TRpParam);
@@ -144,9 +168,12 @@ type
     constructor Create(AOwner:TComponent);
     function Add(AName:String):TRpParam;
     function IndexOf(AName:String):integer;
+    function IndexOfIntName(AIntName:String):integer;
     function FindParam(AName:string):TRpParam;
+    function FindParamByIntName(AIntName:string):TRpParam;
     procedure Assign(Source:TPersistent);override;
     function ParamByName(AName:string):TRpParam;
+    function ParamByIntName(AIntName:string):TRpParam;
 {$IFNDEF FORWEBAX}
     procedure UpdateLookup;
     procedure UpdateInitialValues;
@@ -189,6 +216,20 @@ implementation
 uses rpeval,rpbasereport,rpreport,rpdatainfo;
 {$ENDIF}
 
+procedure TRpParamList.AssertCanModify(const AReason:string);
+begin
+{$IFNDEF FORWEBAX}
+ if FReport is TRpBaseReport then
+  TRpBaseReport(FReport).AssertCanModify(AReason);
+{$ENDIF}
+end;
+
+procedure TRpParam.AssertCanModify(const AReason:string);
+begin
+ if Collection is TRpParamList then
+  TRpParamList(Collection).AssertCanModify(AReason);
+end;
+
 procedure TRpParamComp.SetParams(avalue:TRpParamList);
 begin
  fparams.Assign(avalue);
@@ -203,6 +244,7 @@ end;
 Constructor TRpParam.Create(Collection:TCollection);
 begin
  inherited Create(Collection);
+ FIntName:='';
  FVisible:=true;
  FAllowNulls:=true;
  FParamType:=rpParamString;
@@ -224,12 +266,14 @@ end;
 
 procedure TRpParam.SetDescription(ADescription:WideString);
 begin
+ AssertCanModify(ClassName+'.Description');
  FDescription:=AddLineLangByIndex(FDescription,ADescription,TRpParamList(Collection).Language);
  Changed(false);
 end;
 
 procedure TRpParam.SetHint(AHint:widestring);
 begin
+ AssertCanModify(ClassName+'.Hint');
  FHint:=AddLineLangByIndex(FHint,AHint,TRpParamList(Collection).Language);
  Changed(false);
 end;
@@ -241,16 +285,224 @@ end;
 
 procedure TRpParam.SetErrorMessage(AMessage:widestring);
 begin
+ AssertCanModify(ClassName+'.ErrorMessage');
  FErrorMessage:=AddLineLangByIndex(FErrorMessage,AMessage,TRpParamList(Collection).Language);
  Changed(false);
 end;
 
 procedure TRpParam.SetValidation(AValidation:widestring);
 begin
+ AssertCanModify(ClassName+'.Validation');
  FValidation:=AValidation;
  Changed(false);
 end;
 
+{ TRpParam - IInterface }
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpParam.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+  {$ELSE}
+function TRpParam.QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpParam.QueryInterface(const IID: TGUID; out Obj): HResult;
+{$ENDIF}
+begin
+ if GetInterface(IID, Obj) then
+  Result := 0
+ else
+  Result := E_NOINTERFACE;
+end;
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpParam._AddRef: Integer; stdcall;
+  {$ELSE}
+function TRpParam._AddRef: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpParam._AddRef: Integer;
+{$ENDIF}
+begin
+ Result := -1;
+end;
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpParam._Release: Integer; stdcall;
+  {$ELSE}
+function TRpParam._Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpParam._Release: Integer;
+{$ENDIF}
+begin
+ Result := -1;
+end;
+
+{ TRpParam - IPropertiesItem }
+
+procedure TRpParam.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Name') then
+ begin
+  SetName(value);
+  exit;
+ end;
+ if SameText(propName, 'IntName') then
+ begin
+  SetIntName(value);
+  exit;
+ end;
+ if SameText(propName, 'ParamType') then
+ begin
+  SetParamType(TRpParamType(Integer(value)));
+  exit;
+ end;
+ if SameText(propName, 'Visible') then
+ begin
+  SetVisible(value);
+  exit;
+ end;
+ if SameText(propName, 'NeverVisible') then
+ begin
+  SetNeverVisible(value);
+  exit;
+ end;
+ if SameText(propName, 'IsReadOnly') then
+ begin
+  SetIsReadOnly(value);
+  exit;
+ end;
+ if SameText(propName, 'AllowNulls') then
+ begin
+  SetAllowNulls(value);
+  exit;
+ end;
+ if SameText(propName, 'Description') then
+ begin
+  SetDescription(value);
+  exit;
+ end;
+ if SameText(propName, 'Hint') then
+ begin
+  SetHint(value);
+  exit;
+ end;
+ if SameText(propName, 'Validation') then
+ begin
+  SetValidation(value);
+  exit;
+ end;
+ if SameText(propName, 'ErrorMessage') then
+ begin
+  SetErrorMessage(value);
+  exit;
+ end;
+ if SameText(propName, 'Value') then
+ begin
+  SetValue(value);
+  exit;
+ end;
+ if SameText(propName, 'LookupDataset') then
+ begin
+  FLookupDataset := value;
+  exit;
+ end;
+ if SameText(propName, 'SearchDataset') then
+ begin
+  FSearchDataset := value;
+  exit;
+ end;
+ if SameText(propName, 'SearchParam') then
+ begin
+  FSearchParam := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpParam.GetItemProperty(const propName: string): Variant;
+begin
+ if propName = 'Name' then
+ begin
+  Result := FName;
+  exit;
+ end;
+ if propName = 'IntName' then
+ begin
+  Result := FIntName;
+  exit;
+ end;
+ if propName = 'ParamType' then
+ begin
+  Result := Integer(FParamType);
+  exit;
+ end;
+ if propName = 'Visible' then
+ begin
+  Result := FVisible;
+  exit;
+ end;
+ if propName = 'NeverVisible' then
+ begin
+  Result := FNeverVisible;
+  exit;
+ end;
+ if propName = 'IsReadOnly' then
+ begin
+  Result := FIsReadOnly;
+  exit;
+ end;
+ if propName = 'AllowNulls' then
+ begin
+  Result := FAllowNulls;
+  exit;
+ end;
+ if propName = 'Description' then
+ begin
+  Result := FDescription;
+  exit;
+ end;
+ if propName = 'Hint' then
+ begin
+  Result := FHint;
+  exit;
+ end;
+ if propName = 'Validation' then
+ begin
+  Result := FValidation;
+  exit;
+ end;
+ if propName = 'ErrorMessage' then
+ begin
+  Result := FErrorMessage;
+  exit;
+ end;
+ if propName = 'Value' then
+ begin
+  Result := FValue;
+  exit;
+ end;
+ if propName = 'LookupDataset' then
+ begin
+  Result := FLookupDataset;
+  exit;
+ end;
+ if propName = 'SearchDataset' then
+ begin
+  Result := FSearchDataset;
+  exit;
+ end;
+ if propName = 'SearchParam' then
+ begin
+  Result := FSearchParam;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
 
 procedure TRpParam.Assign(Source:TPersistent);
 begin
@@ -260,6 +512,7 @@ begin
   EvaluatedString := TRpParam(Source).EvaluatedString;
 
   FName:=TRpParam(Source).FName;
+  FIntName:=TRpParam(Source).FIntName;
   FVisible:=TRpParam(Source).FVisible;
   FNeverVisible:=TRpParam(Source).FNeverVisible;
   FIsReadOnly:=TRpParam(Source).FIsReadOnly;
@@ -302,48 +555,56 @@ end;
 
 procedure TRpParam.SetIsReadOnly(AReadOnly:boolean);
 begin
+ AssertCanModify(ClassName+'.IsReadOnly');
  FIsReadOnly:=AReadOnly;
  Changed(false);
 end;
 
 procedure TRpParam.SetNeverVisible(ANeverVisible:boolean);
 begin
+ AssertCanModify(ClassName+'.NeverVisible');
  FNeverVisible:=ANeverVisible;
  Changed(false);
 end;
 
 procedure TRpParam.SetVisible(AVisible:boolean);
 begin
+ AssertCanModify(ClassName+'.Visible');
  FVisible:=AVisible;
  Changed(false);
 end;
 
 procedure TRpParam.SetAllowNulls(AAllowNulls:boolean);
 begin
+ AssertCanModify(ClassName+'.AllowNulls');
  FAllowNulls:=AAllowNulls;
  Changed(false);
 end;
 
 procedure TRpParam.SetDatasets(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Datasets');
  FDatasets.Assign(Alist);
  Changed(False);
 end;
 
 procedure TRpParam.SetItems(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Items');
  FItems.Assign(Alist);
  Changed(False);
 end;
 
 procedure TRpParam.SetValues(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Values');
  FValues.Assign(Alist);
  Changed(False);
 end;
 
 procedure TRpParam.SetSelected(AList:TStrings);
 begin
+ AssertCanModify(ClassName+'.Selected');
  FSelected.Assign(Alist);
  Changed(False);
 end;
@@ -500,12 +761,21 @@ end;
 
 procedure TRpParam.SetName(AName:String);
 begin
+ AssertCanModify(ClassName+'.Name');
  FName:=AnsiUpperCase(AName);
+ Changed(false);
+end;
+
+procedure TRpParam.SetIntName(AIntName:String);
+begin
+ AssertCanModify(ClassName+'.IntName');
+ FIntName:=AnsiUpperCase(AIntName);
  Changed(false);
 end;
 
 procedure TRpParam.SetParamType(AParamType:TRpParamType);
 begin
+ AssertCanModify(ClassName+'.ParamType');
  FParamType:=AParamType;
  Changed(False);
 end;
@@ -514,12 +784,14 @@ end;
 
 procedure TRpParam.SetSearch(ASearch:wideString);
 begin
+ AssertCanModify(ClassName+'.Search');
  FSearch:=ASearch;
  Changed(false);
 end;
 
 procedure TRpParam.SetValue(AValue:Variant);
 begin
+ AssertCanModify(ClassName+'.Value');
  if VarType(AValue)=varString then
  begin
   FValue:=WideString(AValue);
@@ -546,6 +818,7 @@ end;
 
 procedure TRpParamList.SetItem(index:integer;Value:TRpParam);
 begin
+ AssertCanModify('Params.SetItem');
  inherited SetItem(Index,Value);
 end;
 
@@ -557,11 +830,13 @@ end;
 
 function TRpParamList.Add(AName:String):TRpParam;
 begin
+ AssertCanModify('Params.Add');
  // Checks if it exists
- if IndexOf(AName)>0 then
+ if IndexOf(AName)>=0 then
   Raise Exception.Create(SRpParameterExists+ ':'+AName);
  Result:=TRpParam(inherited Add);
  Result.FName:=AName;
+ Result.FIntName:=AnsiUpperCase(AName);
  Result.FVisible:=true;
  Result.FAllowNulls:=true;
  Result.FParamType:=rpParamString;
@@ -597,6 +872,35 @@ begin
   Result:=items[aindex];
 end;
 
+function TRpParamList.IndexOfIntName(AIntName:String):integer;
+var
+ i:integer;
+ normalizedName:string;
+begin
+ normalizedName:=AnsiUpperCase(AIntName);
+ Result:=-1;
+ i:=0;
+ While i<count do
+ begin
+  if items[i].FIntName=normalizedName then
+  begin
+   Result:=i;
+   break;
+  end;
+  inc(i);
+ end;
+end;
+
+function TRpParamList.FindParamByIntName(AIntName:string):TRpParam;
+var
+ aindex:integer;
+begin
+ Result:=nil;
+ aindex:=IndexOfIntName(AIntName);
+ if aindex>=0 then
+  Result:=items[aindex];
+end;
+
 function TRpParamList.ParamByName(AName:string):TRpParam;
 var
  aindex:integer;
@@ -604,6 +908,16 @@ begin
  aindex:=Indexof(AName);
  if aindex<0 then
   Raise Exception.Create(SRpParamNotFound+AName);
+ Result:=items[aindex];
+end;
+
+function TRpParamList.ParamByIntName(AIntName:string):TRpParam;
+var
+ aindex:integer;
+begin
+ aindex:=IndexOfIntName(AIntName);
+ if aindex<0 then
+  Raise Exception.Create(SRpParamNotFound+AIntName);
  Result:=items[aindex];
 end;
 
@@ -774,6 +1088,7 @@ begin
  Filer.DefineProperty('Search',ReadSearch,WriteSearch,True);
  Filer.DefineProperty('ErrorMessage',ReadErrorMessage,WriteErrorMessage,True);
  Filer.DefineProperty('Validation',ReadValidation,WriteValidation,True);
+ //Filer.DefineProperty('IntName',ReadIntName,WriteIntName,FIntName<>'');
 end;
 
 function TRpParam.GetAsString:WideString;
@@ -1093,6 +1408,8 @@ end;
 procedure TRpParamList.SetLanguage(ALang:integer);
 begin
  if (ALang<0) then
+  ALang:=0
+ else if (ALang>256) then
   ALang:=0;
  FLanguage:=ALang;
 end;

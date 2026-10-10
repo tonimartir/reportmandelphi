@@ -38,6 +38,24 @@ function Import-RsVars {
   }
 }
 
+# Zip of a folder with '/' in the entry names. Compress-Archive of Windows
+# PowerShell 5.1 writes '\', which the zip format does not allow: 7-Zip or
+# unzip on Linux then make flat files named "dir\file.pas".
+# With -IncludeBaseDirectory the entries start with the folder's own name.
+function New-ZipFromFolder([string]$folder, [string]$zip, [switch]$IncludeBaseDirectory) {
+  Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+  $folder = (Resolve-Path $folder).Path.TrimEnd('\')
+  $prefix = if ($IncludeBaseDirectory) { (Split-Path $folder -Leaf) + '/' } else { '' }
+  if (Test-Path $zip) { Remove-Item $zip -Force }
+  $archive = [IO.Compression.ZipFile]::Open($zip, 'Create')
+  try {
+    foreach ($f in Get-ChildItem $folder -Recurse -File) {
+      $name = $prefix + $f.FullName.Substring($folder.Length + 1).Replace('\', '/')
+      [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $f.FullName, $name, 'Optimal')
+    }
+  } finally { $archive.Dispose() }
+}
+
 function New-CleanDir([string]$p) {
   if (Test-Path $p) { Remove-Item $p -Recurse -Force }
   New-Item -ItemType Directory -Path $p -Force | Out-Null

@@ -1,13 +1,9 @@
 object FRpDBXConfigVCL: TFRpDBXConfigVCL
   Left = 245
   Top = 108
-  Margins.Left = 4
-  Margins.Top = 4
-  Margins.Right = 4
-  Margins.Bottom = 4
   Caption = 'Dialog'
-  ClientHeight = 581
-  ClientWidth = 833
+  ClientHeight = 465
+  ClientWidth = 666
   Color = clBtnFace
   ParentFont = True
   Position = poScreenCenter
@@ -15,53 +11,36 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
   OnClose = FormClose
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 120
-  TextHeight = 20
+  TextHeight = 15
   object Panel1: TPanel
     Left = 0
     Top = 0
-    Width = 833
-    Height = 65
-    Margins.Left = 4
-    Margins.Top = 4
-    Margins.Right = 4
-    Margins.Bottom = 4
+    Width = 666
+    Height = 52
     Align = alTop
     TabOrder = 0
     DesignSize = (
-      833
-      65)
+      666
+      52)
     object LDriversFile: TLabel
-      Left = 10
-      Top = 10
-      Width = 74
-      Height = 20
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Left = 8
+      Top = 8
+      Width = 58
+      Height = 15
       Caption = 'Driver'#39's file'
     end
     object LConnsFile: TLabel
-      Left = 10
-      Top = 39
-      Width = 101
-      Height = 20
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Left = 8
+      Top = 31
+      Width = 82
+      Height = 15
       Caption = 'Conection'#39's file'
     end
     object EDriversFile: TEdit
-      Left = 183
-      Top = 5
-      Width = 640
+      Left = 146
+      Top = 4
+      Width = 512
       Height = 28
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Anchors = [akLeft, akTop, akRight]
       Color = clBtnFace
       ReadOnly = True
@@ -69,14 +48,10 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
       Text = 'EDriversFile'
     end
     object EConnectionsFile: TEdit
-      Left = 183
-      Top = 34
-      Width = 640
+      Left = 146
+      Top = 27
+      Width = 512
       Height = 28
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
       Anchors = [akLeft, akTop, akRight]
       Color = clBtnFace
       ReadOnly = True
@@ -86,54 +61,38 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
   end
   object PanelParent: TPanel
     Left = 0
-    Top = 65
-    Width = 833
-    Height = 516
-    Margins.Left = 4
-    Margins.Top = 4
-    Margins.Right = 4
-    Margins.Bottom = 4
+    Top = 52
+    Width = 666
+    Height = 413
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
     object PanelLeft: TPanel
       Left = 0
       Top = 0
-      Width = 248
-      Height = 516
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 198
+      Height = 413
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
       object LConnections: TListBox
         Left = 0
-        Top = 150
-        Width = 248
-        Height = 366
-        Margins.Left = 4
-        Margins.Top = 4
-        Margins.Right = 4
-        Margins.Bottom = 4
+        Top = 121
+        Width = 198
+        Height = 292
         Align = alClient
-        ItemHeight = 25
+        ItemHeight = 20
         TabOrder = 0
         OnClick = LConnectionsClick
       end
       object ToolBar1: TToolBar
         Left = 0
         Top = 0
-        Width = 248
-        Height = 92
-        Margins.Left = 4
-        Margins.Top = 4
-        Margins.Right = 4
-        Margins.Bottom = 4
+        Width = 198
+        Height = 74
         AutoSize = True
-        ButtonHeight = 40
-        ButtonWidth = 41
+        ButtonHeight = 32
+        ButtonWidth = 33
         Caption = 'ToolBar1'
         EdgeBorders = [ebLeft, ebTop, ebRight, ebBottom]
         Images = VirtualImageList1
@@ -142,49 +101,33 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
           Left = 0
           Top = 0
           Hint = 'Adds a connection to the selected driver'
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
           Caption = 'BAdd'
           ImageIndex = 0
           ImageName = 'Item1'
           OnClick = BAddClick
         end
         object BDelete: TToolButton
-          Left = 41
+          Left = 33
           Top = 0
           Hint = 'Drops the selected connection'
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
           Caption = 'BDelete'
           ImageIndex = 1
           ImageName = 'Item2'
           OnClick = BDeleteClick
         end
         object ToolButton1: TToolButton
-          Left = 82
+          Left = 66
           Top = 0
-          Width = 7
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Width = 6
           Caption = 'ToolButton1'
           ImageIndex = 2
           ImageName = 'Item3'
           Style = tbsSeparator
         end
         object BShowProps: TToolButton
-          Left = 89
+          Left = 72
           Top = 0
           Hint = 'Shows properties of the selected driver'
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
           Caption = 'BShowProps'
           ImageIndex = 2
           ImageName = 'Item3'
@@ -193,11 +136,7 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
         object ToolButton2: TToolButton
           Left = 0
           Top = 0
-          Width = 8
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Width = 6
           Caption = 'ToolButton2'
           ImageIndex = 3
           ImageName = 'Item4'
@@ -206,49 +145,33 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
         end
         object BConnect: TToolButton
           Left = 0
-          Top = 48
+          Top = 38
           Hint = 'Activates the selected connection'
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
           Caption = 'BConnect'
           ImageIndex = 3
           ImageName = 'Item4'
           OnClick = BConnectClick
         end
         object ToolButton4: TToolButton
-          Left = 41
-          Top = 48
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Left = 33
+          Top = 38
           Caption = 'ToolButton4'
           Enabled = False
           ImageIndex = 5
         end
         object ToolButton3: TToolButton
-          Left = 82
-          Top = 48
-          Width = 13
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Left = 66
+          Top = 38
+          Width = 11
           Caption = 'ToolButton3'
           ImageIndex = 3
           ImageName = 'Item4'
           Style = tbsSeparator
         end
         object BClose: TToolButton
-          Left = 95
-          Top = 48
+          Left = 77
+          Top = 38
           Hint = 'Closes this configuration window'
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
           Caption = 'BClose'
           ImageIndex = 4
           ImageName = 'Item5'
@@ -257,37 +180,25 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
       end
       object Panel2: TPanel
         Left = 0
-        Top = 92
-        Width = 248
-        Height = 58
-        Margins.Left = 4
-        Margins.Top = 4
-        Margins.Right = 4
-        Margins.Bottom = 4
+        Top = 74
+        Width = 198
+        Height = 47
         Align = alTop
         BevelOuter = bvNone
         TabOrder = 2
-        ExplicitTop = 93
+        ExplicitTop = 31
         object LShowDriver: TLabel
-          Left = 5
-          Top = 3
-          Width = 161
-          Height = 20
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Left = 4
+          Top = 2
+          Width = 130
+          Height = 15
           Caption = 'Show driver connections'
         end
         object ComboDrivers: TComboBox
-          Left = 8
-          Top = 25
-          Width = 232
+          Left = 6
+          Top = 20
+          Width = 186
           Height = 28
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
           Style = csDropDownList
           TabOrder = 0
           OnClick = ComboDriversClick
@@ -295,14 +206,10 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
       end
     end
     object ScrollParams: TScrollBox
-      Left = 248
+      Left = 198
       Top = 0
-      Width = 585
-      Height = 516
-      Margins.Left = 4
-      Margins.Top = 4
-      Margins.Right = 4
-      Margins.Bottom = 4
+      Width = 468
+      Height = 413
       Align = alClient
       TabOrder = 1
       Visible = False
@@ -797,8 +704,8 @@ object FRpDBXConfigVCL: TFRpDBXConfigVCL
         Name = 'Item5'
       end>
     ImageCollection = ImageCollection1
-    Width = 26
-    Height = 26
+    Width = 21
+    Height = 21
     Left = 398
     Top = 220
   end

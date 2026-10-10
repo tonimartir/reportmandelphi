@@ -33,7 +33,8 @@ requires
   reportman_rtl,
   vclimg,
   vcl,
-  vclFireDAC;
+  vclFireDAC,
+  vcledge;
 
 contains
   rpgdidriver in '..\Common\rpgdidriver.pas',
@@ -57,6 +58,14 @@ contains
   rpdbgridvcl in '..\Common\rpdbgridvcl.pas',
   rpdbdatetimepicker in '..\Common\rpdbdatetimepicker.pas',
   rpactivexreport in '..\Common\rpactivexreport.pas',
-  rpmdfembeddedfile in '..\Common\rpmdfembeddedfile.pas' {FRpEmbeddedFile};
+  rpmdfembeddedfile in '..\Common\rpmdfembeddedfile.pas' {FRpEmbeddedFile},
+  rpchatmodernstyle in '..\Common\rpchatmodernstyle.pas',
+  rpwebmarkdownvcl in '..\Common\rpwebmarkdownvcl.pas',
+  rpchatdialogvcl in '..\Common\rpchatdialogvcl.pas',
+  rpfrmloginframevcl in '..\Common\rpfrmloginframevcl.pas',
+  rpfrmloginvcl in '..\Common\rpfrmloginvcl.pas',
+  rpfrmaiselectionvcl in '..\Common\rpfrmaiselectionvcl.pas',
+  rpfrmaireportvcl in '..\Common\rpfrmaireportvcl.pas',
+  rpfrmchatvcl in '..\Common\rpfrmchatvcl.pas';
 
 end.

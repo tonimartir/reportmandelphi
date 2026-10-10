@@ -1,12 +1,23 @@
 unit rpcolumnar;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
 interface
 
+{$IFDEF FPC}
+uses
+  SysUtils, Classes, Types,
+  rppdfdriver, rpreport, rpprintitem, rplabelitem,
+  rpmdconsts, rpsection, rpsubreport, rptypes, rpmetafile;
+{$ELSE}
 uses SysUtils,Classes,rppdfdriver,rpreport,rpprintitem,rplabelitem,
 {$IFNDEF USEVARIANTS}
  Windows,
 {$ENDIF}
  rpmdconsts,rpsection,rpsubreport,rptypes,rpmetafile;
+{$ENDIF}
 
 type
  TRpSectionInfo=class(TObject)

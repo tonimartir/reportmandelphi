@@ -355,7 +355,7 @@ begin
          usebrackets:=false;
          for j:=1 to Length(aname) do
          begin
-          if Not (aname[j] in ParserSetChars) then
+          if Pos(aname[j],ParserSetChars)=0 then
           begin
            usebrackets:=true;
            break;

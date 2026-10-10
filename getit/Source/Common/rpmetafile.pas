@@ -77,13 +77,17 @@ const
  RpSignature2_4:string='RPMETAFILE09'+chr(0);
  RpSignature2_2:string='RPMETAFILE07'+chr(0);
  RpSignature3_0:string='RPMETAFILE30'+chr(0);
+ // Version 4.1: 3.0 header plus a PrinterFonts byte (same signature and byte
+ // position the C# engine uses), written only when PrinterFonts=rppfontsrecalculate
+ // so legacy files stay byte-identical.
+ RpSignature4_1:string='RPMETAFILE41'+chr(0);
 const
  FIRST_ALLOCATION_OBJECTS=50;
  FIRST_ALLOCATED_WIDESTRING=1000;
 type
  TMetaFileWorkProgress=procedure (Sender:TObject;records,pagecount:integer;var docancel:boolean) of object;
 
- TMetaFileVersion=(MetaVersion2_2,MetaVersion2_4,MetaVersion3_0);
+ TMetaFileVersion=(MetaVersion2_2,MetaVersion2_4,MetaVersion3_0,MetaVersion4_1);
  TStopWork=procedure of object;
  TWorkAsyncError=procedure (amessage:string) of object;
  TRequestPageEvent=function (pageindex:integer):boolean of object;
@@ -160,6 +164,7 @@ type
   RightToLeft:Boolean;
   PrintStep:TRpSelectFontStep;
   Annotation: string;
+  IsHtml: Boolean;
  end;
 
 
@@ -185,7 +190,7 @@ type
     BackColor:integer;
     Transparent:boolean;
     CutText:boolean;Alignment:integer;WordWrap:boolean;
-    RightToLeft:Boolean;PrintStep:TRpSelectFontStep);
+    RightToLeft:Boolean;PrintStep:TRpSelectFontStep;IsHtml:Boolean);
    rpMetaDraw:
     (DrawStyle:integer;
     BrushStyle:integer;
@@ -235,7 +240,7 @@ type
     BackColor:integer;
     Transparent:boolean;
     CutText:boolean;Alignment:integer;WordWrap:boolean;
-    RightToLeft:Boolean;PrintStep:TRpSelectFontStep;
+    RightToLeft:Boolean;PrintStep:TRpSelectFontStep;IsHtml:Boolean;
 //   rpMetaDraw:
     DrawStyle:integer;
     BrushStyle:integer;
@@ -285,6 +290,7 @@ type
   procedure DrawChart(Series:TRpSeries;ametafile:TRpMetaFileReport;posx,posy:integer;achart:TObject);virtual;abstract;
   procedure FilterImage(memstream:TMemoryStream);virtual;
   procedure TextExtent(atext:TRpTextObject;var extent:TPoint);virtual;abstract;
+  function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;virtual;
   procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);virtual;abstract;
   procedure DrawPage(apage:TRpMetaFilePage);virtual;abstract;
   function SupportsCopies(maxcopies:integer):boolean;virtual;abstract;
@@ -413,6 +419,10 @@ type
    PreviewWindow:TRpPreviewWindowStyle;
    OpenDrawerBefore:Boolean;
    OpenDrawerAfter:Boolean;
+   // Printer fonts option of the report that generated this metafile. Persisted
+   // (format 4.1) only when rppfontsrecalculate, so the print drivers can enable
+   // the glyph-exact pipeline when printing a stored metafile.
+   PrinterFonts:TRpPrinterFontsOption;
 {$IFNDEF FORWEBAX}
    OnDrawChart:TDoDrawChartEvent;
    OnFilterImage:TDoFilterImage;
@@ -518,8 +528,6 @@ begin
 end;
 
 procedure TRpMetafilePage.Clear;
-var
- i:integer;
 begin
  SetLength(FObjects,FIRST_ALLOCATION_OBJECTS);
  FPool:='';
@@ -776,6 +784,7 @@ begin
  FObjects[FObjectCount].WordWrap:=aText.WordWrap;
  FObjects[FObjectCount].RightToLeft:=aText.RightToLeft;
  FObjects[FObjectCount].PrintStep:=aText.PrintStep;
+ FObjects[FObjectCount].IsHtml:=aText.IsHtml;
  if Length(atext.Annotation)>0 then
    NewWideString(FObjects[FObjectCount].AnnotationP,FObjects[FObjectCount].AnnotationS, aText.Annotation);
 
@@ -908,6 +917,9 @@ begin
  OpenDrawerAfter:=false;
  CollateCopies:=true;
  LinesPerInch:=6;
+ // White page by default: drivers paint the page background with it, and only
+ // reports (PageBackColor) or loaded streams used to set it
+ FBackColor:=$00FFFFFF;
 
  FPages:=TList.Create;
 end;
@@ -923,13 +935,14 @@ begin
   TRpMetafilePage(Fpages.Items[i]).Free;
  end;
  FPages.clear;
+ // TEmbeddedFile.Destroy frees its stream
  for i:=0 to Length(EmbeddedFiles) -1 do
  begin
-  EmbeddedFiles[i].Stream.Free;
+  EmbeddedFiles[i].Free;
  end;
  SetLength(EmbeddedFiles,0);
 
-
+ PrinterFonts:=rppfontsdefault;
  FCurrentPage:=-1;
  FMemStream.SetSize(Int64(0));
 end;
@@ -991,7 +1004,12 @@ begin
  bytes := TEncoding.UTF8.GetBytes(astring);
  strLength:=Length(bytes);
  deststream.Write(strLength,sizeof(strLength));
+{$IFDEF FPC}
+ // FPC TStream.Write has no TBytes overload
+ deststream.Write(Pointer(bytes)^,Length(bytes));
+{$ELSE}
  deststream.Write(bytes,Length(bytes));
+{$ENDIF}
 end;
 
 procedure WriteRawStringToStream(astring:String;deststream:TStream);
@@ -999,15 +1017,18 @@ var
  bytes:TBytes;
 begin
  bytes := TEncoding.UTF8.GetBytes(astring);
+{$IFDEF FPC}
+ // FPC TStream.Write has no TBytes overload
+ deststream.Write(Pointer(bytes)^,Length(bytes));
+{$ELSE}
  deststream.Write(bytes,Length(bytes));
+{$ENDIF}
 end;
 
 function ReadStringFromStream(stream:TStream): string;
 var
  i:integer;
- strLength:integer;
  buf:array of Byte;
- bytes:TBytes;
 begin
  stream.Read(i,4);
  if (i=0) then
@@ -1060,6 +1081,13 @@ begin
  fileCount:=Length(EmbeddedFiles);
  rpSignature:=RpSignature3_0;
  FVersion:=MetaVersion3_0;
+ // PrinterFonts=Recalculate must survive the round trip (the print client reads it
+ // to enable the glyph-exact pipeline) and only version 4.1 carries the field.
+ if PrinterFonts=rppfontsrecalculate then
+ begin
+  rpSignature:=RpSignature4_1;
+  FVersion:=MetaVersion4_1;
+ end;
  RequestPage(MAX_PAGECOUNT);
  WriteRawStringToStream(rpSignature,Stream);
  separator:=integer(rpFHeader);
@@ -1096,6 +1124,11 @@ begin
    Stream.Write(ssize,sizeof(ssize));
    efile.Stream.Position:=0;
    efile.Stream.SaveToStream(Stream);
+  end;
+  if FVersion>=MetaVersion4_1 then
+  begin
+   byteValue:=Byte(PrinterFonts);
+   Stream.Write(byteValue,1);
   end;
  // Report header
  Stream.Write(PageSize,sizeof(pagesize));
@@ -1237,7 +1270,10 @@ begin
    Result:=true
   else
    if (bufstring=rpSignature3_0) then
-    Result:=true;   
+    Result:=true
+   else
+    if (bufstring=rpSignature4_1) then
+     Result:=true;
  end
  else
   Result:=true;
@@ -1310,13 +1346,16 @@ begin
   if bufstring=RpSignature3_0 then
    FVersion:=MetaVersion3_0
   else
+  if bufstring=RpSignature4_1 then
+   FVersion:=MetaVersion4_1
+  else
     Raise Exception.Create(SRpBadSignature);
  end;
  if (sizeof(separator)<>Stream.Read(separator,sizeof(separator))) then
   Raise Exception.Create(SRpBadFileHeader);
  if (separator<>integer(rpFHeader)) then
   Raise Exception.Create(SRpBadFileHeader);
- if (FVersion = MetaVersion3_0) then
+ if (FVersion >= MetaVersion3_0) then
  begin
   // PDF Compressed
   Stream.Read(conformanceByte,1);
@@ -1356,6 +1395,11 @@ begin
    Stream.Read(efile.Stream.Memory^,ssize);
    SetLength(EmbeddedFiles,Length(EmbeddedFiles)+1);
    EmbeddedFiles[Length(EmbeddedFiles)-1] := efile;
+  end;
+  if FVersion>=MetaVersion4_1 then
+  begin
+   Stream.Read(conformanceByte,1);
+   PrinterFonts:=TRpPrinterFontsOption(conformanceByte);
   end;
  end;
   
@@ -1476,7 +1520,7 @@ begin
     FReadThread.Metafile:=self;
     FReadThread.Stream:=Stream;
     FReading:=true;
-    FReadThread.Resume;
+    FReadThread.Start;
     break;
    end;
   end;
@@ -1590,7 +1634,7 @@ begin
  bytesread:=Stream.Read(FMark,sizeof(FMark));
  if (bytesread<>sizeof(FMark)) then
   Raise ERpBadFileFormat.CreatePos(SrpStreamErrorPage+' Mark',Stream.Position,0);
- if ((FVersion = MetaVersion2_4) or (FVersion = MetaVersion3_0)) then
+ if (FVersion >= MetaVersion2_4) then
  begin
   bytesread:=Stream.Read(separator,sizeof(separator));
   if (bytesread<>sizeof(separator)) then
@@ -1938,7 +1982,11 @@ function isadelimiter(achar:WideChar):Boolean;
 const
  delimiters:string=' .,-/\=)(*,-'+#10;
 begin
- Result:=delimiters.IndexOf(achar)>0;
+{$IFDEF FPC}
+ Result:=Pos(achar, delimiters)>0;
+{$ELSE}
+ Result:=delimiters.IndexOf(achar)>=0;
+{$ENDIF}
 end;
 
 function CalcTextExtent(adriver:TRpPrintDriver;maxextent:TPoint;obj:TRpTextObject):integer;
@@ -1992,7 +2040,7 @@ begin
  adriver.TextExtent(obj,newextent);
  while newextent.Y>maxextent.Y do
  begin
-  if (currentpos<=Length(obj.Text)) and (isadelimiter(obj.Text[currentpos])) then
+  if (currentpos>=1) and (currentpos<=Length(obj.Text)) and (isadelimiter(obj.Text[currentpos])) then
   begin
     Dec(currentpos);
   end
@@ -2001,10 +2049,12 @@ begin
    while currentpos>0 do
    begin
     Dec(currentpos);
-
-    if isadelimiter(obj.Text[currentpos]) then
-     break;
+    // Check the lower bound BEFORE indexing obj.Text: when a long token has no
+    // delimiter, currentpos walks down to 0 and obj.Text[0] is out of range
+    // (WideString is 1-based) -> ERangeError under {$R+}.
     if currentpos<1 then
+     break;
+    if isadelimiter(obj.Text[currentpos]) then
      break;
    end;
   end;
@@ -2423,6 +2473,12 @@ end;
 procedure TRpPrintDriver.FilterImage(memstream:TMemoryStream);
 begin
 
+end;
+
+function TRpPrintDriver.TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;
+begin
+ SetLength(Result,0);
+ TextExtent(atext,extent);
 end;
 
 

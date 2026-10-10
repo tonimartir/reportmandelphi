@@ -3,9 +3,20 @@ Unit rpHarfBuzz;
 
 Interface
 
-Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF},
+Uses SysUtils{$IFNDEF VER230}{$IFNDEF FPC}, AnsiStrings{$ENDIF}{$ENDIF},
+{$IFDEF FPC}
 {$IFDEF MSWINDOWS}
   Windows,
+{$ELSE}
+  dynlibs,
+{$IFDEF DARWIN}
+  rpdarwinlibs,
+{$ENDIF}
+{$ENDIF}
+{$ELSE}
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
 {$ENDIF}
   rpfreetype2;
 
@@ -14,8 +25,13 @@ Const
   HarfbuzzDLL = 'libharfbuzz-0.dll';
   HarfbuzzSubSetDLL = 'libharfbuzz-subset-0.dll';
 {$ELSE}
+{$IFDEF DARWIN}
+  HarfbuzzDLL = 'libharfbuzz.0.dylib';
+  HarfbuzzSubSetDLL = 'libharfbuzz-subset.0.dylib';
+{$ELSE}
   HarfbuzzDLL = 'libharfbuzz.so.0';
   HarfbuzzSubSetDLL = 'libharfbuzz-subset.so.0';
+{$ENDIF}
 {$ENDIF}
 
 Type
@@ -299,7 +315,11 @@ Type
       hbsKhitanSmallScript = $4B697473 { Kits } , // 13.0
       hbsYezidi = $59657A69 { Yezi } ,            // 13.0
       // No script set.
+{$IFDEF FPC}
+      hbsInvalid = $00000000);
+{$ELSE}
       hbsInvalid = THBTag.None);
+{$ENDIF}
 
 
    THBScriptHelper = Record Helper For THBScript
@@ -390,6 +410,10 @@ type
 
 const
   HB_SUBSET_FLAGS_DEFAULT = 0; // valor por defecto, HarfBuzz define otros flags como bits individuales
+  // Conserva los numeros de glifo originales. El PDF escribe los indices que devuelve la
+  // conformacion sobre la fuente ENTERA; si el subset los renumera -que es lo que hace por
+  // omision- cada <gid> Tj del contenido acaba apuntando a otro glifo.
+  HB_SUBSET_FLAGS_RETAIN_GIDS = 2;
 
   type
 
@@ -428,13 +452,23 @@ const
                          const ANumFeatures: Cardinal); cdecl;
   T_hb_ft_font_create_referenced = function(FTFace: TFTFace): THBFont; cdecl;
     T_hb_ft_font_set_funcs = procedure(font: THBFont); cdecl;
-     T_hb_buffer_get_glyph_infos = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
-  T_hb_buffer_get_glyph_positions = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
-    T_hb_font_destroy = procedure(font: THBFont); cdecl;
-    T_hb_font_set_ptem = procedure (Font: THBFont; Const APtEM: Single); cdecl;
-    T_hb_font_get_ptem = function (Const AFont: THBFont): Single; Cdecl;
-    T_hb_font_set_scale = Procedure (Font: THBFont; Const AXScale, AYScale: Integer); Cdecl;
-    T_hb_font_get_scale = procedure (Const AFont: THBFont; Out OXScale, OYScale: Integer); Cdecl;
+  {$IFDEF FPC}
+   T_hb_buffer_get_glyph_infos = function(ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
+   T_hb_buffer_get_glyph_positions = function(ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
+   T_hb_font_destroy = procedure(font: THBFont); cdecl;
+   T_hb_font_set_ptem = procedure (Font: THBFont; const APtEM: Single); cdecl;
+   T_hb_font_get_ptem = function (AFont: THBFont): Single; cdecl;
+   T_hb_font_set_scale = procedure (Font: THBFont; const AXScale, AYScale: Integer); cdecl;
+   T_hb_font_get_scale = procedure (AFont: THBFont; out OXScale, OYScale: Integer); cdecl;
+{$ELSE}
+   T_hb_buffer_get_glyph_infos = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphInfo; cdecl;
+   T_hb_buffer_get_glyph_positions = function(const ABuffer: THBBuffer; out OLength: Cardinal): PHBGlyphPosition; cdecl;
+   T_hb_font_destroy = procedure(font: THBFont); cdecl;
+   T_hb_font_set_ptem = procedure (Font: THBFont; Const APtEM: Single); cdecl;
+   T_hb_font_get_ptem = function (Const AFont: THBFont): Single; Cdecl;
+   T_hb_font_set_scale = Procedure (Font: THBFont; Const AXScale, AYScale: Integer); Cdecl;
+   T_hb_font_get_scale = procedure (Const AFont: THBFont; Out OXScale, OYScale: Integer); Cdecl;
+{$ENDIF}
 
     T_hb_subset_input_create_or_fail = function : Phb_subset_input_t; cdecl;
     t_hb_subset_input_destroy = procedure (input: Phb_subset_input_t); cdecl;
@@ -455,8 +489,18 @@ const
     t_hb_blob_get_length = function (blob: Phb_blob_t): Cardinal; cdecl;
 
 var
+{$IFDEF FPC}
+{$IFNDEF MSWINDOWS}
+  HarfBuzzlib: TLibHandle = dynlibs.NilHandle;
+  HarfBuzzlibSubSet: TLibHandle = dynlibs.NilHandle;
+{$ELSE}
   HarfBuzzlib: THandle;
   HarfBuzzlibSubSet: THandle;
+{$ENDIF}
+{$ELSE}
+  HarfBuzzlib: THandle;
+  HarfBuzzlibSubSet: THandle;
+{$ENDIF}
   hb_buffer_set_direction: T_hb_buffer_set_direction = nil;
   hb_buffer_get_direction: T_hb_buffer_get_direction = nil;
   hb_buffer_set_script: T_hb_buffer_set_script = nil;
@@ -561,18 +605,22 @@ Var
    Buf: PHBGlyphInfo;
    Len: Cardinal;
 Begin
+   Len := 0;
    Buf := hb_buffer_get_glyph_infos(Self, Len);
    System.SetLength(Result, Len);
-   Move(Buf^, Result[0], Len * SizeOf(THBGlyphInfo));
+   if (Len > 0) and (Buf <> nil) then
+     Move(Buf^, Result[0], Len * SizeOf(THBGlyphInfo));
 End;
 Function THBBuffer.GetGlyphPositions: TArray<THBGlyphPosition>;
 Var
    Buf: PHBGlyphPosition;
    Len: Cardinal;
 Begin
+   Len := 0;
    Buf := hb_buffer_get_glyph_positions(Self, Len);
    System.SetLength(Result, Len);
-   Move(Buf^, Result[0], Len * SizeOf(THBGlyphPosition));
+   if (Len > 0) and (Buf <> nil) then
+     Move(Buf^, Result[0], Len * SizeOf(THBGlyphPosition));
 End;
 
 
@@ -588,7 +636,11 @@ End;
 Function THBTagHelper.ToString: THBTagString;
 Begin
    hb_tag_to_string(Self, @Result[1]);
+{$IFDEF FPC}
+   SetLength(Result, SysUtils.StrLen(PAnsiChar(@Result[1])));
+{$ELSE}
    SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Result[1])));
+{$ENDIF}
 End;
 
 Class Function THBFace.CreateReferenced(FTFace: TFTFace): THBFace;
@@ -612,7 +664,11 @@ Var
    Buf: Packed Array [0 .. 127] Of AnsiChar; // doc says 128 bytes are more than enough
 Begin
    hb_feature_to_string(Self, @Buf[0], 128);
+{$IFDEF FPC}
+   SetLength(Result, SysUtils.StrLen(PAnsiChar(@Buf[0])));
+{$ELSE}
    SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Buf[0])));
+{$ENDIF}
    Move(Buf, Result[1], Length(Result));
 End;
 
@@ -697,17 +753,20 @@ End;
 
 procedure InitHarfBuzz;
 var
-  libName: string;
   ProcName: string;
 
   function GetProcAddr(ProcName: string): Pointer;
   begin
 {$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+    Result := GetProcAddress(HarfBuzzlib, PAnsiChar(AnsiString(ProcName)));
+{$ELSE}
     Result := GetProcAddress(HarfBuzzlib, PWideChar(ProcName));
+{$ENDIF}
     if not Assigned(Result) then
       RaiseLastOSError;
 {$ENDIF}
-{$IFDEF LINUX}
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
 {$IFDEF FPC}
     Result := Dynlibs.GetProcAddress(HarfBuzzlib, ProcName);
     if Result = nil then
@@ -715,16 +774,20 @@ var
 {$ELSE}
     Result := SysUtils.GetProcAddress(HarfBuzzlib, PWideChar(ProcName));
 {$ENDIF}
-{$ENDIF}
+{$IFEND}
   end;
   function GetProcAddrSubset(ProcName: string): Pointer;
   begin
 {$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+    Result := GetProcAddress(HarfBuzzlibSubset, PAnsiChar(AnsiString(ProcName)));
+{$ELSE}
     Result := GetProcAddress(HarfBuzzlibSubset, PWideChar(ProcName));
+{$ENDIF}
     if not Assigned(Result) then
       RaiseLastOSError;
 {$ENDIF}
-{$IFDEF LINUX}
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
 {$IFDEF FPC}
     Result := Dynlibs.GetProcAddress(HarfBuzzlibSubset, ProcName);
     if Result = nil then
@@ -732,10 +795,49 @@ var
 {$ELSE}
     Result := SysUtils.GetProcAddress(HarfBuzzlibSubset, PWideChar(ProcName));
 {$ENDIF}
-{$ENDIF}
+{$IFEND}
   end;
 
 begin
+{$IFDEF FPC}
+{$IFNDEF MSWINDOWS}
+  if (HarfBuzzlib <> dynlibs.NilHandle) then
+    exit;
+  HarfBuzzlib := dynlibs.NilHandle;
+
+{$IFDEF DARWIN}
+  HarfBuzzlib := RpLoadDarwinLibrary(HarfbuzzDLL);
+{$ELSE}
+  HarfBuzzlib := SysUtils.SafeLoadLibrary(HarfbuzzDLL);
+{$ENDIF}
+  if HarfBuzzlib = dynlibs.NilHandle then
+    raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
+  HarfBuzzSubSetImplementation:=true;
+{$IFDEF DARWIN}
+  HarfBuzzLibSubset := RpLoadDarwinLibrary(HarfbuzzSubsetDLL);
+{$ELSE}
+  HarfBuzzLibSubset := SysUtils.SafeLoadLibrary(HarfbuzzSubsetDLL);
+{$ENDIF}
+  if (HarfBuzzLibSubset = dynlibs.NilHandle) then
+  begin
+   HarfBuzzSubSetImplementation:=false;
+  end;
+{$ELSE}
+  if (HarfBuzzlib <> 0) then
+    exit;
+  HarfBuzzlib := 0;
+
+  HarfBuzzlib := LoadLibrary(PChar(HarfbuzzDLL));
+  if HarfBuzzlib = 0 then
+    raise Exception.Create('No harfbuzz library found ' + HarfbuzzDLL);
+  HarfBuzzSubSetImplementation:=true;
+  HarfBuzzLibSubset := LoadLibrary(PChar(HarfbuzzSubsetDLL));
+  if (HarfBuzzLibSubset = 0) then
+  begin
+   HarfBuzzSubSetImplementation:=false;
+  end;
+{$ENDIF}
+{$ELSE}
   if (HarfBuzzlib <> 0) then
     exit;
   HarfBuzzlib := 0;
@@ -754,175 +856,176 @@ begin
   begin
    HarfBuzzSubSetImplementation:=false;
   end;
+{$ENDIF}
 
   ProcName:='hb_buffer_set_direction';
   hb_buffer_set_direction:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_set_direction) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_buffer_get_direction';
   hb_buffer_get_direction:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_get_direction) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_buffer_set_script';
   hb_buffer_set_script:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_set_script) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_get_script';
   hb_buffer_get_script:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_get_script) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_destroy';
   hb_buffer_destroy:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_destroy) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_set_language';
   hb_buffer_set_language:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_set_language) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_get_language';
   hb_buffer_get_language:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_get_language) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_tag_from_string';
   hb_tag_from_string:= GetProcAddr(ProcName);
   if not Assigned(hb_tag_from_string) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_tag_to_string';
   hb_tag_to_string:= GetProcAddr(ProcName);
   if not Assigned(hb_tag_to_string) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_ft_face_create_referenced';
   hb_ft_face_create_referenced:= GetProcAddr(ProcName);
   if not Assigned(hb_ft_face_create_referenced) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_face_destroy';
   hb_face_destroy:= GetProcAddr(ProcName);
   if not Assigned(hb_face_destroy) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_feature_from_string';
   hb_feature_from_string:= GetProcAddr(ProcName);
   if not Assigned(hb_feature_from_string) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_feature_to_string';
   hb_feature_to_string:= GetProcAddr(ProcName);
   if not Assigned(hb_feature_to_string) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_language_from_string';
   hb_language_from_string:= GetProcAddr(ProcName);
   if not Assigned(hb_language_from_string) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_language_to_string';
   hb_language_to_string:= GetProcAddr(ProcName);
   if not Assigned(hb_language_to_string) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_language_get_default';
   hb_language_get_default:= GetProcAddr(ProcName);
   if not Assigned(hb_language_get_default) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_script_from_iso15924_tag';
   hb_script_from_iso15924_tag:= GetProcAddr(ProcName);
   if not Assigned(hb_script_from_iso15924_tag) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_script_from_string';
   hb_script_from_string:= GetProcAddr(ProcName);
   if not Assigned(hb_script_from_string) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_script_to_iso15924_tag';
   hb_script_to_iso15924_tag:= GetProcAddr(ProcName);
   if not Assigned(hb_script_to_iso15924_tag) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_script_get_horizontal_direction';
   hb_script_get_horizontal_direction:= GetProcAddr(ProcName);
   if not Assigned(hb_script_get_horizontal_direction) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_create';
   hb_buffer_create:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_create) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_add_utf16';
   hb_buffer_add_utf16:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_add_utf16) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_shape';
   hb_shape:= GetProcAddr(ProcName);
   if not Assigned(hb_shape) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_ft_font_create_referenced';
   hb_ft_font_create_referenced:= GetProcAddr(ProcName);
   if not Assigned(hb_ft_font_create_referenced) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_ft_font_set_funcs';
   hb_ft_font_set_funcs:= GetProcAddr(ProcName);
   if not Assigned(hb_ft_font_set_funcs) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_get_glyph_infos';
   hb_buffer_get_glyph_infos:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_get_glyph_infos) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_buffer_get_glyph_positions';
   hb_buffer_get_glyph_positions:= GetProcAddr(ProcName);
   if not Assigned(hb_buffer_get_glyph_positions) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_font_set_ptem';
   hb_font_set_ptem:= GetProcAddr(ProcName);
   if not Assigned(hb_font_set_ptem) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_font_get_ptem';
   hb_font_get_ptem:= GetProcAddr(ProcName);
   if not Assigned(hb_font_get_ptem) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_font_set_scale';
   hb_font_set_scale:= GetProcAddr(ProcName);
   if not Assigned(hb_font_set_scale) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_font_get_scale';
   hb_font_get_scale:= GetProcAddr(ProcName);
   if not Assigned(hb_font_get_scale) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_blob_create';
   hb_blob_create:= GetProcAddr(ProcName);
   if not Assigned(hb_blob_create) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_face_create';
   hb_face_create:= GetProcAddr(ProcName);
   if not Assigned(hb_face_create) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_blob_destroy';
   hb_blob_destroy:= GetProcAddr(ProcName);
   if not Assigned(hb_blob_destroy) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_set_add';
   hb_set_add:= GetProcAddr(ProcName);
   if not Assigned(hb_set_add) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_face_get_table_tags';
   hb_face_get_table_tags:= GetProcAddr(ProcName);
   if not Assigned(hb_face_get_table_tags) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_blob_get_data';
   hb_blob_get_data:= GetProcAddr(ProcName);
   if not Assigned(hb_blob_get_data) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
 
   ProcName:='hb_face_reference_blob';
   hb_face_reference_blob:= GetProcAddr(ProcName);
   if not Assigned(hb_face_reference_blob) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
   ProcName:='hb_blob_get_length';
   hb_blob_get_length:= GetProcAddr(ProcName);
   if not Assigned(hb_blob_get_length) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
 
 
 
@@ -936,24 +1039,30 @@ begin
   end
   else
   begin
+  // ProcName seguia valiendo 'hb_subset_input_create_or_fail' de la linea de arriba: a
+  // hb_subset_input_glyph_set se le enlazaba la funcion equivocada, y luego hb_set_add
+  // escribia glifos dentro de un hb_subset_input_t creyendolo un hb_set_t. El set de
+  // glifos real se quedaba vacio.
+  ProcName:='hb_subset_input_glyph_set';
   hb_subset_input_glyph_set:= GetProcAddrSubset(ProcName);
   if not Assigned(hb_subset_input_glyph_set) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);  ProcName:='hb_subset_input_destroy';
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
+  ProcName:='hb_subset_input_destroy';
   hb_subset_input_destroy:= GetProcAddrSubset(ProcName);
   if not Assigned(hb_subset_input_destroy) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_subset_input_unicode_set';
   hb_subset_input_unicode_set:= GetProcAddrSubset(ProcName);
   if not Assigned(hb_subset_input_unicode_set) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_subset_input_set_flags';
   hb_subset_input_set_flags:= GetProcAddrSubset(ProcName);
   if not Assigned(hb_subset_input_set_flags) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   ProcName:='hb_subset_or_fail';
   hb_subset_or_fail:= GetProcAddrSubSet(ProcName);
   if not Assigned(hb_subset_or_fail) then
-    raise Exception.CreateFmt('Falta función: %s', [ProcName]);
+    raise Exception.CreateFmt('Falta funciï¿½n: %s', [ProcName]);
   end;
   end;
 end;

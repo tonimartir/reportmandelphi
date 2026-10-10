@@ -23,7 +23,10 @@ unit rppdfreport;
 
 interface
 
+{$IFNDEF FPC}
+// Lazarus takes the palette icon from rtl_fpc/rpmregicons.res (rpmreg)
 {$R rppdfreport.dcr}
+{$ENDIF}
 
 uses Classes,Sysutils,rpreport,rpmdconsts,rpcompobase,
  rppdfdriver,rpalias,rpmetafile,rptextdriver,rpinfoprovid;

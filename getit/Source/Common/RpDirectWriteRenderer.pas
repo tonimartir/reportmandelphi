@@ -5,10 +5,21 @@ interface
 
 {$I rpconf.inc}
 
+{$IFDEF FPC}
+{$PACKRECORDS C}
+{$ENDIF}
+
+{$IFDEF MSWINDOWS}
+
 uses
+{$IFDEF FPC}
+  Classes, SysUtils, Types, Generics.Collections,
+  Windows, rpdirectwrite,
+{$ELSE}
   System.Classes, System.SysUtils, System.Types, System.Generics.Collections,
   Winapi.D2D1,
   Winapi.Windows,
+{$ENDIF}
   rptypes;
 
 // --- Tipos de Puntero ---
@@ -29,6 +40,25 @@ type
   PSingleAdvanceArray = ^TSingleAdvanceArray;
   PGlyphOffsetArray = ^TGlyphOffsetArray;
   PClusterMapArray = ^TClusterMapArray;
+
+  ISimpleStyleEffect = interface
+    ['{6E616D65-0000-0000-0000-000000000001}']
+    function GetStyle: Integer;
+    function GetColor: Integer;
+    function GetHasColor: Boolean;
+  end;
+
+  TStyleEffect = class(TInterfacedObject, ISimpleStyleEffect)
+  private
+    FStyle: Integer;
+    FColor: Integer;
+    FHasColor: Boolean;
+  public
+    constructor Create(AStyle: Integer; AColor: Integer = 0; AHasColor: Boolean = False);
+    function GetStyle: Integer;
+    function GetColor: Integer;
+    function GetHasColor: Boolean;
+  end;
 
   // --- Estructura para línea de glifos ---
   TGlyphLine = class
@@ -53,7 +83,8 @@ type
     FOriginalText:PWideChar;
     FLines: TList<TGlyphLine>;
     FFontFamilyCache: TFontFaceCache;
-    LastIsLTR: boolean;
+    FParagraphIsRTL: Boolean;
+    FParagraphDirectionDetected: Boolean;
     function GetLineByBaseline(baselineY: Single; firstRunIsRTL: Boolean): TGlyphLine;
   public
     FontFace: IDWriteFontFace;
@@ -88,6 +119,17 @@ type
       baselineOriginX: Single; baselineOriginY: Single;
       var strikethrough: TDwriteStrikethrough;
       const clientDrawingEffect: IUnknown): HResult; stdcall;
+{$IFDEF FPC}
+{$IF defined(DELPHI12UP) or defined(FPC)}
+        function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+      originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
+      isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult; stdcall;
+{$ELSE}
+     function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+        originY: Single; var inlineObject: IDWriteInlineObject; isSideways: BOOL;
+        isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult;stdcall;
+{$ENDIF}
+{$ELSE}
 {$IFDEF DELPHI12UP}
         function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
       originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
@@ -96,6 +138,7 @@ type
      function DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
        originY: Single; var inlineObject: IDWriteInlineObject; isSideways: BOOL;
        isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult;stdcall;
+{$ENDIF}
 {$ENDIF}
 
   end;
@@ -155,7 +198,7 @@ begin
       L.RunCount:=L.RunCount+1;
       Exit(L);
     end;
-  Result := TGlyphLine.Create(baselineY, firstRunIsRTL);
+  Result := TGlyphLine.Create(baselineY, FParagraphIsRTL);
   Result.LastRunIsLTR:=not firstRunIsRTL;
   Result.RunCount:=1;
   FLines.Add(Result);
@@ -257,7 +300,7 @@ begin
       for i := 0 to recordCount - 1 do
       begin
         // a. Calcular el puntero del registro actual
-        currentRecordPtr := PTNameRecord(NativeUInt(recordsBasePtr) + i * SizeOf(TNameRecord));
+        currentRecordPtr := PTNameRecord(NativeUInt(recordsBasePtr) + Uint(i) * SizeOf(TNameRecord));
 
         // b. Validaci�n de l�mites (simplificada)
         if NativeUInt(currentRecordPtr) + SizeOf(TNameRecord) > NativeUInt(tableData) + tableSize then
@@ -280,7 +323,7 @@ begin
           lengthInBytes := SwapWord(currentRecordPtr.length);
           lengthInChars := lengthInBytes div 2;
 
-          if NativeUInt(strPtr) + lengthInBytes > NativeUInt(tableData) + tableSize then
+          if NativeUInt(strPtr) + UInt(lengthInBytes) > NativeUInt(tableData) + UInt(tableSize) then
             Continue;
 
           // f. Copiar y corregir Endianness
@@ -353,13 +396,14 @@ var
   GlyphList: TList<TGlyphPos>;
   runIsRTL: Boolean;
   // trimming
-  LastIndex: Integer;
-  ch: WideChar;
-  isWS: Boolean;
-  keepNBSP: Boolean;
   clusterIndexCount: integer;
   clusterDic: TDictionary<integer,integer>;
   currentCluster:integer;
+{$IFDEF FPC}
+  firstGlyph: Word;
+  Offset: DWRITE_GLYPH_OFFSET;
+  Effect: ISimpleStyleEffect;
+{$ENDIF}
 begin
   Result := S_OK;
   TextPosition := glyphRunDescription.textPosition;
@@ -374,6 +418,13 @@ begin
     OffArray := nil;
   ClusterMapArray := PClusterMapArray(glyphRunDescription.clusterMap);
 
+  // Detect paragraph direction from the first run
+  if not FParagraphDirectionDetected then
+  begin
+    FParagraphIsRTL := runIsRTL;
+    FParagraphDirectionDetected := True;
+  end;
+
   Line := GetLineByBaseline(baselineOriginY, runIsRTL);
   currentCluster:=0;
   GlyphList := TList<TGlyphPos>.Create;
@@ -381,7 +432,11 @@ begin
   try
     for i:= 0 to clusterIndexCount-1 do
     begin
+{$IFDEF FPC}
+     firstGlyph:=clusterMapArray[i];
+{$ELSE}
      var firstGlyph:=clusterMapArray[i];
+{$ENDIF}
      if (not clusterDic.ContainsKey(firstGlyph)) then
        clusterDic.Add(firstGlyph,i);
     end;
@@ -393,7 +448,11 @@ begin
       GlyphPos.YAdvance := 0;
       if Assigned(OffArray) then
       begin
+{$IFDEF FPC}
+        Offset := OffArray[i];
+{$ELSE}
         var Offset := OffArray[i];
+{$ENDIF}
         GlyphPos.XOffset := Round(-Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
         GlyphPos.YOffset := Round(Offset.ascenderOffset * DIP_TO_TWIPS_FACTOR);
       end
@@ -412,6 +471,19 @@ begin
       GlyphPos.CharCode:=FOriginalText[GlyphPos.LineCluster];
       if (glyphrun.FontFace <> FontFace) then
         Glyphpos.FontFamily:=GetFontFamily(glyphrun.fontFace);
+
+      if Assigned(clientDrawingEffect) then
+      begin
+{$IFNDEF FPC}
+        var Effect: ISimpleStyleEffect;
+{$ENDIF}
+        if Supports(clientDrawingEffect, ISimpleStyleEffect, Effect) then
+        begin
+          GlyphPos.Style := Effect.GetStyle;
+          GlyphPos.Color := Effect.GetColor;
+          GlyphPos.HasColor := Effect.GetHasColor;
+        end;
+      end;
 
       GlyphList.Add(GlyphPos);
 
@@ -469,6 +541,23 @@ begin
 end;
 
 
+{$IFDEF FPC}
+{$IF defined(DELPHI12UP) or defined(FPC)}
+function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
+      originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
+      isRightToLeft: BOOL; const clientDrawingEffect: IUnknown): HResult; stdcall;
+begin
+  Result := S_OK;
+end;
+{$ELSE}
+function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer;
+  originX, originY: Single; var inlineObject: IDWriteInlineObject; isSideways, isRightToLeft: BOOL;
+  const clientDrawingEffect: IUnknown): HResult;
+begin
+  Result := S_OK;
+end;
+{$ENDIF}
+{$ELSE}
 {$IFDEF DELPHI12UP}
 function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer; originX: Single;
       originY: Single; const inlineObject: IDWriteInlineObject; isSideways: BOOL;
@@ -483,6 +572,7 @@ function TTextExtentRenderer.DrawInlineObject(clientDrawingContext: Pointer;
 begin
   Result := S_OK;
 end;
+{$ENDIF}
 {$ENDIF}
 
 
@@ -507,7 +597,36 @@ begin
   Result := S_OK;
 end;
 
+{ TStyleEffect }
 
+constructor TStyleEffect.Create(AStyle: Integer; AColor: Integer; AHasColor: Boolean);
+begin
+  inherited Create;
+  FStyle := AStyle;
+  FColor := AColor;
+  FHasColor := AHasColor;
+end;
+
+function TStyleEffect.GetStyle: Integer;
+begin
+  Result := FStyle;
+end;
+
+function TStyleEffect.GetColor: Integer;
+begin
+  Result := FColor;
+end;
+
+function TStyleEffect.GetHasColor: Boolean;
+begin
+  Result := FHasColor;
+end;
+
+{$ELSE}
+
+implementation
+
+{$ENDIF}
 
 end.
 

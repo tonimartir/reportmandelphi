@@ -45,7 +45,7 @@ Get-ChildItem $srcDir -Recurse -Include *.o, *.dcu -File -ErrorAction SilentlyCo
 # zip subible (raiz del zip = reportman_components_<ver>\)
 $zip = Join-Path $ComponentsDir "$srcName.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path $srcDir -DestinationPath $zip -Force
+New-ZipFromFolder $srcDir $zip -IncludeBaseDirectory
 
 $nFiles = (Get-ChildItem $srcDir -Recurse -File | Measure-Object).Count
 $zipMB  = [math]::Round((Get-Item $zip).Length / 1MB, 1)

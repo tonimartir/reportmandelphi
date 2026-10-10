@@ -167,11 +167,11 @@ begin
       end;
      end;
      srow:=srow+#13+#10;
-     WriteStringToStream(srow,stream);
+     WriteStringToStream(AnsiString(srow),stream);
     end;
     // Skip page is a skip line
     srow:=#13+#10;
-    WriteStringToStream(srow,stream);
+    WriteStringToStream(AnsiString(srow),stream);
    end;
  finally
   columns.free;

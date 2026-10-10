@@ -26,7 +26,11 @@ uses SysUtils, Classes, Graphics, Forms,
  System.ImageList,
 {$ENDIF}
   ComCtrls, ImgList,rpmdconsts, ToolWin,rpgraphutilsvcl, System.ImageList,
-  Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection;
+  Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection
+{$IFDEF MSWINDOWS}
+  , rpdctransportchip
+{$ENDIF}
+  ;
 
 const
  DCONTROL_DISTANCEY=5;
@@ -52,23 +56,46 @@ type
     procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
+    FHubDatabaseId: Int64;
+{$IFDEF MSWINDOWS}
+    FTransportChip: TPanel;
+    procedure CreateTransportChip;
+{$ENDIF}
     procedure CreateControls;
+    procedure SetHubDatabaseId(const AValue: Int64);
   public
     { Public declarations }
+    // Setter repaints the chip immediately - FormCreate has already
+    // fired by the time ShowDataset assigns the ID, so a bare field
+    // write would leave the chip stuck on the FormCreate value (0,
+    // which has no cached transport and reads as "Unknown").
+    property HubDatabaseId: Int64 read FHubDatabaseId write SetHubDatabaseId;
   end;
 
-procedure ShowDataset(Data:TDataset);
+// Original entry point - kept so non-HTTP datasets keep working.
+procedure ShowDataset(Data:TDataset); overload;
+
+// Overload used by the HTTP dataset path: passes the hubDatabaseId
+// so the form can paint a "Direct P2P / Hole-Punch / Relay / API"
+// chip in the toolbar reflecting the live transport.
+procedure ShowDataset(Data:TDataset; AHubDatabaseId: Int64); overload;
 
 implementation
 
 {$R *.dfm}
 
 procedure ShowDataset(Data:TDataset);
+begin
+  ShowDataset(Data, 0);
+end;
+
+procedure ShowDataset(Data:TDataset; AHubDatabaseId: Int64);
 var
  dia:TFRpShowSampledataVCL;
 begin
  dia:=TFRpShowSampledataVCL.Create(Application);
  try
+  dia.HubDatabaseId := AHubDatabaseId;
   dia.DataSource1.DataSet:=data;
   dia.CreateControls;
   dia.ShowModal;
@@ -140,6 +167,46 @@ begin
  DBNavigator1.Hints.Add(TranslateStr(738,''));
  DBNavigator1.Hints.Add(TranslateStr(736,''));
  DBNavigator1.Hints.Add(TranslateStr(737,''));
+
+{$IFDEF MSWINDOWS}
+ // The chip only makes sense for HTTP-driven datasets, which is the
+ // path that goes through rpdcintegration. We always create it but
+ // ApplyTransportChipForDatabase paints "Unknown" / "API" gracefully
+ // when HubDatabaseId is 0 (BDE / FireDAC local datasets reach this
+ // form too).
+ CreateTransportChip;
+ if FTransportChip <> nil then
+   ApplyTransportChipForDatabase(FTransportChip, FHubDatabaseId);
+{$ENDIF}
+end;
+
+{$IFDEF MSWINDOWS}
+procedure TFRpShowSampledataVCL.CreateTransportChip;
+begin
+ FTransportChip := TPanel.Create(Self);
+ FTransportChip.Parent := ToolBar1;
+ // Anchor to the right of the toolbar so it sits next to BExit.
+ FTransportChip.Align := alRight;
+ FTransportChip.Width := 170;
+ FTransportChip.Height := ToolBar1.ButtonHeight - 4;
+ FTransportChip.Margins.Right := 6;
+ FTransportChip.AlignWithMargins := True;
+ // Caption + colors are set later by ApplyTransportChip.
+ FTransportChip.Caption := '';
+end;
+{$ENDIF}
+
+procedure TFRpShowSampledataVCL.SetHubDatabaseId(const AValue: Int64);
+begin
+ FHubDatabaseId := AValue;
+{$IFDEF MSWINDOWS}
+ // ShowDataset assigns HubDatabaseId AFTER Create(), so FormCreate
+ // has already painted the chip with FHubDatabaseId=0 (which has no
+ // cached transport and falls back to "Unknown"). Repaint now that
+ // we know the real id.
+ if FTransportChip <> nil then
+   ApplyTransportChipForDatabase(FTransportChip, FHubDatabaseId);
+{$ENDIF}
 end;
 
 end.

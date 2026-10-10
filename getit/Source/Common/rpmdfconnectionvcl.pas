@@ -100,14 +100,41 @@ type
     FDatabaseInfo:TRpDatabaseInfoList;
     report:TRpReport;
     FParams:TRpParamList;
+    FLoadingControls:Boolean;
+    procedure AssertCanModify(const AReason:string);
     procedure SetDatabaseInfo(Value:TRpDatabaseInfoList);
     procedure SetParams(Value:TRpParamList);
     procedure MenuAddClick(Sender:TObject);
+    function ResolveAvailableConnectionDriver(const AConnectionName: string;
+     ADefaultDriver: TRpDbDriver): TRpDbDriver;
     function FindDatabaseInfoItem:TRpDatabaseInfoItem;
+  private
+    // Connection wizard: "Add connection" above the toolbar, the same button
+    // in the middle while there are no connections, and "Configure with the
+    // wizard" for a Reportman AI Agent connection not configured here
+    FWandImages: TVirtualImageList;
+    FWandImagesLarge: TVirtualImageList;
+    PWizard: TPanel;
+    BWizard: TButton;
+    PEmpty: TPanel;
+    BWizardEmpty: TButton;
+    LWizardHint: TLabel;
+    LAgentProblem: TLabel;
+    BWizardConfigure: TButton;
+    procedure BuildWizardControls;
+    procedure PEmptyResize(Sender: TObject);
+    procedure LayoutAgentProblem;
+    procedure BWizardClick(Sender: TObject);
+    procedure BWizardConfigureClick(Sender: TObject);
+    procedure ReloadConnAdmin;
+    procedure AddWizardConnection(const AName: string; ADriver: TRpDbDriver;
+      const AAdoConnectionString: string);
+    procedure UpdateWizardState;
   public
     { Public declarations }
     constructor Create(AOwner:TComponent);override;
     destructor Destroy;override;
+    procedure SetBlockChangesSource(AReport:TRpReport);
     property Databaseinfo:TRpDatabaseInfoList read FDatabaseinfo
      write SetDatabaseInfo;
     property Params:TRpParamList read FParams write
@@ -115,6 +142,8 @@ type
   end;
 
 implementation
+
+uses rpxmlstream, rpbasereport, rpmdfnewreportwizardvcl;
 
 {$R *.dfm}
 
@@ -150,11 +179,13 @@ begin
  ConAdmin:=TRpConnAdmin.Create;
 
  report:=TRPReport.Create(Self);
+ FLoadingControls:=False;
  FDatabaseInfo:=report.databaseinfo;
  FParams:=report.Params;
 
  GDriver.ItemIndex:=0;
  GDriverClick(Self);
+ BuildWizardControls;
 end;
 
 destructor TFRpConnectionVCL.Destroy;
@@ -166,6 +197,17 @@ end;
 procedure TFRpConnectionVCL.SetParams(Value:TRpParamList);
 begin
  FParams.Assign(Value);
+end;
+
+procedure TFRpConnectionVCL.SetBlockChangesSource(AReport:TRpReport);
+begin
+ report.BlockChangesSource:=AReport;
+end;
+
+procedure TFRpConnectionVCL.AssertCanModify(const AReason:string);
+begin
+ if Assigned(report) then
+  report.AssertCanModify(AReason);
 end;
 
 procedure TFRpConnectionVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);
@@ -181,26 +223,33 @@ begin
  ComboAvailable.Anchors:=[akLeft,akTop,akRight];
  EConnectionString.Anchors:=[akLeft,akTop,akRight];
 
- if Value<>FDatabaseInfo then
-  FDatabaseInfo.Assign(Value);
- LConnections.Clear;
- for i:=0 to FDatabaseinfo.Count-1 do
- begin
-  LConnections.Items.Add(FDatabaseinfo.Items[i].Alias);
+ FLoadingControls:=True;
+ try
+  if Value<>FDatabaseInfo then
+   FDatabaseInfo.Assign(Value);
+  LConnections.Clear;
+  for i:=0 to FDatabaseinfo.Count-1 do
+  begin
+   LConnections.Items.Add(FDatabaseinfo.Items[i].Alias);
+  end;
+  if LConnections.Items.Count>0 then
+   LConnections.ItemIndex:=0;
+  LConnectionsClick(Self);
+  GDriverClick(Self);
+ finally
+  FLoadingControls:=False;
  end;
- if LConnections.Items.Count>0 then
-  LConnections.ItemIndex:=0;
- LConnectionsClick(Self);
- GDriverClick(Self);
 end;
 
 procedure TFRpConnectionVCL.LConnectionsClick(Sender: TObject);
 var
  dbinfo:TRpDatabaseInfoItem;
  index:integer;
+ oldloading:Boolean;
 begin
  if Not Assigned(FDatabaseInfo) then
   exit;
+ UpdateWizardState;
  If LConnections.Items.Count<1 then
  begin
   MHelp.Text:=SRpNewDatabaseInfo;
@@ -232,19 +281,25 @@ begin
  LDriver.Visible:=true;
  // Get information about the dabaseinfo
  dbinfo:=FDatabaseinfo.Items[index];
- ComboDriver.ItemIndex:=Integer(dbinfo.Driver);
- ComboDriverClick(Self);
- CheckLoginPrompt.Checked:=dbinfo.LoginPrompt;
- if (dbinfo.Driver=rpdataDriver) then
-  ComboNetDriver.ItemIndex:=dbinfo.DotNetDriver
- else
- if (dbinfo.Driver=rpdotnet2Driver) then
-  ComboNetDriver.Text:=dbinfo.ProviderFactory;
- CheckLoadParams.Checked:=dbinfo.LoadParams;
- CheckLoadDriverParams.Checked:=dbinfo.LoadDriverParams;
- EConnectionString.OnChange:=nil;
- EConnectionString.Text:=EnCodeADOPassword(dbinfo.ADOConnectionString);
- EConnectionString.OnChange:=EConnectionStringChange;
+ oldloading:=FLoadingControls;
+ FLoadingControls:=True;
+ try
+  ComboDriver.ItemIndex:=Integer(dbinfo.Driver);
+  ComboDriverClick(Self);
+  CheckLoginPrompt.Checked:=dbinfo.LoginPrompt;
+  if (dbinfo.Driver=rpdataDriver) then
+   ComboNetDriver.ItemIndex:=dbinfo.DotNetDriver
+  else
+  if (dbinfo.Driver=rpdotnet2Driver) then
+   ComboNetDriver.Text:=dbinfo.ProviderFactory;
+  CheckLoadParams.Checked:=dbinfo.LoadParams;
+  CheckLoadDriverParams.Checked:=dbinfo.LoadDriverParams;
+  EConnectionString.OnChange:=nil;
+  EConnectionString.Text:=EnCodeADOPassword(dbinfo.ADOConnectionString);
+  EConnectionString.OnChange:=EConnectionStringChange;
+ finally
+  FLoadingControls:=oldloading;
+ end;
 end;
 
 procedure TFRpConnectionVCL.GDriverClick(Sender: TObject);
@@ -275,6 +330,9 @@ begin
    MHelp.Lines.Text:=SRpDriverDotNetDesc;
   9:
    MHelp.Lines.Text:=SRpFireDacDesc;
+  10:
+   MHelp.Lines.Text:='Executes SQL remotely via Reportman AI Agent bridge. ' +
+    'Supports secure, non-interactive queries with API Keys.';
  end;
  // Loads the alias config
  case TrpDbDriver(index) of
@@ -296,13 +354,22 @@ begin
      conadmin.GetConnectionNames(ComboAvailable.Items,'Interbase');
     end;
    end;
-  // Zeos
+  // Zeos: the ZeosLib connections of the connections file
   rpdatazeos:
    begin
     BConfig.Visible:=true;
     if Assigned(ConAdmin) then
     begin
-     conadmin.GetConnectionNames(ComboAvailable.Items,'Interbase');
+     conadmin.GetConnectionNames(ComboAvailable.Items,'ZeosLib');
+    end;
+   end;
+  // FireDac: its connections (the list kept the previous driver ones)
+  rpfiredac:
+   begin
+    BConfig.Visible:=true;
+    if Assigned(ConAdmin) then
+    begin
+     conadmin.GetConnectionNames(ComboAvailable.Items,'FireDac');
     end;
    end;
   // My Base
@@ -334,6 +401,12 @@ begin
     BBuild.Visible:=false;
     ComboAvailable.Items.Clear;
    end;
+  rpdbHttp:
+   begin
+    BConfig.Visible:=true;
+    BBuild.Visible:=false;
+    ComboAvailable.Items.Clear;
+   end;
  end;
 end;
 
@@ -361,7 +434,9 @@ begin
  conname:=UpperCase(Trim(RpInputBox(SRpNewConnection,SRpConnectionName,'')));
  if Length(conname)<1 then
   exit;
+ AssertCanModify('Database connection');
  item:=Fdatabaseinfo.Add(conname);
+ EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
  item.Driver:=TRpDbDriver(GDriver.ItemIndex);
  SetDatabaseInfo(Fdatabaseinfo);
  index:=FDatabaseinfo.IndexOf(conname);
@@ -376,12 +451,16 @@ procedure TFRpConnectionVCL.BConfigClick(Sender: TObject);
 var
  i:integer;
 begin
- ShowDBXConfig(TRpDbDriver(GDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase]);
+ ShowDBXConfig;
  conadmin.free;
  conadmin:=TRPCOnnAdmin.Create;
  conadmin.GetConnectionNames(ComboAvailable.Items,'');
+ // The configuration (dbxconnections) may have been edited inside the dialog.
+ // Disconnect each live connection and reload its config so the next data
+ // fetch / report run picks up the new values without restarting the app.
  for i:=0 to report.DatabaseInfo.Count-1 do
  begin
+  report.DatabaseInfo[i].DisConnect;
   report.DatabaseInfo[i].UpdateConAdmin;
  end;
 end;
@@ -397,6 +476,7 @@ begin
  dinfoitem:=FindDatabaseInfoItem;
   if LConnections.ItemIndex<0 then
    Raise Exception.Create(SRpSelectAddConnection);
+ AssertCanModify('Database connection');
  EConnectionString.OnChange:=nil;
  newstring:=PromptDataSource(0,dinfoitem.ADOConnectionString);
  EConnectionString.Text:=EncodeADOPassword(newstring);
@@ -444,6 +524,7 @@ begin
  index:=databaseinfo.IndexOf(LConnections.items.strings[LConnections.Itemindex]);
  if index>=0 then
  begin
+  AssertCanModify('Database connection');
   databaseinfo.Delete(index);
   SetDatabaseInfo(databaseinfo);
   LConnectionsClick(Self);
@@ -542,6 +623,9 @@ begin
  index:=FDatabaseInfo.Indexof(LConnections.Items.Strings[LConnections.ItemIndex]);
  if index<0 then
   exit;
+ if FLoadingControls then
+  exit;
+ AssertCanModify('Database connection');
  FDatabaseInfo.Items[index].Driver:=TRpDbDriver(ComboDriver.ItemIndex);
 end;
 
@@ -556,14 +640,36 @@ begin
  conname:=UpperCase(Trim(TMenuItem(Sender).Caption));
  if Length(conname)<1 then
   exit;
+ AssertCanModify('Database connection');
  item:=Fdatabaseinfo.Add(conname);
- item.Driver:=TRpDbDriver(GDriver.ItemIndex);
+ EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
+ item.Driver:=ResolveAvailableConnectionDriver(conname,TRpDbDriver(GDriver.ItemIndex));
  SetDatabaseInfo(Fdatabaseinfo);
  index:=FDatabaseinfo.IndexOf(conname);
  if index>=0 then
  begin
   LConnections.ItemIndex:=index;
   LConnectionsClick(Self);
+ end;
+end;
+
+function TFRpConnectionVCL.ResolveAvailableConnectionDriver(
+ const AConnectionName: string; ADefaultDriver: TRpDbDriver): TRpDbDriver;
+var
+ params:TStringList;
+ drivername:string;
+begin
+ Result:=ADefaultDriver;
+ if Not Assigned(ConAdmin) then
+  exit;
+ params:=TStringList.Create;
+ try
+  ConAdmin.GetConnectionParams(AConnectionName,params);
+  drivername:=Trim(params.Values['DriverName']);
+  if Length(drivername)>0 then
+   Result:=ResolveDbxConnectionDriver(drivername);
+ finally
+  params.Free;
  end;
 end;
 
@@ -585,10 +691,265 @@ begin
  Result:=FDatabaseInfo.Items[index];
 end;
 
+const
+ // The magic wand of the connection wizard (48x48 RGBA PNG)
+ WAND_PNG_HEX =
+  '89504E470D0A1A0A0000000D49484452000000300000003008060000005702F987000001D04944415478DAED984D4AC3' +
+  '4014C77B84D94E2824B8712504A12A16A15041101739422E50E8BE08BD418F1010576E2A6E74971B3447C8BA6EB20CB8' +
+  '19E7C5198C6DD46432CE87CC833F850426BFF7D5793383813367CE8CB1B7170F59EE005EEAFAF05C5206321D699F50E5' +
+  '92D62154914AF890AAF8F8304E7A663165EBA48AC0F18A45ACAE1C22481574848FBFAE83635519883E33E0655DC19BE1' +
+  '953B81E72CF2A87BCDF3B2F94ED5FB488513CB96D088399CFD0CBEA70CBEF167FB84C8C2AC8FD62D3230317DF3D2DB03' +
+  '5DCCF3FC00633FA6BF1115D2FE2FD4C528F86A343A278BC52D99CDE6843A5050853527D6CAF60101F8643ABD22DBED2B' +
+  '29CBB2D266937127506D5324C6D57C133C17CB44A475161285074139414FC81E0A95C0C373E809686CE3CE036DE0E13D' +
+  '34B6910DEB0787E4EEFEE137F8C458F893F13539BBB8218F4FCFF6C2737127AC84E7827212851719D1A5C2C373782F08' +
+  '8FFA9EF4B4C1B37D2161BB736859E461B8DB3DEC5447D8C08AC8D726D45EC7556DF0BB5736D2766895F0D2E7231DF0D2' +
+  'E6235DF05647DEC13B78072F061F5B0BCF1C488F4F2FED846737677953F4AD80E7F57F148EED84E77797C3E141014E00' +
+  '38949335F075270018CA097AA27EF1E4CCD93FB477F2915D17255630FD0000000049454E44AE426082';
+
+procedure TFRpConnectionVCL.BuildWizardControls;
+var
+ LBytes:TBytes;
+ LStream:TMemoryStream;
+
+ function NewImages(ASize:Integer):TVirtualImageList;
+ begin
+  Result:=TVirtualImageList.Create(Self);
+  Result.ImageCollection:=ImageCollection1;
+  Result.Width:=ScaleDpi(ASize);
+  Result.Height:=ScaleDpi(ASize);
+  Result.Add('Wand','Wand');
+ end;
+
+ function NewWandButton(AParent:TWinControl;AImages:TVirtualImageList;
+  AClick:TNotifyEvent):TButton;
+ begin
+  Result:=TButton.Create(Self);
+  Result.Parent:=AParent;
+  Result.Images:=AImages;
+  Result.ImageIndex:=0;
+  Result.ImageMargins.Left:=ScaleDpi(6);
+  Result.OnClick:=AClick;
+ end;
+
+ // The caption and the image fit
+ // (a bitmap canvas: the frame has no parent window yet)
+ procedure FitWidth(AButton:TButton;AImageSize:Integer);
+ var
+  LBitmap:TBitmap;
+ begin
+  LBitmap:=TBitmap.Create;
+  try
+   LBitmap.Canvas.Font:=AButton.Font;
+   AButton.Width:=LBitmap.Canvas.TextWidth(AButton.Caption)+ScaleDpi(AImageSize+40);
+  finally
+   LBitmap.Free;
+  end;
+ end;
+
+begin
+ SetLength(LBytes,Length(WAND_PNG_HEX) div 2);
+ HexToBin(PChar(WAND_PNG_HEX),LBytes[0],Length(LBytes));
+ LStream:=TMemoryStream.Create;
+ try
+  LStream.WriteBuffer(LBytes[0],Length(LBytes));
+  LStream.Position:=0;
+  ImageCollection1.Add('Wand',LStream);
+ finally
+  LStream.Free;
+ end;
+ FWandImages:=NewImages(20);
+ FWandImagesLarge:=NewImages(32);
+
+ // "Add connection" above the toolbar
+ PWizard:=TPanel.Create(Self);
+ PWizard.Parent:=Self;
+ PWizard.BevelOuter:=bvNone;
+ PWizard.Caption:='';
+ PWizard.Align:=alTop;
+ PWizard.Top:=0;
+ BWizard:=NewWandButton(PWizard,FWandImages,BWizardClick);
+ BWizard.Caption:=TranslateStr(1826,'Add connection')+'...';
+ BWizard.SetBounds(ScaleDpi(6),ScaleDpi(4),ScaleDpi(160),ScaleDpi(32));
+ FitWidth(BWizard,20);
+ PWizard.Height:=BWizard.Height+ScaleDpi(8);
+ ToolBar1.Top:=PWizard.Top+PWizard.Height+1;
+
+ // No connections: the wizard in the place of the connection properties
+ PEmpty:=TPanel.Create(Self);
+ PEmpty.Parent:=PConProps;
+ PEmpty.BevelOuter:=bvNone;
+ PEmpty.Caption:='';
+ PEmpty.Align:=alClient;
+ PEmpty.Visible:=False;
+ PEmpty.OnResize:=PEmptyResize;
+ BWizardEmpty:=NewWandButton(PEmpty,FWandImagesLarge,BWizardClick);
+ BWizardEmpty.Caption:=BWizard.Caption;
+ BWizardEmpty.ParentFont:=False;
+ BWizardEmpty.Font.Size:=11;
+ BWizardEmpty.Height:=ScaleDpi(48);
+ FitWidth(BWizardEmpty,32);
+ LWizardHint:=TLabel.Create(Self);
+ LWizardHint.Parent:=PEmpty;
+ LWizardHint.AutoSize:=False;
+ LWizardHint.WordWrap:=True;
+ LWizardHint.Alignment:=taCenter;
+ LWizardHint.ShowAccelChar:=False;
+ LWizardHint.Width:=ScaleDpi(420);
+ LWizardHint.Height:=ScaleDpi(54);
+ LWizardHint.Font.Color:=clGrayText;
+ LWizardHint.Caption:=TranslateStr(1828,'Connect the report to your database: '+
+  'through the Reportman Agent, or directly (SQLite, Zeos...).');
+
+ // A Reportman AI Agent connection that can not be opened on this computer
+ LAgentProblem:=TLabel.Create(Self);
+ LAgentProblem.Parent:=PConProps;
+ LAgentProblem.Left:=BTest.Left;
+ LAgentProblem.Top:=BTest.Top+BTest.Height+ScaleDpi(10);
+ // Its width follows the frame in LayoutAgentProblem
+ LAgentProblem.WordWrap:=True;
+ LAgentProblem.ShowAccelChar:=False;
+ LAgentProblem.Font.Color:=clMaroon;
+ LAgentProblem.Visible:=False;
+ BWizardConfigure:=NewWandButton(PConProps,FWandImages,BWizardConfigureClick);
+ BWizardConfigure.Caption:=TranslateStr(1829,'Configure with the wizard');
+ BWizardConfigure.SetBounds(BTest.Left,LAgentProblem.Top,ScaleDpi(160),ScaleDpi(30));
+ FitWidth(BWizardConfigure,20);
+ BWizardConfigure.Visible:=False;
+end;
+
+procedure TFRpConnectionVCL.LayoutAgentProblem;
+begin
+ if (LAgentProblem=nil) or (not LAgentProblem.Visible) then
+  exit;
+ // The whole width of the properties, the wizard button below the text
+ // (AutoSize again: a new width alone keeps the height of the old one)
+ LAgentProblem.AutoSize:=False;
+ LAgentProblem.Width:=PConProps.ClientWidth-LAgentProblem.Left-ScaleDpi(20);
+ LAgentProblem.AutoSize:=True;
+ BWizardConfigure.Top:=LAgentProblem.Top+LAgentProblem.Height+ScaleDpi(6);
+end;
+
+procedure TFRpConnectionVCL.PEmptyResize(Sender: TObject);
+var
+ LTop:Integer;
+begin
+ // The button and its explanation in the middle
+ LTop:=(PEmpty.ClientHeight-BWizardEmpty.Height-LWizardHint.Height-ScaleDpi(10)) div 2;
+ if LTop<ScaleDpi(10) then
+  LTop:=ScaleDpi(10);
+ BWizardEmpty.Left:=(PEmpty.ClientWidth-BWizardEmpty.Width) div 2;
+ BWizardEmpty.Top:=LTop;
+ LWizardHint.Left:=(PEmpty.ClientWidth-LWizardHint.Width) div 2;
+ LWizardHint.Top:=LTop+BWizardEmpty.Height+ScaleDpi(10);
+end;
+
+procedure TFRpConnectionVCL.ReloadConnAdmin;
+begin
+ // The connections file changed (New drop down, Load params)
+ conadmin.free;
+ conadmin:=TRpConnAdmin.Create;
+ conadmin.GetConnectionNames(ComboAvailable.Items,'');
+end;
+
+procedure TFRpConnectionVCL.BWizardClick(Sender: TObject);
+var
+ LName,LAdo:string;
+ LDriver:TRpDbDriver;
+begin
+ if Not Assigned(FDatabaseInfo) then
+  exit;
+ AssertCanModify('Database connection');
+ if RpConnectionWizardFunc('',0,LName,LDriver,LAdo) then
+  AddWizardConnection(LName,LDriver,LAdo);
+end;
+
+procedure TFRpConnectionVCL.AddWizardConnection(const AName: string;
+ ADriver: TRpDbDriver; const AAdoConnectionString: string);
+var
+ conname:string;
+ item:TRpDatabaseInfoItem;
+ index:integer;
+begin
+ conname:=UpperCase(Trim(AName));
+ if Length(conname)<1 then
+  exit;
+ ReloadConnAdmin;
+ index:=FDatabaseInfo.IndexOf(conname);
+ if index<0 then
+ begin
+  item:=FDatabaseInfo.Add(conname);
+  EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
+  item.Driver:=ADriver;
+ end
+ else
+  item:=FDatabaseInfo.Items[index];
+ if ADriver=rpdataado then
+  item.ADOConnectionString:=AAdoConnectionString;
+ // The next Connect reads the connections file again
+ item.UpdateConAdmin;
+ item.DisConnect;
+ SetDatabaseInfo(FDatabaseInfo);
+ index:=FDatabaseInfo.IndexOf(conname);
+ if index>=0 then
+ begin
+  LConnections.ItemIndex:=index;
+  LConnectionsClick(Self);
+ end;
+end;
+
+procedure TFRpConnectionVCL.BWizardConfigureClick(Sender: TObject);
+var
+ LItem:TRpDatabaseInfoItem;
+ LName,LAdo:string;
+ LDriver:TRpDbDriver;
+begin
+ LItem:=FindDatabaseInfoItem;
+ if LItem=nil then
+  exit;
+ if RpConnectionWizardFunc(LItem.Alias,0,LName,LDriver,LAdo) then
+ begin
+  LItem.UpdateConAdmin;
+  LItem.DisConnect;
+  ReloadConnAdmin;
+  UpdateWizardState;
+ end;
+end;
+
+procedure TFRpConnectionVCL.UpdateWizardState;
+var
+ LItem:TRpDatabaseInfoItem;
+ LMessage:string;
+begin
+ if PEmpty=nil then
+  exit;
+ // No connections: the connection wizard instead of the properties
+ PEmpty.Visible:=Assigned(FDatabaseInfo) and (FDatabaseInfo.Count=0);
+ if PEmpty.Visible then
+ begin
+  PEmpty.BringToFront;
+  PEmptyResize(PEmpty);
+ end;
+ LItem:=FindDatabaseInfoItem;
+ if (LItem<>nil) and (LItem.Driver=rpdbHttp) and
+  RpAgentConnectionProblem(LItem,LMessage) then
+ begin
+  LAgentProblem.Caption:=LMessage;
+  LAgentProblem.Visible:=True;
+  BWizardConfigure.Visible:=True;
+  LayoutAgentProblem;
+ end
+ else
+ begin
+  LAgentProblem.Visible:=False;
+  BWizardConfigure.Visible:=False;
+ end;
+end;
+
 procedure TFRpConnectionVCL.FrameResize(Sender: TObject);
 begin
  toolbar1.ButtonWidth:=ScaleDpi(26);
  toolbar1.ButtonHeight:=ScaleDpi(26);
+ LayoutAgentProblem;
 end;
 
 procedure TFRpConnectionVCL.BTestClick(Sender: TObject);
@@ -658,9 +1019,12 @@ procedure TFRpConnectionVCL.CheckLoginPromptClick(Sender: TObject);
 var
  dinfoitem:TRpDatabaseinfoitem;
 begin
+ if FLoadingControls then
+  Exit;
  dinfoitem:=FindDatabaseInfoItem;
  if Not Assigned(dinfoitem) then
   exit;
+ AssertCanModify('Database connection');
  if Sender=CheckLoginPrompt then
  begin
   dinfoitem.LoginPrompt:=CheckLoginPrompt.Checked;
@@ -688,10 +1052,15 @@ procedure TFRpConnectionVCL.EConnectionStringChange(Sender: TObject);
 var
  dinfoitem:TRpDatabaseinfoitem;
 begin
+ if FLoadingControls then
+  Exit;
  dinfoitem:=FindDatabaseInfoItem;
  if Not Assigned(dinfoitem) then
   exit;
- dinfoitem.ADOConnectionString:=EConnectionString.Text;
+ AssertCanModify('Database connection');
+ // The edit shows the password masked: editing another part saved the '*'
+ dinfoitem.ADOConnectionString:=RestoreADOPassword(EConnectionString.Text,
+  dinfoitem.ADOConnectionString);
 end;
 
 end.

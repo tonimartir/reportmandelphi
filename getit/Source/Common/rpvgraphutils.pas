@@ -110,11 +110,53 @@ procedure SwitchToPrinterIndex(index:integer);
 function CreateICFromCurrentPrinter:HDC;
 function PrinterDuplexSupport:boolean;
 procedure SetPrinterOrientation(landscape:boolean);
+// Backward-compatible wrappers around TPrinter.GetPrinter / TPrinter.SetPrinter.
+// Delphi 12 Athens replaced the legacy PChar signatures with string overloads
+// (the PChar GetPrinter overload is now marked deprecated). Delphi 11 Alexandria
+// and earlier only expose the PChar signatures, so passing string variables
+// there fails with "E2010 Incompatible types: 'PWideChar' and 'string'". Route
+// every call through these helpers, gated on the DELPHI12UP switch (rpconf.inc).
+procedure RpGetPrinter(var Device, Driver, Port: string; var DeviceMode: THandle);
+procedure RpSetPrinter(const Device, Driver, Port: string; DeviceMode: THandle);
 
 implementation
 
 var
  FPrinters:TStringList;
+
+
+procedure RpGetPrinter(var Device, Driver, Port: string; var DeviceMode: THandle);
+{$IFDEF DELPHI12UP}
+// Delphi 12 Athens and later: TPrinter.GetPrinter has a native string overload.
+begin
+ Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+end;
+{$ELSE}
+// Delphi 11 Alexandria and earlier: only the PChar overload exists, and it
+// needs caller-owned buffers. Fill them and copy the results back to strings.
+var
+ bDevice, bDriver, bPort: array[0..1023] of Char;
+begin
+ bDevice[0]:=#0;
+ bDriver[0]:=#0;
+ bPort[0]:=#0;
+ Printer.GetPrinter(bDevice, bDriver, bPort, DeviceMode);
+ Device:=bDevice;
+ Driver:=bDriver;
+ Port:=bPort;
+end;
+{$ENDIF}
+
+procedure RpSetPrinter(const Device, Driver, Port: string; DeviceMode: THandle);
+begin
+{$IFDEF DELPHI12UP}
+ // Delphi 12 Athens and later: native string overload of TPrinter.SetPrinter.
+ Printer.SetPrinter(Device, Driver, Port, DeviceMode);
+{$ELSE}
+ // Delphi 11 Alexandria and earlier: PChar overload only.
+ Printer.SetPrinter(PChar(Device), PChar(Driver), PChar(Port), DeviceMode);
+{$ENDIF}
+end;
 
 
 function GetFontData(Font:TFont):TMemoryStream;
@@ -388,7 +430,6 @@ begin
    arec.Right:=abitmap.Width;
    abitmap.Canvas.StretchDraw(arec,bitmap);
   end;
-  dopatblt:=false;
   dopatblt:=true;
   aresult:=GetDevicecaps(Canvas.Handle,RASTERCAPS);
   if ((aresult AND RC_BITBLT)=0) then
@@ -1095,7 +1136,7 @@ function GetCurrentPaper:TGDIPageSize;
 var
   DeviceMode: THandle;
   PDevMode :  ^TDeviceMode;
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   pforminfo:^Form_info_1;
   printererror:boolean;
   Handle:THandle;
@@ -1115,7 +1156,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
   PrinterName := Format('%s', [Device]);
  except
   printererror:=true;
@@ -1220,12 +1261,11 @@ var
  Handle, hDeviceMode: THandle;
  N: Cardinal;
  DocInfo1: TDocInfo1;
- Device, Driver, Port: array[0..255] of char;
+ Device, Driver, Port: string;
  PrinterName: string;
- buf:pAnsichar;
  lbuf:Cardinal;
 begin
- Printer.GetPrinter(Device, Driver, Port, hDeviceMode);
+ RpGetPrinter(Device, Driver, Port, hDeviceMode);
  PrinterName := Format('%s', [Device]);
  if not OpenPrinter(PChar(PrinterName), Handle, nil) then
    RaiseLastOSError;
@@ -1375,7 +1415,7 @@ end;
 
 function CreateICFromCurrentPrinter:HDC;
 var
- Device, Driver, Port: array[0..1023] of char;
+ Device, Driver, Port: string;
  DeviceMode: THandle;
  PDevMode :  PDeviceMode;
 begin
@@ -1383,7 +1423,7 @@ begin
   Raise Exception.Create(SRpMustInstall);
  // Printer selected not valid error
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   on E:Exception do
   begin
@@ -1393,7 +1433,7 @@ begin
 
  PDevMode:=GlobalLock(Devicemode);
  try
-  Result:=CreateDC(Driver,Device,Port,PDevMode);
+  Result:=CreateDC(PChar(Driver),PChar(Device),PChar(Port),PDevMode);
  finally
   GlobalUnlock(DeviceMode);
  end;
@@ -1413,7 +1453,7 @@ end;
 
 procedure SetCurrentPaper(apapersize:TGDIPageSize);
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   PDevmode:^TDevicemode;
   pforminfo:^Form_info_1;
@@ -1432,7 +1472,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -1447,17 +1487,17 @@ begin
    PrinterName := Format('%s', [Device]);
    if not OpenPrinter(PChar(PrinterName), FPrinterHandle, nil) then
      RaiseLastOSError;
-   asize:=DocumentProperties(0,FPrinterHandle,Device,nil,nil,0);
+   asize:=DocumentProperties(0,FPrinterHandle,PChar(Device),nil,nil,0);
    //pdevmode:=@adevmode;
    if asize>0 then
    begin
     DeviceMode:=GlobalAlloc(0,asize);
-    pdevmode:=GlobalLock(DeviceMode);
+    GlobalLock(DeviceMode);
    end;
  end
  else
  begin
-  PDevMode := GlobalLock(DeviceMode);
+  GlobalLock(DeviceMode);
  end;
 
  PDevMode := GlobalLock(DeviceMode);
@@ -1588,11 +1628,11 @@ begin
  begin
 //  DocumentProperties(0,Printer.Handle,Device, PDevMode^,
 //        PDevMode^, DM_MODIFY);
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode);
+  RpSetPrinter(Device, Driver, Port, DeviceMode);
  end
  else
  begin
-  DocumentProperties(0,FPrinterHandle,Device, PDevMode^,
+  DocumentProperties(0,FPrinterHandle,PChar(Device), PDevMode^,
         PDevMode^, DM_MODIFY);
   ResetDC(Printer.Handle,PDevMode^);
 
@@ -1757,7 +1797,7 @@ end;
 
 function PrinterSupportsCollation:Boolean;
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   printererror:boolean;
   aresult:DWord;
@@ -1768,7 +1808,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -1777,7 +1817,7 @@ begin
  if printererror then
   exit;
  try
-  aresult:=DeviceCapabilities(Device,Port,DC_COLLATE,nil,nil);
+  aresult:=DeviceCapabilities(PChar(Device),PChar(Port),DC_COLLATE,nil,nil);
   // Function fail =-1
   if aresult>0 then
     Result:=true;
@@ -1788,11 +1828,10 @@ end;
 
 function PrinterMaxCopiesSupport:Integer;
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   printererror:boolean;
   maxcopies:integer;
-  oldcopies:integer;
 begin
  Result:=1;
  if printer.Printers.count<1 then
@@ -1801,7 +1840,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -1829,7 +1868,7 @@ begin
   end;
  end;*)
  try
-   maxcopies:=DeviceCapabilities(Device,Port,DC_COPIES,nil,nil);
+   maxcopies:=DeviceCapabilities(PChar(Device),PChar(Port),DC_COPIES,nil,nil);
    if maxcopies<0 then
     maxcopies:=1;
  except
@@ -1839,7 +1878,7 @@ end;
 
 function PrinterDuplexSupport:boolean;
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   printererror:boolean;
   aresult:integer;
@@ -1850,7 +1889,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -1859,7 +1898,7 @@ begin
  if printererror then
   exit;
  try
-   aresult:=DeviceCapabilities(Device,Port,DC_DUPLEX,nil,nil);
+   aresult:=DeviceCapabilities(PChar(Device),PChar(Port),DC_DUPLEX,nil,nil);
    if aresult=1 then
     Result:=true;
  except
@@ -1872,7 +1911,7 @@ var
  maxcopies:integer;
 begin
  maxcopies:=PrinterMaxCopiesSupport;
- Result:=maxcopies>copies;
+ Result:=maxcopies>=copies;
 end;
 
 
@@ -2077,9 +2116,9 @@ begin
 end;*)
 procedure SetPrinterOrientation(landscape:boolean);
 var
- Device : array[0..1023] of char;
- Driver : array[0..1023] of char;
- Port : array[0..1023] of char;
+ Device : string;
+ Driver : string;
+ Port : string;
  DeviceMode: THandle;
  PDevmode:^TDevicemode;
  nhan: THandle;
@@ -2096,7 +2135,7 @@ begin
   end;
   exit;
  end;
- Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+ RpGetPrinter(Device, Driver, Port, DeviceMode);
  if DeviceMode=0 then
   exit;
  //if not OpenPrinter(Device,nhan, nil) then
@@ -2172,7 +2211,7 @@ end;
 
 procedure SetPrinterCopies(copies:integer);
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   PDevmode:^TDevicemode;
   printererror:boolean;
@@ -2182,16 +2221,14 @@ begin
  if printer.Printers.count<1 then
   exit;
  if not printer.Printing then
- begin
-  printer.copies:=copies;
-  exit;
- end;
+  printer.copies:=copies
+ else
  if printer.copies=copies then
   exit;
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2199,10 +2236,11 @@ begin
   printererror:=true;
  if printererror then
   exit;
+ PDevMode:=nil;
  if (Printer.Printing) then
  begin
-   OpenPrinter (Device, PrinterHandle, Nil);
-   asize:=DocumentProperties(0,PrinterHandle,Device,nil,nil,0);
+   OpenPrinter (PChar(Device), PrinterHandle, Nil);
+   asize:=DocumentProperties(0,PrinterHandle,PChar(Device),nil,nil,0);
    //pdevmode:=@adevmode;
    if asize>0 then
    begin
@@ -2215,18 +2253,18 @@ begin
   PDevMode := GlobalLock(DeviceMode);
  end;
  try
-  PDevMode.dmFields:=PDevMode.dmFields or dm_copies or dm_collate;
+  PDevMode.dmFields:=PDevMode.dmFields or dm_copies;
   PDevMode.dmCopies  := copies;
  finally
   GlobalUnLock(DeviceMode);
  end;
  if not printer.Printing then
  begin
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode)
+  RpSetPrinter(Device, Driver, Port, DeviceMode)
  end
  else
  begin
-  DocumentProperties(0,PrinterHandle,Device, PDevMode^,
+  DocumentProperties(0,PrinterHandle,PChar(Device), PDevMode^,
         PDevMode^, DM_MODIFY);
   ResetDC(PrinterHandle,PDevMode^);
  end;
@@ -2235,7 +2273,7 @@ end;
 
 procedure SetPrinterCollation(collation:boolean);
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   PDevmode:^TDevicemode;
   printererror:boolean;
@@ -2247,7 +2285,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2255,10 +2293,11 @@ begin
   printererror:=true;
  if printererror then
   exit;
+ PDevMode:=nil;
    if (Printer.Printing) then
  begin
-   OpenPrinter (Device, PrinterHandle, Nil);
-   asize:=DocumentProperties(0,PrinterHandle,Device,nil,nil,0);
+   OpenPrinter (PChar(Device), PrinterHandle, Nil);
+   asize:=DocumentProperties(0,PrinterHandle,PChar(Device),nil,nil,0);
    //pdevmode:=@adevmode;
    if asize>0 then
    begin
@@ -2271,8 +2310,7 @@ begin
   PDevMode := GlobalLock(DeviceMode);
  end;
  try
-  PDevMode.dmFields:=PDevMode.dmFields or dm_copies or dm_collate;
-  PDevMode.dmCopies  := printer.copies;
+  PDevMode.dmFields:=PDevMode.dmFields or dm_collate;
   if collation then
   PDevMode.dmCollate:=DMCOLLATE_TRUE
    else
@@ -2282,11 +2320,11 @@ begin
  end;
  if not printer.Printing then
  begin
-  Printer.SetPrinter(Device, Driver, Port, DeviceMode)
+  RpSetPrinter(Device, Driver, Port, DeviceMode)
  end
  else
  begin
-  DocumentProperties(0,PrinterHandle,Device, PDevMode^,
+  DocumentProperties(0,PrinterHandle,PChar(Device), PDevMode^,
         PDevMode^, DM_MODIFY);
   ResetDC(PrinterHandle,PDevMode^);
  end;
@@ -2371,7 +2409,7 @@ end;
 
 function GetPrinterCopies:Integer;
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   PDevmode:^TDevicemode;
   printererror:boolean;
@@ -2382,7 +2420,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2401,7 +2439,7 @@ end;
 
 function GetPrinterCollation:Boolean;
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   PDevmode:^TDevicemode;
   printererror:boolean;
@@ -2412,7 +2450,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2431,7 +2469,7 @@ end;
 
 function GetPrinterOrientation:TPrinterOrientation;
 var
-  Device, Driver, Port: array[0..1023] of char;
+  Device, Driver, Port: string;
   DeviceMode: THandle;
   PDevmode:^TDevicemode;
   printererror:boolean;
@@ -2442,7 +2480,7 @@ begin
  // Printer selected not valid error
  printererror:=false;
  try
-  Printer.GetPrinter(Device, Driver, Port, DeviceMode);
+  RpGetPrinter(Device, Driver, Port, DeviceMode);
  except
   printererror:=true;
  end;
@@ -2564,28 +2602,27 @@ end;
 function GetPrinterDefaultConfig(index:integer;var XDevice,XDriver,XPort:string):THandle;
 var
  FPrinterHandle:THandle;
- ADevice, ADriver, APort: array[0..4096] of char;
+ ADevice, ADriver, APort: string;
  pdevmode:^DEVMODE;
  asize:Integer;
  aresult:THandle;
  amode:THandle;
 begin
- Printer.GetPrinter(ADevice,ADriver,APort,amode);
- XDevice:=StrPas(ADevice);
- XDriver:=StrPas(ADriver);
- XPort:=StrPas(APort);
+ RpGetPrinter(ADevice,ADriver,APort,amode);
+ XDevice:=ADevice;
+ XDriver:=ADriver;
+ XPort:=APort;
  Result:=0;
- if OpenPrinter(ADevice,fprinterhandle,nil) then
+ if OpenPrinter(PChar(ADevice),fprinterhandle,nil) then
  begin
   try
-   pdevmode:=nil;
-   asize:=DocumentProperties(0,fprinterhandle,ADevice,nil,nil,0);
+   asize:=DocumentProperties(0,fprinterhandle,PChar(ADevice),nil,nil,0);
    if asize>0 then
    begin
     aresult:=GlobalAlloc(GHND,asize);
     try
      pdevmode:=GlobalLock(aresult);
-     if DocumentProperties(0,fprinterhandle,ADevice,pdevmode^,pdevmode^,DM_OUT_BUFFER)<0 then
+     if DocumentProperties(0,fprinterhandle,PChar(ADevice),pdevmode^,pdevmode^,DM_OUT_BUFFER)<0 then
      begin
        GlobalUnlock(aresult);
        GlobalFree(aresult);

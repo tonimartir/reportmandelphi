@@ -461,7 +461,7 @@ begin
   astring:=astring+LINE_FEED+'</BODY>';
  end;
  astring:=astring+LINE_FEED+'</HTML>';
- WriteStringToStream(astring,stream);
+ WriteStringToStream(AnsiString(astring),stream);
 end;
 
 
@@ -555,7 +555,7 @@ begin
  end;
  astring:=astring+LINE_FEED+'</BODY>';
  astring:=astring+LINE_FEED+'</HTML>';
- WriteStringToStream(astring,stream);
+ WriteStringToStream(AnsiString(astring),stream);
 end;
 
 

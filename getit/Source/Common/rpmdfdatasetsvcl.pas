@@ -25,16 +25,28 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls, ComCtrls, ToolWin, ImgList,rpmdconsts,rpgraphutilsvcl,
-
+  rpdatahttp,
 {$IFDEF USEBDE}
   DBTables,
 {$ENDIF}
 
   rptypes,rpdatainfo,rpreport,rpfparamsvcl,rpmdfsampledatavcl, ActnList,
-  rpdbbrowservcl,rpparams, System.Actions, System.ImageList,
-  Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection;
+  rpparams, System.Actions, System.ImageList,
+  Vcl.VirtualImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
+  rpfrmmonacoeditorvcl, rpfrmchatvcl, rpauthmanager;
 
 type
+  TRpDatasetChatStreamContext = class(TObject)
+  public
+    RequestVersion: Integer;
+  end;
+
+  // Sender of the audit stream: stopped when the version changes
+  TRpDatasetAuditContext = class(TObject)
+  public
+    RequestVersion: Integer;
+  end;
+
   TFRpDatasetsVCL = class(TFrame)
     ImageList1: TImageList;
     PTop: TPanel;
@@ -101,9 +113,9 @@ type
     LUnions: TListBox;
     EMybasedefs: TEdit;
     BModify: TButton;
-    PBrowser: TPanel;
+    PMonacoHost: TPanel;
+    PChatHost: TPanel;
     Splitter2: TSplitter;
-    PLBrowser: TPanel;
     EMasterFields: TEdit;
     LMasterfi: TLabel;
     CheckOpen: TCheckBox;
@@ -132,9 +144,44 @@ type
     procedure FrameResize(Sender: TObject);
     procedure AUpExecute(Sender: TObject);
     procedure ADownExecute(Sender: TObject);
+    procedure MonacoAuditSql(Sender: TObject);
+    procedure MonacoStopRequest(Sender: TObject);
+    function MonacoAuditCancelRequested(Sender: TObject): Boolean;
   private
     { Private declarations }
+    FChat: TFRpChatFrame;
+    FChatRequestVersion: Integer;
+    FAuditRequestVersion: Integer;
+    FMonaco: TFRpMonacoEditorVCL;
+    FLoadingControls: Boolean;
+    FSyncingSchemaContext: Boolean;
+    // The direct connection whose local schemas the chat lists ('' = none)
+    FChatLocalAlias: string;
     Report:TRpReport;
+    procedure AssertCanModify(const AReason:string);
+    procedure EnsureAdvancedEditors;
+    procedure DatasetPageChanged(Sender: TObject);
+    procedure ApplyActiveDataInfoContext(ASyncSqlFromDataInfo: Boolean = True;
+      const ASchemaApiKeyOverride: string = '');
+    procedure UpdateConnectionDependentUi(ADataInfo: TRpDataInfoItem;
+      AConnectionIndex: Integer);
+    procedure SyncActiveSchemaContext(AHubDatabaseId, AHubSchemaId: Int64;
+      const ASchemaApiKey: string = '');
+    procedure ChatApplySuggestion(Sender: TObject; const AExpression: string);
+    procedure ChatSchemaChange(Sender: TObject);
+    procedure ChatConfigureLocalSchemas(Sender: TObject;
+      const AAlias, ASchemaName: string; AAddNew: Boolean);
+    procedure UpdateChatLocalSchemas(ADatabaseInfo: TRpDatabaseInfoItem;
+      AForce: Boolean);
+    function DatabaseInfoOf(ADataInfo: TRpDataInfoItem): TRpDatabaseInfoItem;
+    function ChatInlineConfigJson(const AAlias, ASchemaName: string): string;
+    procedure ChatSendPrompt(Sender: TObject; const APrompt,
+      AExpression: string);
+    procedure ChatStopRequest(Sender: TObject);
+    function ChatTranslateCancelRequested(Sender: TObject): Boolean;
+    procedure ChatTranslateProgress(Sender: TObject; const AActor, AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string; APrefillPercent: Integer);
     procedure SetDataInfo(Value:TRpDataInfoList);
     procedure SetDatabaseInfo(Value:TRpDatabaseInfoList);
     procedure SetParams(Value:TRpParamList);
@@ -143,11 +190,22 @@ type
     function GetDataInfo:TRpDataInfoList;
 //    function FindDatabaseInfoItem:TRpDatabaseInfoItem;
     function FindDataInfoItem:TRpDataInfoItem;
+    function FindSiblingHubSchemaId(const ADataInfo: TRpDataInfoItem): Int64;
+    function ResolveNlToSqlRuntime(const ADataInfo: TRpDataInfoItem): string;
+    function GetChatPrefillPercent(const AStage, AChunkType: string): Integer;
+    function GetUserLanguageCode: string;
+    procedure MonacoInferenceLog(Sender: TObject; const ASource,
+      AText: string; AAppendLineBreak: Boolean);
+    procedure MonacoAuditProgress(Sender: TObject; const AActor, AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string; APrefillPercent: Integer);
+    procedure MonacoSchemaChange(Sender: TObject);
     procedure  Removedependences(oldalias:string);
   public
     { Public declarations }
-    browser:TFRpBrowserVCL;
     constructor Create(AOwner:TComponent);override;
+    destructor Destroy; override;
+    procedure SetBlockChangesSource(AReport:TRpReport);
     procedure FillDatasets;
     property Datainfo:TRpDataInfoList read GetDatainfo
      write SetDataInfo;
@@ -157,11 +215,19 @@ type
      write SetParams;
   end;
 
+
 implementation
 
-uses rpmdfdatatextvcl;
+uses System.JSON, rpmdfdatatextvcl, rpxmlstream, rpbasereport,
+  rpmdfnewreportwizardvcl, rplocalschemas, rpdesignerclientsql,
+  rpreportdesignercontracts, rpfrmlocalschemasvcl;
 
 {$R *.DFM}
+
+destructor TFRpDatasetsVCL.Destroy;
+begin
+  inherited Destroy;
+end;
 
 
 function TFRpDatasetsVCL.GetParams:TRpParamList;
@@ -169,9 +235,79 @@ begin
  result:=report.params;
 end;
 
+function TFRpDatasetsVCL.FindSiblingHubSchemaId(
+  const ADataInfo: TRpDataInfoItem): Int64;
+var
+  I: Integer;
+  LItem: TRpDataInfoItem;
+begin
+  Result := 0;
+  if (ADataInfo = nil) or (ADataInfo.DatabaseAlias = '') then
+    Exit;
+  // A direct connection is not in the Hub: never a Hub schema
+  if RpIsLocalSqlDatabase(DatabaseInfoOf(ADataInfo)) then
+    Exit;
+
+  for I := 0 to datainfo.Count - 1 do
+  begin
+    LItem := datainfo.Items[I];
+    if (LItem <> nil) and (LItem <> ADataInfo) and
+      SameText(LItem.DatabaseAlias, ADataInfo.DatabaseAlias) and
+      (LItem.HubSchemaId > 0) then
+      Exit(LItem.HubSchemaId);
+  end;
+
+end;
+
+function TFRpDatasetsVCL.ResolveNlToSqlRuntime(
+  const ADataInfo: TRpDataInfoItem): string;
+var
+  LDatabaseIndex: Integer;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LParams: TStringList;
+  LHubDatabaseId: Int64;
+begin
+  Result := '';
+  if (ADataInfo = nil) or (Report = nil) or (Trim(ADataInfo.DatabaseAlias) = '') then
+    Exit;
+
+  LDatabaseIndex := Report.DatabaseInfo.IndexOf(ADataInfo.DatabaseAlias);
+  if LDatabaseIndex < 0 then
+    Exit;
+
+  LDatabaseInfo := Report.DatabaseInfo.Items[LDatabaseIndex];
+  if LDatabaseInfo.Driver in [rpdatadriver, rpdotnet2driver] then
+    Exit('ADO_Net');
+
+  LParams := TStringList.Create;
+  try
+    LDatabaseInfo.UpdateConAdmin;
+    LDatabaseInfo.ConAdmin.GetConnectionParams(LDatabaseInfo.Alias, LParams);
+    LHubDatabaseId := StrToInt64Def(LParams.Values['HubDatabaseId'], 0);
+  finally
+    LParams.Free;
+  end;
+
+  if LHubDatabaseId > 0 then
+    Result := 'ADO_Net'
+  else
+    Result := 'Delphi';
+end;
+
 procedure TFRpDatasetsVCL.SetParams(Value:TRpParamList);
 begin
  report.params.assign(value);
+end;
+
+procedure TFRpDatasetsVCL.SetBlockChangesSource(AReport:TRpReport);
+begin
+ Report.BlockChangesSource:=AReport;
+end;
+
+procedure TFRpDatasetsVCL.AssertCanModify(const AReason:string);
+begin
+ if Assigned(Report) then
+  Report.AssertCanModify(AReason);
 end;
 
 constructor TFRpDatasetsVCL.Create(AOwner:TComponent);
@@ -181,6 +317,7 @@ begin
  //ScaleToolBar(toolbar1);
   //Align := AlClient;
  Report:=TRpReport.Create(Self);
+ FLoadingControls:=False;
  report.CreateNew;
  Report.InitEvaluator;
  BParams.Caption:=TranslateStr(152,BParams.Caption);
@@ -220,20 +357,54 @@ begin
  ARename.Caption:=TranslateStr(540,ARename.Caption);
  ARename.Hint:=ARename.Caption;
  ADelete.Caption:=TranslateStr(150,ADelete.Caption);
- ADelete.Hint:=ARename.Caption;
+ ADelete.Hint:=ADelete.Caption;
  BParams.Hint:=TranslateStr(152,BParams.Hint);
- AUp.Hint:=TranslateStr(190,AUp.Hint);
- ADown.Hint:=TranslateStr(191,ADown.Hint);
+ // 190/191 are the parameter hints; datasets use the generic selection ones
+ AUp.Hint:=TranslateStr(28,AUp.Hint);
+ ADown.Hint:=TranslateStr(30,ADown.Hint);
 
 
  PBottom.Height:=250;
+  MSQL.Visible := False;
+  PControl.ActivePage := TabSQL;
+  PControl.OnChange := DatasetPageChanged;
+end;
 
- PLBrowser.Caption:=SRpDatabaseBrowser;
- browser:=TFRpBrowserVCL.Create(Self);
- browser.ShowDatasets:=false;
- browser.ShowEval:=false;
- browser.Align:=alClient;
- browser.Parent:=PBrowser;
+procedure TFRpDatasetsVCL.EnsureAdvancedEditors;
+begin
+  if FMonaco = nil then
+  begin
+    FMonaco := TFRpMonacoEditorVCL.Create(Self);
+    FMonaco.Parent := PMonacoHost;
+    FMonaco.Align := alClient;
+    FMonaco.OnContentChanged := MSQLChange;
+    FMonaco.OnSchemaChanged := MonacoSchemaChange;
+    FMonaco.OnInferenceLog := MonacoInferenceLog;
+    FMonaco.OnAuditSql := MonacoAuditSql;
+    FMonaco.OnStopRequest := MonacoStopRequest;
+  end;
+
+  if FChat = nil then
+  begin
+    FChat := TFRpChatFrame.Create(Self);
+    FChat.Parent := PChatHost;
+    FChat.Align := alClient;
+    FChat.Initialize('', 'Write your query in natural language. A new SQL query will be generated based on the current SQL and the selected schema. Click ''Apply'' to use the generated SQL.');
+    FChat.OnApplySuggestion := ChatApplySuggestion;
+    FChat.OnSchemaChanged := ChatSchemaChange;
+    FChat.OnSendPrompt := ChatSendPrompt;
+    FChat.OnStopRequest := ChatStopRequest;
+    FChat.OnConfigureLocalSchemas := ChatConfigureLocalSchemas;
+    FChat.StartOnlineInitialization;
+  end;
+
+  ApplyActiveDataInfoContext(True);
+end;
+
+procedure TFRpDatasetsVCL.DatasetPageChanged(Sender: TObject);
+begin
+  if PControl.ActivePage = TabSQL then
+    EnsureAdvancedEditors;
 end;
 
 procedure TFRpDatasetsVCL.SetDatabaseInfo(Value:TRpDatabaseInfoList);
@@ -243,15 +414,259 @@ begin
  ComboConnection.Anchors:=[akLeft,akTop,akRight];
  ComboDataSource.Anchors:=[akLeft,akTop,akRight];
 
- report.DatabaseInfo.Assign(Value);
- browser.Report:=report;
- FillDatasets;
+ FLoadingControls:=True;
+ try
+  report.DatabaseInfo.Assign(Value);
+  FillDatasets;
+ finally
+  FLoadingControls:=False;
+ end;
 
+end;
+
+procedure TFRpDatasetsVCL.ApplyActiveDataInfoContext(
+  ASyncSqlFromDataInfo: Boolean; const ASchemaApiKeyOverride: string);
+var
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LParams: TStringList;
+  LDatabaseIndex: Integer;
+  LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
+  LSchemaApiKey: string;
+  LRuntimeDb: string;
+  LSchemaName: string;
+begin
+  LDataInfo := FindDataInfoItem;
+  if LDataInfo = nil then
+    Exit;
+
+  LHubDatabaseId := 0;
+  LHubSchemaId := 0;
+  LSchemaApiKey := '';
+  LRuntimeDb := ResolveNlToSqlRuntime(LDataInfo);
+  LDatabaseInfo := nil;
+  if Trim(LDataInfo.DatabaseAlias) <> '' then
+  begin
+    LDatabaseIndex := Report.DatabaseInfo.IndexOf(LDataInfo.DatabaseAlias);
+    if LDatabaseIndex >= 0 then
+      LDatabaseInfo := Report.DatabaseInfo.Items[LDatabaseIndex];
+  end;
+
+  if LDatabaseInfo <> nil then
+  begin
+    LHubSchemaId := LDataInfo.HubSchemaId;
+    LParams := TStringList.Create;
+    try
+      LDatabaseInfo.UpdateConAdmin;
+      LDatabaseInfo.ConAdmin.GetConnectionParams(LDatabaseInfo.Alias, LParams);
+      LHubDatabaseId := StrToInt64Def(LParams.Values['HubDatabaseId'], 0);
+      LSchemaApiKey := Trim(LParams.Values['ApiKey']);
+    finally
+      LParams.Free;
+    end;
+  end;
+
+  if ASchemaApiKeyOverride <> '' then
+    LSchemaApiKey := ASchemaApiKeyOverride;
+
+  if FMonaco <> nil then
+  begin
+    FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+    FMonaco.RuntimeDb := LRuntimeDb;
+    if ASyncSqlFromDataInfo then
+    begin
+      FMonaco.SQL := WideStringToDOS(LDataInfo.SQL);
+      FMonaco.AuditText := WideStringToDOS(LDataInfo.SQLExplanation);
+    end;
+  end;
+
+  if FChat <> nil then
+  begin
+    FChat.SetCurrentExpression(WideStringToDOS(LDataInfo.SQL));
+    // A direct connection: its local subschemas, with the one of the dataset
+    // while it is in the file (else the one chosen before, the first one or
+    // none: only a subschema goes to the AI)
+    UpdateChatLocalSchemas(LDatabaseInfo, False);
+    if RpIsLocalSqlDatabase(LDatabaseInfo) then
+    begin
+      FChat.SetHubContext(0, 0, '');
+      LSchemaName := RpExistingLocalSubSchema(LDatabaseInfo, LDataInfo.SchemaName);
+      if not (SameText(FChat.GetLocalSchemaAlias, LDatabaseInfo.Alias) and
+        SameText(FChat.GetLocalSchemaName, LSchemaName)) then
+        FChat.SelectLocalSchema(LDatabaseInfo.Alias, LSchemaName);
+    end
+    else
+      FChat.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  end;
+end;
+
+function TFRpDatasetsVCL.DatabaseInfoOf(
+  ADataInfo: TRpDataInfoItem): TRpDatabaseInfoItem;
+var
+  LIndex: Integer;
+begin
+  Result := nil;
+  if (ADataInfo = nil) or (Report = nil) or
+    (Trim(ADataInfo.DatabaseAlias) = '') then
+    Exit;
+  LIndex := Report.DatabaseInfo.IndexOf(ADataInfo.DatabaseAlias);
+  if LIndex >= 0 then
+    Result := Report.DatabaseInfo.Items[LIndex];
+end;
+
+// The local schemas of the connection of the dataset in the chat; none for
+// the other connections
+procedure TFRpDatasetsVCL.UpdateChatLocalSchemas(
+  ADatabaseInfo: TRpDatabaseInfoItem; AForce: Boolean);
+var
+  LAlias: string;
+  LEntries, LSizes: TStringList;
+begin
+  if FChat = nil then
+    Exit;
+  LAlias := '';
+  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+    LAlias := ADatabaseInfo.Alias;
+  if (not AForce) and SameText(LAlias, FChatLocalAlias) then
+    Exit;
+  FChatLocalAlias := LAlias;
+  LEntries := TStringList.Create;
+  LSizes := TStringList.Create;
+  try
+    if LAlias <> '' then
+      RpListLocalSchemaEntries(ADatabaseInfo, LEntries, LSizes);
+    FChat.SetLocalSchemas(LEntries, LAlias, LSizes);
+  finally
+    LSizes.Free;
+    LEntries.Free;
+  end;
+end;
+
+procedure TFRpDatasetsVCL.ChatConfigureLocalSchemas(Sender: TObject;
+  const AAlias, ASchemaName: string; AAddNew: Boolean);
+var
+  LSchemaName: string;
+  LSaved: Boolean;
+begin
+  LSchemaName := ASchemaName;
+  try
+    LSaved := RpShowLocalSchemasDialog(Report, AAlias, LSchemaName, AAddNew,
+      FChat);
+  finally
+    UpdateChatLocalSchemas(DatabaseInfoOf(FindDataInfoItem), True);
+  end;
+  // The subschema saved (a new one: the one added); the chat gives it to
+  // the dataset (ChatSchemaChange)
+  if LSaved then
+    FChat.SelectLocalSchema(AAlias, LSchemaName);
+end;
+
+// The config of NL to SQL with the schema of a direct connection inline
+function TFRpDatasetsVCL.ChatInlineConfigJson(const AAlias,
+  ASchemaName: string): string;
+var
+  LConfig: TRpApiDatabaseConfig;
+  LCursor: TCursor;
+  LDatabases: TRpDatabaseInfoList;
+  LIndex: Integer;
+  LJson: TJSONObject;
+begin
+  LIndex := Report.DatabaseInfo.IndexOf(AAlias);
+  if LIndex < 0 then
+    raise Exception.Create('The report has no connection ' + AAlias);
+  LConfig := TRpApiDatabaseConfig.Create;
+  // A copy: the dialog may have the connection open (Show data)
+  LDatabases := RpCopyDatabaseInfo(Report.DatabaseInfo.Items[LIndex]);
+  LCursor := Screen.Cursor;
+  Screen.Cursor := crHourGlass;
+  try
+    LConfig.LocalAlias := AAlias;
+    LConfig.LocalSchemaName := ASchemaName;
+    // The schema file is generated the first time
+    RpResolveLocalSchemaConfig(LConfig, LDatabases.Items[0], Report.Params);
+    LJson := LConfig.ToJsonObject;
+    try
+      Result := LJson.ToJSON;
+    finally
+      LJson.Free;
+    end;
+  finally
+    Screen.Cursor := LCursor;
+    LDatabases.Free;
+    LConfig.Free;
+  end;
+end;
+
+procedure TFRpDatasetsVCL.UpdateConnectionDependentUi(
+  ADataInfo: TRpDataInfoItem; AConnectionIndex: Integer);
+begin
+  BShowData.Enabled := AConnectionIndex >= 0;
+
+  if AConnectionIndex < 0 then
+  begin
+    TabSQL.TabVisible := True;
+    TabBDETable.TabVisible := False;
+    TabMyBase.TabVisible := False;
+    TabBDEType.TabVisible := False;
+    PControl.ActivePage := TabSQL;
+    if FMonaco <> nil then
+      FMonaco.SetHubContext(0, 0);
+    if FChat <> nil then
+    begin
+      UpdateChatLocalSchemas(nil, False);
+      FChat.SetHubContext(0, 0);
+    end;
+    Exit;
+  end;
+
+  if databaseinfo.items[AConnectionIndex].Driver = rpdatamybase then
+  begin
+    TabSQL.TabVisible := False;
+    TabBDETable.TabVisible := False;
+    TabMyBase.TabVisible := True;
+    TabBDEType.TabVisible := False;
+    PControl.ActivePage := TabMyBase;
+  end
+  else
+  begin
+    if databaseinfo.items[AConnectionIndex].Driver = rpdatabde then
+    begin
+      TabBDEType.TabVisible := True;
+      if (ADataInfo <> nil) and (ADataInfo.BDEType = rpdtable) then
+      begin
+        TabSQL.TabVisible := False;
+        TabBDETable.TabVisible := True;
+        TabMyBase.TabVisible := False;
+        PControl.ActivePage := TabBDETable;
+      end
+      else
+      begin
+        TabSQL.TabVisible := True;
+        TabBDETable.TabVisible := False;
+        TabMyBase.TabVisible := False;
+        PControl.ActivePage := TabSQL;
+      end;
+    end
+    else
+    begin
+      TabSQL.TabVisible := True;
+      TabBDETable.TabVisible := False;
+      TabMyBase.TabVisible := False;
+      TabBDEType.TabVisible := False;
+      PControl.ActivePage := TabSQL;
+    end;
+  end;
 end;
 
 procedure TFRpDatasetsVCL.SetDataInfo(Value:TRpDataInfoList);
 begin
- report.DataInfo.Assign(Value);
+ FLoadingControls:=True;
+ try
+  report.DataInfo.Assign(Value);
+ finally
+  FLoadingControls:=False;
+ end;
 end;
 
 procedure TFRpDatasetsVCL.FillDatasets;
@@ -266,11 +681,11 @@ begin
  if LDatasets.items.Count>0 then
   LDatasets.ItemIndex:=0;
  ComboConnection.Clear;
+ ComboConnection.Items.Add('');
  for i:=0 to databaseinfo.Count-1 do
  begin
   ComboConnection.Items.Add(databaseinfo.items[i].Alias);
  end;
- ComboConnection.Items.Add(' ');
  LDatasetsClick(Self);
 end;
 
@@ -286,66 +701,83 @@ end;
 
 procedure TFRpDatasetsVCL.BParamsClick(Sender: TObject);
 begin
- ShowParamDef(report.params,report.datainfo,report);
+ AssertCanModify('Report parameters');
+ ShowParamDef(report.params,report.datainfo,report,True);
 end;
 
 procedure TFRpDatasetsVCL.LDatasetsClick(Sender: TObject);
 var
- dinfo:TRpDatainfoItem;
- index:integer;
+  dinfo: TRpDataInfoItem;
+  index: Integer;
+  oldloading:Boolean;
 begin
- // Fils the info of the current dataset
- dinfo:=FindDataInfoItem;
- if dinfo=nil then
- begin
-  PControl.Visible:=false;
-  PanelBasic.Visible:=False;
-  exit;
- end;
- CheckOpen.Checked:=dinfo.OpenOnStart;
- PControl.Visible:=true;
- PanelBasic.Visible:=true;
- MSQL.Text:=WideStringToDOS(dinfo.SQL);
- EMyBase.Text:=dinfo.MyBaseFilename;
- EMyBaseDefs.Text:=dinfo.MyBaseFields;
- EIndexFields.Text:=dinfo.MyBaseIndexFields;
- LUnions.Items.Assign(dinfo.DataUnions);
- CheckGroupUnion.Checked:=dinfo.GroupUnion;
- CheckParallelUnion.Checked:=dinfo.ParallelUnion;
- EBDEIndexFields.Text:=dinfo.BDEIndexFields;
- MBDEFilter.Text:=dinfo.BDEFilter;
- EBDEIndexName.Text:=dinfo.BDEIndexName;
- EBDEFirstRange.Text:=dinfo.BDEFirstRange;
- EBDELastRange.Text:=dinfo.BDELastRange;
- EBDETable.Text:=dinfo.BDETable;
- EBDEMasterFields.Text:=dinfo.BDEMasterFields;
- EMasterFields.Text:=dinfo.MyBaseMasterFields;
- RBDEType.ItemIndex:=Integer(dinfo.BDEType);
- index:=ComboConnection.Items.IndexOf(dinfo.DatabaseAlias);
- if index<0 then
-  dinfo.DatabaseAlias:='';
- ComboConnection.ItemIndex:=Index;
+  // Fils the info of the current dataset
+  dinfo := FindDataInfoItem;
+  if dinfo = nil then
+  begin
+    BShowData.Enabled := False;
+    PControl.Visible := False;
+    PanelBasic.Visible := False;
+    Exit;
+  end;
+  oldloading:=FLoadingControls;
+  FLoadingControls:=True;
+  try
+   CheckOpen.Checked := dinfo.OpenOnStart;
+   PControl.Visible := True;
+   PanelBasic.Visible := True;
+   if PControl.ActivePage = TabSQL then
+     EnsureAdvancedEditors;
+   ApplyActiveDataInfoContext(True);
 
- ComboDataSource.Items.Assign(Ldatasets.Items);
- index:=ComboDataSource.Items.IndexOf(dinfo.alias);
- if index>=0 then
-  ComboDataSource.Items.Delete(index);
+   EMyBase.Text := dinfo.MyBaseFilename;
+   EMyBaseDefs.Text := dinfo.MyBaseFields;
+   EIndexFields.Text := dinfo.MyBaseIndexFields;
+   LUnions.Items.Assign(dinfo.DataUnions);
+   CheckGroupUnion.Checked := dinfo.GroupUnion;
+   CheckParallelUnion.Checked := dinfo.ParallelUnion;
+   EBDEIndexFields.Text := dinfo.BDEIndexFields;
+   MBDEFilter.Text := dinfo.BDEFilter;
+   EBDEIndexName.Text := dinfo.BDEIndexName;
+   EBDEFirstRange.Text := dinfo.BDEFirstRange;
+   EBDELastRange.Text := dinfo.BDELastRange;
+   EBDETable.Text := dinfo.BDETable;
+   EBDEMasterFields.Text := dinfo.BDEMasterFields;
+   EMasterFields.Text := dinfo.MyBaseMasterFields;
+   RBDEType.ItemIndex := Integer(dinfo.BDEType);
+   index := ComboConnection.Items.IndexOf(dinfo.DatabaseAlias);
+   if index < 0 then
+   begin
+     dinfo.DatabaseAlias := '';
+     index := 0;
+   end;
+   ComboConnection.ItemIndex := index;
 
- index:=ComboDataSource.Items.IndexOf(dinfo.DataSource);
- if index<0 then
- begin
-  dinfo.DataSource:='';
- end;
- ComboDataSource.Items.Insert(0,' ');
- inc(index);
- ComboDatasource.ItemIndex:=Index;
- ComboUnions.Items.Assign(LDatasets.Items);
- ComboUnions.Items.Delete(LDatasets.ItemIndex);
- if ComboUnions.Items.Count<1 then
-  ComboUnions.ItemIndex:=-1
- else
-  ComboUnions.ItemIndex:=0;
- MSQLChange(ComboConnection);
+   ComboDataSource.Items.Assign(LDatasets.Items);
+   index := ComboDataSource.Items.IndexOf(dinfo.alias);
+   if index >= 0 then
+     ComboDataSource.Items.Delete(index);
+
+   index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
+   if index < 0 then
+   begin
+     dinfo.DataSource := '';
+   end;
+   ComboDataSource.Items.Insert(0, '');
+   index := ComboDataSource.Items.IndexOf(dinfo.DataSource);
+   if index < 0 then
+     index := 0;
+   ComboDataSource.ItemIndex := index;
+   ComboUnions.Items.Assign(LDatasets.Items);
+   ComboUnions.Items.Delete(LDatasets.ItemIndex);
+   if ComboUnions.Items.Count < 1 then
+     ComboUnions.ItemIndex := -1
+   else
+     ComboUnions.ItemIndex := 0;
+   UpdateConnectionDependentUi(dinfo, databaseinfo.IndexOf(dinfo.DatabaseAlias));
+  finally
+   FLoadingControls:=oldloading;
+  end;
 end;
 
 procedure TFRpDatasetsVCL.LRangeClick(Sender: TObject);
@@ -369,15 +801,13 @@ end;
 }
 
 function TFRpDatasetsVCL.FindDataInfoItem:TRpDataInfoItem;
-var
- index:integer;
 begin
  Result:=nil;
  if LDatasets.ItemIndex<0 then
   exit;
- index:=datainfo.IndexOf(LDatasets.Items.Strings[LDatasets.itemindex]);
- if index>=0 then
-  Result:=datainfo.items[index];
+ if LDatasets.ItemIndex>=datainfo.Count then
+  exit;
+ Result:=datainfo.items[LDatasets.ItemIndex];
 end;
 
 
@@ -392,6 +822,7 @@ procedure TFRpDatasetsVCL.MSQLChange(Sender: TObject);
 var
  dinfo:TRpDatainfoItem;
  index:integer;
+ LPreviousDatabaseAlias: string;
 begin
  // Fils the info of the current dataset
  dinfo:=FindDataInfoItem;
@@ -403,6 +834,8 @@ begin
   TabBDEType.TabVisible:=false;
   exit;
  end;
+ if not FLoadingControls then
+  AssertCanModify('Dataset configuration');
  if Sender=BAddUnions then
   dinfo.DataUnions:=LUnions.Items
  else
@@ -412,66 +845,41 @@ begin
  if Sender=CheckParallelUnion then
   dinfo.ParallelUnion:=CheckParallelUnion.Checked
  else
- if Sender=MSQL then
+ if Sender=FMonaco then
  begin
-  dinfo.SQL:=TMemo(Sender).Text;
+  dinfo.SQL:=FMonaco.SQL;
+  if FChat <> nil then
+    FChat.SetCurrentExpression(FMonaco.SQL);
+  FMonaco.AuditText := WideStringToDOS(dinfo.SQLExplanation);
  end
  else
  if Sender=ComboConnection then
  begin
-  dinfo.DatabaseAlias:=COmboConnection.Text;
+  LPreviousDatabaseAlias:=dinfo.DatabaseAlias;
+  dinfo.DatabaseAlias:=Trim(COmboConnection.Text);
+  if not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias) then
+  begin
+   // The subschema was of the other connection, and a direct connection
+   // never has a Hub schema
+   dinfo.SchemaName:='';
+   if RpIsLocalSqlDatabase(DatabaseInfoOf(dinfo)) then
+    dinfo.HubSchemaId:=0;
+  end;
+  if (dinfo.HubSchemaId = 0) and
+    (not SameText(LPreviousDatabaseAlias,dinfo.DatabaseAlias)) then
+    dinfo.HubSchemaId:=FindSiblingHubSchemaId(dinfo);
   // Finds the driver
   index:=databaseinfo.IndexOf(dinfo.DatabaseAlias);
+  UpdateConnectionDependentUi(dinfo, index);
   if index<0 then
-  begin
-   TabSQL.TabVisible:=false;
-   TabBDETable.TabVisible:=false;
-   TabMyBase.TabVisible:=false;
-   TabBDEType.TabVisible:=false;
    exit;
-  end;
-  PBrowser.Visible:=not (databaseinfo.items[index].Driver=rpdatadriver);
-  if databaseinfo.items[index].Driver=rpdatamybase then
-  begin
-   TabSQL.TabVisible:=false;
-   TabBDETable.TabVisible:=false;
-   TabMyBase.TabVisible:=True;
-   TabBDEType.TabVisible:=false;
-   PControl.ActivePage:=TabMyBase;
-  end
-  else
-  begin
-   if databaseinfo.items[index].Driver=rpdatabde then
-   begin
-    TabBDEType.TabVisible:=True;
-    if (dinfo.BDEType=rpdtable) then
-    begin
-     TabSQL.TabVisible:=False;
-     TabBDETable.TabVisible:=True;
-     TabMyBase.TabVisible:=False;
-     PControl.ActivePage:=TabBDETable;
-    end
-    else
-    begin
-     TabSQL.TabVisible:=True;
-     TabBDETable.TabVisible:=False;
-     TabMyBase.TabVisible:=False;
-     PControl.ActivePage:=TabSQL;
-    end;
-   end
-   else
-   begin
-    TabSQL.TabVisible:=True;
-    TabBDETable.TabVisible:=false;
-    TabMyBase.TabVisible:=False;
-    TabBDEType.TabVisible:=false;
-   end;
-  end;
+
+  ApplyActiveDataInfoContext(False);
  end
  else
  if Sender=ComboDataSource then
  begin
-  dinfo.DataSource:=ComboDataSource.Text;
+  dinfo.DataSource:=Trim(ComboDataSource.Text);
  end
  else
  if Sender=EMyBase then
@@ -554,6 +962,608 @@ begin
  end;
 end;
 
+procedure TFRpDatasetsVCL.MonacoSchemaChange(Sender: TObject);
+begin
+ if FSyncingSchemaContext or (FMonaco = nil) then
+  Exit;
+ SyncActiveSchemaContext(FMonaco.HubDatabaseId, FMonaco.HubSchemaId,
+   FMonaco.GetSchemaApiKey);
+end;
+
+procedure TFRpDatasetsVCL.ChatSchemaChange(Sender: TObject);
+var
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+begin
+  if FSyncingSchemaContext or (FChat = nil) then
+    Exit;
+  LDataInfo := FindDataInfoItem;
+  if LDataInfo = nil then
+    Exit;
+  // A direct connection keeps the subschema chosen (D3) and never takes a
+  // Hub schema; loading the list is not a choice of the user
+  LDatabaseInfo := DatabaseInfoOf(LDataInfo);
+  if RpIsLocalSqlDatabase(LDatabaseInfo) then
+  begin
+    if (not FChat.SchemaChangeFromLoad) and
+      SameText(FChat.GetLocalSchemaAlias, LDatabaseInfo.Alias) and
+      (LDataInfo.SchemaName <> FChat.GetLocalSchemaName) then
+      LDataInfo.SchemaName := FChat.GetLocalSchemaName;
+    Exit;
+  end;
+  // The chat also calls this after loading its list; an empty list (not
+  // logged in, logged out, no network) is not a choice of the user and must
+  // not reset the schema of the dataset
+  if (not FChat.HasSchemaItems) and (FChat.GetHubSchemaId = 0) then
+    Exit;
+  // Nor may the fallback of a list without the schema of the dataset (another
+  // account, no access) replace it: only a choice of the user does
+  if FChat.SchemaChangeFromLoad then
+  begin
+    if (LDataInfo.HubSchemaId <> 0) and
+      (LDataInfo.HubSchemaId <> FChat.GetHubSchemaId) then
+      Exit;
+  end;
+  SyncActiveSchemaContext(FChat.GetHubDatabaseId, FChat.GetHubSchemaId,
+    FChat.GetSchemaApiKey);
+end;
+
+procedure TFRpDatasetsVCL.SyncActiveSchemaContext(AHubDatabaseId,
+  AHubSchemaId: Int64; const ASchemaApiKey: string = '');
+var
+  LDataInfo: TRpDataInfoItem;
+begin
+  LDataInfo := FindDataInfoItem;
+  if LDataInfo = nil then
+    Exit;
+  // A dataset on a direct connection never gets a Hub schema (the Hub list
+  // of the editor or of the chat falls back to one of another database)
+  if RpIsLocalSqlDatabase(DatabaseInfoOf(LDataInfo)) then
+    Exit;
+
+  FSyncingSchemaContext := True;
+  try
+    LDataInfo.HubSchemaId := AHubSchemaId;
+    ApplyActiveDataInfoContext(False, ASchemaApiKey);
+  finally
+    FSyncingSchemaContext := False;
+  end;
+end;
+
+procedure TFRpDatasetsVCL.MonacoInferenceLog(Sender: TObject; const ASource,
+  AText: string; AAppendLineBreak: Boolean);
+begin
+  if FChat = nil then
+    Exit;
+
+  if ASource <> '' then
+    FChat.AppendLogLine('[' + ASource + '] ' + AText)
+  else
+    FChat.AppendLogChunk(AText, AAppendLineBreak);
+end;
+
+function TFRpDatasetsVCL.GetChatPrefillPercent(const AStage,
+  AChunkType: string): Integer;
+begin
+  if SameText(AStage, 'PreparingContext') then
+    Result := 15
+  else if SameText(AStage, 'SendingRequest') then
+    Result := 45
+  else if SameText(AStage, 'ReceivingResponse') then
+  begin
+    if SameText(AChunkType, 'Start') then
+      Result := 70
+    else
+      Result := 100;
+  end
+  else
+    Result := 100;
+end;
+
+procedure TFRpDatasetsVCL.ChatTranslateProgress(Sender: TObject; const AActor, AStage,
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string; APrefillPercent: Integer);
+var
+  LActor: string;
+  LStage: string;
+  LChunkType: string;
+  LChunk: string;
+  LProgressId: string;
+  LInputTokens: Integer;
+  LOutputTokens: Integer;
+  LPrefillPercent: Integer;
+  LQueueProc: TThreadProcedure;
+begin
+  LActor := AActor;
+  LStage := AStage;
+  LChunkType := AChunkType;
+  LChunk := AChunk;
+  LProgressId := AProgressId;
+  LInputTokens := AInputTokens;
+  LOutputTokens := AOutputTokens;
+  LPrefillPercent := APrefillPercent;
+  if LPrefillPercent <= 0 then
+    LPrefillPercent := GetChatPrefillPercent(LStage, LChunkType);
+
+  LQueueProc :=
+    procedure
+    begin
+      if FChat = nil then
+        Exit;
+
+      if SameText(LStage, 'ReceivingResponse') then
+      begin
+        if (LChunk <> '') or (LPrefillPercent > 0) then
+          FChat.UpdateStreamingResponse(LActor, LChunkType, LChunk,
+            LPrefillPercent, '', LProgressId);
+        FChat.UpdateStreamingTokens(LInputTokens, LOutputTokens, LProgressId,
+          LPrefillPercent);
+        FChat.CompleteStreamingProgress(LActor, LChunkType, LProgressId);
+      end
+      else if SameText(LStage, 'Queued') then
+        // The wait in the AI provider's queue: one log line, rewritten
+        FChat.UpdateStreamingResponse(LActor, 'Full', '', 0, LChunk, LProgressId)
+      else if LChunk <> '' then
+        FChat.AppendLogLine('[' + LStage + '] ' + LChunk);
+    end;
+  TThread.Queue(nil, LQueueProc);
+end;
+
+function TFRpDatasetsVCL.ChatTranslateCancelRequested(Sender: TObject): Boolean;
+begin
+  Result := False;
+  if Sender is TRpDatasetChatStreamContext then
+    Result := TRpDatasetChatStreamContext(Sender).RequestVersion <> FChatRequestVersion;
+end;
+
+procedure TFRpDatasetsVCL.ChatStopRequest(Sender: TObject);
+begin
+  Inc(FChatRequestVersion);
+  if FChat <> nil then
+  begin
+    FChat.FinishStreamingResponse;
+    FChat.AddAssistantMessage('Generation stopped.');
+  end;
+end;
+
+procedure TFRpDatasetsVCL.ChatApplySuggestion(Sender: TObject;
+  const AExpression: string);
+begin
+  AssertCanModify('Dataset SQL');
+  EnsureAdvancedEditors;
+  // As an edit of the editor: Ctrl+Z there restores the previous SQL
+  FMonaco.ApplySQL(AExpression);
+  MSQLChange(FMonaco);
+  if FChat <> nil then
+    FChat.AddAssistantMessage('SQL applied to the editor.');
+end;
+
+procedure TFRpDatasetsVCL.ChatSendPrompt(Sender: TObject; const APrompt,
+  AExpression: string);
+var
+  LAITier: string;
+  LAIMode: string;
+  LAgentSecret: string;
+  LPrompt: string;
+  LRequestVersion: Integer;
+  LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
+  LAgentAiId: Int64;
+  LSchemaApiKey: string;
+  LSqlToRefine: string;
+  LRuntimeDb: string;
+  LUserLanguage: string;
+  LInlineConfigJson: string;
+  LWorker: TThread;
+begin
+  if FChat = nil then
+    Exit;
+
+  if FMonaco = nil then
+    EnsureAdvancedEditors;
+
+  LPrompt := Trim(APrompt);
+  if LPrompt = '' then
+    Exit;
+
+  Inc(FChatRequestVersion);
+  LRequestVersion := FChatRequestVersion;
+  LHubDatabaseId := FChat.GetHubDatabaseId;
+  LHubSchemaId := FChat.GetHubSchemaId;
+  LAITier := FChat.GetAITier;
+  LAIMode := FChat.GetAIMode;
+  LAgentSecret := FChat.GetAgentSecret;
+  LAgentAiId := FChat.GetAgentAiId;
+  LSchemaApiKey := FChat.GetSchemaApiKey;
+  LUserLanguage := GetUserLanguageCode;
+  LRuntimeDb := ResolveNlToSqlRuntime(FindDataInfoItem);
+  LSqlToRefine := Trim(AExpression);
+  if LSqlToRefine = '' then
+    LSqlToRefine := Trim(FMonaco.SQL);
+  // A direct connection: its local schema (the subschema chosen) travels
+  // inline instead of a Hub schema
+  LInlineConfigJson := '';
+  if FChat.GetLocalSchemaAlias <> '' then
+  begin
+    try
+      LInlineConfigJson := ChatInlineConfigJson(FChat.GetLocalSchemaAlias,
+        FChat.GetLocalSchemaName);
+    except
+      on E: Exception do
+      begin
+        FChat.AddAssistantMessage(E.Message);
+        Exit;
+      end;
+    end;
+    LHubDatabaseId := 0;
+    LHubSchemaId := 0;
+  end;
+
+  FChat.BeginStreamingResponse;
+  if LSqlToRefine <> '' then
+    FChat.AppendLogLine('[Chat] Starting SQL refine request...')
+  else
+    FChat.AppendLogLine('[Chat] Starting NLToSQL request...');
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      LHttp: TRpDatabaseHttp;
+      LResponse: TJSONObject;
+      LResult: TJSONObject;
+      LUserProfile: TJSONObject;
+      LStreamContext: TRpDatasetChatStreamContext;
+      LErrorMessage: string;
+      LExplanation: string;
+      LGeneratedSql: string;
+      LVal: TJSONValue;
+      LQueueProc: TThreadProcedure;
+    begin
+      LHttp := TRpDatabaseHttp.Create;
+      LResponse := nil;
+      LUserProfile := nil;
+      LStreamContext := TRpDatasetChatStreamContext.Create;
+      LStreamContext.RequestVersion := LRequestVersion;
+      LErrorMessage := '';
+      LExplanation := '';
+      LGeneratedSql := '';
+      try
+        try
+          LHttp.Token := TRpAuthManager.Instance.Token;
+          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+          LHttp.HubDatabaseId := LHubDatabaseId;
+          LHttp.HubSchemaId := LHubSchemaId;
+          LHttp.InlineConfigJson := LInlineConfigJson;
+          LHttp.RuntimeDb := LRuntimeDb;
+          LHttp.AITier := LAITier;
+          LHttp.AgentSecret := LAgentSecret;
+          LHttp.AgentAiId := LAgentAiId;
+          LHttp.ApiKey := LSchemaApiKey;
+
+          LResponse := LHttp.TranslateToSql(LPrompt, LSqlToRefine,
+            LAIMode, LUserLanguage,
+            LStreamContext, ChatTranslateProgress, ChatTranslateCancelRequested);
+
+          if LRequestVersion <> FChatRequestVersion then
+            Exit;
+
+          if LResponse <> nil then
+          begin
+            LVal := LResponse.Values['errorMessage'];
+            if LVal <> nil then
+              LErrorMessage := Trim(LVal.Value);
+
+            if Trim(LErrorMessage) = '' then
+            begin
+              LVal := LResponse.Values['result'];
+              if (LVal <> nil) and (LVal is TJSONObject) then
+              begin
+                LResult := TJSONObject(LVal);
+                if LResult.Values['errorMessage'] <> nil then
+                  LErrorMessage := Trim(LResult.Values['errorMessage'].Value);
+                if LResult.Values['sql'] <> nil then
+                  LGeneratedSql := LResult.Values['sql'].Value;
+                if LResult.Values['explanation'] <> nil then
+                  LExplanation := LResult.Values['explanation'].Value;
+              end;
+            end;
+
+            LVal := LResponse.Values['userProfile'];
+            if (LVal <> nil) and (LVal is TJSONObject) then
+              LUserProfile := TJSONObject(LVal.Clone);
+          end;
+        except
+          on E: Exception do
+            LErrorMessage := E.Message;
+        end;
+
+        LQueueProc :=
+          procedure
+          begin
+            try
+              if LRequestVersion <> FChatRequestVersion then
+                Exit;
+
+              if LUserProfile <> nil then
+                FChat.UpdateUserProfile(LUserProfile);
+
+              if Trim(LErrorMessage) <> '' then
+              begin
+                FChat.FinishStreamingResponse;
+                FChat.AddAssistantMessage(LErrorMessage);
+                Exit;
+              end;
+
+              if Trim(LGeneratedSql) = '' then
+              begin
+                FChat.FinishStreamingResponse;
+                FChat.AddAssistantMessage('No SQL was returned by the service.');
+                Exit;
+              end;
+
+              FChat.SetSuggestedContent(LGeneratedSql, LExplanation,
+                'Suggested SQL');
+            finally
+              LUserProfile.Free;
+            end;
+          end;
+        TThread.Queue(nil, LQueueProc);
+      finally
+        LStreamContext.Free;
+        LResponse.Free;
+        LHttp.Free;
+      end;
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
+function TFRpDatasetsVCL.GetUserLanguageCode: string;
+begin
+  Result := TRpAuthManager.Instance.AILanguage;
+end;
+
+procedure TFRpDatasetsVCL.MonacoAuditProgress(Sender: TObject; const AActor, AStage,
+  AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string; APrefillPercent: Integer);
+var
+  LActor, LAStage, LAChunkType, LAChunk: string;
+  LProgressId: string;
+  LInputTokens, LOutputTokens: Integer;
+  LPrefillPercent: Integer;
+  LQueueProc: TThreadProcedure;
+begin
+  if FMonaco = nil then
+    Exit;
+
+  LActor := AActor;
+  LAStage := AStage;
+  LAChunkType := AChunkType;
+  LAChunk := AChunk;
+  LProgressId := AProgressId;
+  LInputTokens := AInputTokens;
+  LOutputTokens := AOutputTokens;
+  LPrefillPercent := APrefillPercent;
+
+  LQueueProc :=
+    procedure
+    begin
+      if FMonaco = nil then
+        Exit;
+      FMonaco.UpdateAITokens(LInputTokens, LOutputTokens, LProgressId,
+        LPrefillPercent);
+      if SameText(LAStage, 'ReceivingResponse') and (LAChunk <> '') then
+        FMonaco.AppendLog(LAChunk)
+      else if LAChunk <> '' then
+        FMonaco.AppendLog('[' + LAStage + '] ' + LAChunk);
+    end;
+  TThread.Queue(nil, LQueueProc);
+end;
+
+procedure TFRpDatasetsVCL.MonacoAuditSql(Sender: TObject);
+var
+  LDataInfo: TRpDataInfoItem;
+  LWorker: TThread;
+  LSql: string;
+  LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
+  LAITier: string;
+  LAIMode: string;
+  LAgentSecret: string;
+  LAgentAiId: Int64;
+  LLanguage: string;
+  LRuntimeDb: string;
+  LAlias: string;
+  LAuditContext: TRpDatasetAuditContext;
+  LAuditVersion: Integer;
+begin
+  if FMonaco = nil then
+    Exit;
+
+  LDataInfo := FindDataInfoItem;
+  if LDataInfo = nil then
+    Exit;
+  // The answer goes to this dataset, not to the one selected when it arrives
+  LAlias := LDataInfo.Alias;
+
+  LSql := FMonaco.SQL;
+  if Trim(LSql) = '' then
+  begin
+    FMonaco.ActivateAuditTab;
+    FMonaco.AppendLog('Audit SQL skipped: SQL is empty.');
+    Exit;
+  end;
+
+  LHubDatabaseId := FMonaco.HubDatabaseId;
+  LHubSchemaId := FMonaco.HubSchemaId;
+  LAITier := FMonaco.AITier;
+  LAIMode := FMonaco.AIMode;
+  LAgentSecret := FMonaco.AgentSecret;
+  LAgentAiId := FMonaco.AgentAiId;
+  LLanguage := GetUserLanguageCode;
+  LRuntimeDb := ResolveNlToSqlRuntime(LDataInfo);
+
+  FMonaco.ActivateAuditTab;
+  FMonaco.SetAuditBusy(True);
+  FMonaco.ClearLog;
+  FMonaco.AppendLog('Starting SQL audit...');
+  Inc(FAuditRequestVersion);
+  LAuditVersion := FAuditRequestVersion;
+  LAuditContext := TRpDatasetAuditContext.Create;
+  LAuditContext.RequestVersion := LAuditVersion;
+
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      LHttp: TRpDatabaseHttp;
+      LResponse: TJSONObject;
+      LResult: TJSONObject;
+      LUserProfile: TJSONObject;
+      LErrorMessage: string;
+      LExplanation: string;
+      LResponseData: TJSONObject;
+      LInputTokens: Integer;
+      LOutputTokens: Integer;
+      LTokenUsage: TJSONObject;
+      LVal: TJSONValue;
+      LSyncProc: TThreadProcedure;
+      LIndex: Integer;
+      LSelected: Boolean;
+    begin
+      LHttp := TRpDatabaseHttp.Create;
+      LResponse := nil;
+      LUserProfile := nil;
+      LErrorMessage := '';
+      LExplanation := '';
+      LInputTokens := 0;
+      LOutputTokens := 0;
+      try
+        try
+          LHttp.Token := TRpAuthManager.Instance.Token;
+          LHttp.InstallId := TRpAuthManager.Instance.InstallId;
+          LHttp.HubDatabaseId := LHubDatabaseId;
+          LHttp.HubSchemaId := LHubSchemaId;
+          LHttp.RuntimeDb := LRuntimeDb;
+          LHttp.AITier := LAITier;
+          LHttp.AgentSecret := LAgentSecret;
+          LHttp.AgentAiId := LAgentAiId;
+
+          LResponse := LHttp.ExplainSql(LSql, LAIMode, LLanguage, LAuditContext,
+            MonacoAuditProgress, MonacoAuditCancelRequested);
+
+          if LResponse <> nil then
+          begin
+            LVal := LResponse.Values['errorMessage'];
+            if LVal <> nil then
+              LErrorMessage := LVal.Value;
+
+            if Trim(LErrorMessage) = '' then
+            begin
+              LVal := LResponse.Values['result'];
+              if (LVal <> nil) and (LVal is TJSONObject) then
+              begin
+                LResult := TJSONObject(LVal);
+                LExplanation := '';
+                if LResult.Values['explanation'] <> nil then
+                  LExplanation := LResult.Values['explanation'].Value;
+
+                LResponseData := LResult;
+                LVal := LResponseData.Values['tokenUsage'];
+                if (LVal <> nil) and (LVal is TJSONObject) then
+                begin
+                  LTokenUsage := TJSONObject(LVal);
+                  if LTokenUsage.Values['inputTokens'] <> nil then
+                    LInputTokens := StrToIntDef(LTokenUsage.Values['inputTokens'].Value, 0);
+                  if LTokenUsage.Values['outputTokens'] <> nil then
+                    LOutputTokens := StrToIntDef(LTokenUsage.Values['outputTokens'].Value, 0);
+                end;
+              end;
+            end;
+
+            LVal := LResponse.Values['userProfile'];
+            if (LVal <> nil) and (LVal is TJSONObject) then
+              LUserProfile := TJSONObject(LVal.Clone);
+          end;
+        except
+          on E: Exception do
+            LErrorMessage := E.Message;
+        end;
+
+        LSyncProc :=
+          procedure
+          begin
+            try
+              // Stopped with the Stop of the model selection
+              if LAuditVersion <> FAuditRequestVersion then
+              begin
+                FMonaco.AppendLog('Audit SQL stopped.');
+                Exit;
+              end;
+              // The audited dataset, if it still exists with the audited SQL
+              // (the selection may have changed meanwhile, or the dialog
+              // may have been reopened with another working copy)
+              LIndex := datainfo.IndexOf(LAlias);
+              if LIndex >= 0 then
+                LDataInfo := datainfo.Items[LIndex]
+              else
+                LDataInfo := nil;
+              if (LDataInfo <> nil) and (LDataInfo.SQL <> LSql) then
+                LDataInfo := nil;
+              LSelected := (LDataInfo <> nil) and (LDataInfo = FindDataInfoItem);
+              if LDataInfo <> nil then
+              begin
+                if Trim(LErrorMessage) = '' then
+                begin
+                  LDataInfo.SQLExplanation := LExplanation;
+                  LDataInfo.SQLExplanationError := '';
+                  if LSelected then
+                    FMonaco.AuditText := LExplanation;
+                  if LInputTokens > 0 then
+                    FMonaco.AppendLog('Audit SQL complete. Input Tokens: ' +
+                      IntToStr(LInputTokens) + ' Output Tokens: ' + IntToStr(LOutputTokens))
+                  else
+                    FMonaco.AppendLog('Audit SQL complete.');
+                end
+                else
+                begin
+                  LDataInfo.SQLExplanation := '';
+                  LDataInfo.SQLExplanationError := LErrorMessage;
+                  if LSelected then
+                    FMonaco.AuditText := '';
+                  FMonaco.AppendLog('Audit SQL error: ' + LErrorMessage);
+                end;
+              end;
+
+              if LUserProfile <> nil then
+                TRpAuthManager.Instance.UpdateProfileFromJson(LUserProfile);
+            finally
+              FMonaco.SetAuditBusy(False);
+            end;
+          end;
+        TThread.Synchronize(nil, LSyncProc);
+      finally
+        LUserProfile.Free;
+        LResponse.Free;
+        LHttp.Free;
+        LAuditContext.Free;
+      end;
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
+procedure TFRpDatasetsVCL.MonacoStopRequest(Sender: TObject);
+begin
+  // The running audit stops (its answer is not stored)
+  Inc(FAuditRequestVersion);
+end;
+
+function TFRpDatasetsVCL.MonacoAuditCancelRequested(Sender: TObject): Boolean;
+begin
+  Result := (Sender is TRpDatasetAuditContext) and
+    (TRpDatasetAuditContext(Sender).RequestVersion <> FAuditRequestVersion);
+end;
+
 procedure TFRpDatasetsVCL.BMyBaseClick(Sender: TObject);
 begin
  if Sender=BMyBase then
@@ -588,6 +1598,12 @@ begin
  // Opens the dataset and show the data
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
+  exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
+  exit;
+ // A Reportman AI Agent connection not configured on this computer: the
+ // connection wizard first
+ if not RpCheckAgentConnections(report.DatabaseInfo,report.DataInfo,dinfo) then
   exit;
  // See if is dot net
  i:=report.DatabaseInfo.IndexOf(dinfo.DatabaseAlias);
@@ -644,7 +1660,14 @@ begin
  Report.PrepareParamsBeforeOpen;
  dinfo.Connect(databaseinfo,report.params);
  try
-  ShowDataset(dinfo.Dataset);
+  // Pass the live HubDatabaseId (0 for non-HTTP drivers) so the
+  // sample data form can paint the WebRTC transport chip in its
+  // toolbar.
+  i := databaseinfo.IndexOf(dinfo.DatabaseAlias);
+  if i >= 0 then
+   ShowDataset(dinfo.Dataset, databaseinfo.Items[i].HttpHubDatabaseId)
+  else
+   ShowDataset(dinfo.Dataset);
  finally
   // Left the dataset open for testing relations ...
 //  dinfo.Disconnect;
@@ -659,6 +1682,9 @@ var
 begin
  // Up
  dinfo:=FindDataInfoItem;
+ if not Assigned(dinfo) then
+  exit;
+
  alias:=dinfo.Alias;
  index:=datainfo.IndexOf(Alias);
  if index<0 then
@@ -667,6 +1693,7 @@ begin
  begin
    exit;
  end;
+ AssertCanModify('Dataset configuration');
  datainfo.Swap(index, index + 1);
  FillDatasets;
  LDataSets.Selected[index+1]:=true;
@@ -677,14 +1704,18 @@ procedure TFRpDatasetsVCL.ANewExecute(Sender: TObject);
 var
  aliasname:string;
  aitem:TRpDataInfoItem;
- index:integer;
+ index: Integer;
 begin
  aliasname:=Trim(RpInputBox(SrpNewDataset,SRpAliasName,''));
  if Length(aliasname)<1 then
   exit;
+ AssertCanModify('Dataset configuration');
  aitem:=datainfo.Add(aliasname);
- if databaseinfo.Count>0 then
-  aitem.DatabaseAlias:=databaseinfo.Items[0].Alias;
+ EnsureDataInfoItemName(TRpBaseReport(report), aitem);
+  if databaseinfo.Count>0 then
+    aitem.DatabaseAlias:=databaseinfo.Items[0].Alias;
+  if aitem.HubSchemaId = 0 then
+    aitem.HubSchemaId := FindSiblingHubSchemaId(aitem);
  FillDatasets;
  index:=LDatasets.items.indexof(AnsiUppercase(aliasname));
  if index>=0 then
@@ -704,6 +1735,7 @@ begin
  index:=datainfo.IndexOf(LDatasets.Items.strings[Ldatasets.itemindex]);
  if index>=0 then
  begin
+  AssertCanModify('Dataset configuration');
   oldalias:=datainfo.items[index].Alias;
   datainfo.Delete(index);
   Removedependences(oldalias);
@@ -718,6 +1750,8 @@ var
  index:integer;
 begin
  dinfo:=FindDataInfoItem;
+ if not Assigned(dinfo) then
+  exit;
  aliasname:=Trim(RpInputBox(SrpRenameDataset,SRpAliasName,dinfo.Alias));
  index:=datainfo.IndexOf(aliasname);
  if index>=0 then
@@ -726,6 +1760,7 @@ begin
   exit;
  if Not Assigned(dinfo) then
   exit;
+ AssertCanModify('Dataset configuration');
  dinfo.Alias:=aliasname;
  FillDatasets;
 end;
@@ -738,6 +1773,11 @@ var
 begin
  // Up
  dinfo:=FindDataInfoItem;
+ if not assigned(dinfo) then
+ begin
+  exit;
+ end;
+
  alias:=dinfo.Alias;
  index:=datainfo.IndexOf(dinfo.Alias);
  if index<0 then
@@ -746,6 +1786,7 @@ begin
  begin
    exit;
  end;
+ AssertCanModify('Dataset configuration');
  datainfo.Swap(index, index - 1);
  FillDatasets;
  LDataSets.Selected[index-1]:=true;
@@ -756,6 +1797,7 @@ procedure  TFRpDatasetsVCL.Removedependences(oldalias:string);
 var
  i:integer;
 begin
+ AssertCanModify('Dataset configuration');
  for i:=0 to datainfo.count-1 do
  begin
   if AnsiUpperCase(oldalias)=AnsiUpperCase(datainfo.items[i].datasource) then
@@ -775,6 +1817,7 @@ begin
   exit;
  if ComboUnions.ItemIndex<0 then
   exit;
+ AssertCanModify('Dataset configuration');
  alist:=TStringList.Create;
  try
   for i:=0 to LUnions.Items.Count-1 do
@@ -810,6 +1853,7 @@ begin
   exit;
  if LUnions.ItemIndex<0 then
   exit;
+ AssertCanModify('Dataset configuration');
  LUnions.Items.Delete(LUnions.ItemIndex);
  MSQLChange(BAddUnions);
 end;
@@ -824,6 +1868,8 @@ begin
  // Fils the info of the current dataset
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
+  exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
   exit;
  // Fills with tablenames, without extensions,
  // no system tables
@@ -847,6 +1893,8 @@ begin
  // Fils the info of the current dataset
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
+  exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
   exit;
  atable:=TTable.Create(Self);
  try
@@ -893,6 +1941,8 @@ begin
  dinfo:=FindDataInfoItem;
  if dinfo=nil then
   exit;
+ if Trim(dinfo.DatabaseAlias) = '' then
+  exit;
  atable:=TTable.Create(Self);
  try
   EBDEIndexFields.Items.Clear;
@@ -924,3 +1974,4 @@ begin
 end;
 
 end.
+

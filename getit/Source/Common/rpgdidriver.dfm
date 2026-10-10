@@ -18,7 +18,7 @@ object FRpVCLProgress: TFRpVCLProgress
   DesignSize = (
     601
     200)
-  TextHeight = 20
+  TextHeight = 15
   object LProcessing: TLabel
     Left = 8
     Top = 40
@@ -68,8 +68,8 @@ object FRpVCLProgress: TFRpVCLProgress
   end
   object BCancel: TButton
     Left = 187
-    Top = 140
-    Width = 204
+    Top = 132
+    Width = 202
     Height = 39
     Margins.Left = 2
     Margins.Top = 2
@@ -81,10 +81,12 @@ object FRpVCLProgress: TFRpVCLProgress
     ModalResult = 2
     TabOrder = 0
     OnClick = BCancelClick
+    ExplicitTop = 140
+    ExplicitWidth = 204
   end
   object BOK: TButton
     Left = 7
-    Top = 146
+    Top = 138
     Width = 81
     Height = 26
     Margins.Left = 2
@@ -97,6 +99,7 @@ object FRpVCLProgress: TFRpVCLProgress
     TabOrder = 1
     Visible = False
     OnClick = BOKClick
+    ExplicitTop = 146
   end
   object GPrintRange: TGroupBox
     Left = 7
@@ -113,8 +116,8 @@ object FRpVCLProgress: TFRpVCLProgress
     object LTo: TLabel
       Left = 136
       Top = 85
-      Width = 16
-      Height = 20
+      Width = 13
+      Height = 15
       Margins.Left = 2
       Margins.Top = 2
       Margins.Right = 2
@@ -124,8 +127,8 @@ object FRpVCLProgress: TFRpVCLProgress
     object LFrom: TLabel
       Left = 14
       Top = 84
-      Width = 34
-      Height = 20
+      Width = 28
+      Height = 15
       Margins.Left = 2
       Margins.Top = 2
       Margins.Right = 2
@@ -195,8 +198,8 @@ object FRpVCLProgress: TFRpVCLProgress
     object LHorzRes: TLabel
       Left = 13
       Top = 16
-      Width = 258
-      Height = 20
+      Width = 205
+      Height = 15
       Margins.Left = 2
       Margins.Top = 2
       Margins.Right = 2
@@ -206,8 +209,8 @@ object FRpVCLProgress: TFRpVCLProgress
     object LVertRes: TLabel
       Left = 12
       Top = 52
-      Width = 258
-      Height = 20
+      Width = 205
+      Height = 15
       Margins.Left = 2
       Margins.Top = 2
       Margins.Right = 2

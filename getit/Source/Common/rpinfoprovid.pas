@@ -1,4 +1,4 @@
-{*******************************************************}
+ï»¿{*******************************************************}
 {                                                      }
 {       Report Manager                                  }
 {                                                       }
@@ -25,7 +25,12 @@ uses Classes,SysUtils,
 {$IFNDEF USEVARIANTS}
  Windows,
 {$ENDIF}
- rptypes, System.Generics.Collections;
+ rptypes,
+{$IFDEF FPC}
+ Generics.Collections;
+{$ELSE}
+ System.Generics.Collections;
+{$ENDIF}
 
 type
  TWinAnsiWidthsArray=array [32..255] of integer;
@@ -57,11 +62,15 @@ type
   public Fontdata:TMemoryStream;
 	public DirectoryOffset: integer;
   constructor Create;
-  destructor Destroy;
+  destructor Destroy;override;
  end;
   TGlyphInfo=record
    Glyph: Integer;
+{$IFDEF FPC}
+   Char:WideChar;
+{$ELSE}
    Char:char;
+{$ENDIF}
    Width: double;
  end;
 
@@ -100,9 +109,20 @@ type
   loadedk:array [0..65535] of boolean;
   loadedwidths:array [0..65535] of double;
   loaded:array [0..65535] of boolean;
-	glyphs:TDictionary<char, integer>;
-	glyphsInfo:TDictionary<integer, TGlyphInfo>;
-	widths:TDictionary<char, double>;
+{$IFDEF FPC}
+  glyphs:TDictionary<WideChar, integer>;
+  glyphsInfo:TDictionary<integer, TGlyphInfo>;
+  widths:TDictionary<WideChar, double>;
+{$ELSE}
+  glyphs:TDictionary<char, integer>;
+  glyphsInfo:TDictionary<integer, TGlyphInfo>;
+  widths:TDictionary<char, double>;
+{$ENDIF}
+  // EL TEXTO DEL QUE SALE UN GLIFO, cuando vale por MAS DE UN caracter (30-09-2026): una ligadura
+  // -Â«fiÂ», Â«flÂ», Â«tiÂ»- es UN glifo con dos o mas caracteres detras, y `glyphsInfo[glyph].Char` solo
+  // puede guardar uno. Lo llena el emisor de glifos conformados a partir del cluster, y lo consume
+  // el CMap de ToUnicode. Vacio para todo lo demas: con un solo caracter basta el de `glyphsInfo`.
+  glyphText:TDictionary<integer, string>;
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;
@@ -130,9 +150,13 @@ type
 
  TRpInfoProvider=class(TObject)
   procedure FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;conent:string);virtual;abstract;
+  // RightToLeft: the object is right to left (its BidiMode is on). It only matters for a text
+  // with no letter of its own direction (digits, symbols, emoji alone): it reads right to left
+  // in a right-to-left object and left to right in any other.
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordbreak:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;virtual;abstract;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean;
+     RightToLeft:boolean): TRpLineInfoArray;virtual;abstract;
   function NFCNormalize(astring:WideString):WideString;virtual;abstract;
   function GetCharWidth(pdffont:TRpPDFFont;data:TRpTTFontData;charcode:widechar):double;virtual;abstract;
   function GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;virtual;abstract;
@@ -151,7 +175,7 @@ type
    Offset:integer;
    ClusterMap: TDictionary<Integer, TList<Integer>>;
    constructor Create(TextOffset: integer);
-   destructor Destroy;
+   destructor Destroy;override;
    procedure AddGlyph(g: TGlyphPos;rOffset: integer);
  end;
 
@@ -179,8 +203,23 @@ function BreakChunksLTR(
 
 function DividesIntoLines(const text: string): TList<TLineSubText>;
 
+// The ICU paragraph level for ubidi_setPara of an object's line (see TRpInfoProvider.TextExtent).
+function BidiParagraphLevel(RightToLeft: Boolean): Byte;
+
 implementation
 
+// THE PARAGRAPH LEVEL OF A LINE WITH NO LETTER OF ITS OWN DIRECTION (04-10-2026). $FF is
+// UBIDI_DEFAULT_RTL: digits, symbols or emoji alone read right to left. That is right in an
+// Arabic object ("100 200" as an Arabic reader expects) and wrong in any other: an HTML label
+// or a forced-shaping one with a row of emoji came out backwards. $FE, UBIDI_DEFAULT_LTR, is the
+// Unicode default. A line with a strong letter decides by itself either way.
+function BidiParagraphLevel(RightToLeft: Boolean): Byte;
+begin
+  if RightToLeft then
+    Result := $FF
+  else
+    Result := $FE;
+end;
 
 
 function DividesIntoLines(const text: string): TList<TLineSubText>;
@@ -198,15 +237,15 @@ begin
   while i <= Length(text) do
   begin
     c := text[i];
-    if c in [#10, #13] then
+    if CharInSet(c, [#10, #13]) then
     begin
-      // línea encontrada
+      // lï¿½nea encontrada
       lineEnd := i - 1;
       lb.Position := lineStart;
       lb.Length := lineEnd - lineStart + 1;
       Result.Add(lb);
 
-      // saltos de línea: manejar CR+LF como uno solo
+      // saltos de lï¿½nea: manejar CR+LF como uno solo
       if (c = #13) and (i < Length(text)) and (text[i + 1] = #10) then
         Inc(i);
 
@@ -214,7 +253,7 @@ begin
     end;
     Inc(i);
   end;
-  // agregar última línea si no termina en salto
+  // agregar ï¿½ltima lï¿½nea si no termina en salto
   if lineStart <= Length(text) then
   begin
     lb.Position := lineStart;
@@ -249,14 +288,14 @@ var
   lst: TList<Integer>;
 begin
  Glyphs.Add(g);
- if (g.Cluster+Offset+rOffset<MinClusterText) then
-  MinClusterText:=g.Cluster+Offset+rOffset;
- if (g.Cluster+Offset+rOffset>MaxClusterText) then
-  MaxClusterText:=g.Cluster+Offset+rOffset;
- if (g.Cluster+rOffset<MinClusterLine) then
-  MinClusterLine:=g.Cluster+rOffset;
- if (g.Cluster+rOffset>MaxClusterLine) then
-  MaxClusterLine:=g.Cluster+rOffset;
+ if (Integer(g.Cluster)+Offset+rOffset<MinClusterText) then
+  MinClusterText:=Integer(g.Cluster)+Offset+rOffset;
+ if (Integer(g.Cluster)+Offset+rOffset>MaxClusterText) then
+  MaxClusterText:=Integer(g.Cluster)+Offset+rOffset;
+ if (Integer(g.Cluster)+rOffset<MinClusterLine) then
+  MinClusterLine:=Integer(g.Cluster)+rOffset;
+ if (Integer(g.Cluster)+rOffset>MaxClusterLine) then
+  MaxClusterLine:=Integer(g.Cluster)+rOffset;
 
  // Asignar ChunkCluster usando el diccionario
  if not ClusterMap.TryGetValue(g.LineCluster, lst) then
@@ -276,15 +315,22 @@ begin
  kerningsadded.sorted:=true;
  firstloaded:=65536;
  lastloaded:=-1;
+{$IFDEF FPC}
+ glyphs:=TDictionary<WideChar, integer>.Create;
+ widths:=TDictionary<WideChar, double>.Create;
+{$ELSE}
  glyphs:=TDictionary<char, integer>.Create;
  widths:=TDictionary<char, double>.Create;
+{$ENDIF}
  glyphsInfo:=TDictionary<integer, TGlyphInfo>.Create;
+ glyphText:=TDictionary<integer, string>.Create;
 end;
 
 destructor TRpTTFontData.Destroy;
 var
  i:integer;
 begin
+ glyphText.Free;
  for i:=0 to kerningsadded.count-1 do
  begin
   loadedkernings[StrToInt(kerningsadded.Strings[i])].Free;
@@ -326,7 +372,6 @@ begin
 end;
 
 function TrpPDFFont.GetPDFFontFamilyStyleKey: string;
-var acum:integer;
 begin
  Result:=GetFontFamilyKey+IntToStr(GetPDFStyleKey);
 end;
@@ -378,7 +423,19 @@ end;
 
 destructor TAdvFontData.Destroy;
 begin
+{$IFDEF FPC}
+ if Fontdata <> nil then
+ begin
+   try
+     Fontdata.Free;
+   except
+   end;
+   Fontdata := nil;
+ end;
+ inherited Destroy;
+{$ELSE}
  Fontdata.free;
+{$ENDIF}
 end;
 
 
@@ -409,10 +466,10 @@ var
     Result := False;
     if possibleBreaksCharIdx = nil then Exit;
     // positions[j].Cluster assumed 0-based char index in subText
-    charIdx := positions[j].LineCluster - 1;
+    charIdx := positions[j].LineCluster;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
-    if (not Result) then
+    if (not Result AND (Length(Text)>charIdx)) then
     begin
      Result:=(Text[charIdx+1]=' ') or (Text[charIdx+1]=chr(10));
     end;
@@ -501,7 +558,7 @@ var
   begin
     Result := False;
     if possibleBreaksCharIdx = nil then Exit;
-    charIdx := positions[j].LineCluster-1;
+    charIdx := positions[j].LineCluster;
     // if your Cluster is 1-based uncomment: // charIdx := positions[j].Cluster - 1;
     Result := possibleBreaksCharIdx.ContainsKey(charIdx);
     if (not Result) then

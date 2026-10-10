@@ -29,12 +29,20 @@ uses
  Variants,Types,
 {$ENDIF}
  DB,
+{$IFDEF USERPFDMEM}
+ FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error,
+ FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async,
+ FireDAC.DApt, FireDAC.Comp.DataSet, FireDAC.Comp.Client,
+{$ENDIF}
 {$IFNDEF FPC}
+{$IFNDEF USERPFDMEM}
  DBClient,
+{$ENDIF}
 {$ENDIF}
 {$IFDEF FPC}
  memds,
 {$ENDIF}
+ rpdataset,
  rpmdconsts;
 
 type
@@ -61,14 +69,8 @@ type
    secsize:Integer;
   end;
 
-{$IFDEF FPC}
-procedure FillClientDatasetFromFile(data:TMemDataSet;fieldsfile:String;
+procedure FillClientDatasetFromFile(data:TRpMemDataSet;fieldsfile:String;
  textfilename:String;IndexFields:String);
-{$ENDIF}
-{$IFNDEF FPC}
-procedure FillClientDatasetFromFile(data:TClientDataSet;fieldsfile:String;
- textfilename:String;IndexFields:String);
-{$ENDIF}
 procedure FillFieldObjList(fieldsfile:String;
  lfields:TStringList;
  var recordseparator:char;
@@ -78,8 +80,44 @@ procedure SaveFieldObjListToFile(lfields:TStringList;fieldsfile:String;
  recordseparator:char;
  ignoreafterrecordseparator:char);
 
+{$IFDEF FPC}
+{$IF defined(USERPFDMEM) or defined(FPC)}
+// MIDAS / MyBase "DATAPACKET 2.0" XML read-write for FireDAC TFDMemTable / FPC TRpMemDataSet,
+// so the Linux/Delphi/FPC build can interchange the same data files that
+// TClientDataSet produces/consumes on Windows (impl in rpfdmidas.inc).
+procedure FDMemLoadFromMidasStream(mem: TRpMemDataSet; Stream: TStream);
+procedure FDMemSaveToMidasStream(mem: TRpMemDataSet; Stream: TStream);
+procedure FDMemLoadFromMidasFile(mem: TRpMemDataSet; const FileName: string);
+procedure FDMemSaveToMidasFile(mem: TRpMemDataSet; const FileName: string);
+{$ENDIF}
+{$ELSE}
+{$IFDEF USERPFDMEM}
+// MIDAS / MyBase "DATAPACKET 2.0" XML read-write for a FireDAC TFDMemTable,
+// so the Linux/Delphi build can interchange the same data files that
+// TClientDataSet produces/consumes on Windows (impl in rpfdmidas.inc).
+procedure FDMemLoadFromMidasStream(mem: TFDMemTable; Stream: TStream);
+procedure FDMemSaveToMidasStream(mem: TFDMemTable; Stream: TStream);
+procedure FDMemLoadFromMidasFile(mem: TFDMemTable; const FileName: string);
+procedure FDMemSaveToMidasFile(mem: TFDMemTable; const FileName: string);
+{$ENDIF}
+{$ENDIF}
 
 implementation
+
+{$IFDEF USERPFDMEM}
+uses
+ System.Generics.Collections, System.StrUtils, Data.FmtBcd, System.DateUtils,
+ System.NetEncoding;
+
+{$I rpfdmidas.inc}
+{$ENDIF}
+
+{$IFDEF FPC}
+uses
+ Generics.Collections, StrUtils, FmtBcd, DateUtils, base64;
+
+{$I rpfdmidas.inc}
+{$ENDIF}
 
 
 // Reads the field definition file as a TInifile
@@ -108,6 +146,7 @@ begin
    ffile.WriteBool('FIELD'+IntToStr(i),'TRIM',fobj.fieldtrim);
    ffile.WriteInteger('FIELD'+IntToStr(i),'DATATYPE',Integer(fobj.fieldtype));
    ffile.WriteInteger('FIELD'+IntToStr(i),'BEGINPRECISION',fobj.posbeginprecision);
+   ffile.WriteInteger('FIELD'+IntToStr(i),'PRECISION',fobj.precision);
    ffile.WriteInteger('FIELD'+IntToStr(i),'YEARPOS',fobj.yearpos);
    ffile.WriteInteger('FIELD'+IntToStr(i),'YEARSIZE',fobj.yearsize);
    ffile.WriteInteger('FIELD'+IntToStr(i),'MONTHPOS',fobj.monthpos);
@@ -155,6 +194,7 @@ begin
    fobj.fieldtrim:=ffile.ReadBool('FIELD'+IntToStr(i),'TRIM',true);
    fobj.fieldtype:=TFieldType(ffile.ReadInteger('FIELD'+IntToStr(i),'DATATYPE',Integer(ftMemo)));
    fobj.posbeginprecision:=ffile.ReadInteger('FIELD'+IntToStr(i),'BEGINPRECISION',0);
+   fobj.precision:=ffile.ReadInteger('FIELD'+IntToStr(i),'PRECISION',0);
    fobj.yearpos:=ffile.ReadInteger('FIELD'+IntToStr(i),'YEARPOS',0);
    fobj.yearsize:=ffile.ReadInteger('FIELD'+IntToStr(i),'YEARSIZE',0);
    fobj.monthpos:=ffile.ReadInteger('FIELD'+IntToStr(i),'MONTHPOS',0);
@@ -243,12 +283,7 @@ begin
  end;
 end;
 
-{$IFDEF FPC}
-procedure FillDatasetFromSeparated(data:TMemDataset;textfilename:String;indexfields:string);
-{$ENDIF}
-{$IFNDEF FPC}
-procedure FillDatasetFromSeparated(data:TClientDataset;textfilename:String;indexfields:string);
-{$ENDIF}
+procedure FillDatasetFromSeparated(data:TRpMemDataSet;textfilename:String;indexfields:string);
 var
  memstream:TMemoryStream;
  buf:array of Byte;
@@ -327,7 +362,6 @@ begin
       begin
        data.FieldDefs.Add('FIELD'+IntToStr(i+1),ftString,255,false);
       end;
-{$IFNDEF FPC}
       if Length(Trim(IndexFields))<1 then
       begin
        data.IndexDefs.Clear;
@@ -341,10 +375,6 @@ begin
        data.IndexFieldNames:=IndexFields;
       end;
       data.CreateDataSet;
-{$ENDIF}
-{$IFDEF FPC}
-      data.CreateTable;
-{$ENDIF}
      end;
      data.Append;
      try
@@ -376,12 +406,7 @@ begin
 end;
 
 
-{$IFDEF FPC}
-procedure FillClientDatasetFromFile(data:TMemDataSet;fieldsfile:String;textfilename:String;indexfields:String);
-{$ENDIF}
-{$IFNDEF FPC}
-procedure FillClientDatasetFromFile(data:TClientDataSet;fieldsfile:String;textfilename:String;indexfields:String);
-{$ENDIF}
+procedure FillClientDatasetFromFile(data:TRpMemDataSet;fieldsfile:String;textfilename:String;indexfields:String);
 var
  recordseparator:char;
  ignoreafterrecordseparator:char;
@@ -421,9 +446,7 @@ begin
     fdef.DataType:=fobj.fieldtype;
     if fobj.fieldsize>0 then
      fdef.Size:=fobj.fieldsize;
-    fdef.Precision:=fobj.Precision;
    end;
-{$IFNDEF FPC}
    if Length(Trim(IndexFields))<1 then
    begin
     data.IndexDefs.Clear;
@@ -437,10 +460,6 @@ begin
     data.IndexFieldNames:=IndexFields;
    end;
    data.CreateDataSet;
-{$ENDIF}
-{$IFDEF FPC}
-   data.CreateTable;
-{$ENDIF}
    reccount:=0;
    // Load the file inside the dataset
    memstream:=TMemoryStream.Create;
@@ -575,9 +594,9 @@ begin
          ftTime:
           begin
            try
-            ahour:=StrToInt(Copy(line,fobj.yearpos,fobj.hoursize));
-            amin:=StrToInt(Copy(line,fobj.monthpos,fobj.minsize));
-            asec:=StrToInt(Copy(line,fobj.yearpos,fobj.secsize));
+            ahour:=StrToInt(Copy(line,fobj.hourpos,fobj.hoursize));
+            amin:=StrToInt(Copy(line,fobj.minpos,fobj.minsize));
+            asec:=StrToInt(Copy(line,fobj.secpos,fobj.secsize));
             fieldvalue:=EncodeTime(ahour,amin,asec,0);
            except
             fieldvalue:=Null;
@@ -589,9 +608,9 @@ begin
             ayear:=StrToInt(Copy(line,fobj.yearpos,fobj.yearsize));
             amonth:=StrToInt(Copy(line,fobj.monthpos,fobj.monthsize));
             aday:=StrToInt(Copy(line,fobj.daypos,fobj.daysize));
-            ahour:=StrToInt(Copy(line,fobj.yearpos,fobj.hoursize));
-            amin:=StrToInt(Copy(line,fobj.monthpos,fobj.minsize));
-            asec:=StrToInt(Copy(line,fobj.yearpos,fobj.secsize));
+            ahour:=StrToInt(Copy(line,fobj.hourpos,fobj.hoursize));
+            amin:=StrToInt(Copy(line,fobj.minpos,fobj.minsize));
+            asec:=StrToInt(Copy(line,fobj.secpos,fobj.secsize));
             fieldvalue:=EncodeDate(ayear,amonth,aday);
             fieldvalue:=fieldvalue+EncodeTime(ahour,amin,asec,0);
            except

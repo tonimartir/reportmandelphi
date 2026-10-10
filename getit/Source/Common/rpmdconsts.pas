@@ -1,4 +1,4 @@
-﻿{*******************************************************}
+{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -40,12 +40,18 @@ const
 {$ENDIF}
 
 
+{$IFDEF FPC}
+// The exact case of the file in the repository: a case-sensitive file system
+// (Linux, also when cross compiling for Windows) does not find another one
+{$R REPORTMANRES.RES}
+{$ELSE}
 {$R reportmanres.RES}
+{$ENDIF}
 
 
 const
- RM_VERSION='3.9.19';
- REPMAN_WEBSITE='http://reportman.sourceforge.net';
+ RM_VERSION='4.0.19';
+ REPMAN_WEBSITE='https://reportman.es';
  MAX_PAGECOUNT=999999;
 type
   TPageWidthHeight = record
@@ -600,6 +606,7 @@ var
   SRpDatabaseAliasNull:WideString='A database alias cannot be null';
   SRpDatabasenotassined:WideString='There is not database to connect/disconnect in alias';
   SRpConnectionsuccesfull:WideString='Connection Test OK';
+  SRpConnectionFailed:WideString='Connection Test Failed';
   SRpNewaliasDef:WideString='New table/query';
   SRpAliasName:WideString='Alias Name';
   SRpTableAliasExists:WideString='The Alias Name already exists';
@@ -772,7 +779,7 @@ var
   SRpNoStreamToSaveReport:WideString='No Stream to save Report (TRpDesigner)';
   SRpDocNotInstalled:WideString='Documentation not installed.';
   SRpDocNotInstalled2:WideString='Download it and install in the application directory.';
-  SRpDocNotInstalled3:WideString='http://reportman.sourceforge.net';
+  SRpDocNotInstalled3:WideString='https://reportman.es';
   SRpSelectAddConnection:WideString='You must select first add/select connection';
   SRpStreamNotValid:WideString='PDF Stream not valid';
   SRpNotPrintingPDF:WideString='Not in pdf printing state';
@@ -1154,6 +1161,7 @@ var
   SRpPortuguesse:WideString='Portuguesse';
   SRpGerman:WideString='Germany';
   SRpItalian:WideString='Italian';
+  SRpIsHtml:WideString='Is Html';
   SRpHtmlFile:WideString='Html file';
   SRpHtmlFileSingle:WideString='Html file (single)';
   SRpPrintPDFRep13:WideString='         -html     Generate Html output';
@@ -1396,10 +1404,18 @@ var
   SRpMetadata: WideString = 'Metadata';
   SRpEmbeddedFile: WideString = 'Embedded file';
   SRpCreationDateISO: WideString = 'Creation date (ISO8601)';
-  SRpModificationDateISO: WideString = 'Creation date (ISO8601)';
+  SRpModificationDateISO: WideString = 'Modification date (ISO8601)';
   SRpModify: WideString = 'Modify';
   SRpXMPMetadata: WideString = 'XMP Metadata';
   SRpSAnnotation: WideString = 'Annotation Expression';
+  // Reportman AI Agent connections that can not be opened (rpdatainfo)
+  SRpAgentNotConfigured: WideString = 'The connection "%s" (Reportman AI Agent) is not '+
+    'configured on this computer: it has no Hub database. Define it in the connections '+
+    'file, for example with the connections dialog or the new report wizard.';
+  SRpAgentNoCredentials: WideString = 'The connection "%s" (Reportman AI Agent) has no '+
+    'API key and there is no Reportman AI session. Log in from the designer, or add the '+
+    'API key of the connection to the connections file to run the report without a '+
+    'session (printreptopdf, server).';
 
 implementation
 
@@ -2437,6 +2453,9 @@ begin
   TranslateVar(1477,SRpModificationDateISO);
   TranslateVar(1478,SRpModify);
   TranslateVar(1479,SRpXMPmetadata);
+  TranslateVar(1824,SRpAgentNotConfigured);
+  TranslateVar(1825,SRpAgentNoCredentials);
+//  TranslateVar(1500,SRpIsHtml);
 
  end;
 

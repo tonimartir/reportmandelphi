@@ -67,12 +67,10 @@ uses Classes,Sysutils,rpinfoprovid,
 {$ENDIF}
 {$ENDIF}
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
 {$IFDEF WINDOWS_USEFREETYPE}
  rpinfoprovft,
 {$ELSE}
  rpinfoprovgdi,
-{$ENDIF}
 {$ENDIF}
  Windows,
 {$ENDIF}
@@ -83,7 +81,12 @@ uses Classes,Sysutils,rpinfoprovid,
  rpinfoprovft,
 {$ENDIF}
 
- rpmdconsts,rptypes,rpmunits,dateutils, System.Generics.Collections;
+ rpmdconsts,rptypes,rpmunits,dateutils,
+{$IFDEF FPC}
+ Generics.Collections;
+{$ELSE}
+ System.Generics.Collections;
+{$ENDIF}
 
 
 const
@@ -119,6 +122,7 @@ type
   public
    APageWidth,APageHeight:integer;
    PageAnnotations: array of TPDFAnnotation;
+   destructor Destroy; override;
  end;
 
  TRpPDFCanvas=class(TObject)
@@ -132,13 +136,11 @@ type
    FFontTTData:TStringList;
    FImageIndexes:TStringList;
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
   {$IFDEF WINDOWS_USEFREETYPE}
   FFtInfoProvider:TRpFtInfoProvider;
   {$ELSE}
-   FGDIInfoProvider:TRpGDIInfoProvider;
+  FGDIInfoProvider:TRpGDIInfoProvider;
   {$ENDIF}
-{$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
   FFtInfoProvider:TRpFtInfoProvider;
@@ -148,7 +150,6 @@ type
    procedure RestoreGraph;
    procedure SetInfoProvider(aprov:TRpInfoProvider);
    function GetTTFontData:TRpTTFontData;
-   function EncodeUnicode(astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):string;
    procedure SWriteLine(Stream:TStream;astring:string);
   public
    PenColor:integer;
@@ -157,6 +158,11 @@ type
    BrushColor:integer;
    BrushStyle:integer;
    PDFConformance: TPDFConformanceType;
+   // When true, TextExtent/TextOut shape plain (non-HTML, non-RTL) text through the
+   // shaper (DirectWrite/FreeType) and write per-glyph positions, so the GDI glyph
+   // rendering can match the PDF output exactly (PrinterFonts=rppfontsrecalculate or
+   // TRpGDIDriver.UsePdfFonts).
+   ForceComplexShaping: Boolean;
    procedure GetStdLineSpacing(var linespacing,leading,ascent:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
    function UnitsToXPos(Value:double):double;
@@ -166,10 +172,10 @@ type
    function UnitsToYPosFont(Value: double;FontSize: integer):double;
    procedure Line(x1,y1,x2,y2:Integer);
    procedure TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
-    Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo);
+    Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo;IsHtml:Boolean=False);
    procedure TextRect(ARect: TRect; Text: Widestring;
                        Alignment: integer; Clipping: boolean;
-                       Wordbreak:boolean;Rotation:integer;RightToLeft:Boolean);
+                       Wordbreak:boolean;Rotation:integer;RightToLeft:Boolean;IsHtml:Boolean=False);
    procedure Rectangle(x1,y1,x2,y2:Integer);
    procedure DrawImage(rec:TRect;abitmap:TStream;dpires:integer;
     tile:boolean;clip:boolean;intimageindex:integer);
@@ -185,9 +191,10 @@ type
     FontSize: integer;lInfo:TRpLineInfo):String;
    function TextExtentSimple(const Text:WideString;var Rect:TRect;
      wordbreak:boolean;singleline:boolean): TRpLineInfoArray;
+   procedure PromoteToUnicodeFontIfNeeded(const Text:WideString);
   public
    function TextExtent(const Text:WideString;var Rect:TRect;
-     wordbreak:boolean;singleline:boolean;rightToLeft: boolean): TRpLineInfoArray;
+     wordbreak:boolean;singleline:boolean;rightToLeft: boolean; IsHtml: Boolean = False): TRpLineInfoArray;
 
    property Font:TRpPDFFont read FFOnt;
   end;
@@ -232,7 +239,6 @@ type
    FOutputIntentObject: integer;
    FColorSpaceObject: integer;
    FInternalFDocCreationDate: TDateTime;
-   FModDate: string;
    PageObjNum: integer;
    FResolution:integer;
    FBitmapStreams:TList;
@@ -313,7 +319,11 @@ type
 
 function PDFCompatibleText (astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
 function NumberToText (Value:double):string;
+{$IFDEF FPC}
+function EncodePDFText(const text: WideString): string;
+{$ELSE}
 function EncodePDFText(const text: string): string;
+{$ENDIF}
 
 procedure GetBitmapInfo (stream:TStream; var width, height, imagesize:integer;FMemBits:TMemoryStream;
  var indexed:boolean;var bitsperpixel,usedcolors:integer;var palette:string);
@@ -489,6 +499,17 @@ end;
 
 
 
+// Page annotations are created by NewAnnotation and only owned here
+destructor TRpPageInfo.Destroy;
+var
+  i: integer;
+begin
+  for i := 0 to High(PageAnnotations) do
+    PageAnnotations[i].Free;
+  SetLength(PageAnnotations, 0);
+  inherited Destroy;
+end;
+
 constructor TrpPDFCanvas.Create(AFile:TRpPDFFile);
 begin
  inherited Create;
@@ -496,50 +517,46 @@ begin
  FImageIndexes:=TStringList.Create;
  FImageIndexes.Sorted:=true;
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
-{$IFDEF WINDOWS_USEFREETYPE}
- FFtInfoProvider:=TRpFtInfoProvider.Create;
- FInfoProvider:=FFtInfoProvider;
-{$ELSE}
- FGDIInfoProvider:=TRpGDIInfoProvider.Create;
- FInfoProvider:=FGDIInfoProvider;
-{$ENDIF}
-{$ENDIF}
+  {$IFDEF WINDOWS_USEFREETYPE}
+  FFtInfoProvider:=TRpFtInfoProvider.Create;
+  FInfoProvider:=FFtInfoProvider;
+  {$ELSE}
+  FGDIInfoProvider:=TRpGDIInfoProvider.Create;
+  FInfoProvider:=FGDIInfoProvider;
+  {$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
- FFtInfoProvider:=TRpFtInfoProvider.Create;
- FInfoProvider:=FFtInfoProvider;
+  FFtInfoProvider:=TRpFtInfoProvider.Create;
+  FInfoProvider:=FFtInfoProvider;
 {$ENDIF}
- FDefInfoProvider:=FInfoProvider;
- FFont:=TRpPDFFont.Create;
- FFile:=AFile;
- FFontTTData:=TStringList.Create;
- FFontTTData.Sorted:=true;
+  FDefInfoProvider:=FInfoProvider;
+  FFont:=TRpPDFFont.Create;
+  FFile:=AFile;
+  FFontTTData:=TStringList.Create;
+  FFontTTData.Sorted:=true;
 end;
 
 
 destructor TrpPDFCanvas.Destroy;
 begin
- FImageIndexes.free;
- FreeFonts;
- FFont.free;
- FFontTTData.free;
+  FImageIndexes.free;
+  FreeFonts;
+  FFont.free;
+  FFontTTData.free;
 {$IFDEF MSWINDOWS}
-{$IFNDEF FPC}
   {$IFDEF WINDOWS_USEFREETYPE}
- FFtInfoProvider.free;
+  FFtInfoProvider.free;
   {$ELSE}
- FGDIInfoProvider.free;
+  FGDIInfoProvider.free;
   {$ENDIF}
 {$ENDIF}
-{$ENDIF}
 {$IFDEF LINUX}
- FFtInfoProvider.free;
+  FFtInfoProvider.free;
 {$ENDIF}
- FInfoProvider:=nil;
- FDefInfoProvider:=nil;
- FFont:=nil;
- inherited Destroy;
+  FInfoProvider:=nil;
+  FDefInfoProvider:=nil;
+  FFont:=nil;
+  inherited Destroy;
 end;
 
 
@@ -549,7 +566,11 @@ constructor TRpPDFFile.Create(AOwner:TComponent);
 begin
  inherited Create(AOwner);
 
+{$IFDEF FPC}
+ NumberFormatSettings:=DefaultFormatSettings;
+{$ELSE}
  NumberFormatSettings:=TFormatSettings.Create;
+{$ENDIF}
  NumberFormatSettings.DecimalSeparator:='.';
  FInternalFDocCreationDate:=now;
  FPageInfos:=TStringList.create;
@@ -573,9 +594,21 @@ begin
 end;
 
 destructor TRpPDFFile.Destroy;
+var
+ i:integer;
 begin
+ // The streams of the embedded files belong to the metafile (NewEmbeddedFile)
+ for i:=0 to Length(EmbeddedFiles)-1 do
+ begin
+  EmbeddedFiles[i].Stream:=nil;
+  EmbeddedFiles[i].Free;
+ end;
+ SetLength(EmbeddedFiles,0);
  FreePageInfos;
  FPageInfos.Free;
+{$IFDEF FPC}
+ FPageInfos := nil;
+{$ENDIF}
  FCanvas.free;
  FMainPDF.Free;
  FTempStream.Free;
@@ -606,7 +639,7 @@ end;
 procedure TRpPDFFile.SWriteLine(Stream:TStream;astring:string);
 begin
  astring:=astring+EndOfLine;
- WriteStringToStream(astring,Stream);
+ WriteStringToStream(AnsiString(astring),Stream);
 end;
 
 procedure TRpPDFFile.NewAnnotation(posx,posy,width,height: integer; annotation: string);
@@ -791,9 +824,8 @@ end;
 {$ENDIF}
 
 procedure TrpPDFFIle.WriteStream(stream,dest: TMemoryStream);
-var longitud: integer;
 {$IFDEF USEZLIB}
- longitudOriginal: integer;
+var
  Fmem: TMemoryStream;
 {$ENDIF}
 begin
@@ -816,7 +848,7 @@ begin
  else
 {$ENDIF}
  begin
-  SWriteLine(dest,' /Length ' + IntToStr(stream.Size));
+  SWriteLine(dest,' /Length ' + IntToStr(stream.Size) + ' /Length1 ' + IntToStr(stream.Size));
   SWriteLine(dest,'>>');
   SWriteLine(dest,'stream');
   stream.SaveToStream(dest);
@@ -957,8 +989,6 @@ end;
 procedure TRpPDFFile.SetXMPMetadata;
 var
  FXMPStream: TMemoryStream;
- i:integer;
- efile: TEmbeddedFile;
  keywords:TArray<string>;
  keyword: string;
 begin
@@ -1104,7 +1134,6 @@ begin
 end;
 
 procedure TRpPDFFile.EndStream;
-var TempSize: LongInt;
 var StreamSize: Longint;
 var CurrentSize: Longint;
 {$IFDEF USEZLIB}
@@ -1394,7 +1423,7 @@ end;
 procedure TrpPDFFile.SetPageObject(index:integer);
 var
  aobj:TRpPageInfo;
- annotationsString, anot: string;
+ annotationsString: string;
  annotation:TPDFAnnotation;
 begin
  aobj:=TRpPageInfo(FPageInfos.Objects[index-1]);
@@ -1640,11 +1669,19 @@ begin
  SWriteLine(FTempStream,'/Info 1 0 R');
  if (PDFConformance = PDF_A_3) then
  begin
+{$IFDEF FPC}
+  CreateGUID(guid);
+  guidString:=GUIDToString(guid);
+  guidString:=StringReplace(guidString,'-','',[rfReplaceAll]);
+  guidString:=StringReplace(guidString,'{','',[rfReplaceAll]);
+  guidString:=StringReplace(guidString,'}','',[rfReplaceAll]);
+{$ELSE}
   System.SysUtils.CreateGUID(guid);
   guidString:=System.SysUtils.GUIDToString(guid);
   guidString:=guidstring.Replace('-','');
   guidString:=guidstring.Replace('{','');
   guidString:=guidstring.Replace('}','');
+{$ENDIF}
   SWriteLine(FTempStream,'/ID [<'+guidstring+'> <1234567890abcdef1234567890abcdef>]');
  end;
  SWriteLine(FTempStream,'>>');
@@ -1925,7 +1962,7 @@ end;
 
 procedure TRpPDFCanvas.TextRect(ARect: TRect; Text: Widestring;
                        Alignment: integer; Clipping: boolean;Wordbreak:boolean;
-                       Rotation:integer;RightToLeft:Boolean);
+                       Rotation:integer;RightToLeft:Boolean;IsHtml:Boolean);
 var
  recsize:TRect;
  i,index:integer;
@@ -1939,14 +1976,34 @@ var
  aword:WideString;
  oldPenStyle:integer;
  lInfo:TRpLineInfoArray;
+ lwordinfos:TRpLineInfoArray;
+ winfos:TRpLineInfoArray;
+{$IFDEF FPC}
+ dojustifyline: Boolean;
+{$ENDIF}
+ forceSuspended:boolean;
 begin
  FFile.CheckPrinting;
 
- if (RightToLeft) then
+ if (RightToLeft) or (IsHtml) then
  begin
   Font.Name:=poEmbedded;
   GetTTFontData;
-  Text:=InfoProvider.NFCNormalize(Text);
+  if (RightToLeft) or (IsHtml) then
+   Text:=InfoProvider.NFCNormalize(Text);
+ end;
+ // Text outside WinAnsi (Greek, Cyrillic, CJK...) can not be written with a PDF standard
+ // font: it would come out as '?'. Promote it to an embedded TrueType font, as RTL does.
+ PromoteToUnicodeFontIfNeeded(Text);
+
+ // Rotated text keeps the legacy pipeline on both PDF and GDI (the GDI exact-metrics
+ // path excludes rotation), so forced shaping is suspended to keep measurement and
+ // drawing aligned. RTL/HTML rotated text is unaffected.
+ forceSuspended:=false;
+ if (Rotation<>0) and ForceComplexShaping then
+ begin
+  ForceComplexShaping:=false;
+  forceSuspended:=true;
  end;
 
  if (Clipping or (Rotation<>0)) then
@@ -1968,7 +2025,7 @@ begin
    wordbreak:=false;
   // Calculates text extent and apply alignment
   recsize:=ARect;
-  lInfo:=TextExtent(Text,recsize,wordbreak,singleline, rightToLeft);
+  lInfo:=TextExtent(Text,recsize,wordbreak,singleline, rightToLeft, IsHtml);
   // Align bottom or center
   PosY:=ARect.Top;
   if (AlignMent AND AlignmentFlags_AlignBottom)>0 then
@@ -1997,7 +2054,12 @@ begin
 
 
    astring:=Copy(Text,linfo[i].Position,lInfo[i].Size);
-   if  (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft)) then
+{$IFDEF FPC}
+   dojustifyline := (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft));
+{$ELSE}
+   var dojustifyline: Boolean := (((Alignment AND AlignmentFlags_AlignHJustify)>0) AND (NOT lInfo[i].LastLine) AND (NOT RightToLeft));
+{$ENDIF}
+   if dojustifyline then
    begin
     // Calculate the sizes of the words, then
     // share space between words
@@ -2025,10 +2087,17 @@ begin
      alinesize:=0;
      lwidths:=TStringList.Create;
      try
+      // Keep each word's own shaped LineInfo: when TextOut emits per-glyph output it
+      // must receive the glyphs of the word being drawn, not those of the whole line.
+      SetLength(lwordinfos,lwords.Count);
       for index:=0 to lwords.Count-1 do
       begin
        arec:=ARect;
-       TextExtent(lwords.Strings[index],arec,false,true, RightToLeft);
+       winfos:=TextExtent(lwords.Strings[index],arec,false,true, RightToLeft, IsHtml);
+       if Length(winfos)>0 then
+        lwordinfos[index]:=winfos[0]
+       else
+        lwordinfos[index]:=lInfo[i];
        if RightToLeft then
         lwidths.Add(IntToStr(-(arec.Right-arec.Left)))
        else
@@ -2059,9 +2128,15 @@ begin
 
        for index:=0 to lwords.Count-1 do
        begin
-        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lInfo[i]);
+        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lwordinfos[index],IsHtml);
         currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
        end;
+      end
+      else
+      begin
+       // No space to share (overflowing line): fall back to drawing the line
+       // unjustified instead of dropping it, matching the GDI driver.
+       dojustifyline:=false;
       end;
      finally
       lwidths.Free;
@@ -2069,8 +2144,8 @@ begin
     finally
      lwords.free;
     end;
-   end
-   else
+   end;
+   if not dojustifyline then
    begin
     if (not Font.Transparent) then
     begin
@@ -2082,7 +2157,7 @@ begin
      PenStyle:=oldPenStyle;
     end;
 
-    TextOut(PosX,PosY+lInfo[i].TopPos,astring,lInfo[i].Width,Rotation,RightToLeft,lInfo[i]);
+    TextOut(PosX,PosY+lInfo[i].TopPos,astring,lInfo[i].Width,Rotation,RightToLeft,lInfo[i],IsHtml);
    end
   end;
  finally
@@ -2090,6 +2165,8 @@ begin
   begin
    RestoreGraph;
   end;
+  if forceSuspended then
+   ForceComplexShaping:=true;
  end;
 end;
 
@@ -2143,7 +2220,7 @@ end;
 
 
 procedure TRpPDFCanvas.TextOut(X, Y: Integer; const Text: Widestring;LineWidth,
- Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo);
+ Rotation:integer;RightToLeft:Boolean;lInfo: TRpLineInfo;IsHtml:Boolean);
 var
  rotrad,fsize:double;
  rotstring:string;
@@ -2155,9 +2232,34 @@ var
  linespacing:integer;
  stringResult:string;
  ascent:integer;
+ shapedOutput:boolean;
+ nliney:integer;
+{$IFDEF FPC}
+ decCursor: Double;
+ inUnderline: Boolean;
+ inStrikeOutDec: Boolean;
+ ulStartX: Double;
+ soStartX: Double;
+ ulFontSz: Single;
+ soFontSz: Single;
+ fontSizeOffset: Integer;
+ gCount: Integer;
+ gi: Integer;
+ isLast: Boolean;
+ gUnderline: Boolean;
+ gStrikeOutDec: Boolean;
+ gFontSz: Single;
+ ulEndX: Double;
+ soEndX: Double;
+{$ENDIF}
 begin
  /// Add Font leading
  adata:=GetTTFontData;
+ // Per-glyph (shaped) output: mandatory for RTL/HTML, opt-in for plain text through
+ // ForceComplexShaping so the PDF and the glyph-indexed GDI redraw share advances.
+ // Rotated text keeps the legacy pipeline (the GDI exact path excludes rotation).
+ shapedOutput:=(RightToLeft) or (IsHtml) or
+  (ForceComplexShaping and (Rotation=0) and (Length(lInfo.Glyphs)>0));
  if assigned(adata) then
  begin
   ascent:=adata.Ascent;
@@ -2203,7 +2305,7 @@ begin
   SWriteLine(FFile.FsTempStream,'/F'+
   Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.GetPDFStyleKey)+' '+
    IntToStr(Font.Size)+ ' Tf');
-  if (RighttoLeft) then
+  if shapedOutput then
   begin
    SWriteLine(FFile.FsTempStream,'/Span << /ActualText '+
     EncodePdfText(Text) + ' >> BDC');
@@ -2224,7 +2326,7 @@ begin
   end
   else
   begin
-   if (not RightToLeft) then
+   if not shapedOutput then
     //SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextText(Y,Font.Size)+' Td');
     SWriteLine(FFile.FsTempStream,UnitsToTextX(X)+' '+UnitsToTextY(Y+ascent)+' Td');
   end;
@@ -2236,7 +2338,7 @@ begin
    if adata.havekerning then
     havekerning:=true;
   end;
-  if (RightToLeft) then
+  if shapedOutput then
   begin
    stringResult:=PDFCompatibleTextShaping(adata,Font,RightToLeft, X,Y,Font.Size,lInfo);
    SWriteLine(FFile.FsTempStream,stringResult);
@@ -2250,7 +2352,7 @@ begin
    else
     SWriteLine(FFile.FsTempStream,PDFCompatibleText(astring,adata,Font)+' Tj');
   end;
-  if (RightToLeft) then
+  if shapedOutput then
   begin
    SWriteLine(FFile.FsTempStream,'EMC');
   end;
@@ -2263,58 +2365,238 @@ begin
   end;
  end;
  // Underline and strikeout
- if FFont.Underline then
+ // Per-glyph decorators for HTML text (grouped segments)
+{$IFDEF FPC}
+ if (IsHtml) and (Length(lInfo.Glyphs) > 0) then
  begin
-  PenStyle:=0;
-  PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
-  PenColor:=FFont.Color;
-  if Rotation=0 then
+  decCursor := 0.0;
+  inUnderline := False;
+  inStrikeOutDec := False;
+  ulStartX := 0;
+  soStartX := 0;
+  ulFontSz := FFont.Size;
+  soFontSz := FFont.Size;
+  fontSizeOffset := Round(FFont.Size / CONS_PDFRES * FResolution);
+  gCount := Length(lInfo.Glyphs);
+
+  for gi := 0 to gCount do
   begin
-   Posline:=Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
-   Line(X,Y+Posline,X+LineWidth,Y+Posline);
-  end
-  else
-  begin
-   Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
-   rotrad:=Rotation/10*(2*PI/360);
-   fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
-   PosLineX1:=-Round(fsize*cos(rotrad));
-   PosLineY1:=-Round(fsize*sin(rotrad));
-   PosLineX2:=Round(LineWidth*cos(rotrad));
-   PoslineY2:=-Round(LineWidth*sin(rotrad));
-   Line(X+PosLineX1,Y+PosLineY1,X+PosLineX2,Y+PosLineY2);
-   Y:=Y-Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+   isLast := (gi = gCount);
+   gUnderline := False;
+   gStrikeOutDec := False;
+   gFontSz := FFont.Size;
+
+   if not isLast then
+   begin
+    gUnderline := (lInfo.Glyphs[gi].Style and 4) > 0;
+    gStrikeOutDec := (lInfo.Glyphs[gi].Style and 8) > 0;
+    if lInfo.Glyphs[gi].HasFontSize then
+     gFontSz := lInfo.Glyphs[gi].FontSize;
+   end;
+
+   // Underline segment tracking
+   if gUnderline and (not inUnderline) then
+   begin
+    inUnderline := True;
+    ulStartX := X + decCursor;
+    ulFontSz := gFontSz;
+   end
+   else if ((not gUnderline) or isLast) and inUnderline then
+   begin
+    ulEndX := X + decCursor;
+    if gUnderline and isLast then
+     ulEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
+    PenStyle:=0;
+    PenWidth:=Round((ulFontSz/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+    PenColor:=FFont.Color;
+    PosLine:=Round(CONS_UNDERLINEPOS*(ulFontSz/CONS_PDFRES*FResolution));
+    Line(Round(ulStartX),Y-fontSizeOffset+PosLine,Round(ulEndX),Y-fontSizeOffset+PosLine);
+    inUnderline := gUnderline;
+    if gUnderline then
+    begin
+     ulStartX := X + decCursor;
+     ulFontSz := gFontSz;
+    end;
+   end;
+
+   // StrikeOut segment tracking
+   if gStrikeOutDec and (not inStrikeOutDec) then
+   begin
+    inStrikeOutDec := True;
+    soStartX := X + decCursor;
+    soFontSz := gFontSz;
+   end
+   else if ((not gStrikeOutDec) or isLast) and inStrikeOutDec then
+   begin
+    soEndX := X + decCursor;
+    if gStrikeOutDec and isLast then
+     soEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
+    PenStyle:=0;
+    PenWidth:=Round((soFontSz/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+    PenColor:=FFont.Color;
+    PosLine:=Round(CONS_STRIKEOUTPOS*(soFontSz/CONS_PDFRES*FResolution));
+    Line(Round(soStartX),Y-fontSizeOffset+PosLine,Round(soEndX),Y-fontSizeOffset+PosLine);
+    inStrikeOutDec := gStrikeOutDec;
+    if gStrikeOutDec then
+    begin
+     soStartX := X + decCursor;
+     soFontSz := gFontSz;
+    end;
+   end;
+
+   if not isLast then
+    decCursor := decCursor + lInfo.Glyphs[gi].XAdvance;
   end;
- end;
- if FFont.StrikeOut then
+ end
+{$ELSE}
+ if (IsHtml) and (Length(lInfo.Glyphs) > 0) then
  begin
-  PenStyle:=0;
-  PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
-  PenColor:=FFont.Color;
-  if Rotation=0 then
+  var decCursor: Double := 0.0;
+  var inUnderline: Boolean := False;
+  var inStrikeOutDec: Boolean := False;
+  var ulStartX: Double := 0;
+  var soStartX: Double := 0;
+  var ulFontSz: Single := FFont.Size;
+  var soFontSz: Single := FFont.Size;
+  var fontSizeOffset: Integer := Round(FFont.Size / CONS_PDFRES * FResolution);
+  var gCount: Integer := Length(lInfo.Glyphs);
+
+  for var gi := 0 to gCount do
   begin
-   Posline:=Round(CONS_STRIKEOUTPOS*(Font.Size/CONS_PDFRES*FResolution));
-   Line(X,Y+Posline,X+LineWidth,Y+Posline);
-  end
-  else
+   var isLast: Boolean := (gi = gCount);
+   var gUnderline: Boolean := False;
+   var gStrikeOutDec: Boolean := False;
+   var gFontSz: Single := FFont.Size;
+
+   if not isLast then
+   begin
+    gUnderline := (lInfo.Glyphs[gi].Style and 4) > 0;
+    gStrikeOutDec := (lInfo.Glyphs[gi].Style and 8) > 0;
+    if lInfo.Glyphs[gi].HasFontSize then
+     gFontSz := lInfo.Glyphs[gi].FontSize;
+   end;
+
+   // Underline segment tracking
+   if gUnderline and (not inUnderline) then
+   begin
+    inUnderline := True;
+    ulStartX := X + decCursor;
+    ulFontSz := gFontSz;
+   end
+   else if ((not gUnderline) or isLast) and inUnderline then
+   begin
+    var ulEndX: Double := X + decCursor;
+    if gUnderline and isLast then
+     ulEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
+    PenStyle:=0;
+    PenWidth:=Round((ulFontSz/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+    PenColor:=FFont.Color;
+    PosLine:=Round(CONS_UNDERLINEPOS*(ulFontSz/CONS_PDFRES*FResolution));
+    Line(Round(ulStartX),Y-fontSizeOffset+PosLine,Round(ulEndX),Y-fontSizeOffset+PosLine);
+    inUnderline := gUnderline;
+    if gUnderline then
+    begin
+     ulStartX := X + decCursor;
+     ulFontSz := gFontSz;
+    end;
+   end;
+
+   // StrikeOut segment tracking
+   if gStrikeOutDec and (not inStrikeOutDec) then
+   begin
+    inStrikeOutDec := True;
+    soStartX := X + decCursor;
+    soFontSz := gFontSz;
+   end
+   else if ((not gStrikeOutDec) or isLast) and inStrikeOutDec then
+   begin
+    var soEndX: Double := X + decCursor;
+    if gStrikeOutDec and isLast then
+     soEndX := X + decCursor + lInfo.Glyphs[gi-1].XAdvance;
+    PenStyle:=0;
+    PenWidth:=Round((soFontSz/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+    PenColor:=FFont.Color;
+    PosLine:=Round(CONS_STRIKEOUTPOS*(soFontSz/CONS_PDFRES*FResolution));
+    Line(Round(soStartX),Y-fontSizeOffset+PosLine,Round(soEndX),Y-fontSizeOffset+PosLine);
+    inStrikeOutDec := gStrikeOutDec;
+    if gStrikeOutDec then
+    begin
+     soStartX := X + decCursor;
+     soFontSz := gFontSz;
+    end;
+   end;
+
+   if not isLast then
+    decCursor := decCursor + lInfo.Glyphs[gi].XAdvance;
+  end;
+ end
+{$ENDIF}
+ else
+ begin
+  // Element-level underline (non-HTML or full-element underline)
+  if FFont.Underline then
   begin
-   Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
-   rotrad:=Rotation/10*(2*PI/360);
-   fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
-   PosLineX1:=-Round(fsize*cos(rotrad));
-   PosLineY1:=-Round(fsize*sin(rotrad));
-   PosLineX2:=Round(LineWidth*cos(rotrad));
-   PoslineY2:=-Round(LineWidth*sin(rotrad));
-   fsize:=(1-CONS_STRIKEOUTPOS)*Font.Size/CONS_PDFRES*FResolution;
-   PosLineX1:=X+PosLineX1;
-   PosLineY1:=Y+PosLineY1;
-   PosLineX2:=X+PosLineX2;
-   PosLineY2:=Y+PosLineY2;
-   PoslineX1:=PosLineX1-Round(fsize*sin(rotrad));
-   PoslineY1:=PosLineY1-Round(fsize*cos(rotrad));
-   PoslineX2:=PosLineX2-Round(fsize*sin(rotrad));
-   PoslineY2:=PosLineY2-Round(fsize*cos(rotrad));
-   Line(PoslineX1,PosLineY1,PosLineX2,PosLineY2);
+   PenStyle:=0;
+   PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+   PenColor:=FFont.Color;
+   if Rotation=0 then
+   begin
+    Posline:=Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+    nliney:=Y+Posline;
+    // Shaped output receives Y as baseline (TopPos includes the ascent) while the
+    // underline constants are calibrated for Y = line top: compensate the font size
+    // offset, same correction the HTML decorators apply.
+    if shapedOutput then
+     nliney:=nliney-Round(Font.Size/CONS_PDFRES*FResolution);
+    Line(X,nliney,X+LineWidth,nliney);
+   end
+   else
+   begin
+    Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+    rotrad:=Rotation/10*(2*PI/360);
+    fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
+    PosLineX1:=-Round(fsize*cos(rotrad));
+    PosLineY1:=-Round(fsize*sin(rotrad));
+    PosLineX2:=Round(LineWidth*cos(rotrad));
+    PoslineY2:=-Round(LineWidth*sin(rotrad));
+    Line(X+PosLineX1,Y+PosLineY1,X+PosLineX2,Y+PosLineY2);
+    Y:=Y-Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+   end;
+  end;
+  if FFont.StrikeOut then
+  begin
+   PenStyle:=0;
+   PenWidth:=Round((Font.Size/CONS_PDFRES*FResolution)*CONS_UNDERLINEWIDTH);
+   PenColor:=FFont.Color;
+   if Rotation=0 then
+   begin
+    Posline:=Round(CONS_STRIKEOUTPOS*(Font.Size/CONS_PDFRES*FResolution));
+    nliney:=Y+Posline;
+    // Same baseline compensation as the underline above.
+    if shapedOutput then
+     nliney:=nliney-Round(Font.Size/CONS_PDFRES*FResolution);
+    Line(X,nliney,X+LineWidth,nliney);
+   end
+   else
+   begin
+    Y:=Y+Round(CONS_UNDERLINEPOS*(Font.Size/CONS_PDFRES*FResolution));
+    rotrad:=Rotation/10*(2*PI/360);
+    fsize:=CONS_UNDERLINEPOS*Font.Size/CONS_PDFRES*FResolution-Font.Size/CONS_PDFRES*FResolution;
+    PosLineX1:=-Round(fsize*cos(rotrad));
+    PosLineY1:=-Round(fsize*sin(rotrad));
+    PosLineX2:=Round(LineWidth*cos(rotrad));
+    PoslineY2:=-Round(LineWidth*sin(rotrad));
+    fsize:=(1-CONS_STRIKEOUTPOS)*Font.Size/CONS_PDFRES*FResolution;
+    PosLineX1:=X+PosLineX1;
+    PosLineY1:=Y+PosLineY1;
+    PosLineX2:=X+PosLineX2;
+    PosLineY2:=Y+PosLineY2;
+    PoslineX1:=PosLineX1-Round(fsize*sin(rotrad));
+    PoslineY1:=PosLineY1-Round(fsize*cos(rotrad));
+    PoslineX2:=PosLineX2-Round(fsize*sin(rotrad));
+    PoslineY2:=PosLineY2-Round(fsize*cos(rotrad));
+    Line(PoslineX1,PosLineY1,PosLineX2,PosLineY2);
+   end;
   end;
  end;
 end;
@@ -2602,7 +2884,7 @@ begin
   aarray:=nil;
   defaultwidth:=Default_Font_Width;
   isdefault:=true;
-  if charcode in [WideChar(#0),WideChar(#13),WideChar(#10)] then
+  if CharInSet(charcode,[#0,#13,#10]) then
   begin
    Result:=0;
    exit;
@@ -2700,13 +2982,26 @@ end;
 
 
 function TRpPDFCanvas.TextExtent(const Text:WideString;var Rect:TRect;
- wordbreak:boolean;singleline:boolean;rightToLeft: boolean): TRpLineInfoArray;
+ wordbreak:boolean;singleline:boolean;rightToLeft: boolean; IsHtml: Boolean = False): TRpLineInfoArray;
 begin
- if (rightToLeft) then
+ PromoteToUnicodeFontIfNeeded(Text);
+ if (rightToLeft) or (IsHtml) then
  begin
   Font.Name:=poEmbedded;
   GetTTFontData;
-  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size);
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml,
+   rightToLeft);
+ end
+ else if ForceComplexShaping then
+ begin
+  // Forced shaping for plain text: the shaper needs a TrueType font, promote
+  // standard Type1 fonts to linked, then measure with per-glyph advances so
+  // TextOut/ExtTextOutW can reproduce identical positions.
+  if not (Font.Name in [poLinked,poEmbedded]) then
+   Font.Name:=poLinked;
+  GetTTFontData;
+  Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml,
+   rightToLeft);
  end
  else
  begin
@@ -2812,7 +3107,7 @@ begin
     newsize:=newsize-(kerningamount*FFont.Size/1000);
    end;
   end;
-  if (Not (astring[i] in [WideChar(' '),WideChar(#10),WideChar(#13)])) then
+  if (Not CharInSet(astring[i],[' ',#10,#13])) then
    lockspace:=false;
   if wordbreak then
   begin
@@ -2837,7 +3132,7 @@ begin
    end
    else
    begin
-    if astring[i] in [WideChar('-'),WideChar(' ')] then
+    if CharInSet(astring[i],['-',' ']) then
     begin
      linebreakpos:=i;
      if astring[i]=' ' then
@@ -3825,10 +4120,25 @@ end;
 procedure TRpPDFCanvas.FreeFonts;
 var
  i:integer;
+{$IFDEF FPC}
+ adata: TRpTTFontData;
+{$ENDIF}
 begin
  for i:=0 to FFontTTData.Count-1 do
  begin
+{$IFDEF FPC}
+  adata := TRpTTFontData(FFontTTData.Objects[i]);
+  if (adata <> nil) and (adata.fontdata <> nil) then
+  begin
+    try
+      adata.fontdata.free;
+    except
+    end;
+    adata.fontdata := nil;
+  end;
+{$ELSE}
   TRpTTFontData(FFontTTData.Objects[i]).fontdata.free;
+{$ENDIF}
   FFontTTData.Objects[i].Free;
  end;
  FFontTTData.Clear;
@@ -3853,12 +4163,12 @@ begin
  index:=FFontTTData.IndexOf(searchname);
  if index<0 then
  begin
-  adata:=TRpTTFontData.Create;
-  adata.fontdata:=TAdvFontData.Create;
-  adata.embedded:=false;
-  adata.Objectname:=searchname;
-  FFontTTData.AddObject(searchname,adata);
-  InfoProvider.FillFontData(Font,adata,'');
+   adata:=TRpTTFontData.Create;
+   adata.fontdata:=TAdvFontData.Create;
+   adata.embedded:=false;
+   adata.Objectname:=searchname;
+   FFontTTData.AddObject(searchname,adata);
+   InfoProvider.FillFontData(Font,adata,'');
   if adata.fontdata.FontData.size>0 then
   begin
     // In PDF_A_3 all fonts must be embedded
@@ -3887,7 +4197,6 @@ end;
 procedure TRpPDFFile.SetFontType;
 var
  i:integer;
- index2: Word;
  adata:TRpTTFontData;
  aunicodecount,index,acount:integer;
  currentindex,nextindex:integer;
@@ -3895,6 +4204,11 @@ var
  cmaphead,fromTo:AnsiString;
  FCMapStream:TMemoryStream;
  FontStream:TMemoryStream;
+ yadeclarados:TDictionary<Integer,Boolean>;
+ sustituidos:TList<Integer>;
+ destino:string;
+ ginfo:TGlyphInfo;
+ g,k,desde,cuantos:integer;
 begin
  if (FPDFConformance=PDF_1_4) then
  begin
@@ -4030,19 +4344,89 @@ begin
     end;
     if (aunicodecount>0) then
     begin
-     cmaphead:= cmaphead+IntToStr(aunicodecount)+
-      ' beginbfchar'+LINE_FEED;
+     cmaphead:= AnsiString(String(cmaphead)+IntToStr(aunicodecount)+
+      ' beginbfchar'+LINE_FEED);
      for index := currentindex to nextindex do
      begin
       if adata.loaded[index] then
       begin
-       fromTo:='<'+ IntToHex4(Integer(adata.loadedglyphs[index]))+'> ';
-       cmaphead:=cmaphead+fromTo+' <'+IntToHex4(index)+'>'+LINE_FEED;
+       fromTo:=AnsiString('<'+ IntToHex4(Integer(adata.loadedglyphs[index]))+'> ');
+       cmaphead:=AnsiString(String(cmaphead)+String(fromTo)+' <'+IntToHex4(index)+'>'+LINE_FEED);
       end;
      end;
      cmaphead:=cmaphead+'endbfchar' +LINE_FEED;
     end;
     currentindex:=nextindex+1;
+   end;
+   // LOS GLIFOS QUE EL CONFORMADO NO SACO DEL `cmap` DE LA FUENTE (30-09-2026).
+   //
+   // El barrido de arriba recorre los CARACTERES cargados y declara el glifo NOMINAL de cada uno.
+   // Pero el conformado no siempre dibuja el nominal: una ligadura junta «fi» o «ti» en un glifo, y
+   // una alternativa contextual cambia la forma de una letra segun sus vecinas -en arabe eso es la
+   // norma, no la excepcion-. Esos glifos no son el nominal de ningun caracter, asi que se quedaban
+   // SIN NINGUNA ENTRADA aqui, y un lector de PDF acaba leyendo el NUMERO DEL GLIFO como si fuera
+   // un codigo de caracter: «año de gestión» salia «año de gesƟón», y «الفاتورة رقم» perdia cinco
+   // de sus once letras. El PDF se ve perfecto y el texto esta mal, que es lo peor que le puede
+   // pasar a una factura.
+   //
+   // El dato ya estaba: `glyphsInfo[glifo].Char` guarda el caracter del que salio cada glifo -lo
+   // rellenan los dos proveedores, FreeType y GDI-, y `glyphText` trae la cadena entera cuando el
+   // glifo vale por varios caracteres. Aqui solo se declaran los que no estan ya declarados arriba,
+   // porque dos entradas para el mismo glifo se contradicen.
+   yadeclarados:=TDictionary<Integer,Boolean>.Create;
+   sustituidos:=TList<Integer>.Create;
+   try
+    for index:=adata.firstloaded to adata.lastloaded do
+     if ((index>=0) and (index<=65535) and adata.loaded[index]) then
+      yadeclarados.AddOrSetValue(Integer(adata.loadedglyphs[index]),true);
+    for ginfo in adata.glyphsInfo.Values do
+    begin
+     if ((ginfo.Glyph<=0) or yadeclarados.ContainsKey(ginfo.Glyph)) then
+      Continue;
+     // SIN UN DESTINO QUE VALGA NO SE DECLARA NADA: poner un cero o un caracter de control seria
+     // cambiar un texto mudo por un texto sucio, y eso es peor. Se filtra AQUI y no al escribir,
+     // porque el numero de entradas va delante del bloque.
+     if (not adata.glyphText.TryGetValue(ginfo.Glyph,destino)) then
+      destino:=ginfo.Char;
+     if ((Length(destino)=0) or (destino[1]<=' ')) then
+      Continue;
+     // Y NI UN SUBROGADO SUELTO: un emoji son DOS unidades, y `glyphsInfo.Char` solo guarda una.
+     // Declarar media pareja es declarar algo que no es un caracter. La pareja entera si vale, y
+     // esa llega por `glyphText` cuando el cluster la trae.
+     if ((Length(destino)=1) and (destino[1]>=#$D800) and (destino[1]<=#$DFFF)) then
+      Continue;
+     yadeclarados.AddOrSetValue(ginfo.Glyph,true);
+     sustituidos.Add(ginfo.Glyph);
+    end;
+    sustituidos.Sort;
+    // En bloques de cien, como el barrido de arriba: el numero de entradas va delante y el formato
+    // no admite un bloque de tamaño declarado a la ligera.
+    desde:=0;
+    while (desde<sustituidos.Count) do
+    begin
+     cuantos:=sustituidos.Count-desde;
+     if (cuantos>100) then
+      cuantos:=100;
+     cmaphead:=AnsiString(String(cmaphead)+IntToStr(cuantos)+' beginbfchar'+LINE_FEED);
+     for k:=desde to desde+cuantos-1 do
+     begin
+      g:=sustituidos[k];
+      // La cadena entera si el glifo vale por varias letras; si no, el caracter que guardo el
+      // proveedor. Es exactamente lo que la norma pide para una ligadura: `<glifo> <00660069>`.
+      if (not adata.glyphText.TryGetValue(g,destino)) then
+       destino:=adata.glyphsInfo[g].Char;
+      fromTo:=AnsiString('<'+IntToHex4(g)+'> ');
+      cmaphead:=AnsiString(String(cmaphead)+String(fromTo)+' <');
+      for index:=1 to Length(destino) do
+       cmaphead:=AnsiString(String(cmaphead)+IntToHex4(Integer(destino[index])));
+      cmaphead:=AnsiString(String(cmaphead)+'>'+LINE_FEED);
+     end;
+     cmaphead:=cmaphead+'endbfchar'+LINE_FEED;
+     desde:=desde+cuantos;
+    end;
+   finally
+    sustituidos.Free;
+    yadeclarados.Free;
    end;
    cmaphead:= cmaphead+'endcmap' +LINE_FEED+
                'CMapName currentdict /CMap defineresource pop'+LINE_FEED+
@@ -4160,7 +4544,7 @@ begin
    end
    else
    begin
-    SWriteLine(FTempStream,'/CDIToGDIMap /Identity');
+    SWriteLine(FTempStream,'/CIDToGIDMap /Identity');
    end;
 
 
@@ -4247,6 +4631,106 @@ begin
  Result:=UpdateFonts;
 end;
 
+// True when the text has a character WinAnsiEncoding (Windows-1252) can not
+// represent, so a PDF standard font (Helvetica, Courier, Times) would print '?'.
+function NeedsUnicodeFont(const Text:WideString):Boolean;
+var
+ i:integer;
+ c:Word;
+begin
+ Result:=false;
+ for i:=1 to Length(Text) do
+ begin
+  c:=Word(Text[i]);
+  if c<$100 then
+   continue;
+  case c of
+   // The 27 characters Windows-1252 places at $80-$9F
+   $20AC,$201A,$0192,$201E,$2026,$2020,$2021,$02C6,$2030,$0160,
+   $2039,$0152,$017D,$2018,$2019,$201C,$201D,$2022,$2013,$2014,
+   $02DC,$2122,$0161,$203A,$0153,$017E,$0178:
+    continue;
+  else
+   begin
+    Result:=true;
+    break;
+   end;
+  end;
+ end;
+end;
+
+// A PDF standard font only has WinAnsi glyphs; when the text carries characters
+// outside that set (Greek, Cyrillic, CJK...) the current font is promoted to an
+// embedded TrueType font, as right-to-left text is, so it is written with glyph
+// ids instead of turning into '?'. Linked and Embedded fonts, and canvases
+// without a font provider, are left as they are.
+procedure TRpPDFCanvas.PromoteToUnicodeFontIfNeeded(const Text:WideString);
+begin
+ if Font.Name in [poLinked,poEmbedded] then
+  exit;
+ if Not Assigned(InfoProvider) then
+  exit;
+ if NeedsUnicodeFont(Text) then
+ begin
+  Font.Name:=poEmbedded;
+  GetTTFontData;
+ end;
+end;
+
+
+{$IFDEF FPC}
+// The byte of a character in WinAnsiEncoding (Windows-1252), the encoding of
+// the PDF standard fonts. The FPC strings are UTF-8 on Linux and macOS, so
+// adding the WideChar to the string would write its UTF-8 bytes, which a PDF
+// reader shows as two Windows-1252 characters
+function WinAnsiChar(achar:WideChar):AnsiChar;
+begin
+ case Word(achar) of
+  $00..$7F,$A0..$FF: Result:=AnsiChar(Word(achar));
+  $20AC: Result:=#$80;
+  $201A: Result:=#$82;
+  $0192: Result:=#$83;
+  $201E: Result:=#$84;
+  $2026: Result:=#$85;
+  $2020: Result:=#$86;
+  $2021: Result:=#$87;
+  $02C6: Result:=#$88;
+  $2030: Result:=#$89;
+  $0160: Result:=#$8A;
+  $2039: Result:=#$8B;
+  $0152: Result:=#$8C;
+  $017D: Result:=#$8E;
+  $2018: Result:=#$91;
+  $2019: Result:=#$92;
+  $201C: Result:=#$93;
+  $201D: Result:=#$94;
+  $2022: Result:=#$95;
+  $2013: Result:=#$96;
+  $2014: Result:=#$97;
+  $02DC: Result:=#$98;
+  $2122: Result:=#$99;
+  $0161: Result:=#$9A;
+  $203A: Result:=#$9B;
+  $0153: Result:=#$9C;
+  $017E: Result:=#$9E;
+  $0178: Result:=#$9F;
+ else
+  Result:='?';
+ end;
+end;
+
+// Appends the Windows-1252 byte of a character. The text is marked with the
+// code page of the system first: its constants ('(') come from this unit,
+// UTF-8 (the file has a BOM), and on Windows (Windows-1252) the next
+// concatenation would convert it from UTF-8, where a lone byte $80-$FF
+// becomes '?'
+procedure AddWinAnsiChar(var AText:string;achar:WideChar);
+begin
+ SetCodePage(RawByteString(AText),DefaultSystemCodePage,False);
+ SetLength(AText,Length(AText)+1);
+ AText[Length(AText)]:=WinAnsiChar(achar);
+end;
+{$ENDIF}
 
 function WideCharToHex(achar:Widechar):string;
 var
@@ -4256,40 +4740,131 @@ begin
  Result:=Format('%4.4x',[aint]);
 end;
 
-
-
-function TRpPDFCanvas.EncodeUnicode(astring:Widestring;adata:TRpTTFontData;pdffont:TRpPDFFont):string;
+// EL TEXTO DEL QUE SALE CADA GLIFO, cuando vale por MAS DE UN caracter (30-09-2026).
+//
+// El conformado no dibuja siempre el glifo «nominal» de un caracter: una ligadura junta «fi», «fl»
+// o «ti» en UNO, y una alternativa contextual cambia la forma de una letra segun sus vecinas. Para
+// el caso de un caracter no hace falta nada de esto: `glyphsInfo[glifo].Char` ya guarda el suyo y
+// el CMap de ToUnicode ya lo puede declarar. El que no tiene donde caber es la LIGADURA, que son
+// dos o mas caracteres en un glifo.
+//
+// Sin esto, el glifo de la ligadura no tiene ningun caracter que declarar y el PDF se queda sin
+// entrada para el: el lector acaba leyendo el NUMERO DEL GLIFO como si fuera un codigo de
+// caracter, y «oficina eficaz, inflar» sale «oĮcina eĮcaz, inŇar». Se ve perfecto y el texto
+// esta mal, que es lo peor que puede pasarle a una factura en PDF.
+//
+// El cluster de HarfBuzz (y el de DirectWrite) dice de que parte del texto viene cada glifo, asi que
+// se le puede devolver. Hay dos formas:
+//
+//   UN glifo en el cluster      -> ese glifo vale por todo el tramo y se declara entero.
+//   VARIOS en el mismo cluster  -> un caracter se ha partido en varios glifos (devanagari,
+//                                  tailandes). El PRIMERO se lleva el tramo y los demas NO DECLARAN
+//                                  NADA: poner en todos el primer caracter del cluster repite
+//                                  letras -sale «कककतत ककक»- y una atribucion equivocada es peor
+//                                  que ninguna. Esos vienen marcados en `callar`.
+procedure TextoDeCadaGlifo(const lInfo:TRpLineInfo;out textos:TArray<string>;
+  out callar:TArray<Boolean>);
 var
- aresult:string;
- i:integer;
- kerningvalue:integer;
+{$IFDEF FPC}
+ // TList<T>.BinarySearch da el indice como SizeInt (Int64 en 64 bits)
+ i,k,c,fin,largo,n:integer;
+ pos:SizeInt;
+{$ELSE}
+ i,k,c,fin,largo,pos,n:integer;
+{$ENDIF}
+ texto:string;
+ limites:TList<Integer>;
+ cuantos:TDictionary<Integer,Integer>;
+ primero:TDictionary<Integer,Integer>;
+ limpio:boolean;
 begin
- aresult:= aresult+'[(';
- aresult := aresult + char(254);
- aresult := aresult + char(254);
-// aresult := aresult + char(255);
-  for i:=1 to Length(astring) do
+ SetLength(textos,Length(lInfo.Glyphs));
+ SetLength(callar,Length(lInfo.Glyphs));
+ texto:=lInfo.Text;
+ if (Length(texto)=0) then
+  exit;
+ limites:=TList<Integer>.Create;
+ cuantos:=TDictionary<Integer,Integer>.Create;
+ primero:=TDictionary<Integer,Integer>.Create;
+ try
+  // LOS LIMITES SE SACAN DE LOS VALORES, NO DEL ORDEN DE LOS GLIFOS: asi da igual que la escritura
+  // vaya de derecha a izquierda, donde los clusters van decreciendo. El final de un cluster es el
+  // principio del siguiente.
+  for i:=0 to High(lInfo.Glyphs) do
   begin
-   if astring[i] in [WideChar('('),WideChar(')'),WideChar('\')] then
-    aresult:=aresult+'\';
-   // Euro exception
-//   if astring[i]=widechar(8364) then
-//    Result:=Result+chr(128)
-//   else
-   aresult:=aresult+chr(Word(astring[i]) shr 8);
-   aresult:=aresult+chr(Word(astring[i]) AND $F0);
-   if (i<Length(astring)) then
+   c:=Integer(lInfo.Glyphs[i].LineCluster);
+   if ((c<0) or (c>=Length(texto))) then
+    continue;
+   if cuantos.TryGetValue(c,n) then
+    cuantos[c]:=n+1
+   else
    begin
-    kerningvalue:=infoprovider.GetKerning(pdffont,adata,WideChar(astring[i]),WideChar(astring[i+1]));
-    if kerningvalue<>0 then
-    begin
-     aresult:=aresult+')'+' '+IntToStr(kerningvalue);
-     aresult:=aresult+' (';
-    end;
+    cuantos.Add(c,1);
+    limites.Add(c);
+    primero.Add(c,i);
    end;
   end;
-  aresult:=aresult+')]';
-  Result:=aresult;
+  limites.Sort;
+  for i:=0 to High(lInfo.Glyphs) do
+  begin
+   c:=Integer(lInfo.Glyphs[i].LineCluster);
+   if ((c<0) or (c>=Length(texto))) then
+    continue;
+   if (not limites.BinarySearch(c,pos)) then
+    continue;
+   if (pos+1<limites.Count) then
+    fin:=limites[pos+1]
+   else
+    fin:=Length(texto);
+   largo:=fin-c;
+   // TRES CAUTELAS, porque una atribucion equivocada saldria en el texto del PDF y eso es PEOR que
+   // no atribuir nada: perder una letra se nota, cambiarla por otra no. Lo que no pase las tres se
+   // queda como estaba, que es el comportamiento de siempre.
+   //
+   // 1. De uno a cuatro caracteres: «ffi» es la ligadura mas larga que se ve, y un emoji son dos
+   //    unidades. Con un solo caracter y un solo glifo ya acierta `glyphsInfo`, asi que ahi no se
+   //    declara nada nuevo (abajo).
+   // 2. Sin espacios en medio, que una sustitucion nunca los cruza.
+   // 3. Y LA QUE DE VERDAD IMPORTA: que el primer caracter del tramo sea el que el conformador
+   //    dice. `CharCode` es su propia palabra -el `texto[cluster]` de SU texto-, asi que si al
+   //    indexar el texto de la linea no sale lo mismo, el cluster no apunta donde creemos y no hay
+   //    nada que atribuir. Pasa con el texto que llega en varios tramos (HTML), donde el cluster se
+   //    corrige con el inicio del tramo.
+   if ((largo<1) or (largo>4)) then
+    continue;
+   // OJO: en Pascal una cadena empieza en 1 y el cluster viene en base 0.
+   if (texto[c+1]<>lInfo.Glyphs[i].CharCode) then
+    continue;
+   limpio:=true;
+   for k:=c to fin-1 do
+    if (texto[k+1]<=' ') then
+     limpio:=false;
+   if (not limpio) then
+    continue;
+   // UN CARACTER PARTIDO EN VARIOS GLIFOS: el caracter es del primero y los demas NO DECLARAN NADA.
+   // Ponerlo en todos lo repite en el texto extraido -salia «कककतत ककक»- y una atribucion
+   // equivocada es PEOR que ninguna, porque perder una letra se nota y cambiarla por otra no.
+   //
+   // SE PREGUNTA POR EL TRAMO, NO POR EL NUMERO DE GLIFOS, y no es un detalle: cuando el cluster
+   // cubre VARIOS caracteres -una letra arabe con su vocal- sus glifos pueden ser cosas distintas y
+   // `glyphsInfo` acierta con cada una. Callar ahi en bloque costaba la «ي» y la «ع» de un informe
+   // que ya salia bien: MEDIDO, no supuesto. Se probo tambien elegir al que avanza el lapiz, y
+   // salio peor en devanagari, asi que se quedo esto.
+   if ((largo=1) and (cuantos[c]>1) and (primero[c]<>i)) then
+   begin
+    callar[i]:=true;
+    continue;
+   end;
+   // Con un caracter y un solo glifo no hace falta declarar nada nuevo: `glyphsInfo` ya guarda ese
+   // caracter y el CMap lo declara por su cuenta.
+   if ((largo>1) or (cuantos[c]>1)) then
+    textos[i]:=Copy(texto,c+1,largo);
+  end;
+ finally
+  primero.Free;
+  cuantos.Free;
+  limites.Free;
+ end;
 end;
 
 function TRpPDFCanvas.PDFCompatibleTextShaping(
@@ -4309,12 +4884,44 @@ var
   newFontFamily:string;
   actualFontFamily:string;
   originalFontFamily:string;
+  actualBold: Boolean;
+  originalBold: Boolean;
+  actualItalic: Boolean;
+  originalItalic: Boolean;
+  actualFontSize: Single;
+  originalFontSize: Single;
+  newBold: Boolean;
+  newItalic: Boolean;
+  newFontSize: Single;
+  textos: TArray<string>;
+  callar: TArray<Boolean>;
+{$IFDEF FPC}
+  actualColor: Integer;
+  originalColor: Integer;
+  newColor: Integer;
+  newHasColor: Boolean;
+{$ENDIF}
 begin
   EOL := FFile.EndOfLine;
   Result := '';
   cursor := 0.0;
+  // De que texto sale cada glifo, para el CMap de ToUnicode.
+  TextoDeCadaGlifo(lInfo, textos, callar);
   actualFontFamily:=Font.GetFontFamily;
   originalFontFamily:=Font.GetFontFamily;
+  actualBold := Font.Bold;
+  originalBold := Font.Bold;
+  actualItalic := Font.Italic;
+  originalItalic := Font.Italic;
+  actualFontSize := FontSize;
+  originalFontSize := FontSize;
+{$IFDEF FPC}
+  actualColor := Font.Color;
+  originalColor := Font.Color;
+{$ELSE}
+  var actualColor: Integer := Font.Color;
+  var originalColor: Integer := Font.Color;
+{$ENDIF}
 
 
   for i := 0 to High(lInfo.Glyphs) do
@@ -4323,26 +4930,73 @@ begin
     // glyph id hex (tu helper)
     gidHex := IntToHex4(g.GlyphIndex);
     if (g.FontFamily<>'') then
-    begin
-     newfontFamily:=g.FontFamily;
-    end
+      newFontFamily:=g.FontFamily
     else
-    begin
-     newfontfamily:=originalFontFamily;
-    end;
-    if (actualfontFamily<>newFontFamily) then
+      newFontFamily:=originalFontFamily;
+
+    // g.Style solo trae el estilo del segmento HTML; los glifos se conformaron
+    // con el de la fuente base sumado (rpinfoprovft), igual que dibujan GDI y LCL
+    newBold := originalBold or ((g.Style and 1) > 0);
+    newItalic := originalItalic or ((g.Style and 2) > 0);
+    if g.HasFontSize then
+      newFontSize := g.FontSize
+    else
+      newFontSize := originalFontSize;
+
+    if (actualFontFamily<>newFontFamily) or (actualBold<>newBold) or
+       (actualItalic<>newItalic) or (actualFontSize<>newFontSize) then
     begin
      Font.WFontName:=newFontFamily;
      Font.LFontName:=newFontFamily;
+     Font.Bold:=newBold;
+     Font.Italic:=newItalic;
+     Font.Size:=Round(newFontSize);
+     UpdateFonts;
      adata:=GetTTFontData;
      Result:=Result+'/F'+
       Type1FontTopdfFontName(Font.Name,Font.Italic,Font.Bold,Font.GetFontFamilyKey,Font.GetPDFStyleKey)+' '+
        IntToStr(Font.Size)+ ' Tf'+EOL;
-     actualFontFamily:=newfontFamily;
+     actualFontFamily:=newFontFamily;
+     actualBold:=newBold;
+     actualItalic:=newItalic;
+     actualFontSize:=newFontSize;
     end;
-    // llamadas auxiliares que tenías para compatibilidad
+
+    // Color change via rg operator (valid inside BT/ET)
+{$IFDEF FPC}
+    newHasColor := g.HasColor;
+    if newHasColor then
+      newColor := g.Color
+    else
+      newColor := originalColor;
+{$ELSE}
+    var newColor: Integer;
+    var newHasColor: Boolean := g.HasColor;
+    if newHasColor then
+      newColor := g.Color
+    else
+      newColor := originalColor;
+{$ENDIF}
+    if newColor <> actualColor then
+    begin
+      Result := Result + RGBToFloats(newColor) + ' rg' + EOL;
+      actualColor := newColor;
+    end;
+    // llamadas auxiliares que tenías para compatibilidad. NO SON SOLO UNA MEDIDA: es aqui donde el
+    // glifo queda registrado -con su caracter- para el subconjunto y para el CMap de ToUnicode.
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
     InfoProvider.GetGlyphWidth(pdffont, adata, g.GlyphIndex, g.CharCode);
+    // DE QUE TEXTO SALE ESTE GLIFO, para el CMap de ToUnicode. Con un caracter basta el que ya
+    // guarda `glyphsInfo`; aqui se anota lo que alli no cabe -una ligadura- y se manda CALLAR a los
+    // glifos que no son el primero de su cluster, para no repetir letras. Una cadena buena nunca se
+    // pisa con un silencio: el mismo glifo puede aparecer en otro sitio donde si se sepa.
+    if (Assigned(adata) and (i<=High(textos))) then
+    begin
+     if (Length(textos[i])>0) then
+      adata.glyphText.AddOrSetValue(g.GlyphIndex, textos[i])
+     else if (callar[i] and (not adata.glyphText.ContainsKey(g.GlyphIndex))) then
+      adata.glyphText.AddOrSetValue(g.GlyphIndex, '');
+    end;
 
     // calcular posiciones PDF como hacías
     absY := posY - g.YOffset;
@@ -4352,18 +5006,31 @@ begin
 
     // Emitir la instrucción Tm y Tj SIN q/Q
     // Matriz: 1 0 0 1 tx ty Tm   seguido de <gid> Tj
+{$IFDEF FPC}
+    Result := Result + Format('1 0 0 1 %s %s Tm <%s> Tj' + EOL,
+      [UnitsToTextX(absX), UnitsToTextY(absY), gidHex], DefaultFormatSettings);
+{$ELSE}
     Result := Result + Format('1 0 0 1 %s %s Tm <%s> Tj' + EOL,
       [UnitsToTextX(absX), UnitsToTextY(absY), gidHex], TFormatSettings.Invariant);
+{$ENDIF}
 
     // avanzar cursor
     cursor := cursor + g.XAdvance;
   end;
-  if  (actualFontFamily<>originalFontFamily) then
+  if (actualFontFamily<>originalFontFamily) or (actualBold<>originalBold) or
+     (actualItalic<>originalItalic) or (actualFontSize<>originalFontSize) then
   begin
    Font.WFontName:=originalFontFamily;
    Font.LFontName:=originalFontFamily;
-   adata:=GetTTFontData;
+   Font.Bold:=originalBold;
+   Font.Italic:=originalItalic;
+   Font.Size:=Round(originalFontSize);
+   UpdateFonts;
+   GetTTFontData;
   end;
+  // Restore original color if changed
+  if actualColor <> originalColor then
+    Result := Result + RGBToFloats(originalColor) + ' rg' + EOL;
 end;
 
 function TRpPDFCanvas.PDFCompatibleTextWidthKerning(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont):String;
@@ -4402,13 +5069,17 @@ begin
   Result:='[(';
   for i:=1 to Length(astring) do
   begin
-   if astring[i] in [WideChar('('),WideChar(')'),WideChar('\')] then
+   if CharInSet(astring[i],['(',')','\']) then
     Result:=Result+'\';
+{$IFDEF FPC}
+   AddWinAnsiChar(Result,astring[i]);
+{$ELSE}
    // Euro exception
    if (Ord(astring[i])=8364) then
     Result:=Result+AnsiChar(128)
    else
     Result:=Result+astring[i];
+{$ENDIF}
    if (i<Length(astring)) then
    begin
     kerningvalue:=infoprovider.GetKerning(pdffont,adata,WideChar(astring[i]),WideChar(astring[i+1]));
@@ -4451,19 +5122,27 @@ begin
   for i:=1 to Length(astring) do
   begin
    nchar:=astring[i];
-   if nchar in [WideChar('('),WideChar(')'),WideChar('\')] then
+   if CharInSet(nchar,['(',')','\']) then
     Result:=Result+'\';
+{$IFDEF FPC}
+   AddWinAnsiChar(Result,nchar);
+{$ELSE}
    // Euro character exception
    if (Ord(nchar)=8364) then
     Result:=Result+AnsiChar(128)
    else
     Result:=Result+nchar;
+{$ENDIF}
   end;
   Result:=Result+')';
  end;
 end;
 
+{$IFDEF FPC}
+function EncodePDFText(const text: WideString): string;
+{$ELSE}
 function EncodePDFText(const text: string): string;
+{$ENDIF}
 var
   UTF16BEBytes: TBytes;
   i: Integer;
@@ -4487,12 +5166,21 @@ begin
     for i := 1 to Length(text) do
     begin
       // Escape special chars
+{$IFDEF FPC}
+      case text[i] of
+        '(', ')', '\':
+          Result := Result + '\' + Char(text[i]);
+      else
+        Result := Result + Char(text[i]);
+      end;
+{$ELSE}
       case text[i] of
         '(', ')', '\':
           Result := Result + '\' + text[i];
       else
         Result := Result + text[i];
       end;
+{$ENDIF}
     end;
     Result := Result + ')';
   end
@@ -4518,10 +5206,23 @@ procedure TRpPDFFile.FreePageInfos;
 var
  i:integer;
 begin
+{$IFDEF FPC}
+ if FPageInfos = nil then
+   Exit;
+ for i:=0 to FPageInfos.Count-1 do
+ begin
+  if FPageInfos.Objects[i] <> nil then
+  begin
+    FPageInfos.Objects[i].free;
+    FPageInfos.Objects[i] := nil;
+  end;
+ end;
+{$ELSE}
  for i:=0 to FPageInfos.Count-1 do
  begin
   FPageInfos.Objects[i].free;
  end;
+{$ENDIF}
  FPageInfos.Clear;
 end;
 

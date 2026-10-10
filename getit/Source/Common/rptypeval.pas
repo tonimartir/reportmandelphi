@@ -28,6 +28,9 @@ uses
 {$IFDEF USEBCD}
  FMTBcd,
 {$ENDIF}
+{$IFDEF FPC}
+ FmtBCD,
+{$ENDIF}
  DB,
  rptypes;
 
@@ -89,6 +92,7 @@ type
    Idenname:string;
    // Help
    help:string;
+   AIHelp:string;
    model:string;
    aparams:string;
    // Param function structure
@@ -239,6 +243,8 @@ begin
  FValue:=True;
  RType:=RTypeIdenConstant;
  help:=SRpTrueHelp;
+ Model:='True';
+ AIHelp:='Literal identifier for true boolean value';
  Idenname:='True';
 end;
 
@@ -248,6 +254,8 @@ begin
  inherited Create(AOwner);
  FValue:=False;
  help:=SRpFalseHelp;
+ Model:='False';
+ AIHelp:='Literal identifier for false boolean value';
  Idenname:='False';
 end;
 
@@ -315,6 +323,16 @@ begin
   Exit;
  end;
  Result:=Field.AsVariant;
+{$IFDEF FPC}
+ // A TFMTBCDField (Zeos for a numeric without precision) gives a FMTBcd
+ // variant, and FPC can not add it to an integer (the aggregates start
+ // at 0): a Double, as with USEBCD
+ if VarIsFMTBcd(Result) then
+ begin
+  Result:=BCDToDouble(VarToBCD(Result));
+  Exit;
+ end;
+{$ENDIF}
 {$IFNDEF USEBCD}
  atype:=VarType(Result);
  if atype=14 then

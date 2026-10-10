@@ -16,7 +16,10 @@
 unit rptranslator;
 
 {$I rpconf.inc}
+{$IFNDEF FPC}
+// Lazarus takes the palette icon from rtl_fpc/rpmregicons.res (rpmreg)
 {$R rptranslator.dcr}
+{$ENDIF}
 
 interface
 
@@ -32,6 +35,11 @@ uses
 {$ENDIF}
 {$IFDEF MSWINDOWS}
  Windows,
+{$ENDIF}
+{$IFDEF FPC}
+{$IFDEF DARWIN}
+ rpdarwinlibs,
+{$ENDIF}
 {$ENDIF}
  Classes,rptypes;
 
@@ -178,24 +186,41 @@ end;
 
 
 {$IFNDEF DOTNETD}
+{$IFDEF LINUX}
+// Some translation files keep the Windows language abbreviation
+// (reportmanres.cat, reportmanres.csy) instead of the ISO 639-1 code
+function LinuxLocaleAliasFile(const afilename:string;LangCode:PChar):string;
+var
+ P:PChar;
+ lang,alias:string;
+begin
+ Result:=afilename;
+ P:=LangCode;
+ while CharInSet(P^, ['a'..'z', 'A'..'Z']) do
+  Inc(P);
+ lang:=LowerCase(Copy(string(LangCode),1,P-LangCode));
+ alias:='';
+ if lang='ca' then
+  alias:='cat'
+ else
+ if lang='cs' then
+  alias:='csy';
+ if (Length(alias)>0) and FileExists(afilename+'.'+alias) then
+  Result:=afilename+'.'+alias;
+end;
+{$ENDIF}
+
 function AddLocaleSufix(afilename:string):string;
 {$IFDEF LINUX}
 var
+ LangStr:string;
  LangCode,P:PChar;
  I:Integer;
 {$ENDIF}
 {$IFDEF MSWINDOWS}
 var
-  Key: LongWord;
-{$IFDEF FPC}
-  keyuser:Handle;
-{$ELSE}
-  keyuser:Cardinal;
-{$ENDIF}
   nfilename:string;
   LocaleName: array[0..4] of Char;
-  Size: Integer;
-  P: PChar;
 
   function FindBS(Current: PChar): PChar;
   begin
@@ -268,16 +293,31 @@ var
 begin
  Result:=afilename;
 {$IFDEF LINUX}
+ // POSIX order for messages: LC_ALL, then LC_MESSAGES, then LANG
 {$IFDEF FPC}
- LangCode := PChar(Sysutils.GetEnvironmentVariable('LANG'));
-{$ELSE}
-  LangCode := PChar(System.SysUtils.GetEnvironmentVariable('LANG'));
+ LangStr := Sysutils.GetEnvironmentVariable('LC_ALL');
+ if Length(LangStr)=0 then
+  LangStr := Sysutils.GetEnvironmentVariable('LC_MESSAGES');
+ if Length(LangStr)=0 then
+  LangStr := Sysutils.GetEnvironmentVariable('LANG');
+{$IFDEF DARWIN}
+ // macOS gives no LANG to the applications started from the Finder
+ if Length(LangStr)=0 then
+  LangStr := RpDarwinUserLanguage;
 {$ENDIF}
- if (LangCode = nil) or (LangCode^ = #0) then
+{$ELSE}
+ LangStr := System.SysUtils.GetEnvironmentVariable('LC_ALL');
+ if Length(LangStr)=0 then
+  LangStr := System.SysUtils.GetEnvironmentVariable('LC_MESSAGES');
+ if Length(LangStr)=0 then
+  LangStr := System.SysUtils.GetEnvironmentVariable('LANG');
+{$ENDIF}
+ if Length(LangStr)=0 then
   Exit;
+ LangCode := PChar(LangStr);
  // look for modulename.en_US
  P := LangCode;
- while P^ in ['a'..'z', 'A'..'Z', '_'] do
+ while CharInSet(P^, ['a'..'z', 'A'..'Z', '_']) do
   Inc(P);
  if P = LangCode then
   Result := afilename
@@ -288,7 +328,7 @@ begin
   begin
    // look for modulename.en    (ignoring country code and suffixes)
    I := Length(Result);
-   while (I > 0) and not (Result[I] in ['.', '_']) do
+   while (I > 0) and not CharInSet(Result[I], ['.', '_']) do
     Dec(I);
    if (I-1 = Length(Result)) or (I-1 < Length(afilename)) then
     Exit;
@@ -297,7 +337,7 @@ begin
    begin
     if not FileExists(LowerCase(Result)) then
     begin
-     Result:=afilename;
+     Result:=LinuxLocaleAliasFile(afilename,LangCode);
      Exit;
     end
     else
@@ -311,15 +351,6 @@ begin
 {$IFDEF MSWINDOWS}
   afilename:=afilename+'.exe';
 
-{$IFDEF FPC}
- keyuser:=HKEY_CURRENT_USER;
-{$ELSE}
-  keyuser := $80000001;
-//  if (sizeof(pointer)>4) then
-//    keyuser :=  $80000001
-//  else
-//   keyuser:=HKEY_CURRENT_USER;
-{$ENDIF}
   GetLocaleInfo(GetThreadLocale, LOCALE_SABBREVLANGNAME, LocaleName, SizeOf(LocaleName));
   Result := '';
   if ((Length(afilename)>0) and (LocaleName[0] <> #0)) then
@@ -342,17 +373,37 @@ begin
 end;
 {$ENDIF}
 
+{$IFDEF FPC}
+{$IFDEF DARWIN}
+// The translation file in the data folders of the application, or ACurrent
+function DarwinLocaleFile(const AFilename,ACurrent:string):string;
+var
+ adirs:TStringArray;
+ i:integer;
+begin
+ Result:=ACurrent;
+ adirs:=RpDarwinDataDirs;
+ for i:=0 to High(adirs) do
+  if FileExists(AddLocaleSufix(adirs[i]+AFilename)) then
+  begin
+   Result:=AddLocaleSufix(adirs[i]+AFilename);
+   Exit;
+  end;
+end;
+{$ENDIF}
+{$ENDIF}
+
 procedure TRpTranslator.InternalOpen;
 var
  afilename:string;
  memstream:TMemoryStream;
  astring:array of WideChar;
  asize,i:integer;
- resname:string;
  nstream:TMemoryStream;
  tempstring:widestring;
- isFile: boolean;
 {$IFDEF MSWINDOWS}
+ resname:string;
+ isFile: boolean;
  resstream:TResourceStream;
  fromresource:boolean;
  hfind:HRSRC;
@@ -367,7 +418,9 @@ begin
  FPoolPos:=1;
  SetLength(FStrings,DEFAULT_SARRAY_SIZE);
  FArraySize:=DEFAULT_SARRAY_SIZE;
+{$IFDEF MSWINDOWS}
  isFile:=false;
+{$ENDIF}
  // Finds the file and read the strings
  // The format is translations separator is a #10, two #10 is a true single #10.
  if Length(FFilename)<1 then
@@ -382,7 +435,9 @@ begin
    end
    else
    begin
+{$IFDEF MSWINDOWS}
     isFile := true;
+{$ENDIF}
    end;
  end;
 {$IFDEF MSWINDOWS}
@@ -425,6 +480,14 @@ begin
    if (not fromresource) then
 {$ENDIF}
    begin
+{$IFDEF FPC}
+{$IFDEF DARWIN}
+    // An application bundle: ParamStr(0) is the link in Contents/MacOS, the
+    // files are in Contents/Resources or next to the real executable
+    if FAutoLocale and (Not FileExists(afilename)) then
+     afilename:=DarwinLocaleFile(FFilename,afilename);
+{$ENDIF}
+{$ENDIF}
     if Not FileExists(afilename) then
     begin
      // Try with system directory

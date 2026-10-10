@@ -28,6 +28,31 @@
 {$ENDIF}
 {$DEFINE VCLNOTATION}
 
+// Behaviour switches the root rpconf.inc also sets when the packages are
+// built with Delphi 13; they choose code paths, not dependencies. Without
+// ISDELPHI, rptranslator declares Windows API imports without stdcall.
+// Optional and third-party dependencies stay off on purpose: BDE, Zeos,
+// IBX, TeeChart, Indy and dbExpress (USESQLEXPRESS).
+{$DEFINE ISDELPHI}
+{$DEFINE DELPHI5UP}
+{$DEFINE DELPHIXE2UP}
+{$DEFINE CHARPLACBOOL}
+{$DEFINE USEBCD}
+{$DEFINE USEKERNING}
+{$DEFINE USEFONTCONFIG}
+{$DEFINE USEDESIGNEDITORS}
+{$IF DECLARED(FireMonkeyVersion)}
+ {$DEFINE HAS_FMX}
+{$ELSE}
+ {$DEFINE HAS_VCL}
+{$IFEND}
+{$IFDEF MSWINDOWS}
+ {$DEFINE HORZPAPERBUG}
+ {$IFNDEF WIN64}
+  {$DEFINE EXTENDEDGRAPHICS}
+ {$ENDIF}
+{$ENDIF}
+
 {$IFDEF VER360}
  {$DEFINE DELPHI12UP}
 {$ENDIF}

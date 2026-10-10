@@ -30,7 +30,13 @@ uses Sysutils,
   Variants,Types,
 {$ENDIF}
  Classes,rptypes,rpprintitem,rpmdconsts,rpmetafile,rpeval,
- rptypeval,db;
+ rptypeval,db
+{$IFDEF FPC}
+ // FPC 3.2.2: a System.* unit used only in the implementation changes the
+ // interface CRC after it was computed (see the note in rpsection.pas)
+ ,System.NetEncoding
+{$ENDIF}
+ ;
 
 const
  DEF_DRAWWIDTH=500;
@@ -59,6 +65,8 @@ type
    constructor Create(AOwner:TComponent);override;
    destructor Destroy;override;
    function GetExtension(adriver:TRpPrintDriver;MaxExtent:TPoint;forcepartial:boolean):TPoint;override;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property BrushStyle:integer read FBrushStyle write FBrushStyle default 0;
    property BrushColor:integer read FBrushColor write FBrushColor default $FFFFFF;
@@ -81,6 +89,7 @@ type
    procedure ReadStream(AStream:TStream);
    procedure WriteStream(AStream:TStream);
    function GetStream:TMemoryStream;
+  procedure SetExpression(const Value:WideString);
    procedure WriteExpression(Writer:TWriter);
    procedure ReadExpression(Reader:TReader);
   public
@@ -96,7 +105,9 @@ type
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup:string='');override;
    function GetExtension(adriver:TRpPrintDriver;MaxExtent:TPoint;forcepartial:boolean):TPoint;override;
    property Stream:TMemoryStream read FStream write SetStream;
-   property Expression:WideString read FExpression write FExpression;
+  property Expression:WideString read FExpression write SetExpression;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    // Rotating bitmaps still not implemented
    property Rotation:smallint read FRotation write FRotation default 0;
@@ -110,7 +121,52 @@ type
 
 implementation
 
-uses rpbasereport;
+uses rpbasereport{$IFNDEF FPC}, System.NetEncoding{$ELSE}, rpbase64fpc{$ENDIF};
+
+function StreamToBase64String(stream: TMemoryStream): string;
+var
+  bytes: TBytes;
+  oldPosition: Int64;
+begin
+  Result := '';
+  if (stream = nil) or (stream.Size = 0) then
+    Exit;
+
+  SetLength(bytes, stream.Size);
+  oldPosition := stream.Position;
+  try
+    stream.Position := 0;
+    stream.ReadBuffer(bytes[0], Length(bytes));
+  finally
+    stream.Position := oldPosition;
+  end;
+{$IFDEF FPC}
+  Result := RpBase64EncodeBytes(bytes);
+{$ELSE}
+  Result := TNetEncoding.Base64.EncodeBytesToString(bytes);
+{$ENDIF}
+end;
+
+procedure Base64StringToStream(const value: string; stream: TMemoryStream);
+var
+  bytes: TBytes;
+begin
+  stream.SetSize(Int64(0));
+  if value = '' then
+  begin
+    stream.Position := 0;
+    Exit;
+  end;
+
+{$IFDEF FPC}
+  bytes := RpBase64DecodeBytes(value);
+{$ELSE}
+  bytes := TNetEncoding.Base64.DecodeStringToBytes(value);
+{$ENDIF}
+  if Length(bytes) > 0 then
+    stream.WriteBuffer(bytes[0], Length(bytes));
+  stream.Position := 0;
+end;
 
 type
   TGraphicHeader = record
@@ -169,6 +225,7 @@ end;
 
 procedure TRpImage.SetStream(Value:TMemoryStream);
 begin
+ AssertCanModify(ClassName+'.Stream');
  if IsCompressed(Value) then
  begin
   FStream.LoadFromStream(Value);
@@ -182,6 +239,12 @@ begin
   else
    FStream.LoadFromStream(Value);
  end;
+end;
+
+procedure TRpImage.SetExpression(const Value:WideString);
+begin
+ AssertCanModify(ClassName+'.Expression');
+ FExpression:=Value;
 end;
 
 procedure TRpImage.WriteExpression(Writer:TWriter);
@@ -384,6 +447,185 @@ begin
  end;
 end;
 
+{ TRpShape - IPropertiesItem }
+
+procedure TRpShape.SetItemProperty(const propName: string; const value: Variant);
+begin
+  AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'BrushStyle') or SameText(propName, SRpSBrushStyle) then
+ begin
+  FBrushStyle := value;
+  exit;
+ end;
+ if SameText(propName, 'BrushColor') or SameText(propName, SRpSBrushColor) then
+ begin
+  FBrushColor := value;
+  exit;
+ end;
+ if SameText(propName, 'PenStyle') or SameText(propName, SRpSPenStyle) then
+ begin
+  FPenStyle := value;
+  exit;
+ end;
+ if SameText(propName, 'PenColor') or SameText(propName, SRpSPenColor) then
+ begin
+  FPenColor := value;
+  exit;
+ end;
+ if SameText(propName, 'Shape') or SameText(propName, SRpSShape) then
+ begin
+  FShape := TRpShapeType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'PenWidth') or SameText(propName, SRpSPenWidth) then
+ begin
+  FPenWidth := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpShape.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'BrushStyle') or SameText(propName, SRpSBrushStyle) then
+ begin
+  Result := FBrushStyle;
+  exit;
+ end;
+ if SameText(propName, 'BrushColor') or SameText(propName, SRpSBrushColor) then
+ begin
+  Result := FBrushColor;
+  exit;
+ end;
+ if SameText(propName, 'PenStyle') or SameText(propName, SRpSPenStyle) then
+ begin
+  Result := FPenStyle;
+  exit;
+ end;
+ if SameText(propName, 'PenColor') or SameText(propName, SRpSPenColor) then
+ begin
+  Result := FPenColor;
+  exit;
+ end;
+ if SameText(propName, 'Shape') or SameText(propName, SRpSShape) then
+ begin
+  Result := Integer(FShape);
+  exit;
+ end;
+ if SameText(propName, 'PenWidth') or SameText(propName, SRpSPenWidth) then
+ begin
+  Result := FPenWidth;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
+
+{ TRpImage - IPropertiesItem }
+
+procedure TRpImage.SetItemProperty(const propName: string; const value: Variant);
+var
+ tempStream: TMemoryStream;
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  SetExpression(value);
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  FRotation := value;
+  exit;
+ end;
+ if SameText(propName, 'DrawStyle') then
+ begin
+  FDrawStyle := TRpImageDrawStyle(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'dpires') then
+ begin
+  Fdpires := value;
+  exit;
+ end;
+ if SameText(propName, 'CopyMode') then
+ begin
+  FCopyMode := value;
+  exit;
+ end;
+ if SameText(propName, 'CachedImage') then
+ begin
+  FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'sharedImage') then
+ begin
+  FCachedImage := TRpCachedImage(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'streamBase64') then
+ begin
+  tempStream := TMemoryStream.Create;
+  try
+    if not VarIsNull(value) and not VarIsEmpty(value) then
+      Base64StringToStream(VarToStr(value), tempStream);
+    SetStream(tempStream);
+    if FStream.Size > 0 then
+      FExpression := '';
+  finally
+    tempStream.Free;
+  end;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpImage.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  Result := FExpression;
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  Result := FRotation;
+  exit;
+ end;
+ if SameText(propName, 'DrawStyle') then
+ begin
+  Result := Integer(FDrawStyle);
+  exit;
+ end;
+ if SameText(propName, 'dpires') then
+ begin
+  Result := Fdpires;
+  exit;
+ end;
+ if SameText(propName, 'CopyMode') then
+ begin
+  Result := FCopyMode;
+  exit;
+ end;
+ if SameText(propName, 'CachedImage') then
+ begin
+  Result := Integer(FCachedImage);
+  exit;
+ end;
+ if SameText(propName, 'sharedImage') then
+ begin
+  Result := Integer(FCachedImage);
+  exit;
+ end;
+ if SameText(propName, 'streamBase64') then
+ begin
+  if FStream.Size = 0 then
+    Result := Unassigned
+  else
+    Result := StreamToBase64String(FStream);
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
 
 
 end.

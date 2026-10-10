@@ -21,7 +21,7 @@ interface
 {$I rpconf.inc}
 
 uses
-  Classes,Graphics,rpvclreport,rpexpredlgvcl,rpmaskedit,rpdbgridvcl,rpdbdatetimepicker,
+  Classes,Graphics,rpvclreport,rpchatdialogvcl,rpmaskedit,rpdbgridvcl,rpdbdatetimepicker,
 {$IFDEF DELPHI2007UP}
 {$IFDEF USEINDY}
   rpwebmetaclient,

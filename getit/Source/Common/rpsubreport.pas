@@ -25,10 +25,13 @@ interface
 {$I rpconf.inc}
 
 uses Classes,SysUtils,rpsecutil,rpsection,rptypes,rpmdconsts,
- rplabelitem,rpprintitem,rpeval,rpmdbarcode,rpdatainfo;
+ rplabelitem,rpprintitem,rpeval,rpmdbarcode,
+ {$IFDEF USEVARIANTS}
+ Variants,Types,
+ {$ENDIF}rpdatainfo;
 
 type
- TRpSubReport=class(TComponent)
+ TRpSubReport=class(TComponent, IPropertiesItem)
   private
    FSections:TRpSectionList;
    FAlias:string;
@@ -36,6 +39,7 @@ type
    FParentSection:TRpSection;
    FPrintOnlyIfDataAvailable,FReOpenOnPrint:Boolean;
    // Methots for writing internal indexes
+   procedure AssertCanModify(const AReason:string);
    procedure SetSections(Value:TRpSectionList);
    function GetDetailCount:integer;
    function GetFirstDetail:integer;
@@ -82,6 +86,10 @@ type
    procedure InitGroups(groupindex:integer);
    function GetDisplayName(includedataset:Boolean):string;
    function IsDataAvailable:boolean;
+  public
+   // IPropertiesItem implementation
+   procedure SetItemProperty(const propName: string; const value: Variant);
+   function GetItemProperty(const propName: string): Variant;
   published
    property Sections:TRpSectionList read FSections write SetSections;
    property Alias:String read FAlias write SetAlias;
@@ -99,6 +107,12 @@ implementation
 
 uses rpbasereport;
 
+procedure TRpSubReport.AssertCanModify(const AReason:string);
+begin
+ if Owner is TRpBaseReport then
+  TRpBaseReport(Owner).AssertCanModify(AReason);
+end;
+
 
 procedure TRpSubReport.Notification(AComponent: TComponent;
  Operation: TOperation);
@@ -114,8 +128,7 @@ begin
   begin
    if AComponent=FParentSubReport then
     removeparent:=true;
-  end
-  else
+  end;
   if (AComponent is TRpSection) then
   begin
    if AComponent=FParentSection then
@@ -131,6 +144,7 @@ end;
 
 procedure TRpSubReport.SetAlias(Value:String);
 begin
+ AssertCanModify(ClassName+'.Alias');
  FAlias:=Trim(Value);
 end;
 
@@ -140,6 +154,7 @@ var
  index:integer;
  sec:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddPageHeader');
  // Search the index to insert the page header
  index:=0;
  // Move all sections one down
@@ -177,6 +192,7 @@ var
  index:integer;
  sec:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddDetail');
  // Search the index to insert the page footer
  index:=0;
  while ((Sections.Items[index].Section.SectionType in [rpsecpheader..rpsecdetail])
@@ -207,6 +223,7 @@ var
  index:integer;
  sec:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddPageFooter');
  // Search the index to insert the page footer
  index:=0;
  while ((Sections.Items[index].Section.SectionType in [rpsecpheader..rpsecgfooter])
@@ -252,6 +269,7 @@ var
  sec:TRpSection;
  sec1:TRpSection;
 begin
+ AssertCanModify(ClassName+'.AddGroup');
  // Checks not exisss
  groupname:=UpperCase(groupname);
  if Length(groupname)<1 then
@@ -307,6 +325,7 @@ end;
 
 procedure TRpSubReport.SetSections(Value:TRpSectionList);
 begin
+ AssertCanModify(ClassName+'.Sections');
  FSections.Assign(Value);
 end;
 
@@ -332,6 +351,7 @@ begin
  // If is destroying left the component free sections
  if (csDestroying in Owner.ComponentState) then
   exit;
+ AssertCanModify(ClassName+'.FreeSections');
  for i:=0 to FSections.Count-1 do
  begin
   FSections.Items[i].Section.FreeComponents;
@@ -345,6 +365,7 @@ procedure TRpSubReport.CreateNew;
 var
  it:TRpSectionListItem;
 begin
+ AssertCanModify(ClassName+'.CreateNew');
  // Free the current sections
  FreeSections;
  // Create a new section, the owner is the report
@@ -363,6 +384,7 @@ var
  detailcount:integer;
  groupname:string;
 begin
+ AssertCanModify(ClassName+'.FreeSection');
  // If it's a detail looks if there is two details
  if sec.SectionType=rpsecdetail then
  begin
@@ -784,7 +806,7 @@ begin
  while index<(Length(Name)) do
  begin
   inc(index);
-  if (Name[index] in ['0'..'9']) then
+  if CharInSet(Name[index],['0'..'9']) then
    break;
  end;
  if index<=(Length(Name)) then
@@ -831,6 +853,58 @@ begin
  end;
 end;
 
+{ TRpSubReport - IPropertiesItem }
 
+procedure TRpSubReport.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Name') then
+ begin
+  Name := Value;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  FAlias := Value;
+  exit;
+ end;
+ if SameText(propName, 'PrintOnlyIfDataAvailable') then
+ begin
+  FPrintOnlyIfDataAvailable := Value;
+  exit;
+ end;
+ if SameText(propName, 'ReOpenOnPrint') then
+ begin
+  FReOpenOnPrint := Value;
+  exit;
+ end;
+ // For other properties not handled, do nothing
+end;
+
+function TRpSubReport.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Name') then
+ begin
+  Result := Name;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  Result := FAlias;
+  exit;
+ end;
+ if SameText(propName, 'PrintOnlyIfDataAvailable') then
+ begin
+  Result := FPrintOnlyIfDataAvailable;
+  exit;
+ end;
+ if SameText(propName, 'ReOpenOnPrint') then
+ begin
+  Result := FReOpenOnPrint;
+  exit;
+ end;
+ // For other properties not handled, return Null
+ Result := Null;
+end;
 
 end.

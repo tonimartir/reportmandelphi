@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager Designer                         }
 {                                                       }
@@ -34,6 +34,7 @@ uses
 {$ENDIF}
   Classes,Graphics,rpvgraphutils, DBLogDlg,
   rpgdidriver,rpvpreview,rprfvparams,windows,
+  Messages,
   Controls, Forms,
   StdCtrls, ComCtrls, ActnList, ImgList, Menus,ExtCtrls,
   Clipbrd,Printers,Consts, Dialogs,ShellApi,
@@ -61,16 +62,61 @@ uses
 {$IFDEF XE3UP}
   System.UITypes,
 {$ENDIF}
+  System.JSON,
   rpmdsysinfo,rppdfdriver,
   rpsection,rpprintitem,rpmdfopenlibvcl,rpeditconnvcl,
-  DB,rpmunits,rpgraphutilsvcl,rpmdfwizardvcl, rpalias, System.Actions,
+  DB,rpmunits,rpgraphutilsvcl,rpmdfwizardvcl,rpmdfnewreportwizardvcl, rpalias, System.Actions,
   System.ImageList, Vcl.BaseImageCollection, Vcl.ImageCollection,
-  Vcl.VirtualImageList;
+  Vcl.VirtualImageList,
+  rpmdundocue, rpmdcueviewvcl, rpfrmchatvcl, Vcl.Buttons, System.Generics.Collections,
+  rpdatahttp, rpauthmanager, rpreportdesignercontracts, rpxmlstream,
+  rpchatmodernstyle;
 
 const
   // File name in menu width
   C_FILENAME_WIDTH=40;
+  C_DISABLE_DESIGNER_CHAT_FOR_PERF_TEST = False;
 type
+  TRpQueuedDesignChatPayloadKind = (
+    rpqdcUpdateStreamingResponse,
+    rpqdcAddAssistantMessage,
+    rpqdcApplyDesignResult
+  );
+
+  TRpQueuedDesignChatPayload = class(TObject)
+  public
+    Kind: TRpQueuedDesignChatPayloadKind;
+    RequestVersion: Integer;
+    Actor1: string;
+    ProgressId1: string;
+    ChunkType1: string;
+    Text1: string;
+    LogText1: string;
+    Text2: string;
+    PrefillPercent: Integer;
+    InputTokens: Integer;
+    OutputTokens: Integer;
+    ErrorMessage: string;
+    Explanation: string;
+    ModifiedReportDocument: string;
+    UserProfileJson: string;
+  end;
+
+  TRpDesignChatStreamContext = class(TObject)
+  public
+    RequestVersion: Integer;
+  end;
+
+  TRpQueuedDesignContextPayload = class(TObject)
+  public
+    RequestVersion: Integer;
+    ErrorMessage: string;
+    OpenErrors: TStringList;
+    SchemaOnlyFields: TStringList;
+    SchemaOnlyErrors: TStringList;
+    destructor Destroy; override;
+  end;
+
   TFRpMainFVCL = class(TForm)
     MainMenu1: TMainMenu;
     File1: TMenuItem;
@@ -122,10 +168,15 @@ type
     Parameters1: TMenuItem;
     APrint: TAction;
     APreview: TAction;
+    AUndo: TAction;
+    ARedo: TAction;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
+    BUndoToolbar: TToolButton;
+    BRedoToolbar: TToolButton;
+    ToolButton26: TToolButton;
     ToolButton9: TToolButton;
     BLabel: TToolButton;
     BArrow: TToolButton;
@@ -219,6 +270,7 @@ type
     ToolButton23: TToolButton;
     ToolButton24: TToolButton;
     ToolButton25: TToolButton;
+    ToolButton27: TToolButton;
     BBarcode: TToolButton;
     BStatus: TStatusBar;
     AStatusBar: TAction;
@@ -251,6 +303,7 @@ type
     menutheme: TMenuItem;
     VirtualImageList1: TVirtualImageList;
     ImageCollection1: TImageCollection;
+    AChatIA: TAction;
     procedure ANewExecute(Sender: TObject);
     procedure AExitExecute(Sender: TObject);
     procedure AOpenExecute(Sender: TObject);
@@ -319,11 +372,15 @@ type
     procedure MAsyncClick(Sender: TObject);
     procedure APrintDialogExecute(Sender: TObject);
     procedure ComboScaleClick(Sender: TObject);
+    procedure BUndoToolbarClick(Sender: TObject);
+    procedure BRedoToolbarClick(Sender: TObject);
+    procedure AUndoExecute(Sender: TObject);
+    procedure ARedoExecute(Sender: TObject);
+    procedure AChatIAExecute(Sender: TObject);
   private
     { Private declarations }
     fdesignframe:TFRpDesignFrameVCL;
     fobjinsp:TFRpObjInspVCL;
-    lastsaved:TMemoryStream;
     configfile,configfilelib:string;
     oldonException:TExceptionEvent;
     oldonhint:TNotifyEvent;
@@ -341,6 +398,24 @@ type
     FObjFontColor:Integer;
     previewmodify:boolean;
     ThemeName:string;
+    fcueview:TFRpCueViewVCL;
+    fcuepanel:TPanel;
+    fcuesplitter:TSplitter;
+    fcuepages:TPageControl;
+    fchattab:TTabSheet;
+    fhistorytab:TTabSheet;
+    fchatframe:TFRpChatFrame;
+    frightpanel:TPanel;
+    FHoveredCueTabIndex: Integer;
+    FCuePanelWidth: Integer;
+    FDesignChatRequestVersion: Integer;
+    FDesignContextRefreshVersion: Integer;
+    FDesignChatContextJson: string;
+    FDesignChatContextInitialized: Boolean;
+    FDesignChatPendingPrompt: string;
+    FDesignChatValidatedPrompt: string;
+    FDesignContextRefreshRunning: Boolean;
+    FDesignContextProgress: TProgressBar;
     procedure FreeInterface;
     procedure CreateInterface;
     function checkmodified:boolean;
@@ -367,6 +442,64 @@ type
     procedure UpdateFonts;
     function GetScale:double;
     procedure menuthemeClick(Sender: TObject);
+    function GetShortcutFocusedControl: TWinControl;
+    function IsEditableTextShortcutTarget(AControl: TWinControl): Boolean;
+    function ShouldHandleDesignerUndoShortcut: Boolean;
+    procedure ConfigureReportChangeBlocking;
+    function ReportBlockChanges(Sender: TRpBaseReport; const AReason: string): Boolean;
+    procedure DesignInferenceBegin(Sender: TObject);
+    procedure DesignInferenceEnd(Sender: TObject);
+    procedure EnsureUndoCue;
+    procedure DoUndo;
+    procedure DoRedo;
+    procedure OnUndoRedo(Sender: TObject);
+    procedure UpdateUndoToolbarButtons;
+    procedure ApplyChatPanelVisibility;
+    procedure CuePagesDrawTab(Control: TCustomTabControl; TabIndex: Integer;
+      const Rect: TRect; Active: Boolean);
+    procedure CuePagesMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure CuePagesMouseLeave(Sender: TObject);
+    procedure CuePagesChange(Sender: TObject);
+    function BuildDesignChatRequestForFrame(Sender: TObject;
+      const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequestForFrame(Sender: TObject):
+      TRpApiPreprocessSqlContextRequest;
+    procedure ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+      const AModifiedReportDocument: string);
+    function BuildDesignChatRequest(const APrompt: string): TRpApiModifyReportRequest;
+    function BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+    procedure ApplyPreprocessSqlContextResult(
+      AResult: TRpApiPreprocessSqlContextResult);
+    procedure ApplyPreprocessSqlContextResultFromFrame(Sender: TObject;
+      AResult: TRpApiPreprocessSqlContextResult);
+    procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
+    // The Hub database of a schema of the design chat (connection wizard)
+    function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
+    procedure StopDesignChatRequest(Sender: TObject);
+    procedure RefreshDesignChatContext(Sender: TObject);
+    procedure InitializeDesignChatSchemaSelection;
+    // The direct connections of the report (and their local subschemas) in
+    // the schema selector of the design chat
+    procedure UpdateDesignChatLocalSchemas;
+    procedure ConfigureDesignChatLocalSchemas(Sender: TObject;
+      const AAlias, ASchemaName: string; AAddNew: Boolean);
+    procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
+      AHubSchemaId: Int64; out ASchemaApiKey: string; out ALocalAlias,
+      ALocalSchemaName: string);
+    procedure PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
+    procedure ResetDesignChatContextCache;
+    procedure BeginDesignChatContextRefresh(const APendingPrompt: string;
+      ANotifyOnSuccess: Boolean);
+    function BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+      const AErrorMessage: string): string;
+    function ConfirmDesignPromptWithDatasetErrors(
+      const ADatasetErrorMessage: string): Boolean;
+    procedure UpdateDesignContextProgress(AActive: Boolean; const AStatus: string);
+    function SaveReportAsXml: string;
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 206;
+    procedure WMHandleDesignContextPayload(var Message: TMessage); message WM_USER + 207;
   public
     { Public declarations }
     report:TRpReport;
@@ -374,6 +507,8 @@ type
     freportstructure:TFRpStructureVCL;
     browsecommandline:boolean;
     procedure RefreshInterface(Sender: TObject);
+    procedure RefreshCueView;
+    procedure SyncActiveDesignSelection;
     constructor Create(AOwner:TComponent);override;
     destructor Destroy;override;
     function GetExpressionText:string;
@@ -386,16 +521,35 @@ procedure ExecuteReportDotNet(report:TRpReport;preview:boolean;Version:integer);
 
 implementation
 
+uses rpmdfdatasetsvcl, rpchatdialogvcl, System.Contnrs, rplocalschemas,
+  rpfrmlocalschemasvcl;
 
 {$R *.dfm}
 
+// The connection of a dataset, nil when it does not exist (deleted, or the
+// dataset has none): TRpDatabaseInfoList.ItemByName raises instead
+function FindDatabaseInfo(AList: TRpDatabaseInfoList;
+  const AAlias: string): TRpDatabaseInfoItem;
+var
+ LIndex: Integer;
+begin
+ LIndex := AList.IndexOf(AAlias);
+ if LIndex >= 0 then
+  Result := AList.Items[LIndex]
+ else
+  Result := nil;
+end;
+
+destructor TRpQueuedDesignContextPayload.Destroy;
+begin
+ OpenErrors.Free;
+ SchemaOnlyFields.Free;
+ SchemaOnlyErrors.Free;
+ inherited Destroy;
+end;
+
 destructor TFRpMainFVCL.Destroy;
 begin
- if Assigned(lastsaved) then
- begin
-  lastsaved.free;
-  lastsaved:=nil;
- end;
  inherited Destroy;
 end;
 
@@ -466,6 +620,11 @@ begin
   exit;
  if report<>nil then
  begin
+  try
+  SyncActiveDesignSelection;
+  except
+
+  end;
   if Not CheckModified then
    exit;
   res:=RpMessageBox(SRpReportChanged,SRpWarning,[smbYes,smbNo,smbCancel],
@@ -480,50 +639,93 @@ begin
 end;
 
 procedure TFRpMainFVCL.ANewExecute(Sender: TObject);
+var
+  LPendingPrompt: string;
+  LHubDatabaseId, LHubSchemaId: Int64;
+  LHubApiKey: string;
+  LLocalAlias, LLocalSchemaName: string;
+  LNewReport: TRpReport;
+  LAccepted: Boolean;
 begin
  if Not checksave then
   exit;
+ // The wizard fills a new report: the current one stays when it is
+ // cancelled (or fails)
+ LNewReport:=TRpReport.Create(Self);
+ try
+  LNewReport.AsyncExecution:=MAsync.Checked;
+  LNewReport.IsDesignTime:=true;
+  LNewReport.OnReadError:=OnReadError;
+  LNewReport.FailIfLoadExternalError:=false;
+  LAccepted:=NewModernReportWizard(LNewReport, LPendingPrompt,
+      LHubDatabaseId, LHubSchemaId, LHubApiKey, LLocalAlias, LLocalSchemaName);
+ except
+  LNewReport.Free;
+  raise;
+ end;
+ if not LAccepted then
+ begin
+  LNewReport.Free;
+  Exit;
+ end;
  DoDisable;
- // Creates a new report
- report:=TRpReport.Create(Self);
- report.AsyncExecution:=MAsync.Checked;
- report.IsDesignTime:=true;
- report.OnReadError:=OnReadError;
- report.FailIfLoadExternalError:=false;
-// if Not NewReportWizard(report,false) then
-  report.CreateNew;
+ report:=LNewReport;
  filename:='';
  alibrary:='';
  areportname:='';
+ ResetDesignChatContextCache;
 
  DoEnable;
  FormResize(Self);
+ if Assigned(fchatframe) then
+ begin
+  UpdateDesignChatLocalSchemas;
+  fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LHubApiKey);
+  // The subschema chosen in the wizard: the copilot starts with it
+  if (LLocalAlias <> '') and (LLocalSchemaName <> '') then
+   fchatframe.SelectLocalSchema(LLocalAlias, LLocalSchemaName);
+  fchatframe.StartOnlineInitialization;
+ end;
+ if Trim(LPendingPrompt) <> '' then
+   BeginDesignChatContextRefresh(LPendingPrompt, False);
+end;
+
+procedure TFRpMainFVCL.SyncActiveDesignSelection;
+begin
+ if Assigned(fdesignframe) then
+  fdesignframe.UpdateSelection(True);
 end;
 
 procedure TFRpMainFVCL.DoEnable;
 begin
- // Save the report for seeing after if it's modified
- if Assigned(lastsaved) then
- begin
-  lastsaved.free;
-  lastsaved:=nil;
- end;
- lastsaved:=TMemorystream.create;
- report.SaveToStream(lastsaved);
+ report.Modified:=False;
 
+ ConfigureReportChangeBlocking;
+ EnsureUndoCue;
  CreateInterface;
 end;
 
 procedure TFRpMainFVCL.DoDisable;
 begin
- FreeInterface;
- report.free;
- report:=nil;
- // Save the report for seeing after if it's modified
- if Assigned(lastsaved) then
+ // A refresh of the design context (or of the expression dialog) must end
+ // before the report is freed; the answer of the design context is dropped
+ if Assigned(report) then
+  RpWaitReportRefreshes(report);
+ if FDesignContextRefreshRunning then
  begin
-  lastsaved.free;
-  lastsaved:=nil;
+  Inc(FDesignContextRefreshVersion);
+  FDesignContextRefreshRunning := False;
+  FDesignChatPendingPrompt := '';
+  UpdateDesignContextProgress(False, '');
+  if Assigned(fchatframe) then
+   fchatframe.SetBusy(False);
+ end;
+ FreeInterface;
+ if Assigned(report) then
+ begin
+  report.BlockChanges:=False;
+  report.free;
+  report:=nil;
  end;
 end;
 
@@ -594,16 +796,41 @@ begin
  BImage.Down:=false;
  BBarcode.Down:=false;
  BChart.Down:=false;
+ AUndo.Enabled:=false;
+ ARedo.Enabled:=false;
 
  AParams.Enabled:=False;
  APageSetup.Enabled:=false;
  Caption:=SRpRepman;
 
+ if Assigned(fcuesplitter) then
+ begin
+  fcuesplitter.Free;
+  fcuesplitter:=nil;
+ end;
+ if Assigned(fcuepanel) then
+ begin
+  fcuepanel.Free;
+  fcuepanel:=nil;
+  fcuepages:=nil;
+  fchattab:=nil;
+  fhistorytab:=nil;
+  fchatframe:=nil;
+  fcueview:=nil;
+ end;
+ if Assigned(fdesignframe) then
+ begin
+  fdesignframe.Free;
+  fdesignframe:=nil;
+ end;
+ if Assigned(frightpanel) then
+ begin
+  frightpanel.Free;
+  frightpanel:=nil;
+ end;
  freportstructure.free;
- fdesignframe.free;
  fobjinsp.free;
  fobjinsp:=nil;
- fdesignframe:=nil;
  freportstructure:=nil;
  mainscrollbox.Visible:=false;
 end;
@@ -649,6 +876,8 @@ begin
  BBarcode.Enabled:=true;
  BChart.Enabled:=true;
  BArrow.Down:=true;
+ AUndo.Enabled:=true;
+ ARedo.Enabled:=true;
 
  AParams.Enabled:=True;
  if length(filename)>0 then
@@ -680,8 +909,14 @@ begin
  fdesignframe.Scale:=GetScale;
 
  fobjinsp.DesignFrame:=fdesignframe;
+
+ frightpanel:=TPanel.Create(Self);
+ frightpanel.Align:=alClient;
+ frightpanel.BevelOuter:=bvNone;
+ frightpanel.Parent:=MainScrollBox;
+
  fdesignframe.Align:=alclient;
- fdesignframe.Parent:=MainScrollBox;
+ fdesignframe.Parent:=frightpanel;
  fdesignframe.freportstructure:=freportstructure;
  freportstructure.designframe:=fdesignframe;
  splitter2.Top:=freportstructure.Height+10;
@@ -691,7 +926,370 @@ begin
  freportstructure.report:=report;
  fdesignframe.report:=report;
 
+ // Create right panel with chat and history tabs
+ fcuepanel:=TPanel.Create(Self);
+ fcuepanel.Width:=420;
+ fcuepanel.Align:=alRight;
+ fcuepanel.BevelOuter:=bvNone;
+ fcuepanel.Parent:=frightpanel;
+
+ fcuesplitter:=TSplitter.Create(Self);
+ fcuesplitter.Align:=alRight;
+ fcuesplitter.Width:=5;
+ fcuesplitter.Beveled:=True;
+ fcuesplitter.Parent:=frightpanel;
+
+ fcuepages:=TPageControl.Create(fcuepanel);
+ fcuepages.Align:=alClient;
+ fcuepages.Parent:=fcuepanel;
+  fcuepages.OwnerDraw := True;
+  fcuepages.Style := tsTabs;
+  fcuepages.TabHeight := 32;
+  fcuepages.TabWidth := 0;
+  fcuepages.DoubleBuffered := True;
+  // Do NOT touch fcuepages.Font: ParentFont propagates to every child of the
+  // page control (chat frame, combos, memos...). Tab text color is handled
+  // directly on the canvas in CuePagesDrawTab / DrawUnderlineTab.
+  fcuepages.OnDrawTab := CuePagesDrawTab;
+  fcuepages.OnMouseMove := CuePagesMouseMove;
+  fcuepages.OnMouseLeave := CuePagesMouseLeave;
+  fcuepages.OnChange := CuePagesChange;
+  FHoveredCueTabIndex := -1;
+
+ if not C_DISABLE_DESIGNER_CHAT_FOR_PERF_TEST then
+ begin
+  fchattab:=TTabSheet.Create(fcuepages);
+  fchattab.PageControl:=fcuepages;
+  fchattab.Caption:='Chat';
+ end;
+
+ fhistorytab:=TTabSheet.Create(fcuepages);
+ fhistorytab.PageControl:=fcuepages;
+ fhistorytab.Caption:=TranslateStr(1483,'History');
+
+ if Assigned(fchattab) then
+ begin
+  fchatframe:=TFRpChatFrame.Create(fchattab);
+  fchatframe.Align:=alClient;
+  fchatframe.Parent:=fchattab;
+  fchatframe.OnBuildDesignRequest:=BuildDesignChatRequestForFrame;
+  fchatframe.OnBuildPreprocessSqlContextRequest:=BuildPreprocessSqlContextRequestForFrame;
+  fchatframe.OnApplyDesignResult:=ApplyModifiedReportDocumentFromFrame;
+  fchatframe.OnApplyPreprocessSqlContextResult:=ApplyPreprocessSqlContextResultFromFrame;
+  fchatframe.OnDesignInferenceBegin:=DesignInferenceBegin;
+  fchatframe.OnDesignInferenceEnd:=DesignInferenceEnd;
+  fchatframe.OnStopRequest:=StopDesignChatRequest;
+  fchatframe.OnRefreshContext:=RefreshDesignChatContext;
+  fchatframe.OnConfigureLocalSchemas:=ConfigureDesignChatLocalSchemas;
+  fchatframe.SetRefreshAction(True);
+  fchatframe.Initialize('',
+    TranslateStr(1640, 'Describe report changes here or ask for assistance. Any change can be undone.'));
+  InitializeDesignChatSchemaSelection;
+ end;
+
+ if FDesignContextProgress = nil then
+ begin
+  FDesignContextProgress := TProgressBar.Create(Self);
+  FDesignContextProgress.Parent := BStatus;
+  FDesignContextProgress.Visible := False;
+  FDesignContextProgress.Min := 0;
+  FDesignContextProgress.Max := 100;
+  FDesignContextProgress.Position := 0;
+  FDesignContextProgress.Style := pbstMarquee;
+ end;
+
+ fcueview:=TFRpCueViewVCL.Create(fhistorytab);
+ fcueview.Align:=alClient;
+ fcueview.Parent:=fhistorytab;
+ fcueview.OnUndoRedo:=OnUndoRedo;
+ fcueview.Report:=report;
+ fcueview.BUndo.Visible:=False;
+ fcueview.BRedo.Visible:=False;
+ fcueview.BClear.Left:=0;
+ fcueview.LTitle.Left:=42;
+ fcueview.LTitle.Caption:=TranslateStr(1483,'History');
+
+ if Assigned(fchattab) then
+  fcuepages.ActivePage:=fchattab
+ else
+  fcuepages.ActivePage:=fhistorytab;
+ ApplyChatPanelVisibility;
+ UpdateUndoToolbarButtons;
+
  mainscrollbox.Visible:=true;
+ TThread.Queue(nil,
+  procedure
+  begin
+   if (fcuepanel <> nil) and Assigned(fcuepages) and mainscrollbox.Visible then
+   begin
+    MainScrollBox.Realign;
+    frightpanel.Realign;
+    fcuepanel.Realign;
+    fcuepages.Realign;
+    if Assigned(fchattab) then
+     fchattab.Realign;
+    if Assigned(fchatframe) then
+     fchatframe.RefreshLayout;
+   end;
+  end);
+end;
+
+procedure TFRpMainFVCL.ApplyChatPanelVisibility;
+begin
+ if not AChatIA.Checked then
+ begin
+  if (fcuepanel <> nil) and fcuepanel.Visible and (fcuepanel.Width > 0) then
+   FCuePanelWidth := fcuepanel.Width;
+ end;
+
+ if fcuepanel <> nil then
+ begin
+  if AChatIA.Checked and (FCuePanelWidth > 0) then
+   fcuepanel.Width := FCuePanelWidth;
+  fcuepanel.Visible := AChatIA.Checked;
+ end;
+
+ if fcuesplitter <> nil then
+  fcuesplitter.Visible := AChatIA.Checked;
+
+ if MainScrollBox <> nil then
+  MainScrollBox.Realign;
+ if frightpanel <> nil then
+  frightpanel.Realign;
+
+ if AChatIA.Checked and (fchatframe <> nil) then
+  fchatframe.RefreshLayout;
+end;
+
+procedure TFRpMainFVCL.AChatIAExecute(Sender: TObject);
+begin
+ ApplyChatPanelVisibility;
+ SaveConfig;
+end;
+
+type
+  TPageControlAccess = class(TPageControl);
+
+procedure TFRpMainFVCL.CuePagesDrawTab(Control: TCustomTabControl;
+  TabIndex: Integer; const Rect: TRect; Active: Boolean);
+var
+  LCaption: string;
+  LHover: Boolean;
+  LPage: TPageControl;
+begin
+  if (Control = nil) or not (Control is TPageControl) then
+    Exit;
+  LPage := TPageControl(Control);
+  if (TabIndex < 0) or (TabIndex >= LPage.PageCount) then
+    Exit;
+  LCaption := LPage.Pages[TabIndex].Caption;
+  LHover := (FHoveredCueTabIndex = TabIndex) and not Active;
+  TRpChatStyle.DrawUnderlineTab(TPageControlAccess(LPage).Canvas, Rect,
+    LCaption, Active, LHover);
+end;
+
+procedure TFRpMainFVCL.CuePagesMouseMove(Sender: TObject;
+  Shift: TShiftState; X, Y: Integer);
+var
+  LIdx: Integer;
+begin
+  if fcuepages = nil then
+    Exit;
+  LIdx := fcuepages.IndexOfTabAt(X, Y);
+  if LIdx <> FHoveredCueTabIndex then
+  begin
+    FHoveredCueTabIndex := LIdx;
+    fcuepages.Invalidate;
+  end;
+end;
+
+procedure TFRpMainFVCL.CuePagesMouseLeave(Sender: TObject);
+begin
+  if FHoveredCueTabIndex >= 0 then
+  begin
+    FHoveredCueTabIndex := -1;
+    if fcuepages <> nil then
+      fcuepages.Invalidate;
+  end;
+end;
+
+procedure TFRpMainFVCL.CuePagesChange(Sender: TObject);
+begin
+  if fcuepages <> nil then
+    fcuepages.Invalidate;
+end;
+
+procedure TFRpMainFVCL.ResolveInitialDesignChatSchemaContext(
+  out AHubDatabaseId, AHubSchemaId: Int64; out ASchemaApiKey: string;
+  out ALocalAlias, ALocalSchemaName: string);
+var
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LConnectionParams: TStringList;
+  I: Integer;
+  LHasPersistedSchema: Boolean;
+begin
+  AHubDatabaseId := 0;
+  AHubSchemaId := 0;
+  ASchemaApiKey := '';
+  ALocalAlias := '';
+  ALocalSchemaName := '';
+  LHasPersistedSchema := False;
+
+  if not Assigned(report) then
+    Exit;
+
+  // The first dataset on a direct connection: the subschema of a dataset of
+  // that connection while it is in the schema file (SchemaName, D3), else
+  // none (the chat takes the one chosen before or the first one)
+  if report.DataInfo.Count > 0 then
+  begin
+    LDataInfo := report.DataInfo.Items[0];
+    LDatabaseInfo := FindDatabaseInfo(report.DatabaseInfo, LDataInfo.DatabaseAlias);
+    if RpIsLocalSqlDatabase(LDatabaseInfo) then
+    begin
+      ALocalAlias := LDatabaseInfo.Alias;
+      for I := 0 to report.DataInfo.Count - 1 do
+        if SameText(report.DataInfo.Items[I].DatabaseAlias, ALocalAlias) and
+          (Trim(report.DataInfo.Items[I].SchemaName) <> '') then
+        begin
+          ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+            report.DataInfo.Items[I].SchemaName);
+          if ALocalSchemaName <> '' then
+            Break;
+        end;
+      Exit;
+    end;
+  end;
+
+  // Try to find context from the first DataInfo if it has a schema
+  if report.DataInfo.Count > 0 then
+  begin
+    LDataInfo := report.DataInfo.Items[0];
+    if (LDataInfo <> nil) and (LDataInfo.HubSchemaId > 0) then
+    begin
+      LHasPersistedSchema := True;
+      AHubSchemaId := LDataInfo.HubSchemaId;
+      LDatabaseInfo := FindDatabaseInfo(report.DatabaseInfo, LDataInfo.DatabaseAlias);
+      if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+      begin
+        LConnectionParams := TStringList.Create;
+        try
+          LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+          AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+          ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
+        finally
+          LConnectionParams.Free;
+        end;
+        if AHubDatabaseId > 0 then
+          Exit;
+      end;
+    end;
+  end;
+
+  // If no context found from datasets, try to find the first "Reportman Agent" connection
+  for I := 0 to report.DatabaseInfo.Count - 1 do
+  begin
+    LDatabaseInfo := report.DatabaseInfo.Items[I];
+    if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+    begin
+      LConnectionParams := TStringList.Create;
+      try
+        LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+        AHubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+        ASchemaApiKey := Trim(LConnectionParams.Values['ApiKey']);
+      finally
+        LConnectionParams.Free;
+      end;
+
+      if AHubDatabaseId > 0 then
+      begin
+        if not LHasPersistedSchema then
+          AHubSchemaId := 0; // Let the UI pick the first schema only when none is saved
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+procedure TFRpMainFVCL.InitializeDesignChatSchemaSelection;
+var
+  LHubDatabaseId: Int64;
+  LHubSchemaId: Int64;
+  LSchemaApiKey: string;
+  LLocalAlias, LLocalSchemaName: string;
+begin
+  if not Assigned(fchatframe) then
+    Exit;
+
+  ResolveInitialDesignChatSchemaContext(LHubDatabaseId, LHubSchemaId,
+    LSchemaApiKey, LLocalAlias, LLocalSchemaName);
+  UpdateDesignChatLocalSchemas;
+  fchatframe.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+  if LLocalAlias <> '' then
+    fchatframe.SelectLocalSchema(LLocalAlias, LLocalSchemaName);
+  fchatframe.StartOnlineInitialization;
+end;
+
+procedure TFRpMainFVCL.UpdateDesignChatLocalSchemas;
+var
+  I: Integer;
+  LDatabase: TRpDatabaseInfoItem;
+  LEntries, LSizes: TStringList;
+  LPreferred: string;
+begin
+  if not Assigned(fchatframe) then
+    Exit;
+  LEntries := TStringList.Create;
+  LSizes := TStringList.Create;
+  try
+    LPreferred := '';
+    if Assigned(report) then
+    begin
+      for I := 0 to report.DatabaseInfo.Count - 1 do
+      begin
+        LDatabase := report.DatabaseInfo.Items[I];
+        if not RpIsLocalSqlDatabase(LDatabase) then
+          Continue;
+        // The subschemas, with their sizes (never all the tables)
+        RpListLocalSchemaEntries(LDatabase, LEntries, LSizes);
+        if LPreferred = '' then
+          LPreferred := LDatabase.Alias;
+      end;
+      // The connection of the first dataset, when it is a direct one
+      if report.DataInfo.Count > 0 then
+      begin
+        LDatabase := FindDatabaseInfo(report.DatabaseInfo,
+          report.DataInfo.Items[0].DatabaseAlias);
+        if RpIsLocalSqlDatabase(LDatabase) then
+          LPreferred := LDatabase.Alias;
+      end;
+    end;
+    fchatframe.SetLocalSchemas(LEntries, LPreferred, LSizes);
+  finally
+    LSizes.Free;
+    LEntries.Free;
+  end;
+end;
+
+procedure TFRpMainFVCL.ConfigureDesignChatLocalSchemas(Sender: TObject;
+  const AAlias, ASchemaName: string; AAddNew: Boolean);
+var
+  LSchemaName: string;
+  LSaved: Boolean;
+begin
+  if not Assigned(report) then
+    Exit;
+  LSchemaName := ASchemaName;
+  try
+    LSaved := RpShowLocalSchemasDialog(report, AAlias, LSchemaName, AAddNew,
+      fchatframe);
+  finally
+    UpdateDesignChatLocalSchemas;
+  end;
+  // After a Save, the subschema of the utility (a new one: the one added)
+  if LSaved then
+    fchatframe.SelectLocalSchema(AAlias, LSchemaName);
 end;
 
 procedure TFRpMainFVCL.ASaveasExecute(Sender: TObject);
@@ -716,31 +1314,16 @@ begin
 
  if ExecutePageSetup(report) then
  begin
+  RefreshCueView;
   fdesignframe.UpdateInterface(true);
   fdesignframe.UpdateSelection(false);
  end;
 end;
 
 
-// A report is known is modified by comparing the saving of
-// the current report with the last saved report (lastsaved)
 function TFRpMainFVCL.checkmodified:boolean;
-var
- newsave:TMemoryStream;
 begin
- Result:=true;
- if report=nil then
-  exit;
- if Not Assigned(lastsaved) then
-  exit;
- newsave:=TMemoryStream.create;
- try
-  report.SaveToStream(newsave);
-  if streamcompare(lastsaved,newsave) then
-   result:=false;
- finally
-  newsave.free;
- end;
+ Result:=Assigned(report) and report.Modified;
 end;
 
 procedure TFRpMainFVCL.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -748,17 +1331,34 @@ begin
  try
   canclose:=CheckSave;
  except
-  canclose:=false;
+  on E:EAbort do
+   // The user cancelled
+   canclose:=false;
+  on E:Exception do
+  begin
+   // A failed save keeps the designer open and shows why, as any other
+   // error (MyExceptionHandler selects the component of a report error)
+   canclose:=false;
+   Application.HandleException(Self);
+  end;
  end;
 end;
 
 procedure TFRpMainFVCL.FormCreate(Sender: TObject);
 begin
  // ScaleToolBar(ToolBar1);
+ FCuePanelWidth := 420;
+ AChatIA.AutoCheck := True;
+ if AChatIA.Caption = '' then
+  AChatIA.Caption := 'AI chat';
+ if AChatIA.Hint = '' then
+  AChatIA.Hint := 'Show or hide the AI chat panel';
  ComboScale.ItemIndex:=ComboScale.Items.IndexOf('100%');
  Application.UpdateFormatSettings:=false;
  // Inits Bools Arrays
  BoolToStr(True,True);
+ KeyPreview:=True;
+ OnKeyDown:=FormKeyDown;
  ALeft.ShortCut:=ShortCut(VK_LEFT,[ssCtrl]);
  ARight.ShortCut:=ShortCut(VK_RIGHT,[ssCtrl]);
  AUp.ShortCut:=ShortCut(VK_UP,[ssCtrl]);
@@ -777,6 +1377,13 @@ begin
  // Sets on exception event
  oldonexception:=Application.OnException;
  Forms.Application.OnException:=MyExceptionHandler;
+ FDesignChatContextJson := '';
+ FDesignChatContextInitialized := False;
+ FDesignChatPendingPrompt := '';
+ FDesignChatValidatedPrompt := '';
+ FDesignContextRefreshVersion := 0;
+ FDesignContextRefreshRunning := False;
+ FDesignContextProgress := nil;
 
 
   LastUsedFiles.CaseSensitive:=False;
@@ -832,10 +1439,11 @@ begin
  AAlignRight.Hint:=TranslateStr(33,AAlignRight.Hint);
  AAlignUp.Hint:=TranslateStr(34,AAlignUp.Hint);
  AAlignDown.Hint:=TranslateStr(35,AAlignDown.Hint);
- AAlignHorz.Caption:=TranslateStr(36,AAlignHorz.Caption);
- AAlignHorz.Hint:=TranslateStr(37,AAlignHorz.Hint);
- AAlignVert.Caption:=TranslateStr(38,AAlignVert.Caption);
- AAlignVert.Hint:=TranslateStr(39,AAlignVert.Hint);
+ // 36/37 are the vertical space texts and 38/39 the horizontal ones
+ AAlignHorz.Caption:=TranslateStr(38,AAlignHorz.Caption);
+ AAlignHorz.Hint:=TranslateStr(39,AAlignHorz.Hint);
+ AAlignVert.Caption:=TranslateStr(36,AAlignVert.Caption);
+ AAlignVert.Hint:=TranslateStr(37,AAlignVert.Hint);
  ANew.Caption:=TranslateStr(40,ANew.Caption);
  ANew.Hint:=TranslateStr(41,ANew.Hint);
  AOpen.Caption:=TranslateStr(42,AOpen.Caption);
@@ -888,6 +1496,8 @@ begin
  BImage.Hint:=TranslateStr(85,BImage.Hint);
  BBarCode.Hint:=TranslateStr(86,BBarCode.Hint);
  BChart.Hint:=TranslateStr(87,BChart.Hint);
+ AUndo.Hint:=TranslateStr(1481,'Undo');
+ ARedo.Hint:=TranslateStr(1482,'Redo');
  MAlign1_6.Caption:=TranslateStr(1059,MAlign1_6.Caption);
  MAlign1_6.Hint:=TranslateStr(1060,MAlign1_6.Hint);
  MLibraries.Caption:=TranslateStr(1080,MLibraries.Caption);
@@ -958,6 +1568,9 @@ end;
 
 procedure TFRpMainFVCL.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+ // The report is freed with the form: no refresh may still prepare it
+ if Assigned(report) then
+  RpWaitReportRefreshes(report);
  LastUsedFiles.SaveToConfigFile(configfile);
  SaveConfig;
 end;
@@ -1014,11 +1627,21 @@ end;
 procedure TFRpMainFVCL.ANewPageHeaderExecute(Sender: TObject);
 var
  asection:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new page header
  Assert(report<>nil,'Called AddNew PageHeader without a report assigned');
  asection:=freportstructure.FindSelectedSubreport.AddPageHeader;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=asection.Name;
+ op.componentClass:='TRPSECTION';
+ op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddSectionProperties(asection, op);
+ cue.AddOperation(op);
+ RefreshCueView;
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1026,12 +1649,22 @@ end;
 procedure TFRpMainFVCL.ANewPageFooterExecute(Sender: TObject);
 var
  asection:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new page footer
  Assert(report<>nil,'Called AddNewPageFooter without a report assigned');
 
  asection:=freportstructure.FindSelectedSubreport.AddPageFooter;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=asection.Name;
+ op.componentClass:='TRPSECTION';
+ op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddSectionProperties(asection, op);
+ cue.AddOperation(op);
+ RefreshCueView;
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1039,7 +1672,12 @@ end;
 procedure TFRpMainFVCL.ANewGroupExecute(Sender: TObject);
 var
  newgroupname:string;
- asection:TRPSection;
+ asection,footersec:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ subrep:TRpSubReport;
+ i,headerIndex,footerIndex:integer;
+ groupId:integer;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called AddNewGroupout a report unassigned');
@@ -1047,7 +1685,59 @@ begin
  newgroupname:=Uppercase(Trim(RpInputBox(SRpNewGroup,SRpSGroupName,'')));
  if length(newgroupname)>0 then
  begin
-  asection:=freportstructure.FindSelectedSubreport.AddGroup(newgroupname);
+  subrep:=freportstructure.FindSelectedSubreport;
+  asection:=subrep.AddGroup(newgroupname);
+  
+  // Find header and footer indices after AddGroup creates them
+  headerIndex:=-1;
+  footerIndex:=-1;
+  footersec:=nil;
+  for i := 0 to subrep.Sections.Count - 1 do
+  begin
+   if (subrep.Sections.Items[i].Section.SectionType = rpsecgheader) and
+       (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
+    begin
+     headerIndex:=i;
+     asection:=subrep.Sections.Items[i].Section;
+    end;
+   if (subrep.Sections.Items[i].Section.SectionType = rpsecgfooter) and
+       (SameText(subrep.Sections.Items[i].Section.GroupName, newgroupname)) then
+    begin
+     footerIndex:=i;
+     footersec:=subrep.Sections.Items[i].Section;
+    end;
+  end;
+  
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  // Capture groupId ONCE so both header and footer share the same undo group
+  groupId:=cue.GetGroupId;
+  
+  // Register header section with its index
+   if (headerIndex >= 0) and Assigned(asection) then
+   begin
+    op:=TChangeObjectOperation.Create(otAdd, groupId);
+    op.componentName:=asection.Name;
+    op.componentClass:='TRPSECTION';
+    op.parentName:=subrep.Name;
+    op.oldItemIndex:=headerIndex;
+    cue.AddSectionProperties(asection, op);
+    cue.AddOperation(op);
+   end;
+  
+  // Register footer section with its index (same groupId!)
+   if (footerIndex >= 0) and Assigned(footersec) then
+   begin
+    op:=TChangeObjectOperation.Create(otAdd, groupId);
+    op.componentName:=footersec.Name;
+    op.componentClass:='TRPSECTION';
+    op.parentName:=subrep.Name;
+    op.oldItemIndex:=footerIndex;
+    cue.AddSectionProperties(footersec, op);
+    cue.AddOperation(op);
+   end;
+  
+  RefreshCueView;
   RefreshInterface(Self);
   freportstructure.SelectDataItem(asection);
  end;
@@ -1056,12 +1746,19 @@ end;
 procedure TFRpMainFVCL.ANewSubreportExecute(Sender: TObject);
 var
  subrep:TRpSubReport;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called AddSubReport a report unassigned');
 
  subrep:=report.AddSubReport;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=subrep.Name;
+ op.componentClass:='TRPSUBREPORT';
+ cue.AddOperation(op);
  RefreshInterface(Self);
  freportstructure.SelectDataItem(subrep);
 end;
@@ -1069,6 +1766,36 @@ end;
 procedure TFRpMainFVCL.ADeleteSelectionExecute(Sender: TObject);
 var
  currentsubrep:TRpSubReport;
+ secorsub:TObject;
+ sec:TRpSection;
+ subrep:TRpSubReport;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ groupname:string;
+ i,j,sectionIndex,removedSections,subrepIndex:integer;
+ secToDelete:TList<TRpSection>;
+ asec:TRpSection;
+ refSubrep:TRpSubReport;
+ refSection:TRpSection;
+ pitem:TRpCommonPosComponent;
+ groupId:integer;
+  procedure DeleteSectionComponentsWithUndo(ASection: TRpSection);
+  begin
+   while ASection.ReportComponents.Count>0 do
+   begin
+    pitem:=TRpCommonPosComponent(ASection.ReportComponents.Items[0].Component);
+    op:=TChangeObjectOperation.Create(otRemove, groupId);
+    op.componentName:=pitem.Name;
+    op.componentClass:=UpperCase(pitem.ClassName);
+    op.parentName:=ASection.Name;
+    // No oldParentName: this is not a parent change (undo would move every
+    // restored component to the end of the section, reversing their order)
+    op.oldItemIndex:=0;
+    cue.AddAllComponentProperties(pitem, op);
+    cue.AddOperation(op);
+    ASection.DeleteComponent(pitem);
+   end;
+  end;
 begin
  // Deletes section
  Assert(report<>nil,'Called ADeleteSection a report unassigned');
@@ -1076,10 +1803,145 @@ begin
  if RpMessageBox(SRpSureDeleteSection,SRpWarning,[smbok,smbcancel],smsWarning,smbCancel)=smbOk then
  begin
   currentsubrep:=nil;
-  if (not (freportstructure.FindSelectedObject is TRpSubReport)) then
-   currentsubrep:=freportstructure.FindSelectedSubreport;
+  secorsub:=freportstructure.FindSelectedObject;
+  
+  // Register undo operation before deleting
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  // Capture groupId ONCE - all operations in this delete action share the same undo group
+  groupId:=cue.GetGroupId;
+  
+  if (secorsub is TRpSubReport) then
+  begin
+    subrep:=TRpSubReport(secorsub);
+    subrepIndex:=-1;
+    for i := 0 to report.SubReports.Count - 1 do
+    begin
+     if report.SubReports.Items[i].SubReport = subrep then
+     begin
+      subrepIndex:=i;
+      break;
+     end;
+    end;
+
+    for i := 0 to report.SubReports.Count - 1 do
+    begin
+     refSubrep:=report.SubReports.Items[i].SubReport;
+     for j := 0 to refSubrep.Sections.Count - 1 do
+     begin
+      refSection:=refSubrep.Sections.Items[j].Section;
+      if Assigned(refSection) and (refSection.ChildSubReport = subrep) then
+      begin
+      op:=TChangeObjectOperation.Create(otModify, groupId);
+      op.componentName:=refSection.Name;
+      op.componentClass:='TRPSECTION';
+      op.AddProperty('childSubreportName', ptString, subrep.Name, '');
+      cue.AddOperation(op);
+      refSection.ChildSubReport:=nil;
+      end;
+     end;
+    end;
+
+    for i := 0 to subrep.Sections.Count - 1 do
+    begin
+     asec:=subrep.Sections.Items[i].Section;
+     if not Assigned(asec) then
+      continue;
+     DeleteSectionComponentsWithUndo(asec);
+     op:=TChangeObjectOperation.Create(otRemove, groupId);
+     op.componentName:=asec.Name;
+     op.componentClass:='TRPSECTION';
+     op.parentName:=subrep.Name;
+     op.oldItemIndex:=0;
+     cue.AddSectionProperties(asec, op);
+     cue.AddOperation(op);
+    end;
+
+    op:=TChangeObjectOperation.Create(otRemove, groupId);
+    op.componentName:=subrep.Name;
+    op.componentClass:='TRPSUBREPORT';
+    op.oldItemIndex:=subrepIndex;
+    cue.AddSubreportProperties(subrep, op);
+    cue.AddOperation(op);
+   currentsubrep:=nil;
+  end
+  else if (secorsub is TRpSection) then
+  begin
+   sec:=TRpSection(secorsub);
+   subrep:=freportstructure.FindSelectedSubreport;
+   
+   // For group sections, register both header and footer in same undo group
+   if sec.SectionType in [rpsecgheader, rpsecgfooter] then
+   begin
+    groupname:=sec.GroupName;
+    secToDelete:=TList<TRpSection>.Create;
+    try
+     for i := 0 to subrep.Sections.Count - 1 do
+     begin
+      asec:=subrep.Sections.Items[i].Section;
+      if Assigned(asec) and SameText(asec.GroupName, groupname) and
+      (asec.SectionType in [rpsecgheader, rpsecgfooter]) then
+       secToDelete.Add(asec);
+     end;
+
+     removedSections:=0;
+    for i := 0 to secToDelete.Count - 1 do
+    begin
+     sectionIndex:=-1;
+      for j := 0 to subrep.Sections.Count - 1 do
+     begin
+       if subrep.Sections.Items[j].Section = secToDelete[i] then
+      begin
+        sectionIndex:=j-removedSections;
+       break;
+      end;
+     end;
+      if sectionIndex < 0 then
+       continue;
+        DeleteSectionComponentsWithUndo(secToDelete[i]);
+      op:=TChangeObjectOperation.Create(otRemove, groupId);
+      op.componentName:=secToDelete[i].Name;
+      op.componentClass:='TRPSECTION';
+      op.parentName:=subrep.Name;
+      op.oldItemIndex:=sectionIndex;
+      cue.AddSectionProperties(secToDelete[i], op);
+      cue.AddOperation(op);
+      inc(removedSections);
+     end;
+    finally
+     secToDelete.Free;
+    end;
+    
+    currentsubrep:=nil;
+   end
+   else
+   begin
+    // Regular section (detail, page header, page footer) - find its index
+    for i := 0 to subrep.Sections.Count - 1 do
+    begin
+     if subrep.Sections.Items[i].Section = sec then
+     begin
+      DeleteSectionComponentsWithUndo(sec);
+      op:=TChangeObjectOperation.Create(otRemove, groupId);
+      op.componentName:=sec.Name;
+      op.componentClass:='TRPSECTION';
+      op.parentName:=subrep.Name;
+      op.oldItemIndex:=i;
+      cue.AddSectionProperties(sec, op);
+      cue.AddOperation(op);
+      break;
+     end;
+    end;
+    
+    currentsubrep:=nil;
+   end;
+  end;
+  
+  // Now perform the deletion
   freportstructure.DeleteSelectedNode;
+  RefreshCueView;
   RefreshInterface(Self);
+  
   if Assigned(currentsubrep) then
    freportstructure.SelectDataItem(currentsubrep);
  end;
@@ -1088,12 +1950,20 @@ end;
 procedure TFRpMainFVCL.ANewDetailExecute(Sender: TObject);
 var
  asection:TRPSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  // Inserts a new group header and footer
  Assert(report<>nil,'Called ADeleteSection a report unassigned');
 
  asection:=freportstructure.FindSelectedSubreport.AddDetail;
-
+ EnsureUndoCue;
+ cue:=TUndoCue(report.UndoCue);
+ op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+ op.componentName:=asection.Name;
+ op.componentClass:='TRPSECTION';
+ op.parentName:=freportstructure.FindSelectedSubreport.Name;
+ cue.AddOperation(op);
  RefreshInterface(Self);
  freportstructure.SelectDataItem(asection);
 end;
@@ -1102,6 +1972,8 @@ procedure TFRpMainFVCL.ADataConfigExecute(Sender: TObject);
 begin
  // Data info configuration dialog
  ShowDataConfig(report);
+ // The connections may have changed: the local ones of the design chat
+ UpdateDesignChatLocalSchemas;
  fobjinsp.ClearMultiSelect;
  fdesignframe.UpdateSelection(true);
  fdesignframe.freportstructure.Report:=report;
@@ -1117,6 +1989,7 @@ procedure TFRpMainFVCL.AGridOptionsExecute(Sender: TObject);
 begin
  fobjinsp.ClearMultiSelect;
  ModifyGridProperties(report);
+ RefreshCueView;
  fdesignframe.UpdateSelection(true);
 end;
 
@@ -1126,21 +1999,40 @@ var
  aitem:TRpSizePosInterface;
  alist:TStringList;
  i:integer;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
+ gid:Integer;
+ pitem:TRpCommonPosComponent;
 begin
  alist:=TStringList.Create;
  try
   sectionintf:=nil;
   alist.Assign(fobjinsp.SelectedItems);
   fobjinsp.ClearMultiSelect;
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  gid:=cue.GetGroupId;
   for i:=0 to alist.count-1 do
   begin
    aitem:=TRpSizePosInterface(alist.Objects[i]);
    sectionintf:=TRpSectionInterface(aitem.SectionInt);
+   pitem:=TRpCommonPosComponent(aitem.printitem);
+   // Record remove operation
+   op:=TChangeObjectOperation.Create(otRemove, gid);
+   op.componentName:=pitem.Name;
+   op.componentClass:=UpperCase(pitem.ClassName);
+   op.parentName:=TRpSection(sectionintf.printitem).Name;
+   // No oldParentName (not a parent change): undo re-inserts each component
+   // at its recorded index, newest first, restoring the original order
+   op.oldItemIndex:=TRpSection(sectionintf.printitem).ReportComponents.IndexOf(pitem);
+   cue.AddAllComponentProperties(pitem, op);
+   cue.AddOperation(op);
    TRpSection(sectionintf.printitem).DeleteComponent(aitem.printitem);
    sectionintf.DeleteChild(aitem);
   end;
   if assigned(sectionintf) then
    fobjinsp.AddCompItem(sectionintf,true);
+  RefreshCueView;
  finally
   alist.free;
  end;
@@ -1201,6 +2093,8 @@ var
  alist:TList;
  pitem:TRpCommonPosComponent;
  ident:String;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
  if fobjinsp.SelectedItems.Count<1 then
   exit;
@@ -1250,7 +2144,20 @@ begin
      report.InsertComponent(pitem);
     Generatenewname(pitem);
     TFRpObjInspVCL(fobjinsp).AddCompItem(secint.CreateChild(pitem),false);
+    // Record undo for pasted component
+    if Assigned(report.UndoCue) then
+    begin
+     cue:=TUndoCue(report.UndoCue);
+     op:=TChangeObjectOperation.Create(otAdd, cue.GetGroupId);
+     op.componentName:=pitem.Name;
+     op.componentClass:=UpperCase(pitem.ClassName);
+     op.parentName:=section.Name;
+    cue.AddAllComponentProperties(pitem, op);
+     cue.AddOperation(op);
+    end;
    end;
+   if Assigned(report.UndoCue) then
+    RefreshCueView;
 //   fdesignframe.UpdateSelection(true);
    // Select the items
   finally
@@ -1280,10 +2187,22 @@ begin
  Handled:=RpMessageBox(SRpErrorReadingReport+#10+Message+#10+SRpIgnoreError,SRpWarning,[smbYes,smbNo],smsWarning,smbYes)=smbYes;
 end;
 
+function TFRpMainFVCL.HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
+begin
+ Result:=0;
+ if Assigned(fchatframe) then
+  Result:=fchatframe.HubDatabaseOfSchema(AHubSchemaId);
+end;
+
 procedure TFRpMainFVCL.APreviewExecute(Sender: TObject);
 var
  pconfig:TPrinterConfig;
 begin
+ // A Reportman AI Agent connection not configured on this computer: the
+ // connection wizard first
+ if not RpCheckAgentConnections(report.DatabaseInfo,report.DataInfo,nil,
+  HubDatabaseOfSchema) then
+  exit;
  if (report.DatabaseInfo.Count>0) then
  begin
   if report.DatabaseInfo.Items[0].Driver in [rpdatadriver,rpdotnet2driver] then
@@ -1341,6 +2260,11 @@ var
  pconfig:TPrinterConfig;
  astream:TMemoryStream;
 begin
+ // A Reportman AI Agent connection not configured on this computer: the
+ // connection wizard first
+ if not RpCheckAgentConnections(report.DatabaseInfo,report.DataInfo,nil,
+  HubDatabaseOfSchema) then
+  exit;
 
  pconfig.Changed:=false;
  try
@@ -1438,7 +2362,7 @@ begin
  if FileExists(aurl) then
   ShowHelp(aurl)
  else
-  ShowHelp('http://reportman.sourceforge.net/doc/'+document);
+  ShowHelp('https://reportman.es/doc/'+document);
 end;
 
 procedure TFRpMainFVCL.ADocumentationExecute(Sender: TObject);
@@ -1454,7 +2378,7 @@ begin
  if FileExists(aurl) then
   ShowHelp(aurl)
  else
-  ShowHelp('http://reportman.sourceforge.net');
+  ShowHelp('https://reportman.es');
 end;
 
 procedure TFRpMainFVCL.AFeaturesExecute(Sender: TObject);
@@ -1525,6 +2449,7 @@ begin
   AUnitCms.Checked:=inif.ReadBool('Preferences','UnitCms',true);
   ADriverPDF.Checked:=inif.ReadBool('Preferences','DriverPDF',false);
   APrintDialog.Checked:=inif.ReadBool('Preferences','ShowPrintDialog',true);
+  AChatIA.Checked:=inif.ReadBool('Preferences','ShowAIChat',True);
   ADriverQt.Checked:=False;
   ADriverGDI.Checked:=Not ADriverPDF.Checked;
   AsystemPrintDialog.Checked:=True;
@@ -1563,6 +2488,7 @@ begin
   inif.WriteBool('Preferences','DriverPDF',ADriverPDF.Checked);
   inif.WriteBool('Preferences','SystemPrintDialog',AsystemPrintDialog.Checked);
   inif.WriteBool('Preferences','StatusBar',BStatus.Visible);
+  inif.WriteBool('Preferences','ShowAIChat',AChatIA.Checked);
   inif.WriteBool('Preferences','KylixPrintBug',AKylixPrintBug.Checked);
   inif.WriteString('Preferences','ThemeName',ThemeName);
 
@@ -1790,7 +2716,8 @@ begin
    RpMessageBox(amessage,SRpError,[smbok],TMessageStyle.smsCritical,TMessageButton.smbOK,TMessageButton.smbOk,true);
   end
   else
-    RpMessageBox(amessage,SRpError,[smbok]);
+    // Titled Error (the style gives the title), Ctrl+C copies the message
+    RpMessageBox(amessage,SRpError,[smbok],smsCritical);
  end;
 end;
 
@@ -1883,12 +2810,33 @@ begin
 end;
 
 procedure TFRpMainFVCL.FormShow(Sender: TObject);
+var
+ i:integer;
+ fileparam:string;
 begin
+ // -dbxconnectionfile <file>: the connections (and the local schemas next to
+ // them) from that file instead of the shared dbxconnections.ini, as
+ // printreptopdf and the server allow
+ fileparam:='';
+ i:=1;
+ while i<=ParamCount do
+ begin
+  if SameText(ParamStr(i),'-dbxconnectionfile') or SameText(ParamStr(i),'--dbxconnectionfile') then
+  begin
+   if i<ParamCount then
+    DBXConnectionsFileOverride:=ParamStr(i+1);
+   inc(i,2);
+   continue;
+  end;
+  if (Length(fileparam)=0) and (Length(ParamStr(i))>0) and (ParamStr(i)[1]<>'-') then
+   fileparam:=ParamStr(i);
+  inc(i);
+ end;
  if browsecommandline then
  begin
-  if Length(ParamStr(1))>0 then
+  if Length(fileparam)>0 then
   begin
-   DoOpen(ParamStr(1),false);
+   DoOpen(fileparam,false);
   end;
  end;
  oldappidle:=Application.OnIdle;
@@ -1917,9 +2865,66 @@ end;
 
 
 procedure TFRpMainFVCL.AAlign1_6Execute(Sender: TObject);
+var
+ oldtop,i,j,k,gid:integer;
+ oldheights:TList<Integer>;
+ subrep:TRpSubReport;
+ sec:TRpSection;
+ cue:TUndoCue;
+ op:TChangeObjectOperation;
 begin
- report.AlignSectionsTo(report.LinesPerInch);
+ if not Assigned(report) then
+  exit;
+ // The changes are recorded as one undo step: they mark the report
+ // modified (they were lost on close without asking) and can be undone
+ oldtop:=report.TopMargin;
+ oldheights:=TList<Integer>.Create;
+ try
+  for i:=0 to report.SubReports.Count-1 do
+  begin
+   subrep:=report.SubReports.Items[i].SubReport;
+   for j:=0 to subrep.Sections.Count-1 do
+    oldheights.Add(subrep.Sections.Items[j].Section.Height);
+  end;
+  report.AlignSectionsTo(report.LinesPerInch);
+  EnsureUndoCue;
+  cue:=TUndoCue(report.UndoCue);
+  gid:=-1;
+  if oldtop<>report.TopMargin then
+  begin
+   gid:=cue.GetGroupId;
+   op:=TChangeObjectOperation.Create(otModify,gid);
+   op.componentName:='REPORT';
+   op.componentClass:='TRPREPORT';
+   op.parentName:='';
+   op.AddProperty('topMargin',ptInteger,oldtop,report.TopMargin);
+   cue.AddOperation(op);
+  end;
+  k:=0;
+  for i:=0 to report.SubReports.Count-1 do
+  begin
+   subrep:=report.SubReports.Items[i].SubReport;
+   for j:=0 to subrep.Sections.Count-1 do
+   begin
+    sec:=subrep.Sections.Items[j].Section;
+    if oldheights[k]<>sec.Height then
+    begin
+     if gid<0 then
+      gid:=cue.GetGroupId;
+     op:=TChangeObjectOperation.Create(otModify,gid);
+     op.componentName:=sec.Name;
+     op.componentClass:=UpperCase(sec.ClassName);
+     op.AddProperty('height',ptInteger,oldheights[k],sec.Height);
+     cue.AddOperation(op);
+    end;
+    inc(k);
+   end;
+  end;
+ finally
+  oldheights.Free;
+ end;
  RefreshInterface(Self);
+ RefreshCueView;
 end;
 
 procedure TFRpMainFVCL.ADeleteExecute(Sender: TObject);
@@ -2029,6 +3034,8 @@ var
 begin
  Assert(report<>nil,'Called DoSave without a report assigned');
 
+ SyncActiveDesignSelection;
+
  if Length(filename)>0 then
  begin
   report.SaveToFile(savedialog1.filename);
@@ -2051,14 +3058,7 @@ begin
   LastUsedFiles.UseString(alibrary+'->'+areportname);
  end;
 
- // After saving update the lastsaved stream
- if assigned(lastsaved) then
- begin
-  lastsaved.free;
-  lastsaved:=nil;
- end;
- lastsaved:=TMemorystream.create;
- report.SaveToStream(lastsaved);
+ report.Modified:=False;
 
  UpdateFileMenu;
 end;
@@ -2066,9 +3066,6 @@ end;
 procedure TFRpMainFVCL.DoOpenStream(astream:TStream);
 begin
  // Creates a new report
- FreeInterface;
- report.free;
- report:=nil;
  DoDisable;
  report:=TRpReport.Create(Self);
  try
@@ -2077,6 +3074,7 @@ begin
   report.OnReadError:=OnReadError;
   report.FailIfLoadExternalError:=false;
   report.LoadFromStream(astream);
+  ResetDesignChatContextCache;
   DoEnable;
  except
   report.free;
@@ -2231,6 +3229,857 @@ begin
  begin
   fdesignframe.Scale:=GetScale;
  end;
+end;
+
+procedure TFRpMainFVCL.EnsureUndoCue;
+begin
+ if not Assigned(report) then
+  Exit;
+ if not Assigned(report.UndoCue) then
+  report.UndoCue := TUndoCue.Create(report);
+end;
+
+procedure TFRpMainFVCL.ConfigureReportChangeBlocking;
+begin
+ if not Assigned(report) then
+  Exit;
+ report.OnBlockChanges:=ReportBlockChanges;
+end;
+
+procedure TFRpMainFVCL.DesignInferenceBegin(Sender: TObject);
+begin
+ if Assigned(report) then
+  report.BeginBlockChanges;
+end;
+
+procedure TFRpMainFVCL.DesignInferenceEnd(Sender: TObject);
+begin
+ if Assigned(report) then
+  report.EndBlockChanges;
+end;
+
+function TFRpMainFVCL.ReportBlockChanges(Sender: TRpBaseReport;
+ const AReason: string): Boolean;
+begin
+ Result:=False;
+ if RpMessageBox('Hay una inferencia de IA en curso. Para modificar el informe ahora se cancelara la inferencia. ¿Desea cancelarla y aplicar el cambio?',
+  SRpWarning,[smbYes,smbNo],smsWarning,smbYes,smbNo)=smbYes then
+ begin
+  if Assigned(fchatframe) then
+   fchatframe.AISelectionStopRequest(Self);
+  Sender.BlockChanges:=False;
+  Result:=True;
+ end;
+end;
+
+function TFRpMainFVCL.GetShortcutFocusedControl: TWinControl;
+begin
+ Result:=nil;
+ if Assigned(Screen.ActiveCustomForm) then
+  Result:=Screen.ActiveCustomForm.ActiveControl;
+ if (Result=nil) and Assigned(Screen.ActiveForm) then
+  Result:=Screen.ActiveForm.ActiveControl;
+ if Result=nil then
+  Result:=ActiveControl;
+end;
+
+function TFRpMainFVCL.IsEditableTextShortcutTarget(AControl: TWinControl): Boolean;
+begin
+ Result:=False;
+ if not Assigned(AControl) then
+  Exit;
+ if AControl is TCustomEdit then
+ begin
+  Result:=not TCustomEdit(AControl).ReadOnly;
+  Exit;
+ end;
+ if AControl is TComboBox then
+  Result:=TComboBox(AControl).Style<>csDropDownList;
+end;
+
+function TFRpMainFVCL.ShouldHandleDesignerUndoShortcut: Boolean;
+begin
+ Result:=not IsEditableTextShortcutTarget(GetShortcutFocusedControl);
+end;
+
+procedure TFRpMainFVCL.DoUndo;
+var
+ cue: TUndoCue;
+ ops: TObjectList<TChangeObjectOperation>;
+begin
+ if not Assigned(report) then
+  Exit;
+ report.AssertCanModify('Undo');
+ EnsureUndoCue;
+ cue := TUndoCue(report.UndoCue);
+ if cue.UndoOperations.Count = 0 then
+  Exit;
+ ops := nil;
+ try
+  ops := cue.Undo;
+ finally
+  ops.Free;
+  // Also when undo fails: the operations already undone changed the report
+  OnUndoRedo(Self);
+ end;
+end;
+
+procedure TFRpMainFVCL.DoRedo;
+var
+ cue: TUndoCue;
+ ops: TObjectList<TChangeObjectOperation>;
+begin
+ if not Assigned(report) then
+  Exit;
+ report.AssertCanModify('Redo');
+ EnsureUndoCue;
+ cue := TUndoCue(report.UndoCue);
+ if cue.RedoOperations.Count = 0 then
+  Exit;
+ ops := nil;
+ try
+  ops := cue.Redo;
+ finally
+  ops.Free;
+  // Also when redo fails: the operations already redone changed the report
+  OnUndoRedo(Self);
+ end;
+end;
+
+procedure TFRpMainFVCL.OnUndoRedo(Sender: TObject);
+begin
+ if Assigned(freportstructure) then
+  freportstructure.report := report;
+ if Assigned(fdesignframe) then
+ begin
+  fdesignframe.UpdateInterface(true);
+  fdesignframe.UpdateSelection(false);
+ end;
+
+ if Assigned(fcueview) then
+ begin
+  fcueview.RefreshList;
+  fcueview.UpdateButtons;
+ end;
+
+   UpdateUndoToolbarButtons;
+  end;
+
+  procedure TFRpMainFVCL.UpdateUndoToolbarButtons;
+  var
+   cue: TUndoCue;
+  begin
+  AUndo.Enabled:=False;
+  ARedo.Enabled:=False;
+   if not Assigned(report) then
+    Exit;
+   EnsureUndoCue;
+   cue:=TUndoCue(report.UndoCue);
+  AUndo.Enabled:=cue.UndoOperations.Count>0;
+  ARedo.Enabled:=cue.RedoOperations.Count>0;
+  end;
+
+  procedure TFRpMainFVCL.AUndoExecute(Sender: TObject);
+  begin
+  DoUndo;
+  end;
+
+  procedure TFRpMainFVCL.ARedoExecute(Sender: TObject);
+  begin
+  DoRedo;
+  end;
+
+  procedure TFRpMainFVCL.BUndoToolbarClick(Sender: TObject);
+  begin
+  AUndoExecute(Sender);
+  end;
+
+  procedure TFRpMainFVCL.BRedoToolbarClick(Sender: TObject);
+  begin
+  ARedoExecute(Sender);
+  end;
+
+
+
+procedure TFRpMainFVCL.StopDesignChatRequest(Sender: TObject);
+begin
+ if not Assigned(fchatframe) then
+  Exit;
+
+ Inc(FDesignContextRefreshVersion);
+ FDesignContextRefreshRunning := False;
+ FDesignChatPendingPrompt := '';
+ FDesignChatValidatedPrompt := '';
+ if Assigned(report) then
+  report.BlockChanges:=False;
+ UpdateDesignContextProgress(False, '');
+end;
+
+
+
+procedure TFRpMainFVCL.PostDesignContextPayload(APayload: TRpQueuedDesignContextPayload);
+begin
+ if APayload = nil then
+  Exit;
+ if HandleAllocated then
+  PostMessage(Handle, WM_USER + 207, WPARAM(APayload), 0)
+ else
+  APayload.Free;
+end;
+
+function TFRpMainFVCL.SaveReportAsXml: string;
+var
+ LStream: TStringStream;
+begin
+ Result := '';
+ if not Assigned(report) then
+  Exit;
+
+ LStream := TStringStream.Create('', TEncoding.UTF8);
+ try
+  WriteReportXML(report, LStream);
+  Result := LStream.DataString;
+ finally
+  LStream.Free;
+ end;
+end;
+
+function TFRpMainFVCL.BuildDesignChatRequest(
+  const APrompt: string): TRpApiModifyReportRequest;
+begin
+ Result := TRpApiModifyReportRequest.Create;
+ Result.AITier := RpAITierTypeFromString(fchatframe.GetAITier);
+ Result.Mode := RpReportDesignerModeFromString(fchatframe.GetAIMode);
+ Result.ReportDocument := SaveReportAsXml;
+ Result.ReportFormat := rdfXml;
+ Result.ExistingContextJson := FDesignChatContextJson;
+ Result.ReturnModifiedDocument := True;
+ Result.SimplifiedPrompt := False;
+ Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
+ Result.ApiKey := fchatframe.GetSchemaApiKey;
+ Result.Config.HubDatabaseId := fchatframe.GetHubDatabaseId;
+ Result.Config.HubSchemaId := fchatframe.GetHubSchemaId;
+ // A direct connection: its local schema travels inline and the SQL of the
+ // assistant runs here (rpdesignerclientsql, in the worker of the chat)
+ if (Result.Config.HubDatabaseId = 0) and (Result.Config.HubSchemaId = 0) then
+ begin
+  Result.Config.LocalAlias := fchatframe.GetLocalSchemaAlias;
+  Result.Config.LocalSchemaName := fchatframe.GetLocalSchemaName;
+  // Sent with the inline schema: the cloud gives it to the datasets it
+  // makes (RpResolveLocalSchemaConfig refuses one that left the file)
+  if Result.Config.LocalAlias <> '' then
+   Result.Config.SchemaName := Result.Config.LocalSchemaName;
+ end;
+ TRpAuthManager.Instance.Log(
+  'Main BuildDesignChatRequest: HubDatabaseId=' + IntToStr(Result.Config.HubDatabaseId) +
+  ' HubSchemaId=' + IntToStr(Result.Config.HubSchemaId) +
+  ' LocalAlias=' + Result.Config.LocalAlias +
+  ' SchemaApiKey=' + RpMaskSecret(Result.ApiKey));
+ Result.UserInstructions.Add(APrompt);
+ if Result.AITier = ratLocalAgent then
+ begin
+  Result.AgentSecret := fchatframe.GetAgentSecret;
+  Result.AgentAiId := fchatframe.GetAgentAiId;
+  Result.HasAgentAiId := Result.AgentAiId <> 0;
+ end;
+end;
+
+  function TFRpMainFVCL.BuildPreprocessSqlContextRequest: TRpApiPreprocessSqlContextRequest;
+  var
+   I: Integer;
+   LConnectionParams: TStringList;
+   LDataInfo: TRpDataInfoItem;
+   LDataSource: TRpApiPreprocessSqlContextDataSource;
+   LDatabaseInfo: TRpDatabaseInfoItem;
+   LDataInfoName: string;
+  begin
+   Result := nil;
+   if (not Assigned(report)) or (not Assigned(fchatframe)) then
+    Exit;
+
+   LConnectionParams := TStringList.Create;
+   try
+    for I := 0 to report.DataInfo.Count - 1 do
+    begin
+     LDataInfo := report.DataInfo.Items[I];
+     if Trim(LDataInfo.SQL) = '' then
+      Continue;
+     if Trim(LDataInfo.SQLExplanation) <> '' then
+      Continue;
+     if Trim(LDataInfo.SQLExplanationError) <> '' then
+      Continue;
+
+     if Result = nil then
+     begin
+      Result := TRpApiPreprocessSqlContextRequest.Create;
+      Result.AITier := RpAITierTypeFromString(fchatframe.GetAITier);
+      Result.Mode := RpReportDesignerModeFromString(fchatframe.GetAIMode);
+      Result.UserLanguage := TRpAuthManager.Instance.AILanguage;
+      Result.ApiKey := fchatframe.GetSchemaApiKey;
+      Result.Config.HubDatabaseId := fchatframe.GetHubDatabaseId;
+      Result.Config.HubSchemaId := fchatframe.GetHubSchemaId;
+      if Result.AITier = ratLocalAgent then
+      begin
+       Result.AgentSecret := fchatframe.GetAgentSecret;
+       Result.AgentAiId := fchatframe.GetAgentAiId;
+       Result.HasAgentAiId := Result.AgentAiId <> 0;
+      end;
+     end;
+
+     LDataSource := TRpApiPreprocessSqlContextDataSource.Create;
+     LDataInfoName := Trim(LDataInfo.Name);
+     if LDataInfoName = '' then
+      LDataInfoName := Trim(LDataInfo.Alias);
+     LDataSource.DataInfoName := LDataInfoName;
+     LDataSource.DatabaseAlias := LDataInfo.DatabaseAlias;
+     LDataSource.Sql := LDataInfo.SQL;
+
+     LDatabaseInfo := FindDatabaseInfo(report.DatabaseInfo, LDataInfo.DatabaseAlias);
+     if (LDatabaseInfo <> nil) and (LDatabaseInfo.Driver = rpdbHttp) then
+     begin
+      LConnectionParams.Clear;
+      LDatabaseInfo.LoadConnectionParams(LConnectionParams);
+      LDataSource.Config.HubDatabaseId := StrToInt64Def(LConnectionParams.Values['HubDatabaseId'], 0);
+        LDataSource.Config.HubSchemaId := LDataInfo.HubSchemaId;
+     end;
+
+     Result.DataSources.Add(LDataSource);
+    end;
+
+    if (Result <> nil) and (Result.DataSources.Count = 0) then
+    begin
+     Result.Free;
+     Result := nil;
+    end;
+   finally
+    LConnectionParams.Free;
+   end;
+  end;
+
+  procedure TFRpMainFVCL.ApplyPreprocessSqlContextResult(
+    AResult: TRpApiPreprocessSqlContextResult);
+  var
+   I: Integer;
+   J: Integer;
+   LDataInfo: TRpDataInfoItem;
+   LDataInfoName: string;
+   LResultItem: TRpApiPreprocessSqlContextDataSourceResult;
+  begin
+   if (not Assigned(report)) or (AResult = nil) then
+    Exit;
+
+   for I := 0 to AResult.DataSources.Count - 1 do
+   begin
+    if not (AResult.DataSources[I] is TRpApiPreprocessSqlContextDataSourceResult) then
+     Continue;
+
+    LResultItem := TRpApiPreprocessSqlContextDataSourceResult(AResult.DataSources[I]);
+    for J := 0 to report.DataInfo.Count - 1 do
+    begin
+     LDataInfo := report.DataInfo.Items[J];
+     LDataInfoName := Trim(LDataInfo.Name);
+     if LDataInfoName = '' then
+      LDataInfoName := Trim(LDataInfo.Alias);
+     if not SameText(LDataInfoName, LResultItem.DataInfoName) then
+      Continue;
+
+     if Trim(LResultItem.SqlExplanation) <> '' then
+     begin
+      LDataInfo.SQLExplanation := LResultItem.SqlExplanation;
+      LDataInfo.SQLExplanationError := '';
+     end
+     else
+     begin
+      LDataInfo.SQLExplanation := '';
+      LDataInfo.SQLExplanationError := LResultItem.ErrorMessage;
+     end;
+     Break;
+    end;
+   end;
+  end;
+
+  function TFRpMainFVCL.BuildDesignChatRequestForFrame(Sender: TObject;
+    const APrompt: string): TRpApiModifyReportRequest;
+  var
+   LPrompt: string;
+  begin
+   Result := nil;
+   if (not Assigned(fchatframe)) or (not Assigned(report)) then
+    Exit;
+
+   LPrompt := Trim(APrompt);
+   if LPrompt = '' then
+    Exit;
+
+   if SameText(FDesignChatValidatedPrompt, LPrompt) then
+   begin
+    Result := BuildDesignChatRequest(LPrompt);
+    Exit;
+   end;
+
+   if not FDesignContextRefreshRunning then
+   begin
+    BeginDesignChatContextRefresh(LPrompt, False);
+   end;
+  end;
+
+function TFRpMainFVCL.BuildDesignDatasetErrorMessage(AOpenErrors: TStrings;
+  const AErrorMessage: string): string;
+var
+ I: Integer;
+ LName: string;
+ LValue: string;
+begin
+ Result := Trim(AErrorMessage);
+ if (AOpenErrors = nil) or (AOpenErrors.Count = 0) then
+  Exit;
+
+ if Result <> '' then
+  Result := Result + sLineBreak + sLineBreak;
+ Result := Result + 'Some datasets could not be opened:';
+ for I := 0 to AOpenErrors.Count - 1 do
+ begin
+  LName := Trim(AOpenErrors.Names[I]);
+  LValue := Trim(AOpenErrors.ValueFromIndex[I]);
+  if LName <> '' then
+   Result := Result + sLineBreak + '- ' + LName + ': ' + LValue
+  else
+   Result := Result + sLineBreak + '- ' + LValue;
+ end;
+end;
+
+function TFRpMainFVCL.ConfirmDesignPromptWithDatasetErrors(
+  const ADatasetErrorMessage: string): Boolean;
+var
+ LMessage: string;
+begin
+ LMessage := Trim(ADatasetErrorMessage);
+ if LMessage = '' then
+  Exit(True);
+
+ LMessage := 'Opening datasets failed.' + sLineBreak + sLineBreak +
+  LMessage + sLineBreak + sLineBreak +
+  'Do you want to send the design request to the assistant anyway?';
+ Result := RpMessageBox(LMessage, SRpWarning, [smbYes, smbNo], smsWarning,
+  smbYes, smbNo, True) = smbYes;
+end;
+
+  function TFRpMainFVCL.BuildPreprocessSqlContextRequestForFrame(
+    Sender: TObject): TRpApiPreprocessSqlContextRequest;
+  begin
+   Result := BuildPreprocessSqlContextRequest;
+  end;
+
+  procedure TFRpMainFVCL.ApplyPreprocessSqlContextResultFromFrame(
+    Sender: TObject; AResult: TRpApiPreprocessSqlContextResult);
+  begin
+   ApplyPreprocessSqlContextResult(AResult);
+  end;
+
+  procedure TFRpMainFVCL.ApplyModifiedReportDocumentFromFrame(Sender: TObject;
+    const AModifiedReportDocument: string);
+  begin
+   ApplyModifiedReportDocument(AModifiedReportDocument);
+  end;
+
+procedure TFRpMainFVCL.ResetDesignChatContextCache;
+begin
+ FDesignChatContextJson := '';
+ FDesignChatContextInitialized := False;
+ FDesignChatPendingPrompt := '';
+ FDesignChatValidatedPrompt := '';
+end;
+
+procedure TFRpMainFVCL.UpdateDesignContextProgress(AActive: Boolean;
+  const AStatus: string);
+begin
+ if Assigned(BStatus) and (BStatus.Panels.Count > 0) then
+  BStatus.Panels.Items[0].Text := AStatus;
+
+ if Assigned(fchatframe) then
+ begin
+  if AActive then
+  begin
+   if not FDesignContextRefreshRunning then
+    fchatframe.BeginProgress('System', AStatus)
+   else
+    fchatframe.UpdateProgress(AStatus);
+  end
+  else
+   fchatframe.FinishProgress;
+ end;
+
+ if FDesignContextProgress = nil then
+  Exit;
+
+ FDesignContextProgress.Visible := AActive;
+ if AActive and Assigned(BStatus) then
+ begin
+  FDesignContextProgress.SetBounds(BStatus.Width - 190, 2, 180, BStatus.Height - 4);
+  FDesignContextProgress.BringToFront;
+ end;
+end;
+
+procedure TFRpMainFVCL.BeginDesignChatContextRefresh(const APendingPrompt: string;
+  ANotifyOnSuccess: Boolean);
+var
+ LWorker: TThread;
+ LRequestVersion: Integer;
+ LReport: TRpReport;
+ LStatusMessage: string;
+ LDone: IRpRefreshDone;
+begin
+ if (not Assigned(fchatframe)) or (not Assigned(report)) then
+  Exit;
+
+ if FDesignContextRefreshRunning then
+  Exit;
+ // Not at the same time as a refresh of the expression dialog
+ RpWaitReportRefreshes(report);
+
+ fchatframe.SetBusy(True);
+ FDesignChatPendingPrompt := APendingPrompt;
+ Inc(FDesignContextRefreshVersion);
+ LRequestVersion := FDesignContextRefreshVersion;
+ LReport := report;
+ FDesignContextRefreshRunning := True;
+ LDone := RpNewRefreshDone;
+ RpRegisterReportRefresh(LReport, LDone);
+ if Trim(APendingPrompt) <> '' then
+  LStatusMessage := 'Opening datasets...'
+ else if ANotifyOnSuccess then
+  LStatusMessage := 'Refreshing design context...'
+ else
+  LStatusMessage := 'Initializing design context...';
+ UpdateDesignContextProgress(True, LStatusMessage);
+
+ LWorker := TThread.CreateAnonymousThread(
+   procedure
+   var
+    LPayload: TRpQueuedDesignContextPayload;
+      LOpenErrors: TStringList;
+      LSchemaOnlyFields: TStringList;
+      LSchemaOnlyErrors: TStringList;
+   begin
+    LPayload := TRpQueuedDesignContextPayload.Create;
+      LOpenErrors := TStringList.Create;
+      LSchemaOnlyFields := TStringList.Create;
+      LSchemaOnlyErrors := TStringList.Create;
+    try
+      LPayload.RequestVersion := LRequestVersion;
+      try
+          LReport.PrepareLiveContext(LOpenErrors);
+          CollectAgentSchemaOnlyContext(LReport, LSchemaOnlyFields, LSchemaOnlyErrors);
+          LPayload.OpenErrors := TStringList.Create;
+          LPayload.OpenErrors.Assign(LOpenErrors);
+          LPayload.SchemaOnlyFields := TStringList.Create;
+          LPayload.SchemaOnlyFields.Assign(LSchemaOnlyFields);
+          LPayload.SchemaOnlyErrors := TStringList.Create;
+          LPayload.SchemaOnlyErrors.Assign(LSchemaOnlyErrors);
+      except
+        on E: Exception do
+          LPayload.ErrorMessage := E.Message;
+      end;
+
+      PostDesignContextPayload(LPayload);
+      LPayload := nil;
+    finally
+        LSchemaOnlyErrors.Free;
+        LSchemaOnlyFields.Free;
+        LOpenErrors.Free;
+      LPayload.Free;
+      LDone.SetDone;
+    end;
+   end);
+ LWorker.FreeOnTerminate := True;
+ LWorker.Start;
+end;
+
+procedure TFRpMainFVCL.RefreshDesignChatContext(Sender: TObject);
+begin
+ BeginDesignChatContextRefresh('', True);
+end;
+
+procedure TFRpMainFVCL.ApplyModifiedReportDocument(
+  const AModifiedReportDocument: string);
+var
+ LStream: TStringStream;
+ LOldItems: TObjectList;
+ LOldFiles: TList;
+ I: Integer;
+ LApplied: Boolean;
+begin
+ if (not Assigned(report)) or (Trim(AModifiedReportDocument) = '') then
+  Exit;
+ LApplied := False;
+ // No refresh may be preparing the report that is replaced
+ RpWaitReportRefreshes(report);
+
+ report.BlockChanges:=False;
+ // Clear takes the sections and items out of the report without freeing
+ // them, and the design frame, the structure and the inspector show them
+ // until they are pointed to the loaded report below: they are freed at the
+ // end. The XML reader appends the embedded files of the document (the Hub
+ // returns them): the report keeps its own ones only if it brings none.
+ LOldItems := TObjectList.Create(True);
+ LOldFiles := TList.Create;
+ LStream := TStringStream.Create(AModifiedReportDocument, TEncoding.UTF8);
+ try
+  for I := 0 to report.ComponentCount - 1 do
+   if report.Components[I] is TRpCommonComponent then
+    LOldItems.Add(report.Components[I]);
+  for I := 0 to Length(report.EmbeddedFiles) - 1 do
+   LOldFiles.Add(report.EmbeddedFiles[I]);
+  SetLength(report.EmbeddedFiles, 0);
+  try
+   report.Clear();
+   report.LoadFromStream(LStream);
+  finally
+   if (LOldFiles.Count > 0) and (Length(report.EmbeddedFiles) = 0) then
+   begin
+    SetLength(report.EmbeddedFiles, LOldFiles.Count);
+    for I := 0 to LOldFiles.Count - 1 do
+     report.EmbeddedFiles[I] := TEmbeddedFile(LOldFiles[I]);
+    LOldFiles.Clear;
+   end;
+  end;
+  report.AsyncExecution := MAsync.Checked;
+  report.IsDesignTime := True;
+  report.OnReadError := OnReadError;
+  report.FailIfLoadExternalError := False;
+  report.Modified := True;
+  ConfigureReportChangeBlocking;
+  EnsureUndoCue;
+  // The Hub adds the Agent connections by name only: without an entry in
+  // the connections file the data could not be opened
+  if Assigned(fchatframe) and
+    (RpEnsureAgentConnections(report.DatabaseInfo, fchatframe.GetHubDatabaseId,
+      fchatframe.GetSchemaApiKey) > 0) then
+    TRpAuthManager.Instance.Log(
+      'Design chat: Reportman AI Agent connections written to the connections file');
+  UpdateDesignChatLocalSchemas;
+
+  if Assigned(freportstructure) then
+    freportstructure.Report := report;
+  if Assigned(fdesignframe) then
+  begin
+    fdesignframe.report := report;
+    fdesignframe.UpdateInterface(True);
+    fdesignframe.UpdateSelection(False);
+  end;
+  if Assigned(fcueview) then
+    fcueview.Report := report;
+
+  RefreshCueView;
+  FormResize(Self);
+  LApplied := True;
+ finally
+  LStream.Free;
+  for I := 0 to LOldFiles.Count - 1 do
+   TObject(LOldFiles[I]).Free;
+  LOldFiles.Free;
+  // If the load failed the interface still shows the old items: keep them
+  if not LApplied then
+   LOldItems.OwnsObjects := False;
+  LOldItems.Free;
+ end;
+end;
+
+procedure TFRpMainFVCL.WMHandleDesignChatPayload(var Message: TMessage);
+var
+ LPayload: TRpQueuedDesignChatPayload;
+ LProfile: TJSONObject;
+ LMessage: string;
+begin
+ LPayload := TRpQueuedDesignChatPayload(Message.WParam);
+ try
+  if LPayload = nil then
+    Exit;
+  if LPayload.RequestVersion <> FDesignChatRequestVersion then
+    Exit;
+
+  if Assigned(fchatframe) then
+  begin
+    case LPayload.Kind of
+      rpqdcUpdateStreamingResponse:
+        begin
+          fchatframe.UpdateStreamingResponse(LPayload.Actor1,
+            LPayload.ChunkType1, LPayload.Text1, LPayload.PrefillPercent,
+            LPayload.LogText1, LPayload.ProgressId1);
+          fchatframe.UpdateStreamingTokens(LPayload.InputTokens,
+            LPayload.OutputTokens, LPayload.ProgressId1,
+            LPayload.PrefillPercent);
+          fchatframe.CompleteStreamingProgress(LPayload.Actor1,
+            LPayload.ChunkType1, LPayload.ProgressId1);
+          Exit;
+        end;
+      rpqdcAddAssistantMessage:
+        begin
+          FDesignChatValidatedPrompt := '';
+          fchatframe.FinishStreamingResponse;
+          fchatframe.SetBusy(False);
+          fchatframe.AddAssistantMessage(LPayload.Text1);
+          Exit;
+        end;
+    end;
+  end;
+
+  FDesignChatValidatedPrompt := '';
+  if Assigned(fchatframe) then
+  begin
+    if (LPayload.InputTokens > 0) or (LPayload.OutputTokens > 0) then
+      fchatframe.UpdateStreamingTokens(LPayload.InputTokens, LPayload.OutputTokens);
+    fchatframe.FinishStreamingResponse;
+    fchatframe.SetBusy(False);
+  end;
+
+  if (Trim(LPayload.UserProfileJson) <> '') and
+    (not SameText(Trim(LPayload.UserProfileJson), 'null')) then
+  begin
+    LProfile := TJSONObject.ParseJSONValue(LPayload.UserProfileJson) as TJSONObject;
+    try
+      if (LProfile <> nil) and Assigned(fchatframe) then
+        fchatframe.UpdateUserProfile(LProfile);
+    finally
+      LProfile.Free;
+    end;
+  end;
+
+  if Trim(LPayload.ErrorMessage) <> '' then
+  begin
+    if Assigned(fchatframe) then
+      fchatframe.AddAssistantMessage(LPayload.ErrorMessage);
+    Exit;
+  end;
+
+  if Trim(LPayload.Text1) <> '' then
+  begin
+    try
+      ApplyModifiedReportDocument(LPayload.Text1);
+    except
+      on E: Exception do
+      begin
+        if Assigned(fchatframe) then
+          fchatframe.AddAssistantMessage('The server returned a modified report, but it could not be loaded: ' + E.Message);
+        Exit;
+      end;
+    end;
+  end;
+
+  LMessage := Trim(LPayload.Text2);
+  if LMessage = '' then
+  begin
+    if Trim(LPayload.Text1) <> '' then
+      LMessage := 'Report updated.'
+    else
+      LMessage := 'No report changes were returned.';
+  end;
+
+  if Assigned(fchatframe) then
+    fchatframe.AddAssistantMessage(LMessage);
+ finally
+  LPayload.Free;
+ end;
+end;
+
+  procedure TFRpMainFVCL.WMHandleDesignContextPayload(var Message: TMessage);
+  var
+   LPayload: TRpQueuedDesignContextPayload;
+   LErrorMessage: string;
+   LPendingPrompt: string;
+    LDatasetErrorMessage: string;
+  begin
+   LPayload := TRpQueuedDesignContextPayload(Message.WParam);
+   try
+    if LPayload = nil then
+      Exit;
+    if LPayload.RequestVersion <> FDesignContextRefreshVersion then
+      Exit;
+
+    FDesignContextRefreshRunning := False;
+    if Trim(LPayload.ErrorMessage) <> '' then
+    begin
+      FDesignChatContextJson := '';
+      FDesignChatContextInitialized := False;
+      LErrorMessage := LPayload.ErrorMessage
+    end
+    else
+    begin
+      FDesignChatContextJson := BuildDesignExpressionContextJson(report,
+        RpAlias1,
+        LPayload.OpenErrors,
+        LPayload.SchemaOnlyFields,
+        LPayload.SchemaOnlyErrors,
+        LErrorMessage);
+      FDesignChatContextInitialized := Trim(FDesignChatContextJson) <> '';
+    end;
+
+    UpdateDesignContextProgress(False, '');
+    if Assigned(fchatframe) then
+      fchatframe.SetBusy(False);
+
+    LPendingPrompt := Trim(FDesignChatPendingPrompt);
+    FDesignChatPendingPrompt := '';
+    LDatasetErrorMessage := BuildDesignDatasetErrorMessage(LPayload.OpenErrors,
+      LErrorMessage);
+
+    if LPendingPrompt <> '' then
+    begin
+      if not ConfirmDesignPromptWithDatasetErrors(LDatasetErrorMessage) then
+      begin
+        FDesignChatValidatedPrompt := '';
+        if Assigned(fchatframe) then
+          fchatframe.AddAssistantMessage('Design request canceled after dataset validation.');
+        Exit;
+      end;
+
+      FDesignChatValidatedPrompt := LPendingPrompt;
+      fchatframe.StartDesignPrompt(LPendingPrompt);
+      Exit;
+    end;
+
+    if Trim(LErrorMessage) <> '' then
+    begin
+      if Assigned(fchatframe) then
+        fchatframe.AddAssistantMessage('Context refresh failed: ' + LErrorMessage);
+      Exit;
+    end;
+
+    if Assigned(fchatframe) then
+    begin
+      if Trim(LDatasetErrorMessage) <> '' then
+        fchatframe.AddAssistantMessage('Context refreshed with dataset errors.' +
+          sLineBreak + LDatasetErrorMessage)
+      else
+        fchatframe.AddAssistantMessage('Context refreshed.');
+    end;
+   finally
+    LPayload.Free;
+   end;
+  end;
+
+procedure TFRpMainFVCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+ if (Shift = [ssCtrl]) and (Key = Ord('Z')) and ShouldHandleDesignerUndoShortcut then
+ begin
+  Key := 0;
+  DoUndo;
+ end
+ else if (Shift = [ssCtrl]) and (Key = Ord('Y')) and ShouldHandleDesignerUndoShortcut then
+ begin
+  Key := 0;
+  DoRedo;
+ end;
+end;
+
+procedure TFRpMainFVCL.RefreshCueView;
+begin
+ if Assigned(fcueview) then
+ begin
+  fcueview.RefreshList;
+  fcueview.UpdateButtons;
+ end;
+   UpdateUndoToolbarButtons;
 end;
 
 end.

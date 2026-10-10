@@ -135,7 +135,11 @@ var
 begin
  aname:=InputBox('New connection','Connection name','');
  aname:=Trim(UpperCase(aname));
- if rpalias1.Connections.indexof(aname)>0 then
+ // Cancelled or empty: no connection without name
+ if Length(aname)<1 then
+  exit;
+ // The first connection (index 0) was not found as existing
+ if rpalias1.Connections.indexof(aname)>=0 then
   Raise Exception.Create('Connection name already exists');
  rpalias1.Connections.Add(aname);
  UpdateConList;
@@ -244,7 +248,9 @@ begin
   exit;
  aname:=InputBox('Rename connection','New connection name','');
  aname:=Trim(UpperCase(aname));
- if rpalias1.Connections.indexof(aname)>0 then
+ if Length(aname)<1 then
+  exit;
+ if rpalias1.Connections.indexof(aname)>=0 then
   Raise Exception.Create('Alias name already exists');
  adbitem:=rpalias1.Connections.Items[LConnections.ItemIndex];
  adbitem.Alias:=aname;
@@ -288,7 +294,9 @@ begin
   dbitem.ReportGroupsTable:=EReportGroupsTable.Text
  else
  if Sender=EAdoConnection then
-  dbitem.ADOConnectionString:=EAdoConnection.Text;
+  // The edit shows the password masked: editing another part saved the '*'
+  dbitem.ADOConnectionString:=RestoreADOPassword(EAdoConnection.Text,
+   dbitem.ADOConnectionString);
 end;
 
 procedure TFRpEditConVCL.FormCreate(Sender: TObject);
@@ -329,7 +337,7 @@ end;
 procedure TFRpEditConVCL.BConfigClick(Sender: TObject);
 begin
 {$IFNDEF BUILDER4}
- ShowDBXConfig(TRpDbDriver(ComboDriver.ItemIndex) in [rpdataibx,rpdataibo,rpdatamybase]);
+ ShowDBXConfig;
 {$ENDIF}
 // conadmin.free;
 // conadmin:=TRPCOnnAdmin.Create;
@@ -359,6 +367,8 @@ procedure TFRpEditConVCL.BTestClick(Sender: TObject);
 var
  dbinfo:TRpDatabaseInfoItem;
 begin
+ if LConnections.ItemIndex<0 then
+  exit;
  dbinfo:=rpalias1.Connections.Items[LConnections.ItemIndex];
  dbinfo.Connect(nil);
  try

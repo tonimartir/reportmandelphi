@@ -6,7 +6,7 @@
 {       Provides information about fonts                }
 {                                                       }
 {       Copyright (c) 1994-2019 Toni Martir             }
-{       toni@reportman.es                                   }
+{       toni@reportman.es                               }
 {                                                       }
 {                                                       }
 {*******************************************************}
@@ -15,10 +15,17 @@ unit rpinfoprovgdi;
 
 {$I rpconf.inc}
 
+{$IFDEF MSWINDOWS}
 
 interface
 
 uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
+{$IFDEF FPC}
+ Math, ActiveX, ComObj, rpdirectwrite, Generics.Collections,
+ rpdirectwriterenderer,
+ rpmdconsts, rptruetype, rphtmlparser;
+{$ELSE}
+ System.Math,
 {$IFDEF DOTNETD}
  System.Runtime.InteropServices,
 {$ENDIF}
@@ -28,7 +35,16 @@ uses Classes,SysUtils,Windows,rpinfoprovid,SyncObjs,rptypes,rpmunits,
  ActiveX,
  WinAPi.D2D1,ComObj,rpdirectwriterenderer,
 {$ENDIF}
-    rpmdconsts, rptruetype, System.Generics.Collections;
+    rpmdconsts, rptruetype, System.Generics.Collections, rphtmlparser;
+{$ENDIF}
+
+{$IFDEF FPC}
+const
+  GGI_MARK_NONEXISTING_GLYPHS = 1;
+  GGO_GLYPH_INDEX = $0080;
+
+function GetGlyphIndicesW(hdc: HDC; lpstr: LPCWSTR; c: Integer; pgi: LPWORD; fl: DWORD): DWORD; stdcall; external 'gdi32.dll' name 'GetGlyphIndicesW';
+{$ENDIF}
 
 const
  MAXKERNINGS=10000;
@@ -56,7 +72,21 @@ type
   function GetFullFontStream(data: TRpTTFontData): TMemoryStream;override;
   function TextExtent(const Text:WideString;
      var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
-     wordwrap:boolean;singleline:boolean;FontSize:double): TRpLineInfoArray;override;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean;
+     RightToLeft:boolean): TRpLineInfoArray;override;
+{$IFNDEF WINDOWS_USEHARFBUZZ}
+{$IFDEF RPXPGDIFALLBACK}
+  // Windows XP / no-DirectWrite fallback: simple GDI (ExtTextOut/glyph-index) text
+  // measurement used when DirectWrite is not available on the host. It performs no
+  // complex shaping or bidirectional reordering - left-to-right placement only - but
+  // it keeps the OCX usable (and never AVs) on systems without dwrite.dll.
+  // Compiled ONLY into the 32-bit OCX (RPXPGDIFALLBACK); the designer/runtime do not
+  // declare or include this method and keep their original behaviour.
+  function TextExtentGDI(const Text:WideString;
+     var Rect:TRect;adata: TRpTTFontData;pdfFOnt:TRpPDFFont;
+     wordwrap:boolean;singleline:boolean;FontSize:double;IsHtml:boolean): TRpLineInfoArray;
+{$ENDIF}
+{$ENDIF}
   function  GetFontStreamNative(data: TRpTTFontData): TMemoryStream;
 {$IFDEF WINDOWS_USEHARFBUZZ}
   function CalcGlyphPositions(astring:WideString;adata:TRpTTFontData;pdffont:TRpPDFFont;direction: TRpBiDiDirection;
@@ -71,8 +101,8 @@ type
 
 {$IFDEF WINDOWS_USEHARFBUZZ}
  var
-  ftlibrary:FT_Library;
-  initialized:boolean = false;
+ ftlibrary:FT_Library;
+ initialized:boolean = false;
 {$ENDIF}
 
 implementation
@@ -93,13 +123,30 @@ const
 //  NormalizationKD    = 6   // Compatibility Decomposition (NFKD)
 //} NORM_FORM;
 
-function NormalizeString(
-  NormForm: DWORD;
-  lpSrcString: LPCWSTR;
-  cwSrcLength: Integer;
-  lpDstString: LPWSTR;
-  cwDstLength: Integer
-): Integer; stdcall; external 'kernel32.dll';
+type
+  TNormalizeStringFunc = function(
+    NormForm: DWORD;
+    lpSrcString: LPCWSTR;
+    cwSrcLength: Integer;
+    lpDstString: LPWSTR;
+    cwDstLength: Integer
+  ): Integer; stdcall;
+
+var
+  HKernel32: HMODULE = 0;
+  _NormalizeString: TNormalizeStringFunc = nil;
+  NormalizeStringChecked: Boolean = False;
+
+procedure LoadNormalizeString;
+begin
+  if not NormalizeStringChecked then
+  begin
+    HKernel32 := LoadLibrary('kernel32.dll');
+    if HKernel32 <> 0 then
+      @_NormalizeString := GetProcAddress(HKernel32, 'NormalizeString');
+    NormalizeStringChecked := True;
+  end;
+end;
 
 
 function NormalizeToNFC(const S: UnicodeString): UnicodeString;
@@ -113,9 +160,18 @@ begin
   if S = '' then
     Exit('');
 
+  LoadNormalizeString;
+
+  // Si la función no existe en esta versión de Windows, devolvemos la original
+  if not Assigned(_NormalizeString) then
+  begin
+    Result := S;
+    Exit;
+  end;
+
   // 1) pedir tamaño (devuelve número de caracteres necesarios, incluye terminador)
   //    Usamos Length(S) para no depender de terminadores NUL en la entrada.
-  requiredChars := NormalizeString(NormalizationC, PWideChar(S), Length(S), nil, 0);
+  requiredChars := _NormalizeString(NormalizationC, PWideChar(S), Length(S), nil, 0);
   if requiredChars = 0 then
     RaiseLastOSError;
 
@@ -123,7 +179,7 @@ begin
   GetMem(buffer, requiredChars * SizeOf(WideChar));
   try
     // 2) normalizar: escribirá writtenChars (sin incluir el terminador)
-    writtenChars := NormalizeString(NormalizationC, PWideChar(S), Length(S), buffer, requiredChars);
+    writtenChars := _NormalizeString(NormalizationC, PWideChar(S), Length(S), buffer, requiredChars);
     if writtenChars = 0 then
       RaiseLastOSError;
 
@@ -139,8 +195,6 @@ end;
 
 
 constructor TRpGDIInfoProvider.Create;
-var
- ddc:THandle;
 begin
  inherited Create;
  currentname:='';
@@ -178,7 +232,6 @@ end;
 procedure AdjustLineSpaces(line: TGlyphLine);
 var keepNBSP:boolean;
  LastIndex:integer;
- FirstIndex:integer;
  ch:WideChar;
  isWS: boolean;
 begin
@@ -233,7 +286,6 @@ begin
 
       // eliminar último glifo lógico (trailing whitespace)
       line.Glyphs.Delete(0);
-      Dec(LastIndex);
     end;
  end;
 end;
@@ -241,7 +293,45 @@ end;
 
 var
   SingletonDWriteFactory: IDWriteFactory;
+{$IFDEF RPXPGDIFALLBACK}
+  DWriteChecked: Boolean = False;
+  DWriteUsable: Boolean = False;
 
+// Returns the shared IDWriteFactory, or nil when DirectWrite is not available on
+// this host (e.g. Windows XP, which has no dwrite.dll). The RTL binds
+// DWriteCreateFactory dynamically (LoadLibrary), so this call does NOT add a
+// static import of dwrite.dll and never prevents the OCX from loading. When the
+// factory cannot be created the result is nil and the caller must fall back to
+// the GDI text path. The previous implementation called _AddRef on a nil
+// interface in that case, which produced an access violation on XP.
+// Hardened version compiled ONLY into the 32-bit OCX (RPXPGDIFALLBACK).
+function DWriteFactory(factoryType: TDWriteFactoryType=DWRITE_FACTORY_TYPE_SHARED): IDWriteFactory;
+var
+  LDWriteFactory: IDWriteFactory;
+  hr: HRESULT;
+begin
+  Result := nil;
+  // Once we know DirectWrite is missing, never retry (avoids repeated LoadLibrary).
+  if DWriteChecked and (not DWriteUsable) then
+    Exit;
+  if SingletonDWriteFactory = nil then
+  begin
+    LDWriteFactory := nil;
+    try
+      hr := DWriteCreateFactory(factoryType, IID_IDWriteFactory, IUnknown(LDWriteFactory));
+    except
+      hr := E_FAIL;
+    end;
+    DWriteChecked := True;
+    DWriteUsable := Succeeded(hr) and Assigned(LDWriteFactory);
+    if not DWriteUsable then
+      Exit; // DirectWrite unavailable -> caller uses the GDI fallback
+    if InterlockedCompareExchangePointer(Pointer(SingletonDWriteFactory), Pointer(LDWriteFactory), nil) = nil then
+      LDWriteFactory._AddRef;
+  end;
+  Result := SingletonDWriteFactory;
+end;
+{$ELSE}
 function DWriteFactory(factoryType: TDWriteFactoryType=DWRITE_FACTORY_TYPE_SHARED): IDWriteFactory;
 var
   LDWriteFactory: IDWriteFactory;
@@ -254,6 +344,7 @@ begin
   end;
   Result := SingletonDWriteFactory;
 end;
+{$ENDIF}
 
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
@@ -262,7 +353,9 @@ function TRpGDIInfoProvider.TextExtent(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
-  FontSize: Double
+  FontSize: Double;
+  IsHtml: Boolean;
+  RightToLeft: Boolean
 ): TRpLineInfoArray;
 const
   DIP_TO_TWIPS_FACTOR = 15.0;
@@ -294,17 +387,44 @@ var
   tr: TDWriteTextRange;
   ascentSpacing:integer;
   PWideChartext: PWideChar;
+  PlainText: WideString;
   minLineCluster:integer;
   maxLineCluster:integer;
   lineCluster:integer;
   rectHeight:integer;
   lastTopPos:Integer;
+  // Per-character font info map for HTML
+  charFontFamilies: array of string;
+  charFontSizes: array of Single;
+  charHasFontSize: array of Boolean;
+  charStyles: array of Integer;
+{$IFDEF FPC}
+  inTag: Boolean;
+  firstStrongRTL: Boolean;
+  ci: Integer;
+  cp: Integer;
+  Segments: TList<THtmlSegment>;
+  Seg: THtmlSegment;
+  MapPos: Integer;
+  SegLen: Integer;
+  StyleVal: Integer;
+  CurrentPos: Integer;
+  Range: DWRITE_TEXT_RANGE;
+  StyleVal2: Integer;
+{$ENDIF}
 begin
   tr.startPosition := 0;
   tr.length := Length(Text);
   Result := nil;
   Factory := DWriteFactory;
+{$IFDEF RPXPGDIFALLBACK}
+  // DirectWrite missing (e.g. Windows XP): fall back to the plain GDI measurement
+  // path so the report still lays out and renders (without advanced shaping/bidi).
+  if not Assigned(Factory) then
+    Exit(TextExtentGDI(Text, Rect, adata, pdfFont, wordwrap, singleline, FontSize, IsHtml));
+{$ELSE}
   if not Assigned(Factory) then Exit;
+{$ENDIF}
 
   FamilyNameWide := WideString(adata.FamilyName);
 
@@ -349,20 +469,203 @@ begin
     FontStyle,
     DWRITE_FONT_STRETCH_NORMAL,
     FontSizeInDips,
+{$IFDEF FPC}
+    PWideChar(WideString('en-us')),
+{$ELSE}
     '',
+{$ENDIF}
     TextFormat
   );
 
-  PWideCharText:=PWideChar(Text);
-  // --- Crear TextLayout ---
-  Factory.CreateTextLayout(
-    PWideChartext,
-    Length(Text),
-    TextFormat,
-    MaxLineWidth / DIP_TO_TWIPS_FACTOR,
-    0,
-    TextLayout
-  );
+  // Detect paragraph direction from first strong character (skip HTML tags)
+{$IFDEF FPC}
+  inTag := False;
+  firstStrongRTL := False;
+  for ci := 1 to Length(Text) do
+  begin
+    if Text[ci] = '<' then begin inTag := True; Continue; end;
+    if Text[ci] = '>' then begin inTag := False; Continue; end;
+    if inTag then Continue;
+    cp := Ord(Text[ci]);
+{$ELSE}
+  var inTag: Boolean := False;
+  var firstStrongRTL: Boolean := False;
+  for var ci := 1 to Length(Text) do
+  begin
+    if Text[ci] = '<' then begin inTag := True; Continue; end;
+    if Text[ci] = '>' then begin inTag := False; Continue; end;
+    if inTag then Continue;
+    var cp: Integer := Ord(Text[ci]);
+{$ENDIF}
+    if cp <= $40 then Continue; // skip whitespace, control, digits, punctuation
+    // Arabic
+    if ((cp >= $600) and (cp <= $6FF)) or ((cp >= $750) and (cp <= $77F)) or
+       ((cp >= $8A0) and (cp <= $8FF)) or ((cp >= $FB50) and (cp <= $FDFF)) or
+       ((cp >= $FE70) and (cp <= $FEFF)) then
+    begin firstStrongRTL := True; Break; end;
+    // Hebrew
+    if ((cp >= $590) and (cp <= $5FF)) or ((cp >= $FB1D) and (cp <= $FB4F)) then
+    begin firstStrongRTL := True; Break; end;
+    // Latin, Greek, Cyrillic = LTR
+    if (cp >= $41) and (cp <= $24F) then
+    begin Break; end;
+    // CJK = LTR
+    if (cp >= $4E00) and (cp <= $9FFF) then
+    begin Break; end;
+  end;
+//  if firstStrongRTL then
+//    TextFormat.SetReadingDirection(1); // DWRITE_READING_DIRECTION_RIGHT_TO_LEFT = 1
+
+  // Initialize per-character font info arrays
+  SetLength(charFontFamilies, 0);
+  SetLength(charFontSizes, 0);
+  SetLength(charHasFontSize, 0);
+  SetLength(charStyles, 0);
+
+  if IsHtml then
+  begin
+{$IFDEF FPC}
+    Segments := ParseHtml(Text);
+    try
+      PlainText := '';
+      for Seg in Segments do
+        PlainText := PlainText + WideString(Seg.Text);
+{$ELSE}
+    var Segments := ParseHtml(Text);
+    try
+      PlainText := '';
+      for var Seg in Segments do
+        PlainText := PlainText + Seg.Text;
+{$ENDIF}
+
+      // Build per-character font info map
+      SetLength(charFontFamilies, Length(PlainText));
+      SetLength(charFontSizes, Length(PlainText));
+      SetLength(charHasFontSize, Length(PlainText));
+      SetLength(charStyles, Length(PlainText));
+{$IFDEF FPC}
+      MapPos := 0;
+      for Seg in Segments do
+      begin
+        SegLen := Length(WideString(Seg.Text));
+        StyleVal := 0;
+        if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
+        if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
+        if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
+        if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
+        for ci := MapPos to MapPos + SegLen - 1 do
+        begin
+          if Seg.FontFamily <> '' then
+            charFontFamilies[ci] := Seg.FontFamily
+          else if Assigned(adata) then
+            charFontFamilies[ci] := adata.FamilyName
+          else
+            charFontFamilies[ci] := pdfFont.WFontName;
+{$ELSE}
+      var MapPos: Integer := 0;
+      for var Seg in Segments do
+      begin
+        var SegLen := Length(Seg.Text);
+        var StyleVal: Integer := 0;
+        if hsBold in Seg.Styles then StyleVal := StyleVal or 1;
+        if hsItalic in Seg.Styles then StyleVal := StyleVal or 2;
+        if hsUnderline in Seg.Styles then StyleVal := StyleVal or 4;
+        if hsStrikeOut in Seg.Styles then StyleVal := StyleVal or 8;
+        for var ci := MapPos to MapPos + SegLen - 1 do
+        begin
+          if Seg.FontFamily <> '' then
+            charFontFamilies[ci] := Seg.FontFamily
+          else
+            charFontFamilies[ci] := adata.FamilyName;
+{$ENDIF}
+          if Seg.HasFontSize then
+            charFontSizes[ci] := Seg.FontSize
+          else
+            charFontSizes[ci] := FontSize;
+          charHasFontSize[ci] := Seg.HasFontSize;
+          charStyles[ci] := StyleVal;
+        end;
+        MapPos := MapPos + SegLen;
+      end;
+
+      PWideCharText := PWideChar(PlainText);
+      Factory.CreateTextLayout(
+        PWideCharText,
+        Length(PlainText),
+        TextFormat,
+        MaxLineWidth / DIP_TO_TWIPS_FACTOR,
+        0,
+        TextLayout
+      );
+
+{$IFDEF FPC}
+      CurrentPos := 0;
+      for Seg in Segments do
+      begin
+        SegLen := Length(WideString(Seg.Text));
+{$ELSE}
+      var CurrentPos: Integer := 0;
+      for var Seg in Segments do
+      begin
+        var SegLen := Length(Seg.Text);
+        var Range: DWRITE_TEXT_RANGE;
+{$ENDIF}
+        Range.startPosition := CurrentPos;
+        Range.length := SegLen;
+
+        if hsBold in Seg.Styles then
+          TextLayout.SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, Range)
+        else
+          TextLayout.SetFontWeight(FontWeight, Range);
+
+        if hsItalic in Seg.Styles then
+          TextLayout.SetFontStyle(DWRITE_FONT_STYLE_ITALIC, Range)
+        else
+          TextLayout.SetFontStyle(FontStyle, Range);
+
+        TextLayout.SetUnderline(hsUnderline in Seg.Styles, Range);
+        TextLayout.SetStrikethrough(hsStrikeOut in Seg.Styles, Range);
+
+        // Apply font family change to DirectWrite layout
+        if Seg.FontFamily <> '' then
+          TextLayout.SetFontFamilyName(PWideChar(WideString(Seg.FontFamily)), Range);
+
+        // Apply font size change to DirectWrite layout
+        if Seg.HasFontSize then
+          TextLayout.SetFontSize(Seg.FontSize * POINTS_TO_DIPS_FACTOR, Range);
+
+{$IFDEF FPC}
+        StyleVal2 := 0;
+{$ELSE}
+        var StyleVal2: Integer := 0;
+{$ENDIF}
+        if hsBold in Seg.Styles then StyleVal2 := StyleVal2 or 1;
+        if hsItalic in Seg.Styles then StyleVal2 := StyleVal2 or 2;
+        if hsUnderline in Seg.Styles then StyleVal2 := StyleVal2 or 4;
+        if hsStrikeOut in Seg.Styles then StyleVal2 := StyleVal2 or 8;
+
+        if (StyleVal2 <> 0) or Seg.HasColor then
+           TextLayout.SetDrawingEffect(TStyleEffect.Create(StyleVal2, Seg.Color, Seg.HasColor) as IUnknown, Range);
+
+        CurrentPos := CurrentPos + SegLen;
+      end;
+    finally
+      Segments.Free;
+    end;
+  end
+  else
+  begin
+    PWideCharText:=PWideChar(Text);
+    // --- Crear TextLayout ---
+    Factory.CreateTextLayout(
+      PWideChartext,
+      Length(Text),
+      TextFormat,
+      MaxLineWidth / DIP_TO_TWIPS_FACTOR,
+      0,
+      TextLayout
+    );
+  end;
 
   // --- Obtener métricas de la fuente ---
   FontFace.GetMetrics(FontMetrics);
@@ -395,7 +698,14 @@ begin
         LineCluster:=LineInfo.Glyphs[j].LineCluster;
         Glyph:=Line.Glyphs[j];
         LineInfo.Width := LineInfo.Width + Line.Glyphs[j].XAdvance;
-        //LineInfo.Glyphs[j].CharCode:=PWideCharText[LineCluster];
+        // Propagate per-character font info to glyphs (HTML mode)
+        if (Length(charFontFamilies) > 0) and (LineCluster >= 0) and (LineCluster < Length(charFontFamilies)) then
+        begin
+          LineInfo.Glyphs[j].FontFamily := charFontFamilies[LineCluster];
+          LineInfo.Glyphs[j].FontSize := charFontSizes[LineCluster];
+          LineInfo.Glyphs[j].HasFontSize := charHasFontSize[LineCluster];
+          LineInfo.Glyphs[j].Style := charStyles[LineCluster];
+        end;
         if (maxLineCluster<LineCluster) then
           maxLineCluster:=LineCluster;
         if (minLineCluster>LineCluster) then
@@ -439,6 +749,212 @@ begin
     Renderer.Free;
   end;
 end;
+
+{$IFDEF RPXPGDIFALLBACK}
+// ---------------------------------------------------------------------------
+//  TextExtentGDI - Windows XP / no-DirectWrite fallback
+// ---------------------------------------------------------------------------
+//  Plain GDI text measurement used when DirectWrite is not available. It produces
+//  the same TRpLineInfoArray / glyph-index contract the rest of the engine (and the
+//  ETO_GLYPH_INDEX painting in rpgdidriver) expects, but with simple left-to-right
+//  placement: no complex shaping, ligatures, kerning or bidirectional reordering.
+//  All coordinates are in TWIPS, matching the DirectWrite path.
+function TRpGDIInfoProvider.TextExtentGDI(
+  const Text: WideString;
+  var Rect: TRect;
+  adata: TRpTTFontData;
+  pdfFont: TRpPDFFont;
+  wordwrap: Boolean;
+  singleline: Boolean;
+  FontSize: Double;
+  IsHtml: Boolean
+): TRpLineInfoArray;
+var
+  WorkText: WideString;
+  Segments: THtmlSegmentList;
+  Seg: THtmlSegment;
+  dpi: Integer;
+  tm: TTextMetricW;
+  factor: Double;              // device px (at the 1000pt measuring font) -> TWIPS
+  ascentTwips: Integer;
+  lineHeightTwips: Integer;
+  descentLeadingTwips: Integer;
+  MaxLineWidth: Integer;       // TWIPS
+  n, i: Integer;
+  advances: array of Integer;  // 1-based: TWIPS advance per character
+  glyphs: array of Word;       // 1-based: glyph index per character
+  sz: TSize;
+  gi: Word;
+  ch: WideChar;
+  lineStart, lineWidth, lastBreak: Integer;
+  lines: TList<TRpLineInfo>;
+  LineInfo: TRpLineInfo;
+  TotalWidth: Integer;
+
+  procedure EmitLine(s, e: Integer);   // inclusive, 1-based; e<s => empty line
+  var
+    k, w, cnt, idx, te: Integer;
+    gp: TGlyphPos;
+    glist: TGlyphPosArray;
+  begin
+    te := e;
+    while (te >= s) and ((WorkText[te] = ' ') or (WorkText[te] = #9) or
+                         (WorkText[te] = #13) or (WorkText[te] = #10)) do
+      Dec(te);
+    cnt := te - s + 1;
+    if cnt < 0 then cnt := 0;
+    LineInfo := Default(TRpLineInfo);
+    SetLength(glist, cnt);
+    w := 0;
+    idx := 0;
+    for k := s to te do
+    begin
+      gp := Default(TGlyphPos);
+      gp.GlyphIndex := glyphs[k];
+      gp.XAdvance := advances[k];
+      gp.CharCode := WorkText[k];
+      gp.Cluster := idx;            // 0-based within the line
+      gp.LineCluster := k - 1;      // 0-based absolute index into WorkText
+      gp.FontSize := FontSize;
+      glist[idx] := gp;
+      w := w + advances[k];
+      Inc(idx);
+    end;
+    LineInfo.Glyphs := glist;
+    LineInfo.Width := w;
+    LineInfo.Position := s;
+    LineInfo.Size := cnt;
+    LineInfo.Text := Copy(WorkText, s, cnt);
+    LineInfo.TopPos := ascentTwips + lines.Count * lineHeightTwips;
+    LineInfo.LineHeight := lineHeightTwips;
+    LineInfo.Height := lineHeightTwips;
+    LineInfo.lastline := False;     // fixed after the loop
+    lines.Add(LineInfo);
+  end;
+
+begin
+  Result := nil;
+
+  // Resolve plain text (HTML styling is ignored in the fallback).
+  if IsHtml then
+  begin
+    WorkText := '';
+    Segments := ParseHtml(Text);
+    try
+      for Seg in Segments do
+        WorkText := WorkText + Seg.Text;
+    finally
+      Segments.Free;
+    end;
+  end
+  else
+    WorkText := Text;
+
+  SelectFont(pdfFont);
+  dpi := GetDeviceCaps(adc, LOGPIXELSX);
+  if dpi <= 0 then dpi := 96;
+  FillChar(tm, SizeOf(tm), 0);
+  GetTextMetricsW(adc, tm);
+
+  // The font selected by SelectFont is a TTF_PRECISION (1000pt) measuring font.
+  // Convert its device-pixel metrics to TWIPS at the requested FontSize:
+  //   twips = px * FontSize * 1440 / (dpi * TTF_PRECISION)
+  factor := FontSize * 1440.0 / (dpi * TTF_PRECISION);
+  ascentTwips := Round(tm.tmAscent * factor);
+  lineHeightTwips := Round((tm.tmHeight + tm.tmExternalLeading) * factor);
+  if lineHeightTwips <= 0 then
+    lineHeightTwips := Round(FontSize * 20);
+  descentLeadingTwips := Round((tm.tmDescent + tm.tmExternalLeading) * factor);
+
+  MaxLineWidth := Rect.Right - Rect.Left;
+  Rect.Left := 0;
+  Rect.Top := 0;
+
+  n := Length(WorkText);
+  SetLength(advances, n + 1);
+  SetLength(glyphs, n + 1);
+  for i := 1 to n do
+  begin
+    ch := WorkText[i];
+    gi := 0;
+    if GetGlyphIndicesW(adc, @ch, 1, @gi, GGI_MARK_NONEXISTING_GLYPHS) <> GDI_ERROR then
+    begin
+      if gi = $FFFF then
+        gi := 0;                    // missing glyph -> .notdef
+    end;
+    glyphs[i] := gi;
+    if (ch = #13) or (ch = #10) then
+      advances[i] := 0
+    else if GetTextExtentPoint32W(adc, @ch, 1, sz) then
+      advances[i] := Round(sz.cx * factor)
+    else
+      advances[i] := 0;
+  end;
+
+  lines := TList<TRpLineInfo>.Create;
+  try
+    i := 1;
+    lineStart := 1;
+    lineWidth := 0;
+    lastBreak := 0;
+    while i <= n do
+    begin
+      ch := WorkText[i];
+      if (ch = #10) and (not singleline) then
+      begin
+        EmitLine(lineStart, i - 1);
+        Inc(i);
+        lineStart := i; lineWidth := 0; lastBreak := 0;
+        Continue;
+      end;
+      if (ch = #13) or ((ch = #10) and singleline) then
+      begin
+        Inc(i);
+        Continue;
+      end;
+      if wordwrap and (not singleline) and (i > lineStart) and
+         (lineWidth + advances[i] > MaxLineWidth) and (MaxLineWidth > 0) then
+      begin
+        if lastBreak >= lineStart then
+        begin
+          EmitLine(lineStart, lastBreak);
+          i := lastBreak + 1;
+        end
+        else
+        begin
+          EmitLine(lineStart, i - 1);
+        end;
+        lineStart := i; lineWidth := 0; lastBreak := 0;
+        Continue;
+      end;
+      lineWidth := lineWidth + advances[i];
+      if ch = ' ' then
+        lastBreak := i;
+      Inc(i);
+    end;
+    if lineStart <= n then
+      EmitLine(lineStart, n);
+    if lines.Count = 0 then
+      EmitLine(1, 0);              // empty text -> one empty line with valid metrics
+
+    SetLength(Result, lines.Count);
+    TotalWidth := 0;
+    for i := 0 to lines.Count - 1 do
+    begin
+      LineInfo := lines[i];
+      LineInfo.lastline := (i = lines.Count - 1);
+      Result[i] := LineInfo;
+      if LineInfo.Width > TotalWidth then
+        TotalWidth := LineInfo.Width;
+    end;
+  finally
+    lines.Free;
+  end;
+
+  Rect.Right := Rect.Left + TotalWidth;
+  Rect.Height := Result[High(Result)].TopPos + descentLeadingTwips;
+end;
+{$ENDIF} // RPXPGDIFALLBACK
 {$ENDIF}
 
 {$IFDEF WINDOWS_USEHARFBUZZ}
@@ -449,7 +965,9 @@ function TRpGDIInfoProvider.TextExtent(
   pdfFont: TRpPDFFont;
   wordwrap: Boolean;
   singleline: Boolean;
-  FontSize: Double
+  FontSize: Double;
+  IsHtml: Boolean;
+  RightToLeft: Boolean
 ): TRpLineInfoArray;
 var
   lineSubTexts: TList<TLineSubText>;
@@ -480,49 +998,63 @@ var
   linespacingEM: double;
   textHeight:integer;
   ascentSpacing:integer;
+  Segments: THtmlSegmentList;
+  PlainText: WideString;
+  Seg: THtmlSegment;
+  RunAbsStart, RunLen, SegStartAbs, SegLen, SegEndAbs: Integer;
+  IntStart, IntEnd: Integer;
+  ChunkText: WideString;
+  activeSize: Double;
 begin
   InitICU;
   InitHarfBuzz;
 
- //linespacing:=adata.Ascent-adata.Descent; // +adata.Leading;
- linespacing:=Round(adata.Ascent-adata.Descent+adata.Leading);
- WriteToStdError(adata.FamilyName +  ' Bidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
- WriteToStdError(adata.FamilyName +  ' Bidi Ascent: '+IntToStr(adata.Ascent)+chr(10));
- WriteToStdError(adata.FamilyName +  ' Bidi Descent: '+IntToStr(adata.Descent)+chr(10));
- WriteToStdError(adata.FamilyName +  ' Bidi Leading: '+IntToStr(adata.Leading)+chr(10));
- // linespacing:=adata.Height;
  linespacingEM:=(adata.Height)/1000;
  linespacing:=Round(linespacingEM*FontSize*20);
- WriteToStdError(adata.FamilyName +  ' Bidi Font Size: '+IntToStr(Round(FontSize))+ ' LineSpacing: '+IntTostr(linespacing)+chr(10));
 
-
-
- //ascentSpacing:=Round((adata.Ascent-adata.descent)*FontSize/1000*20);
  ascentSpacing:=Round((adata.Ascent)*FontSize*20/1000);
  PosY:=0;
  PosY:=PosY+ascentSpacing;
 
- lineSubTexts := DividesIntoLines(Text);
-  SetLength(Result, 0);
-  maxWidth := 0;
-  lineWidthLimit := Rect.Right - Rect.Left;
+ // Parse HTML or wrap in a single no-style segment
+ if IsHtml then
+   Segments := ParseHtml(Text)
+ else
+ begin
+   Segments := THtmlSegmentList.Create(True);
+   Segments.Add(THtmlSegment.Create(Text, []));
+ end;
 
-  try
+ try
+   PlainText := '';
+   for Seg in Segments do
+     PlainText := PlainText + Seg.Text;
+
+   lineSubTexts := DividesIntoLines(PlainText);
+   SetLength(Result, 0);
+   maxWidth := 0;
+   lineWidthLimit := Rect.Right - Rect.Left;
+   // Relative rectangle on return (Left/Top 0, Right/Bottom = size), the contract of the
+   // DirectWrite TextExtent above and of TextExtentSimple; TextRect reads Bottom as the
+   // height when it centres or bottom-aligns. Same fix as rpinfoprovft.pas.
+   Rect.Left := 0;
+   Rect.Top := 0;
+
+   try
     for lineSubText in lineSubTexts do
     begin
-      line := Copy(Text, lineSubText.Position, lineSubText.Length);
+      line := Copy(PlainText, lineSubText.Position, lineSubText.Length);
       possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
-//      possibleBreaksCharIdx := FillPossibleWordBreaksString(line);
 
       calculatedLines := TList<TLineGlyphs>.Create;
 
-      // -----------------------------
-      // PRIMER BUCLE: logical runs → shaping → chunks
-      // -----------------------------
       Bidi := TICUBidi.Create;
       logicalRuns := nil;
       try
-        if not Bidi.SetPara(line, $FF) then
+        // $FF (UBIDI_DEFAULT_RTL) only in a right-to-left object: elsewhere a line with no
+        // letter of its own direction (a row of emoji) would come out backwards. Same rule as
+        // TRpFTInfoProvider.TextExtentHtml.
+        if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
           raise Exception.Create('Bidi error');
         logicalRuns := Bidi.GetLogicalRuns(line);
       finally
@@ -540,87 +1072,110 @@ begin
         else
           direction := RP_BIDI_LTR;
         runOffset:=logicalRun.LogicalStart;
-        positions := CalcGlyphPositions(
-          Copy(line, logicalRun.LogicalStart + 1, logicalRun.Length),
-          adata,
-          pdfFont,
-          direction,
-          logicalRun.ScriptString,
-          FontSize
-        );
-        runWidth:=0;
-        for k:=0 to Length(positions)-1 do
+
+        // Intersect this bidi run with HTML segments
+        RunAbsStart := lineSubText.Position + logicalRun.LogicalStart;
+        RunLen := logicalRun.Length;
+        SegStartAbs := 1;
+
+        for Seg in Segments do
         begin
-         runWidth:=runWidth+positions[k].XAdvance;
-         positions[k].LineCluster:=positions[k].Cluster+logicalRun.LogicalStart;
-        end;
-        if ((runWidth<=remaining) or (not WordWrap)) then
-        begin
-         for g in positions do
-         begin
-          currentChunk.AddGlyph(g, runOffset);
-         end;
-         remaining:=remaining-runwidth;
-        end
-        else
-        begin
-          if direction = RP_UBIDI_RTL then
-            chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
-          else
-            chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
-          for j:=0 to chunks.Count-1 do
+          SegLen := Length(Seg.Text);
+          SegEndAbs := SegStartAbs + SegLen;
+          IntStart := Max(RunAbsStart, SegStartAbs);
+          IntEnd := Min(RunAbsStart + RunLen, SegEndAbs);
+
+          if IntStart < IntEnd then
           begin
-           chunk:=chunks[j];
-           // Primer chunk en el currentchunk actual y completamos la línea
-           if (j=0) then
-           begin
-            for g in chunk do
+            if Seg.HasFontSize then
+              activeSize := Seg.FontSize
+            else
+              activeSize := FontSize;
+            ChunkText := Copy(PlainText, IntStart, IntEnd - IntStart);
+            positions := CalcGlyphPositions(
+              ChunkText,
+              adata,
+              pdfFont,
+              direction,
+              logicalRun.ScriptString,
+              activeSize
+            );
+
+            runWidth:=0;
+            for k:=0 to Length(positions)-1 do
             begin
-              currentChunk.AddGlyph(g,runOffset);
+              runWidth:=runWidth+positions[k].XAdvance;
+              positions[k].LineCluster:=positions[k].Cluster + (IntStart - lineSubText.Position);
+              // Store HTML style bits in glyph
+              positions[k].Style := 0;
+              if hsBold in Seg.Styles then positions[k].Style := positions[k].Style or 1;
+              if hsItalic in Seg.Styles then positions[k].Style := positions[k].Style or 2;
+              if hsUnderline in Seg.Styles then positions[k].Style := positions[k].Style or 4;
+              if hsStrikeOut in Seg.Styles then positions[k].Style := positions[k].Style or 8;
+              if Seg.FontFamily <> '' then
+                positions[k].FontFamily := Seg.FontFamily
+              else
+                positions[k].FontFamily := pdfFont.WFontName;
+              positions[k].FontSize := activeSize;
+              positions[k].HasFontSize := Seg.HasFontSize;
             end;
-            calculatedLines.Add(currentChunk);
-            currentChunk:=TLineGlyphs.Create(textOffset);
-            remaining:=lineWidthLimit;
-           end
-           else
-           // Ultimo chunk calculamos restante y todavia no se completa
-           // la línea
-           if (j=chunks.Count-1) then
-           begin
-            remaining:=lineWidthLimit;
-            for g in chunk do
+
+            if ((runWidth<=remaining) or (not WordWrap)) then
             begin
-              currentChunk.AddGlyph(g,runOffset);
-              remaining:=remaining-g.XAdvance;
-            end;
-           end
-           else
-           begin
-            // Chunk intermedio, es una linea completa
-            for g in chunk do
+              for g in positions do
+                currentChunk.AddGlyph(g, runOffset);
+              remaining:=remaining-runwidth;
+            end
+            else
             begin
-              currentChunk.AddGlyph(g,runOffset);
+              if direction = RP_UBIDI_RTL then
+                chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
+              else
+                chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
+              for j:=0 to chunks.Count-1 do
+              begin
+                chunk:=chunks[j];
+                if (j=0) then
+                begin
+                  for g in chunk do
+                    currentChunk.AddGlyph(g,runOffset);
+                  calculatedLines.Add(currentChunk);
+                  currentChunk:=TLineGlyphs.Create(textOffset);
+                  remaining:=lineWidthLimit;
+                end
+                else if (j=chunks.Count-1) then
+                begin
+                  remaining:=lineWidthLimit;
+                  for g in chunk do
+                  begin
+                    currentChunk.AddGlyph(g,runOffset);
+                    remaining:=remaining-g.XAdvance;
+                  end;
+                end
+                else
+                begin
+                  for g in chunk do
+                    currentChunk.AddGlyph(g,runOffset);
+                  remaining:=lineWidthLimit;
+                  calculatedLines.Add(currentChunk);
+                  currentChunk:=TLineGlyphs.Create(textOffset);
+                end;
+              end;
             end;
-            remaining:=lineWidthLimit;
-            calculatedLines.Add(currentChunk);
-            currentChunk:=TLineGlyphs.Create(textOffset);
-           end;
           end;
-        end
+          SegStartAbs := SegEndAbs;
+        end;
       end;
       if (currentChunk.Glyphs.Count>0) then
       begin
         calculatedLines.Add(currentChunk);
       end;
 
-      // -----------------------------
-      // SEGUNDO BUCLE: recorrer chunks → visual runs → LineInfo
-      // -----------------------------
-      // obtener visual runs de toda la línea
+      // Visual ordering
       Bidi := TICUBidi.Create;
       visualRuns := nil;
       try
-        if not Bidi.SetPara(line, $FF) then
+        if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
           raise Exception.Create('VisualRuns error');
         visualRuns := Bidi.GetVisualRuns(line);
       finally
@@ -632,13 +1187,6 @@ begin
         var minCluster:=calculatedline.MinClusterText;
         var maxCluster:=calculatedline.MaxClusterText;
 
-        // Opcional para depuración obtener el texto a partir de indices de
-        // línea actual
-        //var minCluster:=calculatedline.MinClusterLine;
-        //var maxCluster:=calculatedline.MaxClusterLine;
-        //chunkText := Copy(line, minCluster, maxCluster - minCluster + 1);
-
-        // construir orderedGlyphs en orden visual
         visualGlyphs:=TList<TGlyphPos>.Create;
         for vRun in visualRuns do
         begin
@@ -651,9 +1199,7 @@ begin
            begin
             var lst := calculatedLine.ClusterMap[k];
             for j:=0 to lst.Count-1 do
-            begin
-             visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
-            end;
+              visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
            end;
           end;
          end
@@ -661,27 +1207,22 @@ begin
          begin
           direction := RP_BIDI_LTR;
           for k:=vRun.LogicalStart+1 to vRun.LogicalStart+vRun.Length do
-         begin
-          if (calculatedLine.ClusterMap.ContainsKey(k)) then
           begin
-           var lst := calculatedLine.ClusterMap[k];
-           for j:=0 to lst.Count-1 do
-           begin
-            visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
-           end;
+            if (calculatedLine.ClusterMap.ContainsKey(k)) then
+            begin
+              var lst := calculatedLine.ClusterMap[k];
+              for j:=0 to lst.Count-1 do
+                visualGlyphs.Add(calculatedline.Glyphs[lst[j]]);
+            end;
           end;
-         end;
-
          end;
         end;
         LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
 
-        // rellenar LineInfo
-        //LineInfo.Glyphs := Copy(orderedGlyphs, 0, Length(orderedGlyphs));
         LineInfo.Position := minCluster;
         LineInfo.Size := maxCluster - minCluster + 1;
         LineInfo.TopPos := Round(posY);
-        LineInfo.Text :=Copy(Text, minCluster, maxCluster - minCluster + 1);
+        LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
 
         LineInfo.Width := 0;
         for k := 0 to High(LineInfo.Glyphs) do
@@ -705,12 +1246,14 @@ begin
     if Length(Result) > 0 then
       Result[High(Result)].lastline := True;
 
-  finally
+   finally
     lineSubTexts.Free;
-  end;
+   end;
+ finally
+   Segments.Free;
+ end;
 
   Rect.Right := Rect.Left + Round(maxWidth);
-  //Rect.Bottom := Rect.Top + Round(posY);
   Rect.Bottom := Rect.Top + Round(posY-ascentSpacing);
 end;
 
@@ -879,12 +1422,16 @@ begin
  StrPCopy(LogFont.lffACEnAME,Copy(pdffont.WFontName,1,LF_FACESIZE));
 
  Fonthandle:= CreateFontIndirect(LogFont);
- if (FontHandle=0) then
- begin   
-  lasterror:=System.GetLastError();
-  raise Exception.Create('Error calling CreateFontIndirect for font: ' + pdffont.WFontName +
-   ' System Error Code: ' + IntToStr(lasterror));
- end;
+  if (FontHandle=0) then
+  begin
+{$IFDEF FPC}
+   lasterror:=Windows.GetLastError();
+{$ELSE}
+   lasterror:=System.GetLastError();
+{$ENDIF}
+   raise Exception.Create('Error calling CreateFontIndirect for font: ' + pdffont.WFontName +
+    ' System Error Code: ' + IntToStr(lasterror));
+  end;
 
  SelectObject(adc,fonthandle);
 end;
@@ -1011,7 +1558,6 @@ var
  subset:TTrueTypeFontSubSet;
  bytes:TBytes;
  GlyphsUsed: TDictionary<Integer, TArray<Integer>>;
- xchar: WideChar;
  ints: TArray<Integer>;
  intChar: Integer;
  glyph: Integer;
@@ -1048,7 +1594,11 @@ end;
 {$IFNDEF DOTNETD}
 procedure TRpGDIInfoProvider.FillFontData(pdffont:TRpPDFFont;data:TRpTTFontData;content:string);
 var
+{$IFDEF FPC}
+ potm:POUTLINETEXTMETRICW;
+{$ELSE}
  potm:POUTLINETEXTMETRIC;
+{$ENDIF}
  asize:integer;
  embeddable:boolean;
  logx:integer;
@@ -1068,7 +1618,6 @@ var
  newsize:integer;
  header:string;
  dwtable: Cardinal;
- directoryoffset: Cardinal;
 begin
    // See if data can be embedded
    embeddable:=false;
@@ -1219,14 +1768,13 @@ begin
 
    if embeddable then
    begin
-    directoryOffset:=0;
     data.FontData.Fontdata.SetSize(4);
     dwtable:=$66637474;
     // Detect font collection
 {$R-} // disable range checking
 // do non-range-checked operations here
    SetLength(fontCollectionbuffer,4);
-   asize:=GetFontData(adc,dwtable,0,fontcollectionbuffer,4);
+   GetFontData(adc,dwtable,0,fontcollectionbuffer,4);
    header := TEncoding.ASCII.GetString(fontCollectionBuffer);
    if (header <> 'ttcf') then
    begin
@@ -1252,7 +1800,6 @@ end;
 
 function TRpGDIInfoProvider.GetGlyphWidth(pdffont:TRpPDFFont;data:TRpTTFontData;glyph:Integer;charC: widechar):double;
 var
- logx:double;
  ginfo: TGlyphInfo;
    gm: _GLYPHMETRICS;
      mat: MAT2;
@@ -1366,7 +1913,7 @@ begin
   end;
   glyphIndex:=glyphindexes[0];
   data.loadedglyphs[aint]:=WideChar(glyphIndex);
-  data.glyphs.Add(charcode, glyphIndex);
+  data.glyphs.AddOrSetValue(charcode, glyphIndex);
   data.loadedg[aint]:=true;
 
 //    if not GetCharABCWidthsI(adc,glyphindexes[0],1,nil,aabc[1]) then
@@ -1375,7 +1922,7 @@ begin
  Result:=
    (aabc[1].abcA+aabc[1].abcB+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
  data.loadedwidths[aint]:=Result;
- data.widths.Add(charcode, Result);
+ data.widths.AddOrSetValue(charcode, Result);
 
  data.loaded[aint]:=true;
  if data.firstloaded>aint then
@@ -1407,8 +1954,14 @@ var
 // gcp:windows.tagGCP_RESULTSA;
 {$ENDIF}
 {$ENDIF}
+{$IFDEF FPC}
+{$IF defined(DELPHI2009UP) or defined(FPC)}
+ gcp:windows.tagGCP_RESULTSW;
+{$ENDIF}
+{$ELSE}
 {$IFDEF DELPHI2009UP}
  gcp:windows.tagGCP_RESULTSW;
+{$ENDIF}
 {$ENDIF}
  astring:WideString;
  ginfo: TGlyphInfo;
@@ -1446,7 +1999,11 @@ begin
   astring:=astring+charcode+Widechar(0);
 //  if GetCharPlac(adc,PWideChar(astring),1,0,gcp,GCP_DIACRITIC)=0 then
 //   RaiseLastOSError;
+{$IFDEF FPC}
+  if GetCharacterPlacementW(adc,PWideChar(astring),1,0,@gcp,GCP_DIACRITIC or GCP_GLYPHSHAPE)=0 then
+{$ELSE}
   if GetCharacterPlacementW(adc,PWideChar(astring),1,0,gcp,GCP_DIACRITIC or GCP_GLYPHSHAPE)=0 then
+{$ENDIF}
   begin
    glyphindexes2[0] := 0;
    glyphindexes2[1] := 0;
@@ -1476,7 +2033,11 @@ begin
   end;
   data.loadedglyphs[aint]:=WideChar(glyphIndex);
   data.loadedg[aint]:=true;
+{$IFDEF FPC}
+  data.glyphs.AddOrSetValue(charcode, glyphindexes[0]);
+{$ELSE}
   data.glyphs.Add(charcode, glyphindexes[0]);
+{$ENDIF}
 
   data.loaded[aint]:=true;
 
@@ -1484,9 +2045,13 @@ begin
 //     RaiseLastOSError;
 
  Result:=
-   (aabc[1].abcA+aabc[1].abcB+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
+   (aabc[1].abcA+Int64(aabc[1].abcB)+aabc[1].abcC)/logx*72000.0/TTF_PRECISION;
  data.loadedwidths[aint]:=Result;
+{$IFDEF FPC}
+ data.widths.AddOrSetValue(charcode, Result);
+{$ELSE}
  data.widths.Add(charcode, Result);
+{$ENDIF}
 
  data.loaded[aint]:=true;
  if data.firstloaded>aint then
@@ -1532,6 +2097,17 @@ begin
 end;
 
 initialization
-finalization
 
+finalization
+  if HKernel32 <> 0 then
+  begin
+    FreeLibrary(HKernel32);
+    HKernel32 := 0;
+  end;
+{$ELSE}
+interface
+
+implementation
+
+{$ENDIF}
 end.

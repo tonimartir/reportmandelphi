@@ -1,4 +1,4 @@
-{*******************************************************}
+﻿{*******************************************************}
 {                                                       }
 {       Report Manager                                  }
 {                                                       }
@@ -24,7 +24,11 @@ interface
 
 {$I rpconf.inc}
 
-{$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+// The exact case of the file in the repository: a case-sensitive file system
+// (Linux, also when cross compiling for Windows) does not find another one
+{$R dbxdrivers.RES}
+{$ELSE}
 {$R dbxdrivers.res}
 {$ENDIF}
 
@@ -83,7 +87,7 @@ uses Classes,SysUtils,
 {$ENDIF}
 {$IFDEF FIREDAC}
   FireDAC.Phys, FireDAC.Stan.Intf, FireDAC.Comp.Client,FireDAC.Stan.Def,FireDAC.DApt,FireDAC.Stan.Option,
-  FireDAC.Stan.Async, FireDac.ConsoleUI.Wait,
+  FireDAC.Stan.Async, FireDac.ConsoleUI.Wait,FireDAC.Moni.FlatFile,FireDAC.Stan.Param,
  {$IFDEF ANDROID}
  {$ELSE}
   FireDAC.Phys.ADS,  FireDAC.Phys.ODBCBase,FireDAC.Phys.ODBCWrapper,
@@ -96,11 +100,14 @@ uses Classes,SysUtils,
   FireDAC.Phys.IB,
  {$IFDEF MSWINDOWS}
   FireDAC.Phys.MSAcc,
-  FireDAC.Phys.DS,
  {$ENDIF}
 {$ENDIF}
 
 {$IFDEF DELPHIENTERPRISEDBSTATIC}
+ {$IFDEF MSWINDOWS}
+  FireDAC.Phys.DS,
+ {$ENDIF}
+  FireDAC.Phys.ODBC,
   FireDAC.Phys.MSSQL,
   FireDAC.Phys.ASA,FireDAC.Phys.DB2,  FireDAC.Phys.Infx,
   FireDAC.Phys.TData,
@@ -110,7 +117,6 @@ uses Classes,SysUtils,
  {$ENDIF}
   FireDAC.Phys.Oracle,
   FireDAC.Phys.ODBCDef,
-  FireDAC.Phys.ODBC,
 {$ENDIF}
 {$IFDEF USEBDE}
   dbtables,
@@ -134,15 +140,35 @@ uses Classes,SysUtils,
   Variants,Types,
 {$ENDIF}
  {$IFNDEF FPC}
+ {$IFNDEF USERPFDMEM}
   DBClient,
  {$ENDIF}
+ {$ENDIF}
+{$IFDEF FPC}
 {$IFDEF USERPDATASET}
  rpdataset,
- {$IFDEF FPC}
-  Memds,
- {$ENDIF}
+  Memds, sqldb, sqlite3conn, sqlite3dyn,
+{$ELSE}
+  rpdataset, sqldb, sqlite3conn, sqlite3dyn,
 {$ENDIF}
- rpdatatext;
+{$ELSE}
+{$IFDEF USERPDATASET}
+ rpdataset,
+{$ENDIF}
+{$ENDIF}
+  rpdatahttp, rpauthmanager,
+  rpdatatext
+{$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
+ // Promotes Direct Channel from "plugin" to default Windows. Without
+ // this line each .dpr (activex, repwebexe, repmandxp...) would have
+ // to add `uses rpdcintegration` to install the hook. rpdcintegration
+ // is itself fully {$IFDEF MSWINDOWS}-wrapped so Linux/FPC builds get
+ // a no-op unit and keep the HTTP-only path.
+ , rpdcintegration
+{$ENDIF}
+{$ENDIF}
+ ;
 
 {$IFDEF MSWINWDOWS}
 {$ELSE}
@@ -151,8 +177,18 @@ const
  DBXCONFIGFILENAME='dbxconnections';
 {$ENDIF}
 type
+{$IFDEF USERPFDMEM}
+  TRpMemDataSet = TFDMemTable;
+{$ELSE}
+ {$IFDEF FPC}
+  TRpMemDataSet = rpdataset.TRpMemDataSet;
+ {$ELSE}
+  TRpMemDataSet = TClientDataSet;
+ {$ENDIF}
+{$ENDIF}
  TRpDbDriver=(rpdatadbexpress=0,rpdatamybase=1,rpdataibx=2,
-  rpdatabde=3,rpdataado=4,rpdataibo=5,rpdatazeos=6,rpdatadriver=7,rpdotnet2driver=8,rpfiredac=9);
+  rpdatabde=3,rpdataado=4,rpdataibo=5,rpdatazeos=6,rpdatadriver=7,rpdotnet2driver=8,rpfiredac=9,
+  rpdbHttp=10);
 
 
  TRpConnAdmin=class(TObject)
@@ -175,6 +211,26 @@ type
    procedure DeleteConnection(conname:string);
  end;
 
+var
+ // Process-wide override for the dbxconnections registry file, settable from the
+ // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
+ // takes precedence when assigned.
+ DBXConnectionsFileOverride:string='';
+{$IFDEF FPC}
+ // Folder of the report open in the designer: a MyBase file that is not found
+ // (a relative name, a connection without DATABASE) is looked for there. The
+ // Windows designer finds it because the open dialog and the Explorer set the
+ // current folder to the folder of the report; macOS and the Linux launchers
+ // start the application in / or $HOME.
+ RpReportFolder:string='';
+ // Folder of the samples of the application (the designer sets it): a
+ // sample saved in another folder without its MyBase file (sample4.rep and
+ // biolife.cds) still finds it there
+ RpSamplesFolder:string='';
+{$ENDIF}
+
+type
+
 
  IRpDatabaseDriver=interface
   ['{B3BA37D5-5401-4B9E-8804-698C214F8B0C}']
@@ -196,7 +252,7 @@ type
   procedure GetParams(params:TStrings);
  end;
 
- TRpDatabaseInfoItem=class(TCollectionItem)
+ TRpDatabaseInfoItem=class(TCollectionItem, IPropertiesItem)
   private
    FName: string;
    FAlias:string;
@@ -205,7 +261,6 @@ type
    FSQLConnection:TSQLConnection;
    FSQLInternalConnection:TSQLConnection;
 {$ENDIF}
-   ConAdmin:TRpConnAdmin;
    FConfigFile:string;
    FLoadParams:boolean;
    FReportTable,FReportGroupsTable,FReportSearchField,FReportField:String;
@@ -224,6 +279,12 @@ type
    FFDTransaction:TFDTransaction;
    FFDInternalTransaction:TFDTransaction;
 {$ENDIF}
+{$IFDEF FPC}
+   FSQLDBInternalConnection: TSQLConnection;
+   FSQLDBConnection: TSQLConnection;
+   FSQLDBTransaction: TSQLTransaction;
+   FSQLDBInternalTransaction: TSQLTransaction;
+{$ENDIF}
 {$IFDEF USEZEOS}
    FZInternalDatabase:TZConnection;
    FZConnection:TZConnection;
@@ -240,9 +301,12 @@ type
 {$IFDEF USEIBO}
    FIBODatabase: TIB_Database;
 {$ENDIF}
+   FHttpDatabase: TRpDatabaseHttp;
    FDriver:TRpDbDriver;
+   function GetHttpHubDatabaseId: Int64;
    procedure SetAlias(Value:string);
    procedure SetConfigFile(Value:string);
+  procedure AssertCanModify(const AReason:string);
    procedure SetLoadParams(Value:boolean);
    procedure SetLoadDriverParams(Value:boolean);
    procedure SetLoginPrompt(Value:boolean);
@@ -252,19 +316,38 @@ type
 {$ENDIF}
    procedure ReadAdoConnectionString(Reader:TReader);
    procedure WriteAdoConnectionString(Writer:TWriter);
-   procedure ReadNewName(Reader: TReader);
-   procedure WriteNewName(Writer: TWriter);
   protected
     procedure DefineProperties(Filer:TFiler);override;
   public
    DotNetDriver:integer;
    ProviderFactory:string;
+   ConAdmin:TRpConnAdmin;
    procedure UpdateConAdmin;
+    procedure LoadConnectionParams(AParams: TStrings);
    procedure Assign(Source:TPersistent);override;
    destructor Destroy;override;
    procedure Connect(params:TRpParamList);
    procedure DisConnect;
    constructor Create(Collection:TCollection);override;
+   { IInterface }
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+  {$ELSE}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+   function _AddRef: Integer; cdecl;
+   function _Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+{$ENDIF}
+   { IPropertiesItem }
+   procedure SetItemProperty(const propName: string; const value: Variant);
+   function GetItemProperty(const propName: string): Variant;
 {$IFDEF USESQLEXPRESS}
    property SQLConnection:TSQLConnection read FSQLConnection write FSQLConnection;
 {$ENDIF}
@@ -279,6 +362,10 @@ type
     write FFDConnection;
    property FDTransaction:TFDTransaction read FFDTransaction
     write FFDTransaction;
+{$ENDIF}
+{$IFDEF FPC}
+   property SQLDBConnection: TSQLConnection read FSQLDBConnection write FSQLDBConnection;
+   property SQLDBTransaction: TSQLTransaction read FSQLDBTransaction write FSQLDBTransaction;
 {$ENDIF}
 
 {$IFDEF USEZEOS}
@@ -299,6 +386,11 @@ type
    property ADOConnectionString:widestring read FADOConnectionString write FADOConnectionString;
    property Name: string read FName write FName;
    procedure DoCommit;
+   // Returns the live HubDatabaseId when Driver = rpdbHttp and the
+   // underlying TRpDatabaseHttp has been created, otherwise 0. Used
+   // by Designer UI to drive the transport-mode chip without
+   // exposing the FHttpDatabase field directly.
+   property HttpHubDatabaseId: Int64 read GetHttpHubDatabaseId;
   published
    property Alias:string read FAlias write SetAlias;
    property ConfigFile:string read FConfigFile write SetConfigFile;
@@ -320,6 +412,7 @@ type
 {$ENDIF}
    function GetItem(Index:Integer):TRpDatabaseInfoItem;
    procedure SetItem(index:integer;Value:TRpDatabaseInfoItem);
+  procedure AssertCanModify(const AReason:string);
   public
 {$IFDEF USEBDE}
    property BDESession:TSession read FBDESession write FBDESession;
@@ -341,7 +434,7 @@ type
 
  TRpDataLink=class;
 
- TRpDataInfoItem=class(TCollectionItem)
+ TRpDataInfoItem=class(TCollectionItem, IPropertiesItem)
   private
    FDatabaseAlias:string;
    FSQL:widestring;
@@ -379,19 +472,29 @@ type
    FOnDisConnect:TDatasetNotifyEvent;
    FParallelUnion:Boolean;
    FName: string;
+  FSQLExplanation: WideString;
+  FSQLExplanationError: WideString;
+  FHubSchemaId: Int64;
+  FSchemaName: string;
    procedure SetDataUnions(Value:TStrings);
+  procedure AssertCanModify(const AReason:string);
    procedure SetDatabaseAlias(Value:string);
    procedure SetAlias(Value:string);
    procedure SetDataSource(Value:string);
    procedure SetSQL(Value:widestring);
+  procedure SetHubSchemaId(const Value: Int64);
+  procedure SetSchemaName(const Value: string);
+  // Text and binary formats: saved only when they have a value
+  procedure ReadHubSchemaId(Reader:TReader);
+  procedure WriteHubSchemaId(Writer:TWriter);
+  procedure ReadSchemaName(Reader:TReader);
+  procedure WriteSchemaName(Writer:TWriter);
 {$IFDEF USEADO}
    procedure ADOQueryBeforeOpen(dataset: TDataSet);
 {$ENDIF}
 {$IFDEF USEBDE}
    procedure SetRangeForTable(lastrange:boolean);
 {$ENDIF}
-   procedure ReadNewName(Reader: TReader);
-   procedure WriteNewName(Writer: TWriter);
   protected
     procedure DefineProperties(Filer:TFiler);override;
   public
@@ -404,6 +507,25 @@ type
    procedure Disconnect;
    destructor Destroy;override;
    constructor Create(Collection:TCollection);override;
+   { IInterface }
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+  {$ELSE}
+   function QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+   function _AddRef: Integer; cdecl;
+   function _Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+   function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+   function _AddRef: Integer; stdcall;
+   function _Release: Integer; stdcall;
+{$ENDIF}
+   { IPropertiesItem }
+   procedure SetItemProperty(const propName: string; const value: Variant);
+   function GetItemProperty(const propName: string): Variant;
    property Dataset:TDataset read FDataset write FDataset;
 {$IFDEF USERPDATASET}
    property CachedDataset:TRpDataset read FCachedDataset;
@@ -413,6 +535,12 @@ type
    property externalDataset: Pointer read FexternalDataSet write FexternalDataSet;
 {$ENDIF}
    property Name: string read FName write FName;
+  property SQLExplanation: WideString read FSQLExplanation write FSQLExplanation;
+  property SQLExplanationError: WideString read FSQLExplanationError write FSQLExplanationError;
+  property HubSchemaId: Int64 read FHubSchemaId write SetHubSchemaId;
+  // The local subschema (dbxschemas/<ALIAS>.json) the dataset was made
+  // with; '' = all the tables, or a Hub schema (HubSchemaId)
+  property SchemaName: string read FSchemaName write SetSchemaName;
   published
    property Alias:string read FAlias write SetAlias;
    property DatabaseAlias:string read FDatabaseAlias write SetDatabaseAlias;
@@ -442,6 +570,7 @@ type
    FReport:TComponent;
    function GetItem(Index:Integer):TRpDataInfoItem;
    procedure SetItem(index:integer;Value:TRpDataInfoItem);
+  procedure AssertCanModify(const AReason:string);
    procedure IntEnableLink(alist:TStringList;i:integer);
    procedure IntDisableLink(alist:TStringList;i:integer);
   public
@@ -470,14 +599,10 @@ type
   end;
 procedure GetRpDatabaseDrivers(alist:TStrings);
 {$IFDEF USERPDATASET}
-{$IFDEF FPC}
-procedure CombineAddDataset(client:TMemDataset;data:TDataset;group:boolean);
-function CombineParallel(data1:TMemDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TMemDataset;
-{$ENDIF}
-{$IFNDEF FPC}
-procedure CombineAddDataset(client:TClientDataset;data:TDataset;group:boolean);
-function CombineParallel(data1:TClientDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TClientDataset;
+procedure CombineAddDataset(client:TRpMemDataSet;data:TDataset;group:boolean);
+function CombineParallel(data1:TRpMemDataSet;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TRpMemDataSet;
 {$IFDEF USEIBX}
+{$IFNDEF FPC}
 procedure ConvertParamsFromDBXToIBX(base:TIBDatabase);
 {$ENDIF}
 {$ENDIF}
@@ -485,6 +610,24 @@ procedure ConvertParamsFromDBXToIBX(base:TIBDatabase);
 procedure FillFieldsInfo(adata:TDataset;fieldnames,fieldtypes,fieldsizes:TStrings);
 function ExtractFieldNameEx(astring:String):string;
 function EncodeADOPassword(astring:String):String;
+// The connection string edited over the one of EncodeADOPassword: a masked
+// password (only '*') is the one of the original string
+function RestoreADOPassword(const AEdited,AOriginal:String):String;
+// A Reportman AI Agent connection (rpdbHttp) is only a name in the report:
+// its Hub database and API key are read from the connections file. The
+// design assistant of the Hub adds connections by name, so the ones that the
+// file does not define, or defines without Hub database, are written there
+// with the Hub database and API key of the design context (no API key: the
+// session of the user). Returns the number of connections written.
+function RpEnsureAgentConnections(ADatabases:TRpDatabaseInfoList;
+  AHubDatabaseId:Int64;const AApiKey:string):Integer;
+// Whether a Reportman AI Agent connection can not be opened on this computer,
+// without opening it (the check of TRpDatabaseInfoItem.Connect, with its
+// message): no Hub database in the connections file, or neither API key nor
+// Reportman AI session. The connections file is read again. The designer
+// offers to configure the connection before opening the data.
+function RpAgentConnectionProblem(ADatabase:TRpDatabaseInfoItem;
+  out AMessage:string):Boolean;
 procedure GetDotNetDrivers(alist:TStrings);
 procedure GetDotNet2Drivers(alist:TStrings);
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);
@@ -499,6 +642,17 @@ implementation
 uses
 {$IFDEF USEBDE}
  rpeval,
+{$ENDIF}
+{$IFDEF LINUX}
+ {$IFNDEF FPC}
+ Posix.Unistd,
+ {$ENDIF}
+{$ENDIF}
+{$IFDEF FPC}
+ rpsqldbconnfpc,
+ {$IFDEF DARWIN}
+ rpdarwinlibs,
+ {$ENDIF}
 {$ENDIF}
  rpreport,rpbasereport;
 
@@ -520,6 +674,67 @@ const
   SConfExtension = '.conf';                       { Do not localize }
 {$ENDIF}
 
+{$IFDEF FPC}
+resourcestring
+ SRpMidasBinaryFile='The data file "%s" is in the binary format of Windows (MIDAS), '+
+  'which this platform cannot read: put next to it the same data saved as XML ("%s"), '+
+  'or save it as XML in Windows (TClientDataSet.SaveToFile with dfXML)';
+
+// A MyBase file in the binary format of TClientDataSet (MIDAS): the XML
+// DataPacket starts with "<" (after an optional UTF-8 BOM and blanks)
+function IsBinaryMidasFile(const AFileName: string): Boolean;
+var
+ LStream:TFileStream;
+ LBuf:array[0..63] of Byte;
+ LCount,I:Integer;
+begin
+ Result:=False;
+ if not FileExists(AFileName) then
+  exit;
+ LStream:=TFileStream.Create(AFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LCount:=LStream.Read(LBuf,SizeOf(LBuf));
+ finally
+  LStream.Free;
+ end;
+ I:=0;
+ if (LCount>=3) and (LBuf[0]=$EF) and (LBuf[1]=$BB) and (LBuf[2]=$BF) then
+  I:=3;
+ while (I<LCount) and (LBuf[I] in [9,10,13,32]) do
+  Inc(I);
+ Result:=(I<LCount) and (LBuf[I]<>Ord('<'));
+end;
+
+{$IFDEF DARWIN}
+// The client library of a Zeos protocol in the folders of the usual macOS
+// installers: an application started from the Finder has no
+// DYLD_LIBRARY_PATH. '': the library of Zeos.
+function DarwinZeosLibrary(const AProtocol: string): string;
+var
+ LProtocol,LKind:string;
+ LLibs:TStringArray;
+begin
+ Result:='';
+ LProtocol:=LowerCase(AProtocol);
+ if Pos('postgres',LProtocol)=1 then
+  LKind:='pq'
+ else if Pos('mysql',LProtocol)=1 then
+  LKind:='mysql'
+ else if Pos('mariadb',LProtocol)=1 then
+  LKind:='mariadb'
+ else if (Pos('firebird',LProtocol)=1) or (Pos('interbase',LProtocol)=1) then
+  LKind:='fbclient'
+ else if Pos('odbc',LProtocol)=1 then
+  LKind:='odbc'
+ else
+  exit;
+ LLibs:=RpDarwinClientLibraries(LKind);
+ if Length(LLibs)>0 then
+  Result:=LLibs[0];
+end;
+{$ENDIF}
+{$ENDIF}
+
 
 
 {$IFDEF MSWINDOWS}
@@ -533,6 +748,129 @@ var
 
 
 const FOLDERID_Public: TGUID = '{DFDF76A2-C82A-4D63-906A-5644AC457385}';
+
+procedure TRpDataInfoList.AssertCanModify(const AReason:string);
+begin
+ if FReport is TRpBaseReport then
+  TRpBaseReport(FReport).AssertCanModify(AReason);
+end;
+
+procedure TRpDataInfoItem.AssertCanModify(const AReason:string);
+begin
+ if Collection is TRpDataInfoList then
+  TRpDataInfoList(Collection).AssertCanModify(AReason);
+end;
+
+procedure TRpDatabaseInfoList.AssertCanModify(const AReason:string);
+begin
+ if FReport is TRpBaseReport then
+  TRpBaseReport(FReport).AssertCanModify(AReason);
+end;
+
+procedure TRpDatabaseInfoItem.AssertCanModify(const AReason:string);
+begin
+ if Collection is TRpDatabaseInfoList then
+  TRpDatabaseInfoList(Collection).AssertCanModify(AReason);
+end;
+
+function LoadDbxDriversResourceIni(const ATargetFileName: string): TMemIniFile;
+var
+  ResStream: TResourceStream;
+  ResName: string;
+  HFind: HRSRC;
+  IniStrings: TStringList;
+  MemStream: TMemoryStream;
+begin
+  Result := nil;
+  ResName := 'DBXDRIVERSFILE';
+  HFind := FindResource(HInstance, PChar(ResName), RT_RCDATA);
+  if HFind = 0 then
+    Exit;
+
+  ResStream := TResourceStream.Create(HInstance, ResName, RT_RCDATA);
+  try
+    if ResStream.Size <= 0 then
+      Exit;
+    MemStream := TMemoryStream.Create;
+    try
+      MemStream.CopyFrom(ResStream, ResStream.Size);
+      // Try to persist the embedded defaults to disk as a convenience cache.
+      // This runs at initialization (TRpConnAdmin.Create -> LoadConfig); on a
+      // read-only install dir (e.g. Program Files\...\Bin) SaveToFile raises
+      // EFCreateError "Access denied". The on-disk copy is only a cache: the
+      // ini can be built entirely in memory, so a failure here must NOT break
+      // initialization. Swallow the write error and fall back to an in-memory
+      // ini. Explicit designer saves go through other code paths (config.UpdateFile
+      // / TRpDatabaseInfoList.SaveToFile) and must keep raising on failure.
+      if Length(ATargetFileName) > 0 then
+      begin
+        try
+          ForceDirectories(ExtractFileDir(ATargetFileName));
+          MemStream.SaveToFile(ATargetFileName);
+          Result := TMemIniFile.Create(ATargetFileName);
+        except
+          on E: Exception do
+            FreeAndNil(Result); // read-only target: fall back to in-memory below
+        end;
+      end;
+      if Result = nil then
+      begin
+        IniStrings := TStringList.Create;
+        try
+          Result := TMemIniFile.Create('');
+          MemStream.Seek(0, soBeginning);
+          IniStrings.LoadFromStream(MemStream);
+          Result.SetStrings(IniStrings);
+        finally
+          IniStrings.Free;
+        end;
+      end;
+    finally
+      MemStream.Free;
+    end;
+  finally
+    ResStream.Free;
+  end;
+end;
+
+procedure MergeMissingIniValues(ATargetIni, ADefaultsIni: TMemIniFile);
+var
+  Sections: TStringList;
+  Entries: TStringList;
+  I: Integer;
+  J: Integer;
+  SectionName: string;
+  EntryName: string;
+  EntryValue: string;
+begin
+  if (ATargetIni = nil) or (ADefaultsIni = nil) then
+    Exit;
+  Sections := TStringList.Create;
+  Entries := TStringList.Create;
+  try
+    ADefaultsIni.ReadSections(Sections);
+    for I := 0 to Sections.Count - 1 do
+    begin
+      SectionName := Sections[I];
+      Entries.Clear;
+      ADefaultsIni.ReadSection(SectionName, Entries);
+      for J := 0 to Entries.Count - 1 do
+      begin
+        EntryName := Trim(Entries[J]);
+        if Length(EntryName) = 0 then
+          Continue;
+        if not ATargetIni.ValueExists(SectionName, EntryName) then
+        begin
+          EntryValue := ADefaultsIni.ReadString(SectionName, EntryName, '');
+          ATargetIni.WriteString(SectionName, EntryName, EntryValue);
+        end;
+      end;
+    end;
+  finally
+    Entries.Free;
+    Sections.Free;
+  end;
+end;
 
 
 {$IFDEF MSWINDOWS}
@@ -669,6 +1007,57 @@ begin
 end;
 {$ENDIF}
 
+// FPC (sqldb TSQLQuery) always needs these helpers; Delphi compiles the
+// original USESQLEXPRESS-only block below.
+{$IFDEF FPC}
+{$IF defined(USESQLEXPRESS) or defined(FPC)}
+procedure  AssignParamValuesS(ZQuery:TSQLQuery;Dataset:TDataset);
+var
+ i:integer;
+ afield:TField;
+begin
+
+ for i:=0 to ZQuery.Params.Count-1 do
+ begin
+  afield:=Dataset.FindField(ZQuery.Params.Items[i].Name);
+  if Assigned(afield) then
+  begin
+   ZQuery.Params.Items[i].Clear;
+   ZQuery.Params.Items[i].DataType:=afield.DataType;
+   if Not afield.IsNull then
+    ZQuery.Params.Items[i].Value:=afield.Value;
+  end
+ end;
+end;
+
+function  EqualParamValuesS(ZQuery:TSQLQuery;Dataset:TDataset):Boolean;
+var
+ i:integer;
+ afield:TField;
+ qvalue:Variant;
+begin
+ Result:=true;
+ for i:=0 to ZQuery.Params.Count-1 do
+ begin
+  afield:=Dataset.FindField(ZQuery.Params.Items[i].Name);
+  if Assigned(afield) then
+  begin
+   qvalue:=ZQuery.Params.Items[i].Value;
+   if VarType(qvalue)=varEmpty then
+   begin
+    Result:=false;
+    break;
+   end;
+   if Not (qvalue=afield.AsVariant) then
+   begin
+    Result:=false;
+    break;
+   end;
+  end;
+ end;
+end;
+{$ENDIF}
+{$ELSE}
 {$IFDEF USESQLEXPRESS}
 procedure  AssignParamValuesS(ZQuery:TSQLQuery;Dataset:TDataset);
 var
@@ -715,6 +1104,7 @@ begin
   end;
  end;
 end;
+{$ENDIF}
 {$ENDIF}
 
 {$IFDEF USEIBX}
@@ -1048,6 +1438,7 @@ end;
 
 procedure TRpDataInfoItem.SetDataUnions(Value:TStrings);
 begin
+ AssertCanModify(ClassName+'.DataUnions');
  FDataUnions.Assign(Value);
  Changed(False);
 end;
@@ -1055,12 +1446,14 @@ end;
 
 procedure TRpDataInfoItem.SetDatabaseAlias(Value:string);
 begin
+ AssertCanModify(ClassName+'.DatabaseAlias');
  FDatabaseAlias:=AnsiUpperCase(Value);
  Changed(False);
 end;
 
 procedure TRpDataInfoItem.SetAlias(Value:string);
 begin
+ AssertCanModify(ClassName+'.Alias');
  Value:=AnsiUpperCase(Value);
  FAlias:=AnsiUpperCase(Value);
  Changed(False);
@@ -1068,6 +1461,7 @@ end;
 
 procedure TRpDataInfoItem.SetDataSource(Value:string);
 begin
+ AssertCanModify(ClassName+'.DataSource');
  Value:=TRim(AnsiUpperCase(Value));
  FDataSource:=AnsiUpperCase(Value);
  Changed(False);
@@ -1075,18 +1469,234 @@ end;
 
 procedure TRpDataInfoItem.SetSQL(Value:widestring);
 begin
+ AssertCanModify(ClassName+'.SQL');
+ if FSQL<>Value then
+ begin
+  FSQLExplanation:='';
+  FSQLExplanationError:='';
+ end;
  FSQL:=Value;
  Changed(False);
+end;
+
+procedure TRpDataInfoItem.SetHubSchemaId(const Value: Int64);
+begin
+ AssertCanModify(ClassName+'.HubSchemaId');
+ if FHubSchemaId=Value then
+  Exit;
+ FHubSchemaId:=Value;
+ Changed(False);
+end;
+
+procedure TRpDataInfoItem.SetSchemaName(const Value: string);
+begin
+ AssertCanModify(ClassName+'.SchemaName');
+ if FSchemaName=Value then
+  Exit;
+ FSchemaName:=Value;
+ Changed(False);
+end;
+
+procedure TRpDataInfoItem.ReadHubSchemaId(Reader:TReader);
+begin
+ FHubSchemaId:=Reader.ReadInt64;
+end;
+
+procedure TRpDataInfoItem.WriteHubSchemaId(Writer:TWriter);
+begin
+ Writer.WriteInteger(FHubSchemaId);
+end;
+
+procedure TRpDataInfoItem.ReadSchemaName(Reader:TReader);
+begin
+ FSchemaName:=ReadWideString(Reader);
+end;
+
+procedure TRpDataInfoItem.WriteSchemaName(Writer:TWriter);
+begin
+ WriteWideString(Writer,FSchemaName);
+end;
+
+{ TRpDataInfoItem - IInterface }
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDataInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+  {$ELSE}
+function TRpDataInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpDataInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
+{$ENDIF}
+begin
+ if GetInterface(IID, Obj) then
+  Result := 0
+ else
+  Result := E_NOINTERFACE;
+end;
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDataInfoItem._AddRef: Integer; stdcall;
+  {$ELSE}
+function TRpDataInfoItem._AddRef: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpDataInfoItem._AddRef: Integer;
+{$ENDIF}
+begin
+ Result := -1;
+end;
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDataInfoItem._Release: Integer; stdcall;
+  {$ELSE}
+function TRpDataInfoItem._Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpDataInfoItem._Release: Integer;
+{$ENDIF}
+begin
+ Result := -1;
+end;
+
+{ TRpDataInfoItem - IPropertiesItem }
+
+procedure TRpDataInfoItem.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Name') then
+ begin
+  FName := value;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  SetAlias(value);
+  exit;
+ end;
+ if SameText(propName, 'DatabaseAlias') then
+ begin
+  SetDatabaseAlias(value);
+  exit;
+ end;
+ if SameText(propName, 'SQL') then
+ begin
+  SetSQL(value);
+  exit;
+ end;
+ if SameText(propName, 'HubSchemaId') then
+ begin
+  SetHubSchemaId(value);
+  exit;
+ end;
+ if SameText(propName, 'SchemaName') then
+ begin
+  SetSchemaName(value);
+  exit;
+ end;
+ if SameText(propName, 'DataSource') then
+ begin
+  SetDataSource(value);
+  exit;
+ end;
+ if SameText(propName, 'GroupUnion') then
+ begin
+  FGroupUnion := value;
+  exit;
+ end;
+ if SameText(propName, 'OpenOnStart') then
+ begin
+  FOpenOnStart := value;
+  exit;
+ end;
+ if SameText(propName, 'ParallelUnion') then
+ begin
+  FParallelUnion := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpDataInfoItem.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Name') then
+ begin
+  Result := FName;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  Result := FAlias;
+  exit;
+ end;
+ if SameText(propName, 'DatabaseAlias') then
+ begin
+  Result := FDatabaseAlias;
+  exit;
+ end;
+ if SameText(propName, 'SQL') then
+ begin
+  Result := FSQL;
+  exit;
+ end;
+ if SameText(propName, 'SQLExplanation') then
+ begin
+  Result := FSQLExplanation;
+  exit;
+ end;
+ if SameText(propName, 'SQLExplanationError') then
+ begin
+  Result := FSQLExplanationError;
+  exit;
+ end;
+ if SameText(propName, 'HubSchemaId') then
+ begin
+  Result := FHubSchemaId;
+  exit;
+ end;
+ if SameText(propName, 'SchemaName') then
+ begin
+  Result := FSchemaName;
+  exit;
+ end;
+ if SameText(propName, 'DataSource') then
+ begin
+  Result := FDataSource;
+  exit;
+ end;
+ if SameText(propName, 'GroupUnion') then
+ begin
+  Result := FGroupUnion;
+  exit;
+ end;
+ if SameText(propName, 'OpenOnStart') then
+ begin
+  Result := FOpenOnStart;
+  exit;
+ end;
+ if SameText(propName, 'ParallelUnion') then
+ begin
+  Result := FParallelUnion;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
 end;
 
 procedure TRpDataInfoItem.Assign(Source:TPersistent);
 begin
  if Source is TRpDataInfoItem then
  begin
+  FName:=TRpDataInfoItem(Source).FName;
   FAlias:=TRpDataInfoItem(Source).FAlias;
   FDatabaseAlias:=TRpDataInfoItem(Source).FDatabaseAlias;
   FDataSource:=TRpDataInfoItem(Source).FDataSource;
   FSQL:=TRpDataInfoItem(Source).FSQL;
+  FSQLExplanation:=TRpDataInfoItem(Source).FSQLExplanation;
+  FSQLExplanationError:=TRpDataInfoItem(Source).FSQLExplanationError;
+  FHubSchemaId:=TRpDataInfoItem(Source).FHubSchemaId;
+  FSchemaName:=TRpDataInfoItem(Source).FSchemaName;
   FMyBaseFilename:=TRpDataInfoItem(Source).FMyBaseFilename;
   FMyBaseFields:=TRpDataInfoItem(Source).FMyBaseFields;
   FMyBaseIndexFields:=TRpDataInfoItem(Source).FMyBaseIndexFields;
@@ -1122,11 +1732,13 @@ end;
 
 procedure TRpDataInfoList.SetItem(index:integer;Value:TRpDataInfoItem);
 begin
+ AssertCanModify('DataInfo.SetItem');
  inherited SetItem(Index,Value);
 end;
 
 function TRpDataInfoList.Add(alias:string):TRpDataInfoItem;
 begin
+ AssertCanModify('DataInfo.Add');
  // Then function is defined by the class TCollectionItem
  alias:=AnsiUpperCase(alias);
  if Indexof(alias)>=0 then
@@ -1137,10 +1749,9 @@ end;
 
 procedure TRpDataInfoList.Swap(index1, index2: integer);
 var
- item1: TRpDataInfoItem;
- item2: TRpDataInfoItem;
  newItem: TRpDataInfoItem;
 begin
+ AssertCanModify('DataInfo.Swap');
  newItem := TRpDataInfoItem(inherited Add);
  newItem.Assign(GetItem(index1));
  SetItem(index1, GetItem(index2));
@@ -1169,9 +1780,17 @@ end;
 
 // Database info
 
+function TRpDatabaseInfoItem.GetHttpHubDatabaseId: Int64;
+begin
+  if (FDriver = rpdbHttp) and Assigned(FHttpDatabase) then
+    Result := FHttpDatabase.HubDatabaseId
+  else
+    Result := 0;
+end;
 
 procedure TRpDatabaseInfoItem.SetAlias(Value:string);
 begin
+ AssertCanModify(ClassName+'.Alias');
  Value:=AnsiUpperCase(Value);
  FAlias:=AnsiUpperCase(Value);
  Changed(False);
@@ -1208,6 +1827,18 @@ begin
   FFDInternalTransaction.Free;
  end;
 {$ENDIF}
+{$IFDEF FPC}
+ if Assigned(FSQLDBInternalConnection) then
+ begin
+  FSQLDBInternalConnection.Free;
+  FSQLDBInternalConnection := nil;
+ end;
+ if Assigned(FSQLDBInternalTransaction) then
+ begin
+  FSQLDBInternalTransaction.Free;
+  FSQLDBInternalTransaction := nil;
+ end;
+{$ENDIF}
 {$IFDEF USEZEOS}
  if Assigned(FZInternalDatabase) then
  begin
@@ -1232,24 +1863,32 @@ begin
   ConAdmin.free;
   ConAdmin:=nil;
  end;
+ if Assigned(FHttpDatabase) then
+ begin
+  FHttpDatabase.Free;
+  FHttpDatabase:=nil;
+ end;
  inherited Destroy;
 end;
 
 
 procedure TRpDatabaseInfoItem.SetLoadParams(Value:boolean);
 begin
+ AssertCanModify(ClassName+'.LoadParams');
  FLoadParams:=Value;
  Changed(False);
 end;
 
 procedure TRpDatabaseInfoItem.SetLoadDriverParams(Value:boolean);
 begin
+ AssertCanModify(ClassName+'.LoadDriverParams');
  FLoadDriverParams:=Value;
  Changed(False);
 end;
 
 procedure TRpDatabaseInfoItem.SetLoginPrompt(Value:boolean);
 begin
+ AssertCanModify(ClassName+'.LoginPrompt');
  FLoginPrompt:=Value;
  Changed(False);
 end;
@@ -1257,14 +1896,173 @@ end;
 
 procedure TRpDatabaseInfoItem.SetConfigFile(Value:string);
 begin
+ AssertCanModify(ClassName+'.ConfigFile');
  FConfigFile:=Value;
  Changed(False);
+end;
+
+{ TRpDatabaseInfoItem - IInterface }
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDatabaseInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; stdcall;
+  {$ELSE}
+function TRpDatabaseInfoItem.QueryInterface(constref IID: TGUID; out Obj): HResult; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpDatabaseInfoItem.QueryInterface(const IID: TGUID; out Obj): HResult;
+{$ENDIF}
+begin
+ if GetInterface(IID, Obj) then
+  Result := 0
+ else
+  Result := E_NOINTERFACE;
+end;
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDatabaseInfoItem._AddRef: Integer; stdcall;
+  {$ELSE}
+function TRpDatabaseInfoItem._AddRef: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpDatabaseInfoItem._AddRef: Integer;
+{$ENDIF}
+begin
+ Result := -1;
+end;
+
+{$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+function TRpDatabaseInfoItem._Release: Integer; stdcall;
+  {$ELSE}
+function TRpDatabaseInfoItem._Release: Integer; cdecl;
+  {$ENDIF}
+{$ELSE}
+function TRpDatabaseInfoItem._Release: Integer;
+{$ENDIF}
+begin
+ Result := -1;
+end;
+
+{ TRpDatabaseInfoItem - IPropertiesItem }
+
+procedure TRpDatabaseInfoItem.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Name') then
+ begin
+  FName := value;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  SetAlias(value);
+  exit;
+ end;
+ if SameText(propName, 'Driver') then
+ begin
+  FDriver := TRpDbDriver(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'ConfigFile') then
+ begin
+  SetConfigFile(value);
+  exit;
+ end;
+ if SameText(propName, 'LoginPrompt') then
+ begin
+  SetLoginPrompt(value);
+  exit;
+ end;
+ if SameText(propName, 'LoadParams') then
+ begin
+  SetLoadParams(value);
+  exit;
+ end;
+ if SameText(propName, 'LoadDriverParams') then
+ begin
+  SetLoadDriverParams(value);
+  exit;
+ end;
+ if SameText(propName, 'ADOConnectionString') then
+ begin
+  FADOConnectionString := value;
+  exit;
+ end;
+ if SameText(propName, 'ProviderFactory') then
+ begin
+  ProviderFactory := value;
+  exit;
+ end;
+ if SameText(propName, 'DotNetDriver') then
+ begin
+  DotNetDriver := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpDatabaseInfoItem.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Name') then
+ begin
+  Result := FName;
+  exit;
+ end;
+ if SameText(propName, 'Alias') then
+ begin
+  Result := FAlias;
+  exit;
+ end;
+ if SameText(propName, 'Driver') then
+ begin
+  Result := Integer(FDriver);
+  exit;
+ end;
+ if SameText(propName, 'ConfigFile') then
+ begin
+  Result := FConfigFile;
+  exit;
+ end;
+ if SameText(propName, 'LoginPrompt') then
+ begin
+  Result := FLoginPrompt;
+  exit;
+ end;
+ if SameText(propName, 'LoadParams') then
+ begin
+  Result := FLoadParams;
+  exit;
+ end;
+ if SameText(propName, 'LoadDriverParams') then
+ begin
+  Result := FLoadDriverParams;
+  exit;
+ end;
+ if SameText(propName, 'ADOConnectionString') then
+ begin
+  Result := FADOConnectionString;
+  exit;
+ end;
+ if SameText(propName, 'ProviderFactory') then
+ begin
+  Result := ProviderFactory;
+  exit;
+ end;
+ if SameText(propName, 'DotNetDriver') then
+ begin
+  Result := DotNetDriver;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
 end;
 
 procedure TRpDatabaseInfoItem.Assign(Source:TPersistent);
 begin
  if Source is TRpDatabaseInfoItem then
  begin
+  FName:=TRpDatabaseInfoItem(Source).FName;
   FAlias:=TRpDatabaseInfoItem(Source).FAlias;
   FLoadParams:=TRpDatabaseInfoItem(Source).FLoadParams;
   FLoginPrompt:=TRpDatabaseInfoItem(Source).FLoginPrompt;
@@ -1296,11 +2094,13 @@ end;
 
 procedure TRpDatabaseInfoList.SetItem(index:integer;Value:TRpDatabaseInfoItem);
 begin
+ AssertCanModify('DatabaseInfo.SetItem');
  inherited SetItem(Index,Value);
 end;
 
 function TRpDatabaseInfoList.Add(alias:string):TRpDatabaseInfoItem;
 begin
+ AssertCanModify('DatabaseInfo.Add');
  // Then function is defined by teh class TCollectionItem
  alias:=AnsiUpperCase(alias);
  if Indexof(alias)>=0 then
@@ -1366,6 +2166,90 @@ begin
    ConAdmin.DBXDriversOverride:=aparam.AsString;
    ConAdmin.LoadConfig;
   end;
+ end;
+end;
+
+procedure TRpDatabaseinfoitem.LoadConnectionParams(AParams: TStrings);
+begin
+ if AParams = nil then
+  Exit;
+ if not Assigned(ConAdmin) then
+  UpdateConAdmin;
+ AParams.Clear;
+ ConAdmin.GetConnectionParams(Alias, AParams);
+end;
+
+function RpEnsureAgentConnections(ADatabases:TRpDatabaseInfoList;
+  AHubDatabaseId:Int64;const AApiKey:string):Integer;
+var
+ i:integer;
+ item:TRpDatabaseInfoItem;
+ params:TStringList;
+begin
+ Result:=0;
+ if (ADatabases=nil) or (AHubDatabaseId<=0) then
+  exit;
+ params:=TStringList.Create;
+ try
+  for i:=0 to ADatabases.Count-1 do
+  begin
+   item:=ADatabases.Items[i];
+   if (item.Driver<>rpdbHttp) or (not item.LoadParams) then
+    continue;
+   // The connections file of the report (DBXCONNECTIONS parameter), read
+   // again: each connection has its own copy and another one may have
+   // written the file meanwhile
+   if not Assigned(item.ConAdmin) then
+    item.UpdateConAdmin
+   else
+    item.ConAdmin.LoadConfig;
+   item.ConAdmin.GetConnectionParams(item.Alias,params);
+   // A connection of the file with its Hub database is left as it is
+   if StrToInt64Def(params.Values['HubDatabaseId'],0)>0 then
+    continue;
+   if not item.ConAdmin.config.SectionExists(item.Alias) then
+    item.ConAdmin.AddConnection(item.Alias,'Reportman AI Agent');
+   item.ConAdmin.config.WriteString(item.Alias,'HubDatabaseId',IntToStr(AHubDatabaseId));
+   if (Trim(AApiKey)<>'') and (Trim(params.Values['ApiKey'])='') then
+    item.ConAdmin.config.WriteString(item.Alias,'ApiKey',Trim(AApiKey));
+   item.ConAdmin.config.UpdateFile;
+   // A connection opened before without them reads them again
+   item.DisConnect;
+   Inc(Result);
+  end;
+ finally
+  params.Free;
+ end;
+end;
+
+function RpAgentConnectionProblem(ADatabase:TRpDatabaseInfoItem;
+  out AMessage:string):Boolean;
+var
+ params:TStringList;
+begin
+ Result:=False;
+ AMessage:='';
+ if (ADatabase=nil) or (ADatabase.Driver<>rpdbHttp) then
+  exit;
+ params:=TStringList.Create;
+ try
+  if ADatabase.LoadParams then
+  begin
+   // Changed meanwhile by the connections dialog or the connection wizard
+   ADatabase.UpdateConAdmin;
+   ADatabase.LoadConnectionParams(params);
+  end;
+  if StrToInt64Def(params.Values['HubDatabaseId'],0)<=0 then
+   AMessage:=Format(SRpAgentNotConfigured,[ADatabase.Alias])
+  else
+  if (Trim(params.Values['ApiKey'])='') and (TRpAuthManager.Instance.Token='') then
+   AMessage:=Format(SRpAgentNoCredentials,[ADatabase.Alias]);
+  Result:=AMessage<>'';
+  // The next Connect reads the connections file again
+  if Result then
+   ADatabase.DisConnect;
+ finally
+  params.Free;
  end;
 end;
 
@@ -1438,6 +2322,11 @@ var
  FOpenedDatabase:TDatabase;
  ASession:TSession;
  adparams:TStrings;
+{$ENDIF}
+{$IFDEF FPC}
+ driverId, dbName, dbNameAlt, prot, iniPath: string;
+ candidatesIni: array[0..3] of string;
+ iniLocal: TMemIniFile;
 {$ENDIF}
 begin
  paramlist:=TStringList.Create;
@@ -1647,6 +2536,71 @@ begin
          ConAdmin.GetConnectionParams(conname,alist);
         end;
         MergeList(paramlist,alist);
+
+        {$IFDEF FPC}
+        if (alist.Count = 0) and (conname <> '') then
+        begin
+          candidatesIni[0] := 'dbxconnections.ini';
+          candidatesIni[1] := 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
+          candidatesIni[2] := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
+          candidatesIni[3] := ExtractFilePath(ParamStr(0)) + 'dbxconnections.ini';
+          for iniPath in candidatesIni do
+          begin
+            if (iniPath <> '') and FileExists(iniPath) then
+            begin
+              iniLocal := TMemIniFile.Create(iniPath);
+              if iniLocal.SectionExists(conname) then
+              begin
+                iniLocal.ReadSectionValues(conname, alist);
+                iniLocal.Free;
+                break;
+              end;
+              iniLocal.Free;
+            end;
+          end;
+        end;
+
+        dbName := alist.Values['Database'];
+        if dbName = '' then
+          dbName := alist.Values['DatabaseName'];
+
+        if (dbName <> '') and (not FileExists(dbName)) then
+        begin
+          {$IFDEF UNIX}
+          dbNameAlt := StringReplace(dbName, '\', '/', [rfReplaceAll]);
+          {$ELSE}
+          dbNameAlt := StringReplace(dbName, '/', '\', [rfReplaceAll]);
+          {$ENDIF}
+          if FileExists(dbNameAlt) then
+            dbName := dbNameAlt
+          else if FileExists(ExtractFileName(dbName)) then
+            dbName := ExtractFileName(dbName)
+          else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+            dbName := 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
+          else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+            dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName);
+          alist.Values['Database'] := dbName;
+        end;
+
+        prot := alist.Values['Database Protocol'];
+        if prot = '' then
+          prot := alist.Values['Protocol'];
+        if prot = '' then
+          prot := alist.Values['DriverName'];
+        if (prot = '') and ((UpperCase(alist.Values['DriverID']) = 'SQLITE') or (UpperCase(alist.Values['DriverName']) = 'SQLITE')) then
+          prot := 'sqlite';
+        if (LowerCase(prot) = 'sqlite-3') then
+          prot := 'sqlite';
+        if prot <> '' then
+          alist.Values['Database Protocol'] := prot;
+        {$IFDEF DARWIN}
+        if alist.Values['LibraryLocation'] = '' then
+          alist.Values['LibraryLocation'] := DarwinZeosLibrary(prot);
+        {$ENDIF}
+        // The client library of the connection (the LibraryLocation of Zeos)
+        FZConnection.LibraryLocation := alist.Values['LibraryLocation'];
+        {$ENDIF}
+
         FZConnection.User:=alist.Values['User_Name'];
         FZConnection.Password:=alist.Values['Password'];
         if length(alist.Values['Port'])>0 then
@@ -1913,8 +2867,148 @@ begin
          FFDInternalTransaction.StartTransaction;
        end;
   {$ELSE}
-      Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
+    {$IFDEF FPC}
+       if FSQLDBConnection = nil then
+       begin
+         conname := alias;
+         alist := TStringList.Create;
+         try
+           if (FLoadParams) then
+           begin
+             if Not Assigned(ConAdmin) then
+               UpdateConAdmin;
+             ConAdmin.GetConnectionParams(conname, alist);
+           end;
+           MergeList(paramlist, alist);
+
+           if (alist.Count = 0) or (alist.Values['Database'] = '') then
+           begin
+             candidatesIni[0] := 'dbxconnections.ini';
+             candidatesIni[1] := 'repman' + PathDelim + 'repsamples' + PathDelim + 'dbxconnections.ini';
+             candidatesIni[2] := 'repman' + PathDelim + 'bin32' + PathDelim + 'dbxconnections_test.ini';
+             candidatesIni[3] := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'bin32' + PathDelim + 'dbxconnections_test.ini';
+             for i := 0 to High(candidatesIni) do
+             begin
+               if FileExists(candidatesIni[i]) then
+               begin
+                 iniLocal := TMemIniFile.Create(candidatesIni[i]);
+                 try
+                   if iniLocal.SectionExists(conname) then
+                   begin
+                     iniLocal.ReadSectionValues(conname, alist);
+                     MergeList(paramlist, alist);
+                     Break;
+                   end;
+                 finally
+                   iniLocal.Free;
+                 end;
+               end;
+             end;
+           end;
+
+           // DriverID is the FireDAC driver (DriverName=FireDac, DriverID=SQLite
+           // as the connections dialog writes); DriverName=SQLite also works
+           driverId := UpperCase(alist.Values['DriverID']);
+           if driverId = '' then
+             driverId := UpperCase(alist.Values['DriverName']);
+           if driverId = '' then
+             driverId := 'SQLITE';
+
+           dbName := alist.Values['Database'];
+           if dbName = '' then
+             dbName := alist.Values['DatabaseName'];
+
+           // The file of a SQLite database (the samples) near the program
+           if (driverId = 'SQLITE') and (dbName <> '') and (not FileExists(dbName)) then
+           begin
+             {$IFDEF UNIX}
+             dbNameAlt := StringReplace(dbName, '\', '/', [rfReplaceAll]);
+             {$ELSE}
+             dbNameAlt := StringReplace(dbName, '/', '\', [rfReplaceAll]);
+             {$ENDIF}
+             if FileExists(dbNameAlt) then
+               dbName := dbNameAlt
+             else if FileExists(ExtractFileName(dbName)) then
+               dbName := ExtractFileName(dbName)
+             else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+               dbName := 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
+             else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
+               dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName);
+           end;
+
+           // The FPC build maps FireDAC connections to SQLdb, with the
+           // drivers that SQLdb has (rpsqldbconnfpc)
+           if RpSQLDBDriverId(driverId) = '' then
+             Raise Exception.Create(SRpDriverNotSupported + ' - FireDac (FPC): ' + driverId);
+
+           {$IFDEF UNIX}
+           if not FileExists('/usr/lib/x86_64-linux-gnu/libsqlite3.so') and not FileExists('/usr/lib/libsqlite3.so') then
+           begin
+             if FileExists('/lib/x86_64-linux-gnu/libsqlite3.so.0') or FileExists('/usr/lib/x86_64-linux-gnu/libsqlite3.so.0') then
+               sqlite3dyn.SQLiteDefaultLibrary := 'libsqlite3.so.0';
+           end;
+           {$ENDIF}
+
+           FSQLDBInternalConnection := RpOpenSQLDBConnection(driverId, alist, dbName);
+
+           FSQLDBInternalTransaction := TSQLTransaction.Create(nil);
+           FSQLDBInternalTransaction.DataBase := FSQLDBInternalConnection;
+           FSQLDBInternalConnection.Transaction := FSQLDBInternalTransaction;
+
+           FSQLDBConnection := FSQLDBInternalConnection;
+           FSQLDBTransaction := FSQLDBInternalTransaction;
+         finally
+           alist.Free;
+         end;
+       end;
+       if not FSQLDBConnection.Connected then
+         FSQLDBConnection.Connected := True;
+       if Assigned(FSQLDBTransaction) and (not FSQLDBTransaction.Active) then
+         FSQLDBTransaction.StartTransaction;
+    {$ELSE}
+       Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
+    {$ENDIF}
   {$ENDIF}
+     end;
+    rpdbHttp:
+     begin
+       if Not Assigned(FHttpDatabase) then
+         FHttpDatabase := TRpDatabaseHttp.Create;
+       
+       if FHttpDatabase.Connected then
+         Exit;
+
+       if FLoadParams then
+       begin
+         if Not Assigned(ConAdmin) then
+           UpdateConAdmin;
+         
+         alist2 := TStringList.Create;
+         try
+           ConAdmin.GetConnectionParams(Alias, alist2);
+//           FHttpDatabase.Url := alist2.Values['Url'];
+           FHttpDatabase.ApiKey := alist2.Values['ApiKey'];
+           FHttpDatabase.HubDatabaseId := StrToInt64Def(alist2.Values['HubDatabaseId'], 0);
+//           FHttpDatabase.InstallId := alist2.Values['InstallId'];
+           
+           
+           // Use AuthManager token if available and no ApiKey
+           if (FHttpDatabase.ApiKey = '') and (TRpAuthManager.Instance.Token <> '') then
+              FHttpDatabase.Token := TRpAuthManager.Instance.Token;
+
+         finally
+           alist2.Free;
+         end;
+       end;
+       // Without them the Hub can not route the request (it answered with an
+       // internal error): say what is missing
+       if FHttpDatabase.HubDatabaseId <= 0 then
+         raise ERpAgentConnectionError.CreateFor(
+           Format(SRpAgentNotConfigured, [Alias]), Alias);
+       if (FHttpDatabase.ApiKey = '') and (FHttpDatabase.Token = '') then
+         raise ERpAgentConnectionError.CreateFor(
+           Format(SRpAgentNoCredentials, [Alias]), Alias);
+       FHttpDatabase.Connected := True;
      end;
        end;
  finally
@@ -1992,6 +3086,15 @@ begin
   FFDInternalConnection.Connected:=False;
  end;
 {$ENDIF}
+{$IFDEF FPC}
+ if Assigned(FSQLDBInternalTransaction) then
+   if FSQLDBInternalTransaction.Active then
+     FSQLDBInternalTransaction.Commit;
+ if Assigned(FSQLDBInternalConnection) then
+ begin
+   FSQLDBInternalConnection.Connected := False;
+ end;
+{$ENDIF}
 {$IFDEF USEZEOS}
  if Assigned(FZInternalDatabase) then
  begin
@@ -2012,6 +3115,11 @@ begin
   FIBODatabase.Connected:=False;
  end;
 {$ENDIF}
+ // Reportman Agent (rpdbHttp) driver: drop the live connection so the next
+ // Connect re-reads ApiKey / HubDatabaseId from the (possibly changed)
+ // configuration instead of exiting early because FConnected is still True.
+ if Assigned(FHttpDatabase) then
+  FHttpDatabase.Connected:=False;
 end;
 
 procedure ExtractUnionFields(var datasetname:string;alist:TStrings);
@@ -2092,14 +3200,8 @@ var
 {$ENDIF}
  datasetname:string;
  originalfields,commonfields:TStrings;
-{$IFDEF FPC}
-ndataset:TMemDataset;
-{$ELSE}
-ndataset:TClientDataset;
-{$ENDIF}
-{$IFDEF FIREDAC}
- fetchItems: TFDFetchItems;
-{$ENDIF}
+ ndataset:TRpMemDataSet;
+ LHttpDataset: TRpDatasetHttp;
 begin
  if connecting then
   Raise Exception.Create(SRpCircularDatalink+' - '+alias);
@@ -2232,12 +3334,7 @@ begin
      rpdatamybase:
       begin
 {$IFDEF USERPDATASET}
- {$IFDEF FPC}
-       FSQLInternalQuery:=TMemDataset.Create(nil);
- {$ENDIF}
- {$IFNDEF FPC}
-       FSQLInternalQuery:=TClientDataset.Create(nil);
- {$ENDIF}
+       FSQLInternalQuery:=TRpMemDataSet.Create(nil);
 {$ENDIF}
 {$IFNDEF USERPDATASET}
        Raise Exception.Create(SRpClientDatasetNotSupported);
@@ -2314,7 +3411,11 @@ begin
        TFDCustomQuery(FSQLInternalQuery).ResourceOptions.EscapeExpand:=false;
 
 {$ELSE}
+  {$IFDEF FPC}
+       FSQLInternalQuery := TSQLQuery.Create(nil);
+  {$ELSE}
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
+  {$ENDIF}
 {$ENDIF}
       end;
     end;
@@ -2429,6 +3530,23 @@ begin
         end;
        end
 {$ENDIF}
+{$IFDEF FPC}
+        if Not (FSQLInternalQuery is TSQLQuery) then
+        begin
+         FSQLInternalQuery.Free;
+         FSQLInternalQuery:=nil;
+         FSQLInternalQuery:=TSQLQuery.Create(nil);
+        end;
+{$ENDIF}
+      end;
+     rpdbHttp:
+      begin
+        if Not (FSQLInternalQuery is TRpMemDataSet) then
+        begin
+         FSQLInternalQuery.Free;
+         FSQLInternalQuery:=nil;
+         FSQLInternalQuery:=TRpMemDataSet.Create(nil);
+        end;
       end;
     end;
    end;
@@ -2476,47 +3594,82 @@ begin
 {$ENDIF}
 {$IFDEF USERPDATASET}
       try
-{$IFNDEF FPC}
-       TClientDataSet(FSQLInternalQuery).IndexName:='';
-       TClientDataSet(FSQLInternalQuery).IndexFieldNames:='';
-{$ENDIF}
+       TRpMemDataSet(FSQLInternalQuery).IndexName:='';
+       TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:='';
        if Length(FMyBaseFileName)>0 then
        begin
         // Adds the path
         afilename:=baseinfo.FMyBasePath+FMyBaseFilename;
         if Length(FMyBaseFields)>0 then
         begin
-{$IFNDEF FPC}
-         TClientDataSet(FSQLInternalQuery).IndexDefs.Clear;
-         TClientDataSet(FSQLInternalQuery).FieldDefs.Clear;
-         FillClientDatasetFromFile(TClientDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
-{$ENDIF}
-{$IFDEF FPC}
-         FillClientDatasetFromFile(TMemDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
-{$ENDIF}
+         TRpMemDataSet(FSQLInternalQuery).IndexDefs.Clear;
+         TRpMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
+         FillClientDatasetFromFile(TRpMemDataSet(FSQLInternalQuery),baseinfo.FMyBasePath+FMyBaseFields,afilename,FMyBaseIndexFields);
         end
         else
         begin
+{$IFDEF USERPFDMEM}
+         // MyBase/MIDAS XML DataPacket via FireDAC (no libmidas on Linux)
+         FDMemLoadFromMidasFile(TRpMemDataSet(FSQLInternalQuery),afilename);
+         TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
+{$ENDIF}
 {$IFNDEF FPC}
-         TClientDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
-         TClientDataSet(FSQLInternalQuery).LoadFromFile(afilename);
+{$IFNDEF USERPFDMEM}
+         TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
+         TRpMemDataSet(FSQLInternalQuery).LoadFromFile(afilename);
+{$ENDIF}
 {$ENDIF}
 {$IFDEF FPC}
-         TMemDataSet(FSQLInternalQuery).LoadFromFile(afilename);
-        end;
-       end;
+          if not FileExists(afilename) then
+          begin
+            if FileExists(ChangeFileExt(afilename, '.xml')) then
+              afilename := ChangeFileExt(afilename, '.xml')
+            // A relative name: the folder of the report
+            else if (RpReportFolder <> '') and (ExtractFileDrive(afilename) = '') and
+              (Copy(afilename, 1, 1) <> PathDelim) and
+              FileExists(IncludeTrailingPathDelimiter(RpReportFolder) + afilename) then
+              afilename := IncludeTrailingPathDelimiter(RpReportFolder) + afilename
+            else if (RpReportFolder <> '') and (ExtractFileDrive(afilename) = '') and
+              (Copy(afilename, 1, 1) <> PathDelim) and
+              FileExists(IncludeTrailingPathDelimiter(RpReportFolder) + ChangeFileExt(afilename, '.xml')) then
+              afilename := IncludeTrailingPathDelimiter(RpReportFolder) + ChangeFileExt(afilename, '.xml')
+            // A sample saved in another folder: the samples of the application
+            else if (RpSamplesFolder <> '') and
+              FileExists(IncludeTrailingPathDelimiter(RpSamplesFolder) + ChangeFileExt(ExtractFileName(afilename), '.xml')) then
+              afilename := IncludeTrailingPathDelimiter(RpSamplesFolder) + ChangeFileExt(ExtractFileName(afilename), '.xml')
+            else if (RpSamplesFolder <> '') and
+              FileExists(IncludeTrailingPathDelimiter(RpSamplesFolder) + ExtractFileName(afilename)) then
+              afilename := IncludeTrailingPathDelimiter(RpSamplesFolder) + ExtractFileName(afilename)
+            else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename) then
+              afilename := baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename
+            else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := baseinfo.FMyBasePath + 'repsamples/' + ChangeFileExt(FMyBaseFilename, '.xml')
+            else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')
+            else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := 'repman' + PathDelim + 'repsamples' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')
+            else if FileExists('repman' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml')) then
+              afilename := 'repman' + PathDelim + ChangeFileExt(FMyBaseFilename, '.xml');
+          end;
+          if FileExists(ChangeFileExt(afilename, '.xml')) and (LowerCase(ExtractFileExt(afilename)) = '.cds') then
+            afilename := ChangeFileExt(afilename, '.xml');
+          // The binary format of Windows, without its XML: say which file
+          // and what to do
+          if IsBinaryMidasFile(afilename) then
+            raise Exception.CreateFmt(SRpMidasBinaryFile,
+              [ExpandFileName(afilename), ChangeFileExt(ExtractFileName(afilename), '.xml')]);
+          FDMemLoadFromMidasFile(TRpMemDataSet(FSQLInternalQuery), afilename);
+          TRpMemDataSet(FSQLInternalQuery).IndexFieldNames := FMyBaseIndexFields;
 {$ENDIF}
-{$IFNDEF FPC}
         end;
        end
        else
        begin
-        TClientDataSet(FSQLInternalQuery).IndexDefs.Clear;
-        TClientDataSet(FSQLInternalQuery).FieldDefs.Clear;
-        TClientDataSet(FSQLInternalQuery).IndexDefs.Add('IPRIM',FMyBaseIndexFields,[]);
-        TClientDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
+        TRpMemDataSet(FSQLInternalQuery).IndexDefs.Clear;
+        TRpMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
+        TRpMemDataSet(FSQLInternalQuery).IndexDefs.Add('IPRIM',FMyBaseIndexFields,[]);
+        TRpMemDataSet(FSQLInternalQuery).IndexFieldNames:=FMyBaseIndexFields;
        end;
-{$ENDIF}
        commonfields:=TStringList.Create;
        originalfields:=TStringList.Create;
        try
@@ -2530,38 +3683,20 @@ begin
          TRpDatainfolist(Collection).Items[index].Connect(databaseinfo,params);
          if ((i=0) or (not FParallelUnion)) then
          begin
-{$IFNDEF FPC}
-         CombineAddDataset(TClientDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
-{$ENDIF}
-{$IFDEF FPC}
-         CombineAddDataset(TMemDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
-{$ENDIF}
+          CombineAddDataset(TRpMemDataSet(FSQLInternalQuery),TRpDatainfolist(Collection).Items[index].Dataset,FGroupUnion);
           originalfields.Assign(commonfields);
          end
          else
          begin
-          {$IFNDEF FPC}
-          ndataset:=CombineParallel(TClientDataset(FSQLInternalQuery),
+          ndataset:=CombineParallel(TRpMemDataSet(FSQLInternalQuery),
            TRpDatainfolist(Collection).Items[index].Dataset,'Q'+FormatFloat('00',i+1)+'_',commonfields,originalfields);
           try
            FSQLInternalQuery.Close;
-           TClientDataSet(FSQLInternalQuery).FieldDefs.Clear;
-           CombineAddDataset(TClientDataSet(FSQLInternalQuery),ndataset,FGroupUnion);
+           TRpMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
+           CombineAddDataset(TRpMemDataSet(FSQLInternalQuery),ndataset,FGroupUnion);
           finally
            ndataset.free;
           end;
-          {$ENDIF}
-          {$IFDEF FPC}
-          ndataset:=CombineParallel(TMemDataset(FSQLInternalQuery),
-           TRpDatainfolist(Collection).Items[index].Dataset,'Q'+FormatFloat('00',i+1)+'_',commonfields,originalfields);
-          try
-           FSQLInternalQuery.Close;
-           TMemDataSet(FSQLInternalQuery).FieldDefs.Clear;
-           CombineAddDataset(TMemDataSet(FSQLInternalQuery),ndataset,FGroupUnion);
-          finally
-           ndataset.free;
-          end;
-          {$ENDIF}
          end;
         end;
        finally
@@ -2577,11 +3712,11 @@ begin
         begin
          try
 {$IFNDEF FPC}
-          if (TClientDataSet(FSQLInternalQuery).Filter<>afilter) then
+          if (TRpMemDataSet(FSQLInternalQuery).Filter<>afilter) then
           begin
-           TClientDataSet(FSQLInternalQuery).Filtered:=false;
-           TClientDataSet(FSQLInternalQuery).Filter:=afilter;
-           TClientDataSet(FSQLInternalQuery).Filtered:=true;
+           TRpMemDataSet(FSQLInternalQuery).Filtered:=false;
+           TRpMemDataSet(FSQLInternalQuery).Filter:=afilter;
+           TRpMemDataSet(FSQLInternalQuery).Filtered:=true;
           end;
 {$ENDIF}
 {$IFDEF FPC}
@@ -2601,10 +3736,10 @@ begin
         else
         begin
          {$IFNDEF FPC}
-         if TClientDataSet(FSQLInternalQuery).Filtered then
+         if TRpMemDataSet(FSQLInternalQuery).Filtered then
          begin
-          TClientDataSet(FSQLInternalQuery).Filtered:=false;
-          TClientDataSet(FSQLInternalQuery).Filter:=afilter;
+          TRpMemDataSet(FSQLInternalQuery).Filtered:=false;
+          TRpMemDataSet(FSQLInternalQuery).Filter:=afilter;
          end;
          {$ENDIF}
         end;
@@ -2708,10 +3843,39 @@ begin
       //TFDQuery(FSQLInternalQuery).UniDirectional:=true;
       TFDCustomQuery(FSQLInternalQuery).DataSource:=nil;
 {$ELSE}
+  {$IFDEF FPC}
+       TSQLQuery(FSQLInternalQuery).DataBase:=baseinfo.FSQLDBConnection;
+       TSQLQuery(FSQLInternalQuery).Transaction:=baseinfo.FSQLDBTransaction;
+       TSQLQuery(FSQLInternalQuery).SQL.Text:=SQLsentence;
+       TSQLQuery(FSQLInternalQuery).DataSource:=nil;
+  {$ELSE}
        Raise Exception.Create(SRpDriverNotSupported+' - FireDac');
+  {$ENDIF}
 {$ENDIF}
       end;
-   end;
+     rpdbHttp:
+      begin
+        // Use the new HTTP driver to fill the ClientDataSet
+        if not Assigned(baseinfo.FHttpDatabase) then
+           baseinfo.FHttpDatabase := TRpDatabaseHttp.Create;
+
+        LHttpDataset := TRpDatasetHttp.CreateForQuery(baseinfo.FHttpDatabase,
+          TRpMemDataSet(FSQLInternalQuery), params);
+        try
+          LHttpDataset.Sql := SQLsentence;
+          try
+            LHttpDataset.Open;
+          finally
+            // Open creates the dataset the first time: keep it even if the
+            // query fails, so that this item frees it (it leaked before)
+            FSQLInternalQuery := LHttpDataset.Dataset;
+          end;
+          FDataset := FSQLInternalQuery;
+        finally
+          LHttpDataset.Free;
+        end;
+      end;
+    end;
    // Assigns parameters
    for i:=0 to params.count-1 do
    begin
@@ -2796,14 +3960,27 @@ begin
         TIBOQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
 {$ENDIF}
        end;
-    rpfiredac:
-     begin
-{$IFDEF FIREDAC}
-       TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
-        TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
-{$ENDIF}
-     end;
-     end;
+      rpfiredac:
+       begin
+   {$IFDEF FIREDAC}
+          TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
+          TFDCustomQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
+   {$ENDIF}
+   {$IFDEF FPC}
+          TSQLQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
+          TSQLQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
+   {$ENDIF}
+       end;
+      rpdbHttp:
+       begin
+         // Parameters are already handled via TRpDatasetHttp.Open if passed in Sql
+         // But let's ensure they are available in the underlying dataset if needed
+         if TRpMemDataSet(FSQLInternalQuery).FindField(param.Name) = nil then
+         begin
+            // TODO: Optional: Add parameters to a list for the HTTP driver if not using macro/text replacement
+         end;
+       end;
+      end;
     end;
    end;
 
@@ -2882,8 +4059,8 @@ begin
      rpdatamybase:
       begin
 {$IFNDEF FPC}
-       TClientDataset(FSQLInternalQuery).MasterFields:=MyBaseMasterFields;
-       TClientDataset(FSQLInternalQuery).MasterSource:=FMasterSource;
+       TRpMemDataSet(FSQLInternalQuery).MasterFields:=MyBaseMasterFields;
+       TRpMemDataSet(FSQLInternalQuery).MasterSource:=FMasterSource;
 {$IFDEF USERPDATASET}
        if datainfosource.cached then
         FMasterSource.DataSet:=datainfosource.CachedDataset
@@ -2958,6 +4135,28 @@ begin
 {$ENDIF}
         FMasterSource.DataSet:=datainfosource.Dataset;
        AssignParamValuesFiredac(TFDCustomQuery(FSQLInternalQuery),datainfosource.Dataset);
+{$ENDIF}
+{$IFDEF FPC}
+       FDataLink:=TRpDataLink.Create;
+       FDataLink.databaseinfo:=databaseinfo;
+       FDataLink.datainfo:=TRpDataInfoList(collection);
+       FDataLink.datainfoitem:=self;
+       FDataLink.DataSource:=FMasterSource;
+       FDataLink.dbinfoitem:=databaseinfo.ItemByName(FDatabaseAlias);
+       TSQLQuery(FSQLInternalQuery).DataSource:=FMasterSource;
+       if datainfosource.cached then
+        FMasterSource.DataSet:=datainfosource.CachedDataset
+       else
+        FMasterSource.DataSet:=datainfosource.Dataset;
+       AssignParamValuesS(TSQLQuery(FSQLInternalQuery),datainfosource.Dataset);
+{$ENDIF}
+      end;
+     rpdbHttp:
+      begin
+{$IFNDEF FPC}
+{$IFNDEF USERPFDMEM}
+        TRpMemDataSet(FSQLInternalQuery).RemoteServer := nil;
+{$ENDIF}
 {$ENDIF}
       end;
     end;
@@ -3042,8 +4241,17 @@ begin
  begin
 {$IFDEF USERPDATASET}
   if Assigned(FCachedDataset) then
+  begin
+   FCachedDataset.AfterOpen:=nil;
+   FCachedDataset.AfterClose:=nil;
    FCachedDataset.DoClose;
+  end;
 {$ENDIF}
+  if Assigned(FSQLInternalQuery) then
+  begin
+   FSQLInternalQuery.AfterOpen:=nil;
+   FSQLInternalQuery.AfterClose:=nil;
+  end;
   if FDataset=FSQLInternalQuery then
    FDataset.Active:=false;
  end;
@@ -3185,6 +4393,9 @@ var
 //  GlobalFile: string;
 //{$ENDIF}
 begin
+  // Deprecated get the driver path from registry file
+  Result:='';
+(*
   {$IFDEF MSWINDOWS}
   Result := '';
   {$IFNDEF DELPHI2007UP}
@@ -3222,7 +4433,7 @@ begin
 //    end else
 //      DatabaseErrorFmt(SMissingConfFile, [GlobalFile]);
 //  end;
-//  {$ENDIF}
+//  {$ENDIF}     *)
 end;
 
 {$IFDEF MSWINDOWS}
@@ -3244,13 +4455,10 @@ var
  dbxconpath,dbxdrivpath:String;
 {$IFDEF MSWINDOWS}
  nconfigfilename:string;
- resstream:TResourceStream;
+{$ENDIF}
  fromresource:boolean;
- resname:string;
- hfind:HRSRC;
- nstrings:TStringList;
- memstream:TMemoryStream;
-{$ELSE}
+ defaultdrivers:TMemIniFile;
+{$IFNDEF MSWINDOWS}
  configdir:string;
 {$ENDIF}
 
@@ -3277,7 +4485,8 @@ begin
  begin
   if Not DirectoryExists(configdir) then
   begin
-   if not CreateDir(configdir) then
+   // Another thread (or process) may create it at the same time
+   if (not CreateDir(configdir)) and (not DirectoryExists(configdir)) then
     Raise Exception.Create(SRpDirCantBeCreated+'-'+configdir);
   end;
  end
@@ -3293,6 +4502,8 @@ begin
 {$ENDIF}
 
  dbxconpath:=DBXConnectionsOverride;
+ if Length(dbxconpath)=0 then
+  dbxconpath:=DBXConnectionsFileOverride;
  dbxdrivpath:=DBXDriversOverride;
  // Override configuration if necessary
  if Length(dbxconpath)>0 then
@@ -3309,76 +4520,79 @@ begin
  if (not FileExists(driverfilename)) then
  begin
   driverfilename:=Obtainininamelocaluserconfig('','','dbxdrivers');
+{$IFNDEF MSWINDOWS}
+  // The connections of ~/.borland (Kylix, the web server, the Linux
+  // packages) are used although there is no dbxdrivers next to them, as the
+  // drivers also come from the resource: first ~/.borland/dbxconnections,
+  // then ~/.dbxconnections
+  if not FileExists(configfilename) then
+{$ENDIF}
   configfilename:=Obtainininamelocaluserconfig('','','dbxconnections');
  end;
  if FileExists(driverfilename) then
  begin
   drivers:=TMemInifile.Create(driverfilename);
+    defaultdrivers:=LoadDbxDriversResourceIni('');
+    try
+     if Assigned(defaultdrivers) then
+     begin
+      MergeMissingIniValues(drivers,defaultdrivers);
+      // Do not update de file when reading
+      //drivers.UpdateFile;
+     end;
+    finally
+     defaultdrivers.Free;
+    end;
  end
  else
  begin
-{$IFDEF MSWINDOWS}
-  driverfilename:=GetPublicPathSlash+'dbxdrivers.ini';
-  configfilename:=GetPublicPathSlash+'dbxconnections.ini';
-   // Load the dbxdrivers file from the resource
-   resname:='DBXDRIVERSFILE';
-   hFind := FindResource(HInstance, PChar(resname),RT_RCDATA);
-   if (hFind<>0) then
-   begin
-    resstream:=TResourceStream.Create(hinstance,resname,RT_RCDATA);
-    try
-     if (resstream.Size>0) then
-     begin
-      fromresource:=true;
-      memstream:=TMemoryStream.Create;
-      try
-        memstream.CopyFrom(resstream,resstream.size);
-        nstrings:=TStringList.Create;
-        try
-          drivers:=TMemIniFile.Create('');
-          memstream.Seek(0,soBeginning);
-          nstrings.LoadFromStream(memstream);
-          drivers.SetStrings(nstrings);
-          driverfilename:='';
-        finally
-          nstrings.Free;
-        end;
-      finally
-       memstream.Free;
-      end;
-     end;
-    finally
-     resstream.free;
-    end;
-   end
-   else
-    Raise Exception.Create(SRpConfigFileNotExists+' - '+driverfilename);
-{$ELSE}
-  // Check if exists in the current dir
-  if FileExists(DBXDRIVERFILENAME) then
-  begin
-   drivers:=TMemIniFile.Create(DBXDRIVERFILENAME);
-   if configdir<>'/usr/local/etc' then
-   begin
-    CopyFileTo(DBXDRIVERFILENAME,driverfilename);
-   end;
-  end
-  else
-  begin
-   // Check int /usr/local/etc
-   if FileExists('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf') then
-   begin
-    if configdir<>'/usr/local/etc' then
+  {$IFDEF MSWINDOWS}
+    driverfilename:=GetPublicPathSlash+'dbxdrivers.ini';
+    configfilename:=GetPublicPathSlash+'dbxconnections.ini';
+  {$ENDIF}
+      if (Length(driverfilename)>0) and (not FileExists(driverfilename)) then
+        drivers:=LoadDbxDriversResourceIni(driverfilename)
+      else
+        drivers:=LoadDbxDriversResourceIni('');
+      fromresource:=Assigned(drivers);
+      if fromresource and (Length(driverfilename)=0) then
+        driverfilename:='';
+    if not fromresource then
     begin
-     CopyFileTo('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf',driverfilename);
+  {$IFNDEF MSWINDOWS}
+     // Check if exists in the current dir
+     if FileExists(DBXDRIVERFILENAME) then
+     begin
+      drivers:=TMemIniFile.Create(DBXDRIVERFILENAME);
+      if configdir<>'/usr/local/etc' then
+      begin
+       CopyFileTo(DBXDRIVERFILENAME,driverfilename);
+      end;
+     end
+     else
+     begin
+      // Check int /usr/local/etc
+      if FileExists('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf') then
+      begin
+       if configdir<>'/usr/local/etc' then
+       begin
+        CopyFileTo('/usr/local/etc/'+DBXDRIVERFILENAME+'.conf',driverfilename);
+       end;
+       drivers:=TMemIniFile.Create(driverfilename);
+      end
+      else
+       Raise Exception.Create(SRpConfigFileNotExists+' - '+DBXDRIVERFILENAME);
+     end;
+  {$ELSE}
+     Raise Exception.Create(SRpConfigFileNotExists+' - '+driverfilename);
+  {$ENDIF}
     end;
-    drivers:=TMemIniFile.Create(driverfilename);
-   end
-   else
-    Raise Exception.Create(SRpConfigFileNotExists+' - '+DBXDRIVERFILENAME);
-  end;
-{$ENDIF}
  end;
+ // An explicit connections file (DBXConnectionsOverride or the file override,
+ // e.g. -dbxconnectionfile) wins over the defaults chosen above when the
+ // drivers file was missing
+ if Length(dbxconpath)>0 then
+  configfilename:=dbxconpath;
  if FileExists(configfilename) then
  begin
   config:=TMemInifile.Create(configfilename);
@@ -3424,7 +4638,21 @@ begin
  {$ENDIF}
    end
    else
-    Raise Exception.Create(SRpConfigFileNotExists+' - '+DBXCONFIGFILENAME);
+   begin
+    // No registry found anywhere: start with an empty one at the writable
+    // location (configfilename) instead of failing, so connections can be
+    // added through the admin tools. The effective path is reported by the
+    // diagnostics pages and the command line tools.
+    config:=TMemIniFile.Create(configfilename);
+ {$IFNDEF FPC}
+    config.CaseSensitive:=false;
+ {$ENDIF}
+    try
+     config.UpdateFile;
+    except
+     // Location not writable: keep the empty registry in memory anyway
+    end;
+   end;
   end
 {$ENDIF}
  end;
@@ -3447,7 +4675,6 @@ var
  memstream:TMemoryStream;
  astream:TStream;
 begin
- Result:=nil;
  data:=OpenDatasetFromSQL(sqlsentence,params,false,paramlist);
  try
   if data.Eof then
@@ -3489,7 +4716,6 @@ var
  FExename,FCommandLine:string;
  procesinfo:TProcessInformation;
 {$ELSE}
- aparams:TStringList;
 {$ENDIF}
 begin
  report:=TRpDataInfoList(Collection).FReport As TRpReport;
@@ -3550,7 +4776,6 @@ begin
         aparams.free;
      end;*)
 {$ENDIF}
-
      alist.LoadFromFile(tmpfile);
      i:=0;
      while i<alist.Count do
@@ -3861,7 +5086,14 @@ begin
     TFDQuery(FSQLInternalQuery).SQL.Text:=SQLsentence;
 
 {$ELSE}
+  {$IFDEF FPC}
+    FSQLInternalQuery := TSQLQuery.Create(nil);
+    TSQLQuery(FSQLInternalQuery).DataBase := FSQLDBConnection;
+    TSQLQuery(FSQLInternalQuery).Transaction := FSQLDBTransaction;
+    TSQLQuery(FSQLInternalQuery).SQL.Text := SQLsentence;
+  {$ELSE}
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverDBX);
+  {$ENDIF}
 {$ENDIF}
    end;
   rpdataibx:
@@ -3930,6 +5162,10 @@ begin
 {$ENDIF}
    end;
  end;
+ // The drivers without a query here (Reportman AI Agent, .Net) ended in an
+ // access violation (a report library on them)
+ if not Assigned(FSQLInternalQuery) then
+  Raise Exception.Create(SRpDriverNotSupported);
  // Assigns parameters
  if assigned(params) then
  begin
@@ -3979,6 +5215,19 @@ begin
        TFDQuery(FSQLInternalQuery).ParamByName(paramName).Value:=avariant;
       end;
 {$ENDIF}
+{$IFDEF FPC}
+      if assigned(astream) then
+      begin
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).DataType:=ftBlob;
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).LoadFromStream(astream,ftBlob);
+      end
+      else
+      begin
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).DataType:=
+          VariantTypeToDataType(avariant);
+       TSQLQuery(FSQLInternalQuery).ParamByName(paramName).Value:=avariant;
+      end;
+{$ENDIF}
      end;
     rpdataibx:
      begin
@@ -4002,7 +5251,7 @@ begin
       if assigned(astream) then
       begin
        TZReadOnlyQuery(FSQLInternalQuery).ParamByName(paramName).DataType:=ftBlob;
-       TZReadOnlyQuery(FSQLInternalQuery).ParamByName(paramName).LoadFromStream(astream,ftBlob);
+       TZReadOnlyQuery(FSQLInternalQuery).ParamByName(paramName).LoadBinaryFromStream(astream);
       end
       else
       begin
@@ -4123,6 +5372,9 @@ begin
  {$IFDEF FIREDAC}
      TFDQuery(FSQLInternalQuery).ExecSQL;
  {$ENDIF}
+ {$IFDEF FPC}
+     TSQLQuery(FSQLInternalQuery).ExecSQL;
+ {$ENDIF}
     end;
   end;
  end
@@ -4148,6 +5400,7 @@ begin
  alist.Add('Dot Net Connection');
  alist.Add('Dot Net 2 Connection');
  alist.Add('FireDac');
+ alist.Add('Reportman AI Agent');
 end;
 
 
@@ -4267,26 +5520,21 @@ end;
 
 
 
-{$IFNDEF FPC}
-function CombineParallel(data1:TClientDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TClientDataset;
+function CombineParallel(data1:TRpMemDataSet;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TRpMemDataSet;
 var
- aresult:TClientDataset;
-{$ELSE}
-function CombineParallel(data1:TMemDataset;data2:TDataset;prefix:string;commonfields:TStrings;originalfields:TStrings):TMemDataset;
-var
- aresult:TMemDataset;
-{$ENDIF}
+ aresult:TRpMemDataSet;
  lfields1:TStringList;
  lfields2:TStringList;
  i,index:integer;
  fname:string;
  fdef:TFieldDef;
- counter:integer;
  indexfieldnames:string;
+{$IFDEF FPC}
+ keynames:string;
+ keyvalues:Variant;
+{$ENDIF}
 begin
- {$IFNDEF FPC}
- counter:=0;
- aresult:=TClientDataset.Create(nil);
+ aresult:=TRpMemDataSet.Create(nil);
  lfields1:=TStringList.Create;
  lfields2:=TStringList.Create;
  try
@@ -4320,7 +5568,6 @@ begin
    begin
     lfields1.Add(data2.FieldDefs.Items[i].Name);
     lfields2.Add(data2.FieldDefs.Items[i].Name);
-    Inc(counter);
    end;
   end;
   aresult.CreateDataSet;
@@ -4346,6 +5593,22 @@ begin
   begin
    if aresult.Indexfieldnames<>'' then
    begin
+{$IFDEF FPC}
+    // TBufDataset has no SetKey/GotoKey: locate the first still unmatched row
+    // (prefix=0) with the same key values, as GotoKey does in Delphi
+    keynames:=prefix;
+    keyvalues:=VarArrayCreate([0,commonfields.Count],varVariant);
+    keyvalues[0]:=0;
+    for i:=0 to commonfields.Count-1 do
+    begin
+     keynames:=keynames+';'+originalfields[i];
+     keyvalues[i+1]:=data2.FieldByName(commonfields.Strings[i]).AsVariant;
+    end;
+    if aresult.Locate(keynames,keyvalues,[]) then
+     aresult.Edit
+    else
+     aresult.Append;
+{$ELSE}
     aresult.SetKey;
     for i:=0 to commonfields.Count-1 do
     begin
@@ -4356,6 +5619,7 @@ begin
      aresult.Edit
     else
      aresult.Append;
+{$ENDIF}
    end
    else
    begin
@@ -4385,19 +5649,11 @@ begin
  end;
  aresult.first;
  Result:=aresult;
- {$ELSE}
-  raise Exception.Create('Combineparallel not implemented');
- {$ENDIF}
 end;
 
 
 {$IFDEF USERPDATASET}
-{$IFDEF FPC}
-procedure CombineAddDataset(client:TMemDataset;data:TDataset;group:boolean);
-{$ENDIF}
-{$IFNDEF FPC}
-procedure CombineAddDataset(client:TClientDataset;data:TDataset;group:boolean);
-{$ENDIF}
+procedure CombineAddDataset(client:TRpMemDataSet;data:TDataset;group:boolean);
 var
  i,index:integer;
  groupfields:TStringList;
@@ -4424,12 +5680,7 @@ begin
      fielddef.Attributes := attributes;
     end
   end;
-{$IFNDEF FPC}
    client.CreateDataSet;
-{$ENDIF}
-{$IFDEF FPC}
-   client.CreateTable;
-{$ENDIF}
   end;
   if (data.fields.Count>client.Fields.Count) then
   begin
@@ -4437,16 +5688,11 @@ begin
   end;
   if group then
   begin
-{$IFNDEF FPC}
    ParseFields(client.IndexFieldNames,groupfields);
    for i:=0 to groupfields.count-1 do
    begin
     groupfieldindex.Add(IntToStr(client.FieldByName(groupfields.strings[i]).index));
    end;
-{$ENDIF}
-{$IFDEF FPC}
-   Raise Exception.Create('TMemDataset does not implement indexes');
-{$ENDIF}
   end;
   while not data.eof do
   begin
@@ -4454,7 +5700,7 @@ begin
    if Group then
    begin
 {$IFDEF FPC}
-    Raise Exception.Create('TMemDataset does not implement indexes');
+    Raise Exception.Create('Group union not implemented in TRpMemDataSet');
 {$ENDIF}
 {$IFNDEF FPC}
     client.SetKey;
@@ -4509,8 +5755,8 @@ begin
   end;
   client.First;
 {$IFNDEF FPC}
-  if data is TClientDataset then
-   TClientDataSet(data).First;
+  if data is TRpMemDataSet then
+   TRpMemDataSet(data).First;
 {$ENDIF}
 {$IFDEF FPC}
   if data is TMemDataset then
@@ -4609,7 +5855,10 @@ begin
  astring:='CREATE TABLE '+reporttable+' ('+reportsearchfield+' VARCHAR(50) NOT NULL,'+
   reportfield+' BLOB,REPORT_GROUP INTEGER,USER_FLAG INTEGER,PRIMARY KEY ('+reportsearchfield+'))';
  OpenDatasetFromSQL(astring,nil,true,paramlist);
- astring:='CREATE TABLE REPMAN_GROUPS (GROUP_CODE INTEGER NOT NULL,'+
+ // The groups table of the library (it was always REPMAN_GROUPS)
+ if Length(Trim(groupstable))<1 then
+  groupstable:='REPMAN_GROUPS';
+ astring:='CREATE TABLE '+groupstable+' (GROUP_CODE INTEGER NOT NULL,'+
   'GROUP_NAME VARCHAR(50),PARENT_GROUP INTEGER NOT NULL,'+
   'PRIMARY KEY (GROUP_CODE))';
  OpenDatasetFromSQL(astring,nil,true,paramlist);
@@ -4646,7 +5895,6 @@ var
  adata:TDataset;
  astream:TStream;
 begin
- Result:=nil;
  astring:='SELECT '+ReportField+' FROM '+
   ReportTable+' WHERE '+ReportSearchField+
   '=:REPNAME';
@@ -4735,8 +5983,8 @@ var
  adatareports:TDataset;
  adatagroups:TDataset;
  dbinfo:TRpDatabaseInfoItem;
- DReportgroups,DReportgroups2:TClientDataset;
- Dreports:TClientDataset;
+ DReportgroups,DReportgroups2:TRpMemDataSet;
+ Dreports:TRpMemDataSet;
  groupcode:Integer;
  grouppath:string;
  sqltext:string;
@@ -4800,9 +6048,9 @@ begin
   end;
   try
    // Fill client dataset helpers
-   DReportGroups:=TClientDataSet.Create(nil);
-   DReportGroups2:=TClientDataSet.Create(nil);
-   DReports:=TClientDataSet.Create(nil);
+   DReportGroups:=TRpMemDataSet.Create(nil);
+   DReportGroups2:=TRpMemDataSet.Create(nil);
+   DReports:=TRpMemDataSet.Create(nil);
    try
     DReportGroups.FieldDefs.Add('GROUP_CODE',ftInteger,0,true);
     DReportGroups.FieldDefs.Add('GROUP_NAME',ftString,100,false);
@@ -5187,6 +6435,10 @@ begin
   if dtype=rpfiredac then
    AssignParamValuesFiredac(TFDCustomQuery(datainfoitem.dataset),DataSource.Dataset);
 {$ENDIF}
+{$IFDEF FPC}
+  if dtype=rpfiredac then
+   AssignParamValuesS(TSQLQuery(datainfoitem.dataset),DataSource.Dataset);
+{$ENDIF}
 {$IFDEF USESQLEXPRESS}
  if dtype=rpdatadbexpress then
    AssignParamValuesS(TSQLQuery(datainfoitem.dataset),DataSource.Dataset);
@@ -5218,10 +6470,20 @@ begin
  end;
 {$ENDIF}
 {$IFDEF USEZEOS}
- if Assigned(FZInternalDatabase) then
+ // In AutoCommit mode (the default) the changes are committed and Commit
+ // raises "Invalid operation in AutoCommit mode" after saving
+ if Assigned(FZInternalDatabase) and FZInternalDatabase.InTransaction then
  begin
   FZInternalDatabase.Commit;
  end;
+{$ENDIF}
+{$IFNDEF FIREDAC}
+{$IFDEF FPC}
+ // The FireDac connections of FPC are SQLdb ones in the transaction that
+ // Connect starts: the library saves were rolled back when disconnecting
+ if Assigned(FSQLDBTransaction) and FSQLDBTransaction.Active then
+  FSQLDBTransaction.CommitRetaining;
+{$ENDIF}
 {$ENDIF}
 end;
 
@@ -5254,6 +6516,52 @@ begin
  end;
 end;
 
+// Start and length of the password in an ADO connection string (0 when none)
+procedure FindADOPassword(const astring:String;out astart,alength:integer);
+var
+ ustring:string;
+begin
+ ustring:=UpperCase(astring);
+ astart:=Pos('PASSWORD=',ustring);
+ if astart=0 then
+ begin
+  astart:=Pos('PASSWORD =',ustring);
+  if astart>0 then
+   astart:=astart+10;
+ end
+ else
+  astart:=astart+9;
+ alength:=0;
+ if astart>0 then
+  while (astart+alength<=Length(astring)) and (astring[astart+alength]<>';') do
+   inc(alength);
+end;
+
+function RestoreADOPassword(const AEdited,AOriginal:String):String;
+var
+ editstart,editlength,origstart,origlength,i:integer;
+ masked:boolean;
+begin
+ Result:=AEdited;
+ FindADOPassword(AEdited,editstart,editlength);
+ if (editstart=0) or (editlength=0) then
+  exit;
+ masked:=true;
+ for i:=editstart to editstart+editlength-1 do
+  if AEdited[i]<>'*' then
+  begin
+   masked:=false;
+   break;
+  end;
+ if not masked then
+  exit;
+ FindADOPassword(AOriginal,origstart,origlength);
+ if origstart=0 then
+  exit;
+ Result:=Copy(AEdited,1,editstart-1)+Copy(AOriginal,origstart,origlength)+
+  Copy(AEdited,editstart+editlength,Length(AEdited));
+end;
+
 procedure GetDotNetDrivers(alist:TStrings);
 begin
  alist.Clear;
@@ -5279,7 +6587,6 @@ var
  FExename,FCommandLine:string;
  procesinfo:TProcessInformation;
 {$ELSE}
- aparams:TStringList;
 {$ENDIF}
 begin
  tmpfile:=RpTempFileName;
@@ -5333,53 +6640,90 @@ begin
     end;
 end;
 
-procedure TRpDatabaseInfoItem.ReadNewName(Reader: TReader);
-begin
-  FName := Reader.ReadString;
-end;
-
-procedure TRpDataInfoItem.WriteNewName(Writer: TWriter);
-begin
-    Writer.WriteString(FName);
-end;
-
-procedure TRpDataInfoItem.ReadNewName(Reader: TReader);
-begin
-  FName := Reader.ReadString;
-end;
-
-procedure TRpDatabaseInfoItem.WriteNewName(Writer: TWriter);
-begin
-    Writer.WriteString(FName);
-end;
-
-
 procedure TRpDatabaseInfoItem.DefineProperties(Filer:TFiler);
 begin
  inherited;
 
- Filer.DefineProperty('ADOConnectionString',ReadAdoConnectionString,WriteAdoConnectionString,True);
- Filer.DefineProperty('Name',
-   ReadNewName, WriteNewName,
-  FName <> ''
-  );
+ Filer.DefineProperty('ADOConnectionString',ReadAdoConnectionString,WriteAdoConnectionString,ADOConnectionString<>'');
+ //Filer.DefineProperty('Name',
+ //  ReadNewName, WriteNewName,
+ // FName <> ''
+ // );
 end;
 
 procedure TRpDataInfoItem.DefineProperties(Filer:TFiler);
 begin
  inherited;
 
- Filer.DefineProperty('Name',
-   ReadNewName, WriteNewName,
-  FName <> ''
-  );
+ // Public, not published: only with a value, so a dataset without them is
+ // saved as before
+ Filer.DefineProperty('HubSchemaId',ReadHubSchemaId,WriteHubSchemaId,FHubSchemaId<>0);
+ Filer.DefineProperty('SchemaName',ReadSchemaName,WriteSchemaName,FSchemaName<>'');
+ //Filer.DefineProperty('Name',
+ //  ReadNewName, WriteNewName,
+ // FName <> ''
+ // );
 end;
 
+procedure ForceLoadDrivers;
+begin
+{$IFDEF FIREDAC}
+  // Drivers Gen�ricos y de Conectividad
+ {$IFDEF DELPHIENTERPRISEDBSTATIC}
+  TFDPhysODBCDriverLink.Create(nil);
+ {$ENDIF}
+
+  // SQL Server (v�a ODBC en Linux)
+ {$IFDEF DELPHIENTERPRISEDBSTATIC}
+  TFDPhysMSSQLDriverLink.Create(nil);
+ {$ENDIF}
+
+  // MySQL / MariaDB
+ {$IFNDEF ANDROID}
+  TFDPhysMySQLDriverLink.Create(nil);
+ {$ENDIF}
+
+  // PostgreSQL
+ {$IFNDEF ANDROID}
+  TFDPhysPGDriverLink.Create(nil);
+ {$ENDIF}
+
+  // SQLite
+  TFDPhysSQLiteDriverLink.Create(nil);
+
+  // Interbase / Firebird
+  TFDPhysIBDriverLink.Create(nil);
+ {$IFNDEF ANDROID}
+  TFDPhysFBDriverLink.Create(nil);
+ {$ENDIF}
+
+  {$IFDEF MSWINDOWS}
+  // Microsoft Access (Solo Windows)
+    TFDPhysMSAccessDriverLink.Create(nil);
+  // Advantage Database Server
+   TFDPhysADSDriverLink.Create(nil);
+  {$ENDIF}
+
+  // Otros Drivers que mencionaste (aseg�rate de tener las unidades en el uses)
+ {$IFDEF DELPHIENTERPRISEDBSTATIC}
+  TFDPhysASADriverLink.Create(nil);   // Sybase ASA
+  TFDPhysDB2DriverLink.Create(nil);   // IBM DB2
+  TFDPhysInfxDriverLink.Create(nil);  // Informix
+  TFDPhysTDataDriverLink.Create(nil);
+ {$ENDIF} // Teradata
+
+
+  TFDMoniFlatFileClientLink.Create(nil);
+{$ENDIF}
+end;
 
 initialization
 {$IFDEF MSWINDOWS}
   @SHGetKnownFolderPath := GetProcAddress(GetModuleHandle('shell32.dll'),
 'SHGetKnownFolderPath');
 {$ENDIF}
+
+
+ForceLoadDrivers;
 
 end.

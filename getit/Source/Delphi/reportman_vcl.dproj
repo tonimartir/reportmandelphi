@@ -182,6 +182,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="vcledge.dcp"/>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="reportman_rtl.dcp"/>
         <DCCReference Include="vclimg.dcp"/>
@@ -225,6 +226,14 @@
         <DCCReference Include="..\Common\rpmdfembeddedfile.pas">
             <Form>FRpEmbeddedFile</Form>
         </DCCReference>
+        <DCCReference Include="..\Common\rpchatmodernstyle.pas"/>
+        <DCCReference Include="..\Common\rpwebmarkdownvcl.pas"/>
+        <DCCReference Include="..\Common\rpchatdialogvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmloginframevcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmloginvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmaiselectionvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmaireportvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmchatvcl.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

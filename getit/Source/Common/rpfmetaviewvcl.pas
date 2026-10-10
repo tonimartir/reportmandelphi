@@ -906,7 +906,7 @@ begin
  if FileExists(aurl) then
   ShowHelp(aurl)
  else
-  ShowHelp('http://reportman.sourceforge.net');
+  ShowHelp('https://reportman.es');
 end;
 
 

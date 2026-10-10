@@ -196,85 +196,91 @@
         <DCCReference Include="reportman_rtl.dcp"/>
         <DCCReference Include="reportman_vcl.dcp"/>
         <DCCReference Include="designide.dcp"/>
-        <DCCReference Include="..\..\rpmregdesignvcl.pas"/>
-        <DCCReference Include="..\..\rpmdesignervcl.pas"/>
-        <DCCReference Include="..\..\rprulervcl.pas"/>
-        <DCCReference Include="..\..\rpmdfmainvcl.pas">
+        <DCCReference Include="..\Common\rpmregdesignvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdesignervcl.pas"/>
+        <DCCReference Include="..\Common\rprulervcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfmainvcl.pas">
             <Form>FRpMainFVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfdesignvcl.pas">
+        <DCCReference Include="..\Common\rpmdfdesignvcl.pas">
             <Form>FRpDesignFrameVCL</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfstrucvcl.pas">
+        <DCCReference Include="..\Common\rpmdfstrucvcl.pas">
             <Form>FRpStructureVCL</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpdbbrowservcl.pas">
+        <DCCReference Include="..\Common\rpdbbrowservcl.pas">
             <Form>FRpBrowserVCL</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdobjinspvcl.pas">
+        <DCCReference Include="..\Common\rpmdobjinspvcl.pas">
             <Form>FRpObjInspVCL</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdobinsintvcl.pas"/>
-        <DCCReference Include="..\..\rpmdfextsecvcl.pas">
+        <DCCReference Include="..\Common\rpmdobinsintvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfextsecvcl.pas">
             <Form>FRpExtSectionVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdflabelintvcl.pas"/>
-        <DCCReference Include="..\..\rpmdfdrawintvcl.pas"/>
-        <DCCReference Include="..\..\rpmdfbarcodeintvcl.pas"/>
-        <DCCReference Include="..\..\rpmdfchartintvcl.pas"/>
-        <DCCReference Include="..\..\rpmdfsectionintvcl.pas"/>
-        <DCCReference Include="..\..\rpmdfdinfovcl.pas">
+        <DCCReference Include="..\Common\rpmdflabelintvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfdrawintvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfbarcodeintvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfchartintvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfsectionintvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfdinfovcl.pas">
             <Form>FRpDInfoVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfdatasetsvcl.pas">
+        <DCCReference Include="..\Common\rpmdfdatasetsvcl.pas">
             <Form>FRpDatasetsVCL</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpfparamsvcl.pas">
+        <DCCReference Include="..\Common\rpfparamsvcl.pas">
             <Form>FRpParamsVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfsampledatavcl.pas">
+        <DCCReference Include="..\Common\rpmdfsampledatavcl.pas">
             <Form>FRpShowSampledataVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfdatatextvcl.pas">
+        <DCCReference Include="..\Common\rpmdfdatatextvcl.pas">
             <Form>FRpDataTextVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfconnectionvcl.pas">
+        <DCCReference Include="..\Common\rpmdfconnectionvcl.pas">
             <Form>FRpConnectionVCL</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpdbxconfigvcl.pas">
+        <DCCReference Include="..\Common\rpdbxconfigvcl.pas">
             <Form>FRpDBXConfigVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfgridvcl.pas">
+        <DCCReference Include="..\Common\rpmdfgridvcl.pas">
             <Form>FRpGridOptionsVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdsysinfo.pas">
+        <DCCReference Include="..\Common\rpmdsysinfo.pas">
             <Form>FRpSysInfo</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfopenlibvcl.pas">
+        <DCCReference Include="..\Common\rpmdfopenlibvcl.pas">
             <Form>FRpOpenLibVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdftreevcl.pas">
+        <DCCReference Include="..\Common\rpmdftreevcl.pas">
             <Form>FRpDBTreeVCL</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpeditconnvcl.pas">
+        <DCCReference Include="..\Common\rpeditconnvcl.pas">
             <Form>FRpEditConVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfwizardvcl.pas">
+        <DCCReference Include="..\Common\rpmdfwizardvcl.pas">
             <Form>FRpWizardVCL</Form>
         </DCCReference>
-        <DCCReference Include="..\..\rpmdfselectfields.pas">
+        <DCCReference Include="..\Common\rpmdfselectfields.pas">
             <Form>FRpSelectFields</Form>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
-        <DCCReference Include="..\..\rpcolumnar.pas"/>
-        <DCCReference Include="..\..\rppanel.pas"/>
+        <DCCReference Include="..\Common\rpcolumnar.pas"/>
+        <DCCReference Include="..\Common\rppanel.pas"/>
+        <DCCReference Include="..\Common\rpdctransportchip.pas"/>
+        <DCCReference Include="..\Common\rpfrmlocalschemasvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmaischemaselectorvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmmonacoeditorvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdcueviewvcl.pas"/>
+        <DCCReference Include="..\Common\rpmdfnewreportwizardvcl.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

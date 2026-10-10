@@ -455,10 +455,10 @@ begin
           {$IFDEF DEBUG}
           if (ptr2int(q) >= ptr2int(s.read)) then
             Tracev('inflate:       stored end '+
-                IntToStr(z.total_out + ptr2int(q) - ptr2int(s.read)) + ' total out')
+                IntToStr(Int64(z.total_out) + ptr2int(q) - ptr2int(s.read)) + ' total out')
           else
             Tracev('inflate:       stored end '+
-                    IntToStr(z.total_out + ptr2int(s.zend) - ptr2int(s.read) +
+                    IntToStr(Int64(z.total_out) + ptr2int(s.zend) - ptr2int(s.read) +
                     ptr2int(q) - ptr2int(s.window)) +  ' total out');
           {$ENDIF}
           if s.last then
@@ -811,10 +811,10 @@ begin
         {$IFDEF DEBUG}
         if (ptr2int(q) >= ptr2int(s.read)) then
           Tracev('inflate:       codes end '+
-              IntToStr(z.total_out + ptr2int(q) - ptr2int(s.read)) + ' total out')
+              IntToStr(Int64(z.total_out) + ptr2int(q) - ptr2int(s.read)) + ' total out')
         else
           Tracev('inflate:       codes end '+
-                  IntToStr(z.total_out + ptr2int(s.zend) - ptr2int(s.read) +
+                  IntToStr(Int64(z.total_out) + ptr2int(s.zend) - ptr2int(s.read) +
                   ptr2int(q) - ptr2int(s.window)) +  ' total out');
         {$ENDIF}
         if (not s.last) then

@@ -628,7 +628,7 @@ begin
  end;
  if pname=SrpSRotation then
  begin
-  Result:=IntToStr(TRpChart(printitem).Elevation);
+  Result:=IntToStr(TRpChart(printitem).Rotation);
   exit;
  end;
  if pname=SrpSOrthogonal then

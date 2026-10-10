@@ -85,6 +85,8 @@ type
    procedure OnValueColor(color:Integer);
    procedure SetIdentifier(Value:string);
    procedure SetSeries(avalue:TRpSeries);
+   function GetSeriesColors:string;
+   procedure SetSeriesColors(const avalue:string);
    function CheckValueCondition:boolean;
    function EvaluateSerieExpression:Variant;
    function EvaluateSerieCaption:Variant;
@@ -108,6 +110,12 @@ type
    procedure ReadColorExpression(Reader:TReader);
    procedure WriteSerieColorExpression(Writer:TWriter);
    procedure ReadSerieColorExpression(Reader:TReader);
+   procedure WriteAutoRange(Writer:TWriter);
+   procedure ReadAutoRange(Reader:TReader);
+   procedure WriteYMin(Writer:TWriter);
+   procedure ReadYMin(Reader:TReader);
+   procedure WriteYMax(Writer:TWriter);
+   procedure ReadYMax(Reader:TReader);
    function EvaluateText(atext:WideString):Variant;
   protected
    procedure DoPrint(adriver:TRpPrintDriver;
@@ -122,6 +130,7 @@ type
    property IdenChart:TVariableGrap read FIdenChart;
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup:string='');override;
    constructor Create(AOwner:TComponent);override;
+   destructor Destroy;override;
    property ChangeSerieExpression:widestring read FChangeSerieExpression write
     FChangeSerieExpression;
    property ClearExpression:widestring read FClearExpression write
@@ -143,6 +152,8 @@ type
    property AutoRange:TRpAutoRangeAxis read FAutoRange write FAutoRange;
    property YMin:double read FYMin write FYMin;
    property YMax:double read FYMax write FYMax;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property Series:TRpSeries read FSeries write SetSeries;
    property ChangeSerieBool:boolean read FChangeSerieBool write FChangeSerieBool
@@ -198,6 +209,14 @@ procedure TRpChart.Loaded;
 begin
  inherited Loaded;
  FIdenChart.DefaultChartType:=FChartType;
+end;
+
+destructor TRpChart.Destroy;
+begin
+ // The series were never freed (every chart leaked them)
+ FSeries.Free;
+ FSeries:=nil;
+ inherited Destroy;
 end;
 
 constructor TRpChart.Create(AOwner:TComponent);
@@ -491,7 +510,10 @@ begin
   fevaluator:=TRpBaseReport(GetReport).Evaluator;
   fevaluator.Expression:=SerieCaption;
   fevaluator.Evaluate;
-  Result:=WideString(fevaluator.EvalResult);
+  if (fevaluator.EvalResult = Null) then
+   Result:=''
+  else
+   Result:=WideString(fevaluator.EvalResult);
  except
   on E:Exception do
   begin
@@ -773,6 +795,54 @@ begin
  FSerieCaption:=ReadWideString(Reader);
 end;
 
+// Y axis limits are stored as text with '.' as decimal separator: the binary
+// Extended value of TWriter.WriteFloat differs between compilers and platforms
+function ChartFloatSettings:TFormatSettings;
+begin
+{$IFDEF FPC}
+ Result:=DefaultFormatSettings;
+ Result.DecimalSeparator:='.';
+ Result.ThousandSeparator:=',';
+{$ELSE}
+ Result:=TFormatSettings.Invariant;
+{$ENDIF}
+end;
+
+procedure TRpChart.WriteAutoRange(Writer:TWriter);
+begin
+ Writer.WriteInteger(Integer(FAutoRange));
+end;
+
+procedure TRpChart.ReadAutoRange(Reader:TReader);
+var
+ avalue:integer;
+begin
+ avalue:=Reader.ReadInteger;
+ if (avalue>=Integer(Low(TRpAutoRangeAxis))) and
+  (avalue<=Integer(High(TRpAutoRangeAxis))) then
+  FAutoRange:=TRpAutoRangeAxis(avalue);
+end;
+
+procedure TRpChart.WriteYMin(Writer:TWriter);
+begin
+ Writer.WriteString(FloatToStr(FYMin,ChartFloatSettings));
+end;
+
+procedure TRpChart.ReadYMin(Reader:TReader);
+begin
+ FYMin:=StrToFloat(Reader.ReadString,ChartFloatSettings);
+end;
+
+procedure TRpChart.WriteYMax(Writer:TWriter);
+begin
+ Writer.WriteString(FloatToStr(FYMax,ChartFloatSettings));
+end;
+
+procedure TRpChart.ReadYMax(Reader:TReader);
+begin
+ FYMax:=StrToFloat(Reader.ReadString,ChartFloatSettings);
+end;
+
 
 procedure TRpChart.DefineProperties(Filer:TFiler);
 begin
@@ -787,6 +857,425 @@ begin
  Filer.DefineProperty('ClearExpression',ReadClearExpression,WriteClearExpression,True);
  Filer.DefineProperty('ColorExpression',ReadColorExpression,WriteColorExpression,True);
  Filer.DefineProperty('SerieColorExpression',ReadSerieColorExpression,WriteSerieColorExpression,True);
+ // Only when not default, so reports that don't use them are written exactly
+ // as before and older versions can still open them
+ Filer.DefineProperty('AutoRange',ReadAutoRange,WriteAutoRange,FAutoRange<>rpAutoRangeDefault);
+ Filer.DefineProperty('YMin',ReadYMin,WriteYMin,FYMin<>0);
+ Filer.DefineProperty('YMax',ReadYMax,WriteYMax,FYMax<>0);
+end;
+
+{ TRpChart - IPropertiesItem }
+
+// Colors of the Series items, comma separated: the only Series data saved with
+// the report (values are filled when the report runs)
+function TRpChart.GetSeriesColors:string;
+var
+ i:integer;
+begin
+ Result:='';
+ for i:=0 to FSeries.Count-1 do
+ begin
+  if i>0 then
+   Result:=Result+',';
+  Result:=Result+IntToStr(FSeries.Items[i].Color);
+ end;
+end;
+
+procedure TRpChart.SetSeriesColors(const avalue:string);
+var
+ alist:TStringList;
+ i:integer;
+begin
+ alist:=TStringList.Create;
+ try
+  alist.CommaText:=avalue;
+  FSeries.Clear;
+  for i:=0 to alist.Count-1 do
+   FSeries.Add.Color:=StrToInt(alist.Strings[i]);
+ finally
+  alist.Free;
+ end;
+end;
+
+procedure TRpChart.SetItemProperty(const propName: string; const value: Variant);
+begin
+ // Expressions saved through DefineProperties
+ if SameText(propName, 'GetValueCondition') then
+ begin
+  FGetValueCondition := value;
+  exit;
+ end;
+ if SameText(propName, 'ValueExpression') then
+ begin
+  FValueExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'ValueXExpression') then
+ begin
+  FValueXExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'ChangeSerieExpression') then
+ begin
+  FChangeSerieExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'CaptionExpression') then
+ begin
+  FCaptionExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'SerieCaption') then
+ begin
+  FSerieCaption := value;
+  exit;
+ end;
+ if SameText(propName, 'ClearExpression') then
+ begin
+  FClearExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'ColorExpression') then
+ begin
+  FColorExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'SerieColorExpression') then
+ begin
+  FSerieColorExpression := value;
+  exit;
+ end;
+ if SameText(propName, 'SeriesColors') then
+ begin
+  SetSeriesColors(value);
+  exit;
+ end;
+ if SameText(propName, 'AutoRange') or SameText(propName, SRpAutoRange) then
+ begin
+  FAutoRange := TRpAutoRangeAxis(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'YMin') or SameText(propName, SRpAutoRangeYMin) then
+ begin
+  FYMin := value;
+  exit;
+ end;
+ if SameText(propName, 'YMax') or SameText(propName, SRpAutoRangeYMax) then
+ begin
+  FYMax := value;
+  exit;
+ end;
+ if SameText(propName, 'ChartType') then
+ begin
+  SetChartType(TRpChartType(Integer(value)));
+  exit;
+ end;
+ if SameText(propName, 'Identifier') or SameText(propName, SRpSIdentifier) then
+ begin
+  SetIdentifier(value);
+  exit;
+ end;
+ if SameText(propName, 'ChangeSerieBool') then
+ begin
+  FChangeSerieBool := value;
+  exit;
+ end;
+ if SameText(propName, 'ClearExpressionBool') then
+ begin
+  FClearExpressionBool := value;
+  exit;
+ end;
+ if SameText(propName, 'Driver') then
+ begin
+  FDriver := TRpChartDriver(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'View3d') then
+ begin
+  FView3d := value;
+  exit;
+ end;
+ if SameText(propName, 'View3dWalls') then
+ begin
+  FView3dWalls := value;
+  exit;
+ end;
+ if SameText(propName, 'Perspective') then
+ begin
+  FPerspective := value;
+  exit;
+ end;
+ if SameText(propName, 'Elevation') then
+ begin
+  FElevation := value;
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  FRotation := value;
+  exit;
+ end;
+ if SameText(propName, 'Zoom') then
+ begin
+  FZoom := value;
+  exit;
+ end;
+ if SameText(propName, 'HorzOffset') then
+ begin
+  FHorzOffset := value;
+  exit;
+ end;
+ if SameText(propName, 'VertOffset') then
+ begin
+  FVertOffset := value;
+  exit;
+ end;
+ if SameText(propName, 'Tilt') then
+ begin
+  FTilt := value;
+  exit;
+ end;
+ if SameText(propName, 'Orthogonal') then
+ begin
+  FOrthogonal := value;
+  exit;
+ end;
+ if SameText(propName, 'MultiBar') then
+ begin
+  FMultiBar := TRpMultiBar(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'Resolution') then
+ begin
+  FResolution := value;
+  exit;
+ end;
+ if SameText(propName, 'ShowLegend') then
+ begin
+  FShowLegend := value;
+  exit;
+ end;
+ if SameText(propName, 'ShowHint') then
+ begin
+  FShowHint := value;
+  exit;
+ end;
+ if SameText(propName, 'MarkStyle') then
+ begin
+  FMarkStyle := value;
+  exit;
+ end;
+ if SameText(propName, 'HorzFontSize') then
+ begin
+  FHorzFontSize := value;
+  exit;
+ end;
+ if SameText(propName, 'VertFontSize') then
+ begin
+  FVertFontSize := value;
+  exit;
+ end;
+ if SameText(propName, 'HorzFontRotation') then
+ begin
+  FHorzFontRotation := value;
+  exit;
+ end;
+ if SameText(propName, 'VertFontRotation') then
+ begin
+  FVertFontRotation := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpChart.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'GetValueCondition') then
+ begin
+  Result := FGetValueCondition;
+  exit;
+ end;
+ if SameText(propName, 'ValueExpression') then
+ begin
+  Result := FValueExpression;
+  exit;
+ end;
+ if SameText(propName, 'ValueXExpression') then
+ begin
+  Result := FValueXExpression;
+  exit;
+ end;
+ if SameText(propName, 'ChangeSerieExpression') then
+ begin
+  Result := FChangeSerieExpression;
+  exit;
+ end;
+ if SameText(propName, 'CaptionExpression') then
+ begin
+  Result := FCaptionExpression;
+  exit;
+ end;
+ if SameText(propName, 'SerieCaption') then
+ begin
+  Result := FSerieCaption;
+  exit;
+ end;
+ if SameText(propName, 'ClearExpression') then
+ begin
+  Result := FClearExpression;
+  exit;
+ end;
+ if SameText(propName, 'ColorExpression') then
+ begin
+  Result := FColorExpression;
+  exit;
+ end;
+ if SameText(propName, 'SerieColorExpression') then
+ begin
+  Result := FSerieColorExpression;
+  exit;
+ end;
+ if SameText(propName, 'SeriesColors') then
+ begin
+  Result := GetSeriesColors;
+  exit;
+ end;
+ if SameText(propName, 'AutoRange') or SameText(propName, SRpAutoRange) then
+ begin
+  Result := Integer(FAutoRange);
+  exit;
+ end;
+ if SameText(propName, 'YMin') or SameText(propName, SRpAutoRangeYMin) then
+ begin
+  Result := FYMin;
+  exit;
+ end;
+ if SameText(propName, 'YMax') or SameText(propName, SRpAutoRangeYMax) then
+ begin
+  Result := FYMax;
+  exit;
+ end;
+ if SameText(propName, 'ChartType') then
+ begin
+  Result := Integer(FChartType);
+  exit;
+ end;
+ if SameText(propName, 'Identifier') or SameText(propName, SRpSIdentifier) then
+ begin
+  Result := FIdentifier;
+  exit;
+ end;
+ if SameText(propName, 'ChangeSerieBool') then
+ begin
+  Result := FChangeSerieBool;
+  exit;
+ end;
+ if SameText(propName, 'ClearExpressionBool') then
+ begin
+  Result := FClearExpressionBool;
+  exit;
+ end;
+ if SameText(propName, 'Driver') then
+ begin
+  Result := Integer(FDriver);
+  exit;
+ end;
+ if SameText(propName, 'View3d') then
+ begin
+  Result := FView3d;
+  exit;
+ end;
+ if SameText(propName, 'View3dWalls') then
+ begin
+  Result := FView3dWalls;
+  exit;
+ end;
+ if SameText(propName, 'Perspective') then
+ begin
+  Result := FPerspective;
+  exit;
+ end;
+ if SameText(propName, 'Elevation') then
+ begin
+  Result := FElevation;
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  Result := FRotation;
+  exit;
+ end;
+ if SameText(propName, 'Zoom') then
+ begin
+  Result := FZoom;
+  exit;
+ end;
+ if SameText(propName, 'HorzOffset') then
+ begin
+  Result := FHorzOffset;
+  exit;
+ end;
+ if SameText(propName, 'VertOffset') then
+ begin
+  Result := FVertOffset;
+  exit;
+ end;
+ if SameText(propName, 'Tilt') then
+ begin
+  Result := FTilt;
+  exit;
+ end;
+ if SameText(propName, 'Orthogonal') then
+ begin
+  Result := FOrthogonal;
+  exit;
+ end;
+ if SameText(propName, 'MultiBar') then
+ begin
+  Result := Integer(FMultiBar);
+  exit;
+ end;
+ if SameText(propName, 'Resolution') then
+ begin
+  Result := FResolution;
+  exit;
+ end;
+ if SameText(propName, 'ShowLegend') then
+ begin
+  Result := FShowLegend;
+  exit;
+ end;
+ if SameText(propName, 'ShowHint') then
+ begin
+  Result := FShowHint;
+  exit;
+ end;
+ if SameText(propName, 'MarkStyle') then
+ begin
+  Result := FMarkStyle;
+  exit;
+ end;
+ if SameText(propName, 'HorzFontSize') then
+ begin
+  Result := FHorzFontSize;
+  exit;
+ end;
+ if SameText(propName, 'VertFontSize') then
+ begin
+  Result := FVertFontSize;
+  exit;
+ end;
+ if SameText(propName, 'HorzFontRotation') then
+ begin
+  Result := FHorzFontRotation;
+  exit;
+ end;
+ if SameText(propName, 'VertFontRotation') then
+ begin
+  Result := FVertFontRotation;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
 end;
 
 end.

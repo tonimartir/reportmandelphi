@@ -116,6 +116,7 @@ type
    function Code_EAN13: AnsiString;
    procedure MakeModules;
    procedure SetModul(v:integer);
+  procedure SetExpression(const Value:WideString);
    procedure Evaluate;
    procedure WriteExpression(Writer:TWriter);
    procedure ReadExpression(Reader:TReader);
@@ -188,7 +189,9 @@ type
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup: String='');override;
    constructor Create(Owner:TComponent); override;
 //   procedure DrawText(Canvas:TCanvas);
-   property Expression:widestring read FExpression write FExpression;
+  property Expression:widestring read FExpression write SetExpression;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
     // Width of the smallest line in a Barcode
    property Modul:integer read FModul  write SetModul;
@@ -243,7 +246,7 @@ begin
  Result:=bcCodeEAN13;
  for i:=bcCode_2_5_interleaved to bcCodeQr do
  begin
-  if (value=BarcodeTypeStrings[i]) then
+  if (String(value)=BarcodeTypeStrings[i]) then
   begin
    Result:=i;
    break;
@@ -273,7 +276,7 @@ begin
 
 		if odd(i) then
 			Inc(v, 5);
-		t := t + Chr(v);
+		t := AnsiString(String(t) + Chr(v));
 	end;
 	Convert := t;
 end;
@@ -363,7 +366,7 @@ const bcNames:array[bcCode_2_5_interleaved..bcCodeEAN13] of string =
 	);
 
 begin
-	Result := bcNames[FTyp];
+	Result := AnsiString(bcNames[FTyp]);
 end;
 
 
@@ -371,9 +374,16 @@ end;
 // set Modul Width
 procedure TRpBarcode.SetModul(v:integer);
 begin
+ AssertCanModify(ClassName+'.Modul');
  if (v<1) then
   v:=1;
  FModul := v;
+end;
+
+procedure TRpBarcode.SetExpression(const Value:WideString);
+begin
+ AssertCanModify(ClassName+'.Expression');
+ FExpression:=Value;
 end;
 
 ////////////////////////////// EAN /////////////////////////////////////////
@@ -388,15 +398,15 @@ begin
      for i:=1 to length(tmp) do
          begin
          if (fak mod 2) = 0 then
-            sum := sum + (StrToInt(tmp[i])*1)
+            sum := sum + (StrToInt(String(tmp[i]))*1)
          else
-            sum := sum + (StrToInt(tmp[i])*3);
+            sum := sum + (StrToInt(String(tmp[i]))*3);
          dec(fak);
          end;
      if (sum mod 10) = 0 then
         result := tmp+'0'
      else
-        result := tmp+IntToStr(10-(sum mod 10));
+        result := AnsiString(String(tmp)+IntToStr(10-(sum mod 10)));
 end;
 
 ////////////////////////////// EAN8 /////////////////////////////////////////
@@ -441,11 +451,11 @@ var
 begin
 	if FCheckSum then
            begin
-           tmp := '00000000'+string(CurrentText);
+           tmp := AnsiString('00000000'+string(CurrentText));
            tmp := getEAN(copy(tmp,length(tmp)-6,7)+'0');
            end
         else
-           tmp := string(CurrentText);
+           tmp := AnsiString(string(CurrentText));
   if Length(tmp)<8 then
   begin
     Result:='';
@@ -458,7 +468,7 @@ begin
 	for i:=1 to 4 do
             for j:= 1 to 4 do
                 begin
-                result := result + tabelle_EAN_A[TRpDigit(tmp[i]), j] ;
+                result := AnsiString(String(result) + tabelle_EAN_A[TRpDigit(tmp[i]), j]) ;
                 end;
 
  	result := result + '05050';   // Trennzeichen
@@ -466,7 +476,7 @@ begin
 	for i:=5 to 8 do
             for j:= 1 to 4 do
                 begin
-                result := result + tabelle_EAN_C[TRpDigit(tmp[i]), j] ;
+                result := AnsiString(String(result) + tabelle_EAN_C[TRpDigit(tmp[i]), j]) ;
                 end;
 
         result := result + '505';   // Stopcode
@@ -512,11 +522,11 @@ var
 begin
 	if FCheckSum then
 	begin
-		tmp := '0000000000000'+String(CurrentText);
+		tmp := AnsiString('0000000000000'+String(CurrentText));
 		tmp := getEAN(copy(tmp,length(tmp)-11,12)+'0');
 	end
 	else
-		tmp := string(CurrentText);
+		tmp := AnsiString(string(CurrentText));
 
   if Length(tmp)<13 then
   begin
@@ -524,7 +534,7 @@ begin
     Exit;
   end;
 
-	LK := StrToInt(tmp[1]);
+	LK := StrToInt(String(tmp[1]));
 	tmp := copy(tmp,2,12);
 
 	result := '505';   // Startcode
@@ -533,11 +543,11 @@ begin
 	begin
 		case tabelle_ParityEAN13[LK,i] of
 			'A' : for j:= 1 to 4 do
-						result := result + tabelle_EAN_A[TRpDigit(tmp[i]), j] ;
+						result := AnsiString(String(result) + tabelle_EAN_A[TRpDigit(tmp[i]), j]) ;
 			'B' : for j:= 1 to 4 do
-						result := result + tabelle_EAN_B[TRpDigit(tmp[i]), j] ;
+						result := AnsiString(String(result) + tabelle_EAN_B[TRpDigit(tmp[i]), j]) ;
 			'C' : for j:= 1 to 4 do
-						result := result + tabelle_EAN_C[TRpDigit(tmp[i]), j] ;
+						result := AnsiString(String(result) + tabelle_EAN_C[TRpDigit(tmp[i]), j]) ;
 	end;
 	end;
 
@@ -546,7 +556,7 @@ begin
 	for i:=7 to 12 do
 		for j:= 1 to 4 do
 		begin
-			result := result + tabelle_EAN_C[TRpDigit(tmp[i]), j] ;
+			result := AnsiString(String(result) + tabelle_EAN_C[TRpDigit(tmp[i]), j]) ;
 		end;
 
 	result := result + '505';   // Stopcode
@@ -573,7 +583,7 @@ var
 	c : char;
         FText: AnsiString;
 begin
-        FText:=string(CurrentText);
+        FText:=AnsiString(string(CurrentText));
 	result := '5050';   // Startcode
 
 	for i:=1 to Length(FText) div 2 do
@@ -584,12 +594,12 @@ begin
 				c := '6'
 			else
 				c := '5';
-			result := result + c;
+			result := AnsiString(String(result) + c);
 			if tabelle_2_5[TRpDigit(FText[i*2]), j] = '1' then
 				c := '1'
 			else
 				c := '0';
-			result := result + c;
+			result := AnsiString(String(result) + c);
 		end;
 	end;
 
@@ -638,7 +648,7 @@ begin
 			// Falls i ungerade ist dann mache L�cke zu Strich
 			if odd(j) then
 				c := chr(ord(c)+5);
-			result := result + c;
+			result := AnsiString(String(result) + c);
 		end;
 		result := result + '0';   // L�cke zwischen den Zeichen
 	end;
@@ -829,7 +839,11 @@ const tabelle_128: array[0..102] of TCode128 = (
 	( a:')'; b:')'; c:'09'; data:'221213'; ),
 	( a:'*'; b:'*'; c:'10'; data:'221312'; ),
 	( a:'+'; b:'+'; c:'11'; data:'231212'; ),
+{$IFDEF FPC}
+	( a:#180; b:#180; c:'12'; data:'112232'; ),
+{$ELSE}
 	( a:'´'; b:'´'; c:'12'; data:'112232'; ),
+{$ENDIF}
 	( a:'-'; b:'-'; c:'13'; data:'122132'; ),
 	( a:'.'; b:'.'; c:'14'; data:'122231'; ),
 	( a:'/'; b:'/'; c:'15'; data:'113222'; ),
@@ -919,7 +933,11 @@ const tabelle_128: array[0..102] of TCode128 = (
 	( a:' '; b:' '; c:'99'; data:'113141'; ),
 	( a:' '; b:' '; c:'  '; data:'114131'; ),
 	( a:' '; b:' '; c:'  '; data:'311141'; ),
+{$IFDEF FPC}
+	( a:#191; b:#191; c:'  '; data:'411131'; )
+{$ELSE}
 	( a:'¿'; b:'¿'; c:'  '; data:'411131'; )
+{$ENDIF}
 	);
 
 StartA = '211412';
@@ -978,7 +996,7 @@ begin
  if FText[i]=Chr($BF) then
   inc(i);
  acopy:=Copy(ftext,i,Length(FText));
- index:=Pos(Chr($BF),acopy);
+ index:=Pos(Chr($BF),String(acopy));
  if index>0 then
   acopy:=copy(acopy,1,index-1);
  if (length(acopy) mod 2)<>0 then
@@ -1582,6 +1600,7 @@ begin
   alpha := Rotation / 10 * pi / 180.0;
 
   PenWidth := 0;
+  PenColor := 0;
   for i := 1 to Length(data) do // examine the pattern string
   begin
     drawline := true;
@@ -1651,7 +1670,7 @@ begin
       begin
         // something went wrong
         // mistyped pattern table
-        raise Exception.Create(SRpWrongBarcodeType + ':' + data);
+        raise Exception.Create(SRpWrongBarcodeType + ':' + WideString(data));
       end;
     end;
     if (lt = black) or (lt = black_half) then
@@ -2648,7 +2667,7 @@ begin
       case FCode[Position + 1] of
         '0'..'9' : begin
           try
-            NewChar := StrToInt (Copy (FCode, Position + 1, 3));
+            NewChar := StrToInt (String(Copy (FCode, Position + 1, 3)));
             Inc (Position, 4);
           except
             NewChar := 0;
@@ -2658,7 +2677,7 @@ begin
         'C', 'c' : begin
           try
             Codeword := True;
-            NewChar := StrToInt (Copy (FCode, Position + 2, 3));
+            NewChar := StrToInt (String(Copy (FCode, Position + 2, 3)));
             Inc (Position, 5);
           except
             NewChar := 0;
@@ -2666,7 +2685,7 @@ begin
           end;
         end;
         'G', 'g' : begin
-          WorkNum := StrToInt (Copy (FCode, Position + 1, 6));
+          WorkNum := StrToInt (String(Copy (FCode, Position + 1, 6)));
           Inc (Position, 8);
           if (WorkNum >= 0) and (WorkNum <= 899) then begin
             AddCodeword (927);
@@ -2686,7 +2705,7 @@ begin
         end;
         'X', 'x' : begin
           try
-            NewChar := StrToInt ('$' + Copy (FCode, Position + 2, 2));
+            NewChar := StrToInt (String('$' + Copy (FCode, Position + 2, 2)));
             Inc (Position, 4);
           except
             NewChar := 0;
@@ -2735,7 +2754,7 @@ var
 begin
  inherited DoPrint(adriver,aposx,aposy,newwidth,newheight,metafile,MaxExtent,PartialPrint);
  CurrentTextW:=GetText;
- CurrentText:=CurrentTextW;
+ CurrentText:=AnsiString(CurrentTextW);
  try
   data:=Calculatebarcode;
  except
@@ -2936,7 +2955,7 @@ begin
   CurPos := 0;
   DrawBlock := True;
   for i := 1 to Length (Pattern) do begin
-    NewPos := StrToInt (Copy (Pattern, i, 1)) * Modul;
+    NewPos := StrToInt (String(Copy (Pattern, i, 1))) * Modul;
     if DrawBlock then
     begin
      aleft:=CurPos + GetColumnPosition (ColNumber);
@@ -3070,14 +3089,14 @@ begin
  if value='Auto' then
   Result:=-1
  else
-  Result:=StrToInt(value[6]);
+  Result:=StrToInt(String(value[6]));
 end;
 
 function ECCToString(value:integer): AnsiString;
 begin
  Result:='Auto';
  if (value in [0..8]) then
-  Result:='Level'+IntToStr(value);
+  Result:=AnsiString('Level'+IntToStr(value));
 end;
 
 procedure FillECCValues(alist:TRpWideStrings);
@@ -3098,7 +3117,6 @@ var
   Row, Column: Integer;
   squareWidth:integer;
   squareHeight:integer;
-  metaPage:TRpMetafilePage;
   PenColor:Integer;
   BrushColor:Integer;
   PenWidth:Integer;
@@ -3106,7 +3124,6 @@ var
   isBlack:boolean;
 begin
   PenWidth:= 0;
-  metaPage:=meta.Pages[meta.CurrentPage];
   QRCode := TRpDelphiZXingQRCode.Create;
   try
     QRCode.Encoding := qrAuto;
@@ -3122,7 +3139,7 @@ begin
         QRCode.ErrorCorrectionLevel := 0; // 0=L (7%); 1=M (15%); 2=Q (25%); 3=H (35%)
 
     end;
-    QRCode.Data := CurrentText;
+    QRCode.Data := WideString(CurrentText);
     squareWidth:=Width div QRCode.Columns;
     squareHeight:=Height div QRCode.Rows;
     // Center barcode in rectangle
@@ -3138,22 +3155,28 @@ begin
       FTop:=FTop+(dif*QRCode.Rows) div 2;
       squareHeight:=squareWidth;
     end;
+    // El fondo, UNA SOLA VEZ. Antes se pintaba un rectangulo blanco por cada modulo
+    // claro: un QR de 40x40 mm emitia unos 930, la mayor parte del peso del objeto en
+    // el PDF, y ademas cada uno se dibuja con pluma, asi que los claros mordian medio
+    // trazo a los oscuros ya dibujados y el codigo se veia lavado en pantalla. Con un
+    // solo fondo detras, a los modulos oscuros no les pinta nadie encima.
+    // (Con Transparent no hay fondo, como antes: es lo que se pide para poner el codigo
+    // sobre un color propio.)
+    if (Not Transparent) then
+    begin
+      meta.Pages[meta.CurrentPage].NewDrawObject(
+          FTop,FLeft,squareWidth*QRCode.Columns,squareHeight*QRCode.Rows,
+          integer(rpsRectangle),0,BackColor,0,PenWidth,BackColor,'');
+    end;
+    PenColor := BColor;
+    BrushColor := PenColor;
     for Row := 0 to QRCode.Rows - 1 do
     begin
       for Column := 0 to QRCode.Columns - 1 do
       begin
         isBlack := QRCode.IsBlack[Row, Column];
+        // Solo los oscuros: el fondo ya esta puesto.
         if (isBlack) then
-        begin
- 				 PenColor := BColor;
-         BrushColor := PenColor;
-        end
-        else
-        begin
-         PenColor := BackColor;
-         BrushColor := PenColor;
-        end;
-        if (isBlack OR (Not Transparent)) then
         begin
           meta.Pages[meta.CurrentPage].NewDrawObject(
               FTop+Row*squareHeight,FLeft+Column*squareWidth,squareWidth,squareHeight,
@@ -3166,5 +3189,158 @@ begin
   end;
 end;
 
+
+{ TRpBarcode - IPropertiesItem }
+
+procedure TRpBarcode.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  SetExpression(value);
+  exit;
+ end;
+ if SameText(propName, 'Modul') or SameText(propName, SRpSModul) then
+ begin
+  SetModul(value);
+  exit;
+ end;
+ if SameText(propName, 'Ratio') or SameText(propName, SRpSRatio) then
+ begin
+  FRatio := Double(value);
+  exit;
+ end;
+ if SameText(propName, 'Typ') or SameText(propName, SRpSBarcodeType) then
+ begin
+  FTyp := TRpBarcodeType(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'Checksum') or SameText(propName, SRpSChecksum) then
+ begin
+  FCheckSum := value;
+  exit;
+ end;
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
+ begin
+  FDisplayFormat := value;
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  FRotation := value;
+  exit;
+ end;
+ if SameText(propName, 'BColor') then
+ begin
+  FBColor := value;
+  exit;
+ end;
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
+ begin
+  FBackColor := value;
+  exit;
+ end;
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
+ begin
+  FTransparent := value;
+  exit;
+ end;
+ if SameText(propName, 'NumColumns') then
+ begin
+  FNumColumns := value;
+  exit;
+ end;
+ if SameText(propName, 'NumRows') then
+ begin
+  FNumRows := value;
+  exit;
+ end;
+ if SameText(propName, 'ECCLevel') then
+ begin
+  SetECCLevel(value);
+  exit;
+ end;
+ if SameText(propName, 'Truncated') then
+ begin
+  FTruncated := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpBarcode.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Expression') or SameText(propName, SRpSExpression) then
+ begin
+  Result := FExpression;
+  exit;
+ end;
+ if SameText(propName, 'Modul') or SameText(propName, SRpSModul) then
+ begin
+  Result := FModul;
+  exit;
+ end;
+ if SameText(propName, 'Ratio') or SameText(propName, SRpSRatio) then
+ begin
+  Result := FRatio;
+  exit;
+ end;
+ if SameText(propName, 'Typ') or SameText(propName, SRpSBarcodeType) then
+ begin
+  Result := Integer(FTyp);
+  exit;
+ end;
+ if SameText(propName, 'Checksum') or SameText(propName, SRpSChecksum) then
+ begin
+  Result := FCheckSum;
+  exit;
+ end;
+ if SameText(propName, 'DisplayFormat') or SameText(propName, SRpSDisplayFormat) then
+ begin
+  Result := FDisplayFormat;
+  exit;
+ end;
+ if SameText(propName, 'Rotation') or SameText(propName, SRpSRotation) then
+ begin
+  Result := FRotation;
+  exit;
+ end;
+ if SameText(propName, 'BColor') then
+ begin
+  Result := FBColor;
+  exit;
+ end;
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
+ begin
+  Result := FBackColor;
+  exit;
+ end;
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
+ begin
+  Result := FTransparent;
+  exit;
+ end;
+ if SameText(propName, 'NumColumns') then
+ begin
+  Result := FNumColumns;
+  exit;
+ end;
+ if SameText(propName, 'NumRows') then
+ begin
+  Result := FNumRows;
+  exit;
+ end;
+ if SameText(propName, 'ECCLevel') then
+ begin
+  Result := FECCLevel;
+  exit;
+ end;
+ if SameText(propName, 'Truncated') then
+ begin
+  Result := FTruncated;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
 
 end.

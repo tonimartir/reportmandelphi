@@ -30,16 +30,10 @@ package reportman_rtl;
 
 requires
 {$IFDEF MSWINDOWS}
-  dbexpress,
   FireDACMSAccDriver,
-  FireDACDBXDriver,
-  FireDACDSDriver,
   adortl,
 {$ENDIF}
-{$IFDEF ANDROID}
-{$ELSE}
-  DataSnapClient,
-  DataSnapCommon,
+{$IFNDEF ANDROID}
   FireDACPgDriver,
   FireDACCommonODBC,
   FireDACMySQLDriver,
@@ -47,9 +41,6 @@ requires
 {$ENDIF}
   rtl,
   dbrtl,
-  DbxCommonDriver,
-  DbxClientDriver,
-  CustomIPTransport,
   dsnap,
   FireDAC,
   FireDACCommonDriver,
@@ -122,6 +113,21 @@ contains
   rpclientdataset in '..\Common\rpclientdataset.pas',
   rplastsav in '..\Common\rplastsav.pas',
   rptruetype in '..\Common\rptruetype.pas',
-  rpDelphiZXIngQRCode in '..\Common\rpDelphiZXIngQRCode.pas';
+  rpDelphiZXIngQRCode in '..\Common\rpDelphiZXIngQRCode.pas',
+  rpaireportcontracts in '..\Common\rpaireportcontracts.pas',
+  rpauthmanager in '..\Common\rpauthmanager.pas',
+  rpdatadirect in '..\Common\rpdatadirect.pas',
+  rpdatahttp in '..\Common\rpdatahttp.pas',
+  rpdchub in '..\Common\rpdchub.pas',
+  rpdcintegration in '..\Common\rpdcintegration.pas',
+  rpdcpool in '..\Common\rpdcpool.pas',
+  rpfastserializer in '..\Common\rpfastserializer.pas',
+  rphtmlparser in '..\Common\rphtmlparser.pas',
+  rplibdatachannel in '..\Common\rplibdatachannel.pas',
+  rpmdundocue in '..\Common\rpmdundocue.pas',
+  rpreportdesignercontracts in '..\Common\rpreportdesignercontracts.pas',
+  rpdesignerclientsql in '..\Common\rpdesignerclientsql.pas',
+  rplocalschemas in '..\Common\rplocalschemas.pas',
+  rpwebdbxadmin in '..\Common\rpwebdbxadmin.pas';
 
 end.

@@ -21,6 +21,9 @@ uses
 {$ELSE}
 {$IFDEF FPC}
  dynlibs,
+{$IFDEF DARWIN}
+ rpdarwinlibs,
+{$ENDIF}
 {$ELSE}
  // Libc,
 {$ENDIF}
@@ -32,7 +35,11 @@ const
 // C_FREETYPE='freetype6.dll';
  C_FREETYPE='freetype.dll';
 {$ELSE}
+{$IFDEF DARWIN}
+ C_FREETYPE='libfreetype.6.dylib';
+{$ELSE}
  C_FREETYPE='libfreetype.so.6';
+{$ENDIF}
  //C_FREETYPE='freetype';
 {$ENDIF}
  FT_LOAD_DEFAULT=$0;
@@ -86,7 +93,8 @@ type
   PFT_Byte = ^Byte;
   FT_String = AnsiChar;
   PFT_String = PAnsiChar;
-{$IFDEF CPUX64}
+// C long: 64 bits on 64 bit Unix (x86_64 and aarch64, Apple Silicon)
+{$IF DEFINED(CPUX64) OR (DEFINED(FPC) AND DEFINED(CPUAARCH64))}
       FT_Fixed  = int64;
       FT_Long   = int64;
       FT_Pos     = Int64;
@@ -94,7 +102,7 @@ type
       FT_Fixed  = longint;
       FT_Long   = longint;
       FT_Pos     = longint;
-{$ENDIF}
+{$IFEND}
   FT_Pointer = Pointer;
   FT_ULong = Cardinal;
   FT_UInt = Cardinal;
@@ -435,7 +443,11 @@ begin
    Raise Exception.Create('Error opening:'+C_FREETYPE);
 {$ELSE}
 {$IFDEF FPC}
+{$IFDEF DARWIN}
+ FreeTypeLib:=RpLoadDarwinLibrary(C_FREETYPE);
+{$ELSE}
  FreeTypeLib:=dynlibs.LoadLibrary(C_FREETYPE);
+{$ENDIF}
  if FreeTypeLib=0 then
   Raise Exception.Create('Error opening:'+C_FREETYPE);
 {$ELSE}

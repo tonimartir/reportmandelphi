@@ -39,7 +39,7 @@ const
  MAX_ELEMENT_HEIGHT=86400;
 
 type
- TRpCommonComponent=class(TComponent)
+ TRpCommonComponent=class(TComponent, IPropertiesItem)
   private
    FHeight:TRpTwips;
    FWidth:TRpTwips;
@@ -58,6 +58,7 @@ type
   protected
    procedure DefineProperties(Filer:TFiler);override;
    function GetReport:TComponent;
+    procedure AssertCanModify(const AReason:string);
    procedure DoPrint(adriver:TRpPrintDriver;
     aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
     MaxExtent:TPoint;var PartialPrint:Boolean);virtual;
@@ -71,6 +72,8 @@ type
    procedure Print(adriver:TRpPrintDriver;aposx,aposy,newwidth,newheight:integer;metafile:TRpMetafileReport;
     MaxExtent:TPoint;var PartialPrint:Boolean);
    procedure SubReportChanged(newstate:TRpReportChanged;newgroup:string='');virtual;
+   procedure SetItemProperty(const propName: string; const value: Variant); virtual;
+   function GetItemProperty(const propName: string): Variant; virtual;
    property Report:TComponent read GetReport;
    property OnBeforePrint:TNotifyEvent read FOnBeforePrint write FOnBeforePrint;
    property Visible:Boolean read FVisible write FVisible;
@@ -88,16 +91,22 @@ type
    FPosX:TRpTwips;
    FAlign:TRpPosAlign;
    FAnnotationExpression: string;
+  procedure SetPosX(Value:TRpTwips);
+  procedure SetPosY(Value:TRpTwips);
+  procedure SetAlign(Value:TRpPosAlign);
+  procedure SetAnnotationExpression(const Value:string);
   public
    PartialFlag:boolean;
    function GetParent:TRpCommonComponent;
    function GetAnnotation(): string;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
-   property PosX:TRpTwips read FPosX write FPosX;
-   property PosY:TRpTwips read FPosY write FPosY;
-   property Align:TRpPosAlign read FAlign write FAlign
+  property PosX:TRpTwips read FPosX write SetPosX;
+  property PosY:TRpTwips read FPosY write SetPosY;
+  property Align:TRpPosAlign read FAlign write SetAlign
     default rpalnone;
-   property AnnotationExpression: string read FAnnotationExpression write FAnnotationExpression;
+  property AnnotationExpression: string read FAnnotationExpression write SetAnnotationExpression;
   end;
 
  TRpCommonPosClass=class of TRpCommonPosComponent;
@@ -118,6 +127,7 @@ type
    FSection:TComponent;
    function GetItem(Index:Integer):TRpCommonListItem;
    procedure SetItem(index:integer;Value:TRpCommonListItem);
+  procedure AssertCanModify(const AReason:string);
   public
    function Add:TRpCommonListItem;
    function Insert(index:integer):TRpCommonListItem;
@@ -146,6 +156,7 @@ type
    FType1Font:TRpType1Font;
    FBidiModes:TStrings;
    FMultiPage:Boolean;
+   FIsHtml:Boolean;
    FPrintStep:TRpSelectFontStep;
    procedure ReadWFontName(Reader:TReader);
    procedure WriteWFontName(Writer:TWriter);
@@ -161,11 +172,14 @@ type
   public
    constructor Create(AOwner:TComponent);override;
    destructor Destroy;override;
+   function EvaluateHtmlExpressions(const text: WideString): WideString;
    property WFontName:widestring read FWFontName write FWFontName;
    property LFontName:widestring read FLFontName write FLFontName;
    property BidiMode:TRpBidiMode read GetBidiMode write SetBidiMode;
    property RightToLeft:Boolean read GetRightToLeft;
    property PrintAlignMent:Integer read GetPrintAlignMent;
+   procedure SetItemProperty(const propName: string; const value: Variant); override;
+   function GetItemProperty(const propName: string): Variant; override;
   published
    property Type1Font:TRpType1Font read FType1Font write FType1Font;
    property FontSize:smallint read FFontSize write FFontSize default 10;
@@ -185,11 +199,12 @@ type
    property MultiPage:Boolean read FMultiPage write FMultiPage default false;
    property PrintStep:TRpSelectFontStep read FPrintStep write FPrintStep
     default rpselectsize;
+   property IsHtml:Boolean read FIsHtml write FIsHtml default false;
   end;
 
 implementation
 
-uses rpbasereport,rpsection,rpsubreport;
+uses rpbasereport,rpsection,rpsubreport,StrUtils;
 
 const
  AlignmentFlags_AlignLeft = 1 { $1 };
@@ -250,8 +265,18 @@ begin
  FDoAfterPrint:=ReadWideString(Reader);
 end;
 
+procedure TRpCommonComponent.AssertCanModify(const AReason:string);
+var
+ LReport:TComponent;
+begin
+ LReport:=GetReport;
+ if LReport is TRpBaseReport then
+  TRpBaseReport(LReport).AssertCanModify(AReason);
+end;
+
 procedure TRpCommonComponent.SetWidth(Value:TRpTwips);
 begin
+ AssertCanModify(ClassName+'.Width');
  if Value>MAX_ELEMENT_WIDTH then
   Value:=MAX_ELEMENT_WIDTH;
  if Value<0 then
@@ -261,6 +286,7 @@ end;
 
 procedure TRpCommonComponent.SetHeight(Value:TRpTwips);
 begin
+ AssertCanModify(ClassName+'.Height');
  if Value>MAX_ELEMENT_HEIGHT then
   Value:=MAX_ELEMENT_HEIGHT;
  if Value<0 then
@@ -345,6 +371,30 @@ begin
  end;
 end;
 
+procedure TRpCommonPosComponent.SetPosX(Value:TRpTwips);
+begin
+ AssertCanModify(ClassName+'.PosX');
+ FPosX:=Value;
+end;
+
+procedure TRpCommonPosComponent.SetPosY(Value:TRpTwips);
+begin
+ AssertCanModify(ClassName+'.PosY');
+ FPosY:=Value;
+end;
+
+procedure TRpCommonPosComponent.SetAlign(Value:TRpPosAlign);
+begin
+ AssertCanModify(ClassName+'.Align');
+ FAlign:=Value;
+end;
+
+procedure TRpCommonPosComponent.SetAnnotationExpression(const Value:string);
+begin
+ AssertCanModify(ClassName+'.AnnotationExpression');
+ FAnnotationExpression:=Value;
+end;
+
 
 function TRpCommonPosComponent.GetParent:TRpCommonComponent;
 var
@@ -426,6 +476,8 @@ end;
 
 procedure TRpCommonListItem.SetComponent(Value:TRpCommonComponent);
 begin
+ if Collection is TRpCommonList then
+  TRpCommonList(Collection).AssertCanModify('section component');
  FComponent:=Value;
  Changed(False);
 end;
@@ -437,7 +489,14 @@ end;
 
 procedure TRpCommonList.SetItem(index:integer;Value:TRpCommonListItem);
 begin
+ AssertCanModify('section component list');
  inherited SetItem(Index,Value);
+end;
+
+procedure TRpCommonList.AssertCanModify(const AReason:string);
+begin
+ if Assigned(FSection) and Assigned(FSection.Owner) and (FSection.Owner is TRpBaseReport) then
+  TRpBaseReport(FSection.Owner).AssertCanModify(AReason);
 end;
 
 
@@ -453,11 +512,13 @@ end;
 
 function TRpCommonList.Add:TRpCommonListItem;
 begin
+ AssertCanModify('section component add');
  Result:=TRpCommonListItem(inherited Add);
 end;
 
 function TRpCommonList.Insert(index:integer):TRpCommonListItem;
 begin
+ AssertCanModify('section component insert');
  Result:=TRpCommonListItem(inherited Insert(index));
 end;
 
@@ -492,7 +553,9 @@ begin
  FBackColor:=$FFFFFF;
  FTransparent:=true;
  FCutText:=false;
+ FIsHtml:=false;
  FBidiModes:=TStringList.Create;
+ FIsHtml:=false;
 end;
 
 destructor TRpGenTextComponent.Destroy;
@@ -529,6 +592,8 @@ begin
  Result:=rpBidiNo;
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  if BidiModes.Count>langindex then
  begin
@@ -546,6 +611,8 @@ var
 begin
  langindex:=TRpBaseReport(GetReport).Language+1;
  if langindex<0 then
+  langindex:=0
+ else if langindex>256 then
   langindex:=0;
  while (BidiModes.Count<=langindex) do
  begin
@@ -622,6 +689,404 @@ begin
 
  Filer.DefineProperty('WFontName',ReadWFontName,WriteWFontName,True);
  Filer.DefineProperty('LFontName',ReadLFontName,WriteLFontName,True);
+end;
+
+{ TRpCommonComponent - IPropertiesItem }
+
+procedure TRpCommonComponent.SetItemProperty(const propName: string; const value: Variant);
+begin
+ AssertCanModify(ClassName+'.'+propName);
+ if SameText(propName, 'Width') or SameText(propName, SRpSWidth) then
+ begin
+  Width := value;
+  exit;
+ end;
+ if SameText(propName, 'Height') or SameText(propName, SRpSHeight) then
+ begin
+  Height := value;
+  exit;
+ end;
+ if SameText(propName, 'PrintCondition') or SameText(propName, SRpSPrintCondition) then
+ begin
+  FPrintCondition := value;
+  exit;
+ end;
+ if SameText(propName, 'DoBeforePrint') or SameText(propName, SRpSBeforePrint) then
+ begin
+  FDoBeforePrint := value;
+  exit;
+ end;
+ if SameText(propName, 'DoAfterPrint') or SameText(propName, SRpSAfterPrint) then
+ begin
+  FDoAfterPrint := value;
+  exit;
+ end;
+ if SameText(propName, 'Visible') then
+ begin
+  FVisible := value;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+function TRpCommonComponent.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'Width') or SameText(propName, SRpSWidth) then
+ begin
+  Result := FWidth;
+  exit;
+ end;
+ if SameText(propName, 'Height') or SameText(propName, SRpSHeight) then
+ begin
+  Result := FHeight;
+  exit;
+ end;
+ if SameText(propName, 'PrintCondition') or SameText(propName, SRpSPrintCondition) then
+ begin
+  Result := FPrintCondition;
+  exit;
+ end;
+ if SameText(propName, 'DoBeforePrint') or SameText(propName, SRpSBeforePrint) then
+ begin
+  Result := FDoBeforePrint;
+  exit;
+ end;
+ if SameText(propName, 'DoAfterPrint') or SameText(propName, SRpSAfterPrint) then
+ begin
+  Result := FDoAfterPrint;
+  exit;
+ end;
+ if SameText(propName, 'Visible') then
+ begin
+  Result := FVisible;
+  exit;
+ end;
+ raise Exception.CreateFmt('Unknown property %s in %s', [propName, ClassName]);
+end;
+
+{ TRpCommonPosComponent - IPropertiesItem }
+
+procedure TRpCommonPosComponent.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if SameText(propName, 'PosX') or SameText(propName, SRpSLeft) then
+ begin
+  SetPosX(value);
+  exit;
+ end;
+ if SameText(propName, 'PosY') or SameText(propName, SRpSTop) then
+ begin
+  SetPosY(value);
+  exit;
+ end;
+ if SameText(propName, 'Align') or SameText(propName, SRPAlign) then
+ begin
+  SetAlign(TRpPosAlign(Integer(value)));
+  exit;
+ end;
+ if SameText(propName, 'AnnotationExpression') or SameText(propName, SRpSAnnotation) then
+ begin
+  SetAnnotationExpression(value);
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpCommonPosComponent.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'PosX') or SameText(propName, SRpSLeft) then
+ begin
+  Result := FPosX;
+  exit;
+ end;
+ if SameText(propName, 'PosY') or SameText(propName, SRpSTop) then
+ begin
+  Result := FPosY;
+  exit;
+ end;
+ if SameText(propName, 'Align') or SameText(propName, SRPAlign) then
+ begin
+  Result := Integer(FAlign);
+  exit;
+ end;
+ if SameText(propName, 'AnnotationExpression') or SameText(propName, SRpSAnnotation) then
+ begin
+  Result := FAnnotationExpression;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
+
+{ TRpGenTextComponent - IPropertiesItem }
+
+procedure TRpGenTextComponent.SetItemProperty(const propName: string; const value: Variant);
+begin
+ if SameText(propName, 'WFontName') or SameText(propName, SRpSWFontName) then
+ begin
+  FWFontName := value;
+  exit;
+ end;
+ if SameText(propName, 'LFontName') or SameText(propName, SRpSLFontName) then
+ begin
+  FLFontName := value;
+  exit;
+ end;
+ if SameText(propName, 'FontSize') or SameText(propName, SRpSFontSize) then
+ begin
+  FFontSize := value;
+  exit;
+ end;
+ if SameText(propName, 'FontColor') or SameText(propName, SRpSFontColor) then
+ begin
+  FFontColor := value;
+  exit;
+ end;
+ if SameText(propName, 'FontStyle') or SameText(propName, SRpSFontStyle) then
+ begin
+  FFontStyle := value;
+  exit;
+ end;
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
+ begin
+  FBackColor := value;
+  exit;
+ end;
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
+ begin
+  FTransparent := value;
+  exit;
+ end;
+ if SameText(propName, 'CutText') or SameText(propName, SRpSCutText) then
+ begin
+  FCutText := value;
+  exit;
+ end;
+ if SameText(propName, 'WordWrap') or SameText(propName, SRpSWordWrap) then
+ begin
+  FWordWrap := value;
+  exit;
+ end;
+ if SameText(propName, 'WordBreak') then
+ begin
+  FWordBreak := value;
+  exit;
+ end;
+ if SameText(propName, 'SingleLine') or SameText(propName, SRpSSingleLine) then
+ begin
+  FSingleLine := value;
+  exit;
+ end;
+ if SameText(propName, 'Alignment') or SameText(propName, SRpSAlignment) then
+ begin
+  FAlignment := value;
+  exit;
+ end;
+ if SameText(propName, 'VAlignment') or SameText(propName, SRpSVAlignment) then
+ begin
+  FVAlignment := value;
+  exit;
+ end;
+ if SameText(propName, 'FontRotation') or SameText(propName, SRpSFontRotation) then
+ begin
+  FFontRotation := value;
+  exit;
+ end;
+ if SameText(propName, 'Type1Font') or SameText(propName, SRpSType1Font) then
+ begin
+  FType1Font := TRpType1Font(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'PrintStep') or SameText(propName, SRpSFontStep) then
+ begin
+  FPrintStep := TRpSelectFontStep(Integer(value));
+  exit;
+ end;
+ if SameText(propName, 'InterLine') then
+ begin
+  FInterLine := value;
+  exit;
+ end;
+ if SameText(propName, 'MultiPage') then
+ begin
+  FMultiPage := value;
+  exit;
+ end;
+ if SameText(propName, 'RightToLeft') then
+ begin
+  if value then
+   SetBidiMode(rpBidiPartial)
+  else
+   SetBidiMode(rpBidiNo);
+  exit;
+ end;
+ // All languages (BidiNo/BidiPartial/BidiFull per line); RightToLeft only
+ // covers the current language and cannot express BidiFull
+ if SameText(propName, 'BidiModes') then
+ begin
+  FBidiModes.Text := value;
+  exit;
+ end;
+ if SameText(propName, 'IsHtml') then
+ begin
+  FIsHtml := value;
+  exit;
+ end;
+ inherited;
+end;
+
+function TRpGenTextComponent.GetItemProperty(const propName: string): Variant;
+begin
+ if SameText(propName, 'WFontName') or SameText(propName, SRpSWFontName) then
+ begin
+  Result := FWFontName;
+  exit;
+ end;
+ if SameText(propName, 'LFontName') or SameText(propName, SRpSLFontName) then
+ begin
+  Result := FLFontName;
+  exit;
+ end;
+ if SameText(propName, 'FontSize') or SameText(propName, SRpSFontSize) then
+ begin
+  Result := FFontSize;
+  exit;
+ end;
+ if SameText(propName, 'FontColor') or SameText(propName, SRpSFontColor) then
+ begin
+  Result := FFontColor;
+  exit;
+ end;
+ if SameText(propName, 'FontStyle') or SameText(propName, SRpSFontStyle) then
+ begin
+  Result := FFontStyle;
+  exit;
+ end;
+ if SameText(propName, 'BackColor') or SameText(propName, SRpSBackColor) then
+ begin
+  Result := FBackColor;
+  exit;
+ end;
+ if SameText(propName, 'Transparent') or SameText(propName, SRpSTransparent) then
+ begin
+  Result := FTransparent;
+  exit;
+ end;
+ if SameText(propName, 'CutText') or SameText(propName, SRpSCutText) then
+ begin
+  Result := FCutText;
+  exit;
+ end;
+ if SameText(propName, 'WordWrap') or SameText(propName, SRpSWordWrap) then
+ begin
+  Result := FWordWrap;
+  exit;
+ end;
+ if SameText(propName, 'WordBreak') then
+ begin
+  Result := FWordBreak;
+  exit;
+ end;
+ if SameText(propName, 'SingleLine') or SameText(propName, SRpSSingleLine) then
+ begin
+  Result := FSingleLine;
+  exit;
+ end;
+ if SameText(propName, 'Alignment') or SameText(propName, SRpSAlignment) then
+ begin
+  Result := FAlignment;
+  exit;
+ end;
+ if SameText(propName, 'VAlignment') or SameText(propName, SRpSVAlignment) then
+ begin
+  Result := FVAlignment;
+  exit;
+ end;
+ if SameText(propName, 'FontRotation') or SameText(propName, SRpSFontRotation) then
+ begin
+  Result := FFontRotation;
+  exit;
+ end;
+ if SameText(propName, 'Type1Font') or SameText(propName, SRpSType1Font) then
+ begin
+  Result := Integer(FType1Font);
+  exit;
+ end;
+ if SameText(propName, 'PrintStep') or SameText(propName, SRpSFontStep) then
+ begin
+  Result := Integer(FPrintStep);
+  exit;
+ end;
+ if SameText(propName, 'InterLine') then
+ begin
+  Result := FInterLine;
+  exit;
+ end;
+ if SameText(propName, 'MultiPage') then
+ begin
+  Result := FMultiPage;
+  exit;
+ end;
+ if SameText(propName, 'RightToLeft') then
+ begin
+  Result := GetRightToLeft;
+  exit;
+ end;
+ if SameText(propName, 'BidiModes') then
+ begin
+  Result := FBidiModes.Text;
+  exit;
+ end;
+ if SameText(propName, 'IsHtml') then
+ begin
+  Result := FIsHtml;
+  exit;
+ end;
+ Result := inherited GetItemProperty(propName);
+end;
+
+function TRpGenTextComponent.EvaluateHtmlExpressions(const text: WideString): WideString;
+var
+  fevaluator: TRpEvaluator;
+  pos, startPos, endPos: Integer;
+  expr: WideString;
+  evalResult: Variant;
+begin
+  Result := '';
+  if Length(text) = 0 then
+    exit;
+  fevaluator := TRpBaseReport(GetReport).Evaluator;
+  if not Assigned(fevaluator) then
+  begin
+    Result := text;
+    exit;
+  end;
+  pos := 1;
+  while pos <= Length(text) do
+  begin
+    startPos := PosEx('{{', text, pos);
+    if startPos = 0 then
+    begin
+      Result := Result + Copy(text, pos, Length(text) - pos + 1);
+      Break;
+    end;
+    endPos := PosEx('}}', text, startPos + 2);
+    if endPos = 0 then
+    begin
+      Result := Result + Copy(text, pos, Length(text) - pos + 1);
+      Break;
+    end;
+    // Append text before {{
+    Result := Result + Copy(text, pos, startPos - pos);
+    // Extract and evaluate expression
+    expr := Trim(Copy(text, startPos + 2, endPos - startPos - 2));
+    try
+      evalResult := fevaluator.EvaluateText(expr);
+      Result := Result + WideString(evalResult);
+    except
+      // On error, keep the original placeholder
+      Result := Result + Copy(text, startPos, endPos + 2 - startPos);
+    end;
+    pos := endPos + 2;
+  end;
 end;
 
 

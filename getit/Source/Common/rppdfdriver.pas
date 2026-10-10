@@ -56,6 +56,11 @@ type
    filename:string;
    Compressed:boolean;
    DestStream:TStream;
+   // When true the canvas shapes plain text and writes per-glyph positions, so the
+   // PDF matches the GDI glyph rendering exactly. Set it when the report uses
+   // PrinterFonts=rppfontsrecalculate. Survives NewDocument (which recreates the
+   // canvas and would lose a flag set directly on it).
+   UsePdfFonts:boolean;
    constructor Create;
    destructor Destroy;override;
 {$IFNDEF FORWEBAX}
@@ -74,9 +79,11 @@ type
    function GetPageSize(var PageSizeQt:Integer):TPoint;override;
    function SetPagesize(PagesizeQt:TPageSizeQt):TPoint;override;
    procedure TextExtent(atext:TRpTextObject;var extent:TPoint);override;
+  function TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;override;
    procedure GraphicExtent(Stream:TMemoryStream;var extent:TPoint;dpi:integer);override;
    procedure SetOrientation(Orientation:TRpOrientation);override;
    function GetOrientation:TRpOrientation;override;
+   procedure RestoreOrientation;override;
    procedure SelectPrinter(printerindex:TRpPrinterSelect);override;
    function SupportsCopies(maxcopies:integer):boolean;override;
    function SupportsCollation:boolean;override;
@@ -202,6 +209,13 @@ begin
   FPDFFile.NewEmbeddedFile(efile.FileName,efile.MimeType, efile.AFRelationShip,
     efile.Description,efile.CreationDate, efile.ModificationDate, efile.Stream);
  end;
+ // Stored metafiles (format 4.1) carry PrinterFonts=Recalculate: enable the
+ // exact-metrics pipeline automatically, mirroring the C# engine.
+ if report.PrinterFonts=rppfontsrecalculate then
+  UsePdfFonts:=true;
+ // Reapply the exact-metrics flag, the canvas was just recreated
+ if UsePdfFonts then
+  FPDFFile.Canvas.ForceComplexShaping:=true;
  FPDFFile.BeginDoc;
 end;
 
@@ -246,6 +260,15 @@ begin
  // single line
  singleline:=(atext.Alignment AND AlignmentFlags_SingleLine)>0;
  rightToLeft:=atext.RightToLeft;
+ // RTL is always measured shaped; normalize like the PDF drawing path does
+ // (TRpPDFCanvas.TextRect) so line breaks and glyph advances stay identical.
+ if rightToLeft then
+  atext.Text:=FPDFFile.Canvas.InfoProvider.NFCNormalize(atext.Text);
+ // The forced shaper needs a TrueType font: promote standard Type1 fonts to linked
+ if UsePdfFonts then
+  FPDFFile.Canvas.ForceComplexShaping:=true;
+ if FPDFFile.Canvas.ForceComplexShaping and (TRpType1Font(atext.Type1Font)<>poEmbedded) then
+  atext.Type1Font:=Integer(poLinked);
  FPDFFile.Canvas.Font.Name:=TRpType1Font(atext.Type1Font);
  FPDFFile.Canvas.Font.WFontName:=atext.WFontName;
  FPDFFile.Canvas.Font.LFontName:=atext.LFontName;
@@ -259,7 +282,53 @@ begin
  Rect.Top:=0;
  Rect.Bottom:=0;
  Rect.Right:=extent.X;
- FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft);
+ FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft,atext.IsHtml);
+ extent.X:=Rect.Right;
+ extent.Y:=Rect.Bottom;
+ if (atext.CutText) then
+ begin
+  if maxextent.Y<extent.Y then
+   extent.Y:=maxextent.Y;
+ end;
+end;
+
+function TRpPDFDriver.TextExtentLineInfo(atext:TRpTextObject;var extent:TPoint):TRpLineInfoArray;
+var
+ singleline:boolean;
+ rect:TRect;
+ maxextent:TPoint;
+ rightToLeft:boolean;
+begin
+ if atext.FontRotation<>0 then
+ begin
+  SetLength(Result,0);
+  exit;
+ end;
+ if atext.CutText then
+ begin
+  maxextent:=extent;
+ end;
+ singleline:=(atext.Alignment AND AlignmentFlags_SingleLine)>0;
+ rightToLeft:=atext.RightToLeft;
+ if rightToLeft then
+  atext.Text:=FPDFFile.Canvas.InfoProvider.NFCNormalize(atext.Text);
+ if UsePdfFonts then
+  FPDFFile.Canvas.ForceComplexShaping:=true;
+ if FPDFFile.Canvas.ForceComplexShaping and (TRpType1Font(atext.Type1Font)<>poEmbedded) then
+  atext.Type1Font:=Integer(poLinked);
+ FPDFFile.Canvas.Font.Name:=TRpType1Font(atext.Type1Font);
+ FPDFFile.Canvas.Font.WFontName:=atext.WFontName;
+ FPDFFile.Canvas.Font.LFontName:=atext.LFontName;
+ FPDFFile.Canvas.Font.Size:=atext.FontSize;
+ FPDFFile.Canvas.Font.Bold:=(atext.Fontstyle and 1)>0;
+ FPDFFile.Canvas.Font.Italic:=(atext.Fontstyle and (1 shl 1))>0;
+ FPDFFile.Canvas.Font.Underline:=(atext.Fontstyle and (1 shl 2))>0;
+ FPDFFile.Canvas.Font.StrikeOut:=(atext.Fontstyle and (1 shl 3))>0;
+ Rect.Left:=0;
+ Rect.Top:=0;
+ Rect.Bottom:=0;
+ Rect.Right:=extent.X;
+ Result:=FPDFFile.Canvas.TextExtent(atext.Text,Rect,atext.WordWrap,singleline,righttoleft,atext.IsHtml);
  extent.X:=Rect.Right;
  extent.Y:=Rect.Bottom;
  if (atext.CutText) then
@@ -293,15 +362,22 @@ begin
    begin
 {$IFDEF MSWINDOWS}
     FPDFFile.Canvas.Font.WFontName:=page.GetWFontName(Obj);
+    FPDFFile.Canvas.Font.LFontName:=FPDFFile.Canvas.Font.WFontName;
 {$ENDIF}
 {$IFDEF LINUX}
     FPDFFile.Canvas.Font.LFontName:=page.GetLFontName(Obj);
+    FPDFFile.Canvas.Font.WFontName:=FPDFFile.Canvas.Font.LFontName;
 {$ENDIF}
     // Transparent ?
     if (PDFConformance = TPDFConformanceType.PDF_A_3) then
       FPDFFile.Canvas.Font.Name:=TrpType1Font.poEmbedded
     else
       FPDFFile.Canvas.Font.Name:=TrpType1Font(obj.Type1Font);
+    // Exact-parity mode: promote standard Type1 fonts to linked TrueType so the
+    // PDF shares glyph metrics with the GDI glyph rendering
+    if FPDFFile.Canvas.ForceComplexShaping and
+       (not (FPDFFile.Canvas.Font.Name in [poLinked,poEmbedded])) then
+      FPDFFile.Canvas.Font.Name:=poLinked;
     FPDFFile.Canvas.Font.Size:=obj.FontSize;
     FPDFFile.Canvas.Font.Color:=obj.FontColor;
     FPDFFile.Canvas.Font.Bold:=(obj.Fontstyle and 1)>0;
@@ -319,7 +395,7 @@ begin
     // Unicode now supported
     astring:=page.GetText(Obj);
     FPDFFile.Canvas.TextRect(rec,astring,aalign,obj.cuttext,
-    obj.WordWrap,obj.FontRotation,obj.RightToLeft);
+      obj.WordWrap,obj.FontRotation,obj.RightToLeft,obj.IsHtml);
     annotation:=page.GetAnnotation(obj);
     if Length(annotation)>0 then
       FPDFFile.NewAnnotation(rec.Left,rec.Top,rec.Width,rec.Height, annotation);
@@ -514,8 +590,10 @@ begin
  end;
 end;
 
-
-
+procedure TRpPDFDriver.RestoreOrientation;
+begin
+ // No printer orientation to restore
+end;
 
 
 procedure TRpPDFDriver.SelectPrinter(printerindex:TRpPrinterSelect);
@@ -664,6 +742,7 @@ begin
  pdfdriver:=TRpPDFDriver.Create;
  try
  pdfdriver.compressed:=compressed;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
  if (pdfVersionA3) then
  begin
   pdfdriver.PDFConformance := PDF_A_3;
@@ -698,6 +777,7 @@ begin
  pdfdriver:=TRpPDFDriver.Create;
  try
  pdfdriver.compressed:=compressed;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
  astream:=TMemoryStream.Create;
  try
   pdfdriver.DestStream:=aStream;
@@ -767,6 +847,7 @@ begin
  pdfdriver:=TRpPDFDriver.Create;
  try
  pdfdriver.compressed:=false;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
  report.TwoPass:=true;
  // If report progress must print progress
  oldprogres:=report.OnProgress;
@@ -802,6 +883,7 @@ begin
  try
  pdfdriver.filename:=filename;
  pdfdriver.compressed:=compressed;
+ pdfdriver.UsePdfFonts:=report.PrinterFonts=rppfontsrecalculate;
   if (pdfVersionA3) then
  begin
   pdfdriver.PDFConformance := PDF_A_3;
@@ -963,10 +1045,6 @@ end;
 
 {$IFDEF LINUX}
 procedure PrintMetafileUsingKPrinter(metafile:TRpMetafileReport);
-var
- afilename:String;
- destfilename:string;
- alist:TStringList;
 begin
  raise Exception.Create('Not Implemented KPrinter');
  (*
