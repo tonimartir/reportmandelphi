@@ -14,10 +14,11 @@ $srcName = "reportman_components_$VerU"
 $srcDir  = Join-Path $ComponentsDir $srcName
 New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
 
-# (a) todos los ficheros sueltos de la raiz, salvo *.o y *.dcu
-$rootFiles = Get-ChildItem $RepoRoot -File |
-  Where-Object { ($_.Extension -ne '.o') -and ($_.Extension -ne '.dcu') }
-foreach ($f in $rootFiles) { Copy-Item $f.FullName $srcDir -Force }
+# (a) the loose files of the root that are in git (not the IDE caches such as
+#     *.dproj.local, *.identcache or *.stat lying next to them)
+$rootFiles = @(& git -C $RepoRoot ls-files) | Where-Object { $_ -notmatch '/' }
+if ($rootFiles.Count -eq 0) { Fail "git ls-files found no root files" }
+foreach ($f in $rootFiles) { Copy-Item (Join-Path $RepoRoot $f) $srcDir -Force }
 
 # (b) la carpeta packages\ completa
 $pkgSrc  = Join-Path $RepoRoot 'packages'
