@@ -426,11 +426,12 @@ VM el inicio de sesión de IA y el copilot completo.
 
 **Publicarlo en SourceForge.** El `.dmg` y su `SHA256SUMS` van en
 `Report Manager Designer/Designer 4.0/macOS`, como la carpeta `Linux`. Desde
-el 10-10-2026 está el universal 4.0.18
-(`reportman-designer-4.0.18-macos-universal.dmg`, 40.929.508 bytes, de la
-ejecución 38065074557 de Actions; probado también en la VirtualBox con
-macOS 11: firma, arquitecturas y `--check-https`). Sustituye al 4.0.17 del
-03-10-2026, que imprimía folios en blanco; el 4.0.16 solo Intel está en la
+el 10-10-2026 está el universal 4.0.19
+(`reportman-designer-4.0.19-macos-universal.dmg`, 40.695.841 bytes, de la
+ejecución 38076265031 de Actions; probado también en la VirtualBox con
+macOS 11: firma, arquitecturas y `--check-https`). El mismo día salió el
+4.0.18 (ejecución 38065074557), que sustituyó al 4.0.17 del 03-10-2026, que
+imprimía folios en blanco; el 4.0.16 solo Intel está en la
 subcarpeta `macOS/4.0.16` con su `SHA256SUMS`.
 Sustituir el fichero por SFTP le quita las propiedades: hay que volver a
 marcar «Default Download For: Mac» en su ficha (Files, botón *i*), o los Mac
