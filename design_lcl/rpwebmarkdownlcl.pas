@@ -40,7 +40,7 @@ unit rpwebmarkdownlcl;
 interface
 
 uses
-  SysUtils, Classes, Controls, Graphics, Forms, ExtCtrls, Menus, Clipbrd,
+  SysUtils, Classes, Controls, Graphics, Forms, ExtCtrls, StdCtrls, Menus, Clipbrd,
   Generics.Collections, IpHtml, IpHtmlTypes, rplclwebview, rpmdshfolder,
   rpmarkdownlcl;
 
@@ -73,6 +73,8 @@ type
     FOpenChunks: TStringList;
     FNative: TIpHtmlPanel;
     FNativeMenu: TPopupMenu;
+    FCopyAllButton: TButton;
+    FCopiedTimer: TTimer;
     FWebView: TRpLCLWebView;
     FReady: Boolean;
     FWebViewFailed: Boolean;
@@ -99,7 +101,10 @@ type
     procedure QueueRender;
     procedure AsyncRender(Data: PtrInt);
     procedure AsyncScrollToEnd(Data: PtrInt);
+    procedure NativeScrollTo(APos: Integer);
     procedure NativeCopyClick(Sender: TObject);
+    procedure NativeCopyAllClick(Sender: TObject);
+    procedure CopiedTimerTick(Sender: TObject);
     procedure NativeSelectAllClick(Sender: TObject);
     procedure NativeHotClick(Sender: TObject);
     // WebView2
@@ -155,6 +160,8 @@ type
     property UsingWebView: Boolean read GetUsingWebView;
     property FallbackReason: string read FFallbackReason;
     property NativeView: TIpHtmlPanel read FNative;
+    // The "Copy all" button of index.html, over the native view
+    property CopyAllButton: TButton read FCopyAllButton;
     property WebView: TRpLCLWebView read FWebView;
     // Times the native view was rendered (tests: coalescing)
     property RenderCount: Integer read FRenderCount;
@@ -172,7 +179,7 @@ function EscapeJSString(const S: string): string;
 implementation
 
 uses
-  zipper, LCLIntf, LazUTF8, rpmdconsts
+  zipper, LCLIntf, LCLType, LazUTF8, rpmdconsts
 {$IFDEF MSWINDOWS}
   , Windows
 {$ENDIF}
@@ -573,8 +580,7 @@ begin
     FForceScroll := True;
     if FNativeDirty or FRenderQueued then
       Exit;
-    if FNative <> nil then
-      FNative.Scroll(hsaEnd);
+    NativeScrollTo(MaxInt);
     Exit;
   end;
   ExecuteOrQueue('window.scrollToEnd();');
@@ -628,10 +634,33 @@ begin
   LItem.OnClick := NativeCopyClick;
   FNativeMenu.Items.Add(LItem);
   LItem := TMenuItem.Create(FNativeMenu);
+  LItem.Caption := TranslateStr(1940, 'Copy all');
+  LItem.OnClick := NativeCopyAllClick;
+  FNativeMenu.Items.Add(LItem);
+  LItem := TMenuItem.Create(FNativeMenu);
   LItem.Caption := TranslateStr(1445, 'Select all');
   LItem.OnClick := NativeSelectAllClick;
   FNativeMenu.Items.Add(LItem);
   FNative.PopupMenu := FNativeMenu;
+  // The floating button of index.html: top right, clear of the scroll bar
+  FCopyAllButton := TButton.Create(Self);
+  FCopyAllButton.Caption := TranslateStr(1940, 'Copy all');
+  FCopyAllButton.AutoSize := True;
+  FCopyAllButton.TabStop := False;
+  FCopyAllButton.AnchorSide[akTop].Control := Self;
+  FCopyAllButton.AnchorSide[akTop].Side := asrTop;
+  FCopyAllButton.AnchorSide[akRight].Control := Self;
+  FCopyAllButton.AnchorSide[akRight].Side := asrRight;
+  FCopyAllButton.Anchors := [akTop, akRight];
+  FCopyAllButton.BorderSpacing.Top := 8;
+  FCopyAllButton.BorderSpacing.Right := GetSystemMetrics(SM_CXVSCROLL) + 8;
+  FCopyAllButton.OnClick := NativeCopyAllClick;
+  FCopyAllButton.Parent := Self;
+  FCopyAllButton.BringToFront;
+  FCopiedTimer := TTimer.Create(Self);
+  FCopiedTimer.Enabled := False;
+  FCopiedTimer.Interval := 2000;
+  FCopiedTimer.OnTimer := CopiedTimerTick;
   FNativeDirty := True;
   QueueRender;
 end;
@@ -675,29 +704,55 @@ end;
 procedure TRpWebMarkdownView.FlushRender;
 var
   LAtEnd: Boolean;
+  LPos: Integer;
 begin
   if (not FUseFallback) or (FNative = nil) then
     Exit;
   if not FNativeDirty then
     Exit;
   FNativeDirty := False;
+  LPos := FNative.VScrollPos;
   LAtEnd := FForceScroll or
-    (FNative.VScrollPos + FNative.ClientHeight >= FNative.GetContentSize.cy - 100);
+    (LPos + FNative.ClientHeight >= FNative.GetContentSize.cy - 100);
   FForceScroll := False;
   FNative.SetHtmlFromStr(DocumentHtml);
   Inc(FRenderCount);
   if LAtEnd then
   begin
-    FNative.Scroll(hsaEnd);
-    // The layout may finish at the next paint
+    NativeScrollTo(MaxInt);
+    // Once more when the scroll bars have settled (the width may change)
     Application.QueueAsyncCall(AsyncScrollToEnd, 0);
-  end;
+  end
+  else
+    // Reading further up: the same place of the new document
+    NativeScrollTo(LPos);
 end;
 
 procedure TRpWebMarkdownView.AsyncScrollToEnd(Data: PtrInt);
 begin
-  if (FNative <> nil) and not (csDestroying in ComponentState) then
-    FNative.Scroll(hsaEnd);
+  if not (csDestroying in ComponentState) then
+    NativeScrollTo(MaxInt);
+end;
+
+type
+  TIpHtmlFrameAccess = class(TIpHtmlFrame);
+
+procedure TRpWebMarkdownView.NativeScrollTo(APos: Integer);
+var
+  LPanel: TIpHtmlInternalPanel;
+  LPageRect: TRect;
+begin
+  if (FNative = nil) or not FNative.HandleAllocated or (FNative.MasterFrame = nil) then
+    Exit;
+  LPanel := TIpHtmlFrameAccess(FNative.MasterFrame).HyperPanel;
+  if LPanel = nil then
+    Exit;
+  // SetHtmlFromStr makes a new document, laid out at its first paint: until
+  // then it has no height, the scroll range is 0 and the view stays at the
+  // top. Its PageRect lays it out now (and sets the scroll range).
+  LPageRect := LPanel.PageRect;
+  if LPageRect.Bottom > 0 then
+    FNative.VScrollPos := APos; // clamped to the range: MaxInt is the end
 end;
 
 procedure TRpWebMarkdownView.NativeCopyClick(Sender: TObject);
@@ -708,6 +763,25 @@ begin
     FNative.CopyToClipboard
   else
     Clipboard.AsText := PlainText;
+end;
+
+procedure TRpWebMarkdownView.NativeCopyAllClick(Sender: TObject);
+begin
+  // The raw text of every block, as copyLogToClipboard of index.html
+  Clipboard.AsText := PlainText;
+  if FCopyAllButton <> nil then
+  begin
+    FCopyAllButton.Caption := TranslateStr(1941, 'Copied!');
+    FCopiedTimer.Enabled := False;
+    FCopiedTimer.Enabled := True;
+  end;
+end;
+
+procedure TRpWebMarkdownView.CopiedTimerTick(Sender: TObject);
+begin
+  FCopiedTimer.Enabled := False;
+  if FCopyAllButton <> nil then
+    FCopyAllButton.Caption := TranslateStr(1940, 'Copy all');
 end;
 
 procedure TRpWebMarkdownView.NativeSelectAllClick(Sender: TObject);

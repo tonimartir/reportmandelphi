@@ -62,7 +62,11 @@ type
     FShowGauge: Boolean;
     FLblProvider: TLabel;
     FLblMode: TLabel;
+    FGaugeHintWindow: THintWindow;
     procedure BuildControls;
+    procedure PaintBoxGaugeMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure PaintBoxGaugeShowHint(Sender: TObject; HintInfo: PHintInfo);
     procedure ClearProgressTokens;
     function EnsureProgressTokenEntry(const AProgressId: string): TRpProgressTokenEntry;
     function FormatProgressTokenId(const AProgressId: string): string;
@@ -126,6 +130,11 @@ type
       const AProgressId: string; APrefillPercent: Integer = 0);
     // Text of the token rows (tests)
     function ProgressTokensText: string;
+    // The gauge hint opened by a click: hover hints are unreliable on some
+    // widgetsets (Cocoa), this one shows at once and hides by itself
+    procedure ShowGaugeHint;
+    procedure HideGaugeHint;
+    function GaugeHintVisible: Boolean;
     property GaugeValue: Double read FGaugeValue write SetGaugeValue;
     property ShowGauge: Boolean read FShowGauge write SetShowGauge;
     property InferenceActive: Boolean read GetInferenceActive;
@@ -152,6 +161,8 @@ const
   CAISelectionGaugeColumn = 44;
   CAISelectionLegacyNormalHeight = 50;
   CAISelectionInferenceLineHeight = 18;
+  CAISelectionGaugeHintMs = 3000;
+  CAISelectionGaugeHintGap = 4;
 
 type
   TRpCheckStatusWorker = class(TRpAsyncWorker)
@@ -253,6 +264,9 @@ begin
   PaintBoxGauge.Parent := PGaugeHost;
   PaintBoxGauge.OnPaint := PaintBoxGaugePaint;
   PaintBoxGauge.ShowHint := True;
+  PaintBoxGauge.Cursor := crHandPoint;
+  PaintBoxGauge.OnMouseUp := PaintBoxGaugeMouseUp;
+  PaintBoxGauge.OnShowHint := PaintBoxGaugeShowHint;
 
   PInferenceProgress := NewPanel(PAI);
   PInferenceProgress.Align := alClient;
@@ -351,6 +365,8 @@ begin
   inherited VisibleChanged;
   if SpinnerTimer <> nil then
     UpdateSpinnerState;
+  if not Visible then
+    HideGaugeHint;
 end;
 
 procedure TFRpAISelectionLCL.RefreshLayout;
@@ -499,6 +515,8 @@ begin
   LShowGauge := FShowGauge and (ComboAIProvider.ItemIndex < 2);
   if PGaugeHost.Visible <> LShowGauge then
   begin
+    if not LShowGauge then
+      HideGaugeHint;
     PGaugeHost.Visible := LShowGauge;
     PaintBoxGauge.Visible := LShowGauge;
     LayoutNonInferenceControls;
@@ -562,6 +580,82 @@ begin
   PaintBoxGauge.Hint := LHint;
   PaintBoxGauge.ShowHint := True;
   SetGaugeValue(FGaugeValue);
+  // The credits changed while the clicked hint is up: show the new text
+  if GaugeHintVisible and (FGaugeHintWindow.Caption <> LHint) then
+    ShowGaugeHint;
+end;
+
+procedure TFRpAISelectionLCL.PaintBoxGaugeMouseUp(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  if Button <> mbLeft then
+    Exit;
+  // A second click closes it
+  if GaugeHintVisible then
+    HideGaugeHint
+  else
+    ShowGaugeHint;
+end;
+
+procedure TFRpAISelectionLCL.PaintBoxGaugeShowHint(Sender: TObject;
+  HintInfo: PHintInfo);
+begin
+  // No hover hint on top of the clicked one
+  if GaugeHintVisible then
+    HintInfo^.HintStr := '';
+end;
+
+procedure TFRpAISelectionLCL.ShowGaugeHint;
+var
+  LText: string;
+  LRect, LWork: TRect;
+  LBelow, LAbove: TPoint;
+  LMonitor: TMonitor;
+  LWidth, LHeight, LLeft, LTop: Integer;
+begin
+  LText := PaintBoxGauge.Hint;
+  if (LText = '') or not PaintBoxGauge.IsVisible then
+    Exit;
+  Application.CancelHint;
+  if FGaugeHintWindow = nil then
+  begin
+    FGaugeHintWindow := HintWindowClass.Create(Self);
+    FGaugeHintWindow.AutoHide := True;
+    FGaugeHintWindow.HideInterval := CAISelectionGaugeHintMs;
+  end;
+  // Below the gauge, right edges aligned (the gauge is the right column);
+  // above it when the screen ends first. ActivateHint keeps it on the monitor.
+  LBelow := PaintBoxGauge.ClientToScreen(Point(PaintBoxGauge.Width,
+    PaintBoxGauge.Height + Scale(CAISelectionGaugeHintGap)));
+  LAbove := PaintBoxGauge.ClientToScreen(Point(PaintBoxGauge.Width,
+    -Scale(CAISelectionGaugeHintGap)));
+  LMonitor := Screen.MonitorFromPoint(LBelow);
+  if LMonitor <> nil then
+    LWork := LMonitor.WorkareaRect
+  else
+    LWork := Screen.WorkAreaRect;
+  LRect := FGaugeHintWindow.CalcHintRect((LWork.Right - LWork.Left) div 2, LText, nil);
+  LWidth := LRect.Right - LRect.Left;
+  LHeight := LRect.Bottom - LRect.Top;
+  LLeft := LBelow.X - LWidth;
+  LTop := LBelow.Y;
+  if (LTop + LHeight > LWork.Bottom) and (LAbove.Y - LHeight >= LWork.Top) then
+    LTop := LAbove.Y - LHeight;
+  // Hide first: ActivateHint does nothing (nor restarts the timer) when the
+  // same text is already shown in the same place
+  FGaugeHintWindow.Hide;
+  FGaugeHintWindow.ActivateHint(Rect(LLeft, LTop, LLeft + LWidth, LTop + LHeight), LText);
+end;
+
+procedure TFRpAISelectionLCL.HideGaugeHint;
+begin
+  if FGaugeHintWindow <> nil then
+    FGaugeHintWindow.Hide;
+end;
+
+function TFRpAISelectionLCL.GaugeHintVisible: Boolean;
+begin
+  Result := (FGaugeHintWindow <> nil) and FGaugeHintWindow.Visible;
 end;
 
 procedure TFRpAISelectionLCL.UpdateFromUserProfile(AProfile: TJSONObject);
@@ -871,6 +965,8 @@ end;
 
 procedure TFRpAISelectionLCL.SetInferenceProgress(AActive: Boolean);
 begin
+  if AActive then
+    HideGaugeHint;
   PNonInference.Visible := not AActive;
   PInferenceProgress.Visible := AActive;
   ClearProgressTokens;

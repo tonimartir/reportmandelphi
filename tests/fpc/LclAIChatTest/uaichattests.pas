@@ -22,7 +22,7 @@ implementation
 
 uses
   SysUtils, Classes, Types, Forms, Controls, Graphics, StdCtrls, ExtCtrls,
-  Menus, ComCtrls, LCLType, LCLIntf, IntfGraphics, FPImage, fphttpserver, httpdefs,
+  Menus, ComCtrls, LCLType, LCLIntf, IntfGraphics, FPImage, Clipbrd, fphttpserver, httpdefs,
   rpjsonfpc, rphttpclientfpc, rptypes, rpdatainfo, rpdatahttp, rpauthmanager,
   rpreportdesignercontracts, rpaithreadslcl, rpmarkdownlcl, rpwebmarkdownlcl,
   rpchatmodernstylelcl, rpfrmloginframelcl, rpfrmloginlcl, rpfrmaiselectionlcl,
@@ -44,6 +44,9 @@ const
 
 type
   TCondition = function: Boolean is nested;
+
+  // Access to TControl.MouseUp: a click as the widgetset delivers it
+  TControlAccess = class(TControl);
 
   { TFakeHub: canned answers of the Hub endpoints }
 
@@ -859,6 +862,14 @@ var
   LView: TRpWebMarkdownView;
   I, LRenders: Integer;
   H: string;
+
+  function EndInView: Boolean;
+  begin
+    Result := (LView.NativeView.VScrollPos > 0) and
+      (LView.NativeView.VScrollPos + LView.NativeView.ClientHeight >=
+      LView.NativeView.GetContentSize.cy - 100);
+  end;
+
 begin
   Section('Native Markdown viewer (TRpWebMarkdownView without WebView2)');
   LForm := NewForm(420, 520);
@@ -916,6 +927,37 @@ begin
     Check(PixelsWithColor(LView.NativeView, RGBToColor($31, $32, $44)) > 500,
       'the user message background is painted');
     Shot(LView, 'native_viewer');
+
+    // The log keeps its end in view while it grows: every render is a new
+    // IPro document, laid out at its first paint, and the view went back to
+    // the top of the text
+    for I := 1 to 80 do
+      LView.AppendLogLine('line ' + IntToStr(I));
+    LView.FlushRender;
+    Check(EndInView, Format('the end of the log in view at once (pos %d of %d)',
+      [LView.NativeView.VScrollPos, LView.NativeView.GetContentSize.cy]));
+    for I := 1 to 20 do
+    begin
+      LView.AppendLogChunkKey('k3', 'chunk' + IntToStr(I) + ' ');
+      Pump(20);
+      if not EndInView then
+        Break;
+    end;
+    Check(EndInView, Format('the end in view while a chunk streams (chunk %d, pos %d of %d)',
+      [I, LView.NativeView.VScrollPos, LView.NativeView.GetContentSize.cy]));
+    Pump(200);
+    Check(EndInView, 'the end still in view after painting');
+
+    // Copy all (the button of index.html, the VCL and Windows viewer)
+    Check((LView.CopyAllButton <> nil) and LView.CopyAllButton.Visible, 'Copy all button');
+    CheckEquals(T(1940, 'Copy all'), LView.CopyAllButton.Caption, 'Copy all caption');
+    Clipboard.AsText := '';
+    LView.CopyAllButton.Click;
+    CheckEquals(LView.PlainText, Clipboard.AsText, 'Copy all puts the whole text in the clipboard');
+    CheckContains('chunk20', Clipboard.AsText, 'the streamed chunk copied');
+    CheckEquals(T(1941, 'Copied!'), LView.CopyAllButton.Caption, 'Copied! after the click');
+    Pump(2300);
+    CheckEquals(T(1940, 'Copy all'), LView.CopyAllButton.Caption, 'the caption back after 2 s');
     LView.ClearAll;
     CheckEquals(0, LView.BlockCount, 'ClearAll');
   finally
@@ -1124,6 +1166,23 @@ begin
     CheckContains(T(1526, 'Used') + ': 250 (25%)', LSel.PaintBoxGauge.Hint, 'credits used');
     Check(Abs(LSel.GaugeValue - 0.25) < 0.001, 'gauge value');
     Shot(LForm, 'ai_selection');
+
+    // A click on the gauge shows its hint at once (hover hints are unreliable
+    // on Cocoa), a second click closes it, and it hides by itself in 3 s
+    Check(not LSel.GaugeHintVisible, 'no gauge hint before the click');
+    TControlAccess(TControl(LSel.PaintBoxGauge)).MouseUp(mbLeft, [], 5, 5);
+    Pump(50);
+    Check(LSel.GaugeHintVisible, 'gauge hint shown by a click');
+    TControlAccess(TControl(LSel.PaintBoxGauge)).MouseUp(mbLeft, [], 5, 5);
+    Pump(50);
+    Check(not LSel.GaugeHintVisible, 'a second click closes the gauge hint');
+    TControlAccess(TControl(LSel.PaintBoxGauge)).MouseUp(mbRight, [], 5, 5);
+    Check(not LSel.GaugeHintVisible, 'no gauge hint with the right button');
+    TControlAccess(TControl(LSel.PaintBoxGauge)).MouseUp(mbLeft, [], 5, 5);
+    Pump(1500);
+    Check(LSel.GaugeHintVisible, 'gauge hint still shown after 1.5 s');
+    Pump(2500);
+    Check(not LSel.GaugeHintVisible, 'gauge hint hidden by itself after 3 s');
 
     // Free credits (the Free tier, a guest) do not renew: the hint says what is
     // left of them; then the Pro profile of the session again
