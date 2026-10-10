@@ -64,9 +64,10 @@ find "$SRC" -maxdepth 1 -type f \
 EXCL=(--exclude='lib/' --exclude='backup/' --exclude='*.ppu' --exclude='*.o'
       --exclude='*.exe' --exclude='*.dll' --exclude='*.log' --exclude='*.lps'
       --exclude='*.compiled')
+# tests/local_schema_file: the local schema file of the LocalSchemas dialog test
 for d in rtl_fpc lcl design_lcl packages/fpc packages/fpc_lcl \
          tests/fpc/LclDesignerTest tests/fpc/LclAIChatTest tests/fpc/HubClientTest \
-         repman/lcl_designer repman/repsamples build/linux; do
+         tests/local_schema_file repman/lcl_designer repman/repsamples build/linux; do
     mkdir -p "$B/$d"
     rsync -a "${EXCL[@]}" "$SRC/$d/" "$B/$d/"
 done
