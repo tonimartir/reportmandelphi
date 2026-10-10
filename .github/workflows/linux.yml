@@ -1,0 +1,103 @@
+# Report Manager Designer for Linux: the same build as build/linux/build-linux.ps1
+# (which runs it through the Docker of WSL), on a GitHub Ubuntu runner. Builds
+# the builder image, compiles the designer with Qt6 and GTK2, runs the
+# selftests under Xvfb, makes both .deb packages and the AppImage
+# (build-in-container.sh) and installs them in clean containers of five
+# distributions (test-packages.sh). Started by hand only (Actions > Linux >
+# Run workflow, or gh workflow run linux.yml); the packages stay as an
+# artifact of the run and are not published anywhere. See
+# docs/linux-install.md and docs/fase6_plan.md (6.8).
+name: Linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: Skip the tests in clean containers (test-packages.sh)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: reportman-linux-builder:fpc3.2.2-laz4.8-qt6
+
+# bash with -e and pipefail (without "shell:" it would be -e only: a "| tee"
+# would hide the failures)
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version
+        id: version
+        run: |
+          v=$(sed -n "s/^[[:space:]]*RM_VERSION[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" rpmdconsts.pas | head -n 1)
+          [ -n "$v" ] || { echo "ERROR: RM_VERSION not found in rpmdconsts.pas"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "out=$RUNNER_TEMP/out/$v" >> "$GITHUB_OUTPUT"
+          echo "Report Manager $v, $(nproc) cores, Docker $(docker version --format '{{.Server.Version}}')"
+
+      # The builder image, the five test distributions and their containers
+      # need more room than the runner leaves free
+      - name: Disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      - name: Builder image (Dockerfile.builder)
+        run: docker build -f build/linux/Dockerfile.builder -t "$IMAGE" build/linux
+
+      # Date of the packaged files: the one of the last commit (repeatable builds)
+      - name: Compile, selftests and packages (build-in-container.sh)
+        run: |
+          out=${{ steps.version.outputs.out }}
+          mkdir -p "$out"
+          docker run --rm -e SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" \
+            -v "$GITHUB_WORKSPACE:/src:ro" -v "$out:/out" "$IMAGE" \
+            bash /src/build/linux/build-in-container.sh
+          # The container writes as root
+          sudo chown -R "$(id -u):$(id -g)" "$out"
+
+      - name: Tests in clean containers (test-packages.sh)
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          bash build/linux/test-packages.sh "${{ steps.version.outputs.out }}"
+          sudo chown -R "$(id -u):$(id -g)" "${{ steps.version.outputs.out }}"
+
+      - name: SHA256SUMS
+        run: |
+          cd "${{ steps.version.outputs.out }}"
+          sha256sum -- *.deb *.AppImage | tee SHA256SUMS
+          ls -l -- *.deb *.AppImage
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reportman-designer-linux-${{ steps.version.outputs.version }}
+          if-no-files-found: error
+          path: |
+            ${{ steps.version.outputs.out }}/*.deb
+            ${{ steps.version.outputs.out }}/*.AppImage
+            ${{ steps.version.outputs.out }}/SHA256SUMS
+
+      - name: Logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-linux
+          if-no-files-found: ignore
+          path: |
+            ${{ steps.version.outputs.out }}/*.txt
+            ${{ steps.version.outputs.out }}/*.log
+            ${{ steps.version.outputs.out }}/*.out
+            ${{ steps.version.outputs.out }}/tests/
+            ${{ steps.version.outputs.out }}/shots-*/
