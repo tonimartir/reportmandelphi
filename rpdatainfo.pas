@@ -223,6 +223,10 @@ var
  // current folder to the folder of the report; macOS and the Linux launchers
  // start the application in / or $HOME.
  RpReportFolder:string='';
+ // Folder of the samples of the application (the designer sets it): a
+ // sample saved in another folder without its MyBase file (sample4.rep and
+ // biolife.cds) still finds it there
+ RpSamplesFolder:string='';
 {$ENDIF}
 
 type
@@ -671,6 +675,36 @@ const
 {$ENDIF}
 
 {$IFDEF FPC}
+resourcestring
+ SRpMidasBinaryFile='The data file "%s" is in the binary format of Windows (MIDAS), '+
+  'which this platform cannot read: put next to it the same data saved as XML ("%s"), '+
+  'or save it as XML in Windows (TClientDataSet.SaveToFile with dfXML)';
+
+// A MyBase file in the binary format of TClientDataSet (MIDAS): the XML
+// DataPacket starts with "<" (after an optional UTF-8 BOM and blanks)
+function IsBinaryMidasFile(const AFileName: string): Boolean;
+var
+ LStream:TFileStream;
+ LBuf:array[0..63] of Byte;
+ LCount,I:Integer;
+begin
+ Result:=False;
+ if not FileExists(AFileName) then
+  exit;
+ LStream:=TFileStream.Create(AFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LCount:=LStream.Read(LBuf,SizeOf(LBuf));
+ finally
+  LStream.Free;
+ end;
+ I:=0;
+ if (LCount>=3) and (LBuf[0]=$EF) and (LBuf[1]=$BB) and (LBuf[2]=$BF) then
+  I:=3;
+ while (I<LCount) and (LBuf[I] in [9,10,13,32]) do
+  Inc(I);
+ Result:=(I<LCount) and (LBuf[I]<>Ord('<'));
+end;
+
 {$IFDEF DARWIN}
 // The client library of a Zeos protocol in the folders of the usual macOS
 // installers: an application started from the Finder has no
@@ -3599,6 +3633,13 @@ begin
               (Copy(afilename, 1, 1) <> PathDelim) and
               FileExists(IncludeTrailingPathDelimiter(RpReportFolder) + ChangeFileExt(afilename, '.xml')) then
               afilename := IncludeTrailingPathDelimiter(RpReportFolder) + ChangeFileExt(afilename, '.xml')
+            // A sample saved in another folder: the samples of the application
+            else if (RpSamplesFolder <> '') and
+              FileExists(IncludeTrailingPathDelimiter(RpSamplesFolder) + ChangeFileExt(ExtractFileName(afilename), '.xml')) then
+              afilename := IncludeTrailingPathDelimiter(RpSamplesFolder) + ChangeFileExt(ExtractFileName(afilename), '.xml')
+            else if (RpSamplesFolder <> '') and
+              FileExists(IncludeTrailingPathDelimiter(RpSamplesFolder) + ExtractFileName(afilename)) then
+              afilename := IncludeTrailingPathDelimiter(RpSamplesFolder) + ExtractFileName(afilename)
             else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename) then
               afilename := baseinfo.FMyBasePath + 'repsamples/' + FMyBaseFilename
             else if FileExists(baseinfo.FMyBasePath + 'repsamples/' + ChangeFileExt(FMyBaseFilename, '.xml')) then
@@ -3612,6 +3653,11 @@ begin
           end;
           if FileExists(ChangeFileExt(afilename, '.xml')) and (LowerCase(ExtractFileExt(afilename)) = '.cds') then
             afilename := ChangeFileExt(afilename, '.xml');
+          // The binary format of Windows, without its XML: say which file
+          // and what to do
+          if IsBinaryMidasFile(afilename) then
+            raise Exception.CreateFmt(SRpMidasBinaryFile,
+              [ExpandFileName(afilename), ChangeFileExt(ExtractFileName(afilename), '.xml')]);
           FDMemLoadFromMidasFile(TRpMemDataSet(FSQLInternalQuery), afilename);
           TRpMemDataSet(FSQLInternalQuery).IndexFieldNames := FMyBaseIndexFields;
 {$ENDIF}

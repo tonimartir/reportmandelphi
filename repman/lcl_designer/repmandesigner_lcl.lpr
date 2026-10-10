@@ -33,7 +33,7 @@ uses
   {$ENDIF}
   rmdcmdline,
   SysUtils, Classes, IniFiles, Interfaces, Forms, Controls, Dialogs,
-  rpmdconsts, rpmdfmainlcl;
+  rpmdconsts, rpdatainfo, rpmdfmainlcl;
 
 {$R *.res}
 
@@ -198,6 +198,8 @@ begin
   ApplyCommandLineOptions;
   // LCL texts (dialog buttons...) in the language of reportmanres.*
   TranslateLCL;
+  // A sample saved in another folder finds its data in the samples
+  RpSamplesFolder := FindSamplesDir;
   RequireDerivedFormResource := True;
   // Translated like the VCL designer (rpgraphutilsvcl); the console
   // messages keep APP_NAME

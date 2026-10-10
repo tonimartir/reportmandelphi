@@ -371,7 +371,9 @@ open repman/repmandesigner_lcl.app</code></pre>
   application to Applications and open it. It requires macOS 10.15 or later on Intel and macOS 11
   or later on Apple Silicon (declared in its <code>Info.plist</code>; tested on macOS 11 and 15). The <code>.rep</code> files
   open with the designer from the Finder: double click, drop them on its icon or <i>Open With</i>. The
-  samples are inside the application; to change one, save it in another folder. It also carries
+  samples are inside the application; to change one, save it in another folder (it keeps finding its
+  sample data). A data file of <code>TClientDataSet</code> (<code>.cds</code>) must be saved as XML
+  to be read on macOS: the binary format of Windows is not supported. It also carries
   OpenSSL 3.5 for HTTPS (the login, the AI assistants and the Reportman DB Agent driver), with the root
   certificates of macOS, and the licenses of those libraries. It does not include the client libraries
   of the database servers. <code>repmandesigner_lcl --check-https</code> (the executable is in

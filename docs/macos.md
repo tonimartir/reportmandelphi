@@ -310,7 +310,13 @@ PDF del motor salen igual en la vista previa LCL: no son de la impresión.
   (`biolife.cds` de `sample4`, con la conexión sin `DATABASE`) se busca también
   en la carpeta del informe abierto en el diseñador (`RpReportFolder`). En
   Windows el Explorador y el diálogo Abrir dejan esa carpeta como directorio
-  actual. En macOS la aplicación arranca en `/`.
+  actual. En macOS la aplicación arranca en `/`. Si tampoco está allí (un
+  ejemplo guardado en otra carpeta sin sus datos), en la carpeta de ejemplos
+  de la aplicación (`RpSamplesFolder`, que el diseñador fija con
+  `FindSamplesDir`). FPC no lee el formato binario de MIDAS: de un `.cds`
+  usa el `.xml` del mismo nombre que tenga al lado (los ejemplos llevan los
+  dos), y si solo hay el binario el error dice qué fichero es y qué poner a
+  su lado.
 - **El informe sin nombre.** El formulario del diseñador LCL no tiene nombre
   (`CreateNew`). Mientras existe, el `TReader` de FPC daba al informe que se
   cargaba el nombre `_1`: se guardaba como `object _1: TRpReport` y dos copias
