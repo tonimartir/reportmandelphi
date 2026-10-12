@@ -453,7 +453,11 @@ begin
 {$ELSE}
         var Offset := OffArray[i];
 {$ENDIF}
-        GlyphPos.XOffset := Round(-Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
+        // advanceOffset goes in the reading direction: to the left in RTL runs
+        if runIsRTL then
+          GlyphPos.XOffset := Round(-Offset.advanceOffset * DIP_TO_TWIPS_FACTOR)
+        else
+          GlyphPos.XOffset := Round(Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
         GlyphPos.YOffset := Round(Offset.ascenderOffset * DIP_TO_TWIPS_FACTOR);
       end
       else
