@@ -32,6 +32,9 @@ uses Classes,Sysutils,
  Windows,
 {$ENDIF}
  rptypes,rpmetafile,rppdffile,
+{$IF DEFINED(FPC) AND DEFINED(DARWIN)}
+ rpinfoprovct,
+{$IFEND}
 {$IFNDEF FORWEBAX}
  rpbasereport,rpreport,rpmdchart,
 {$ENDIF}
@@ -367,6 +370,12 @@ begin
 {$IFDEF LINUX}
     FPDFFile.Canvas.Font.LFontName:=page.GetLFontName(Obj);
     FPDFFile.Canvas.Font.WFontName:=FPDFFile.Canvas.Font.LFontName;
+{$IF DEFINED(FPC) AND DEFINED(DARWIN)}
+    // Core Text takes the WFontName when the system lacks the LFontName
+    // (RpCTBaseFontName), as when the report was laid out
+    if FPDFFile.Canvas.InfoProvider is TRpCTInfoProvider then
+     FPDFFile.Canvas.Font.WFontName:=page.GetWFontName(Obj);
+{$IFEND}
 {$ENDIF}
     // Transparent ?
     if (PDFConformance = TPDFConformanceType.PDF_A_3) then

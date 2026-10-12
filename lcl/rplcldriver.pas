@@ -53,6 +53,9 @@ uses
 {$IFDEF RPLCLCOCOA}
  rpcocoatext,
 {$ENDIF}
+{$IFDEF DARWIN}
+ rpinfoprovct,
+{$ENDIF}
  Classes,sysutils,rpmetafile,rpmdconsts,Graphics,Forms,
  rpmunits,Dialogs, Controls,rplclfonts,Math,
  StdCtrls,ExtCtrls,rppdffile,rpgraphutilslcl,rpmdcharttypes,PrintersDlgs,Printers,
@@ -3239,6 +3242,12 @@ begin
     pc.Font.Name := poLinked;
   pc.Font.WFontName := family;
   pc.Font.LFontName := family;
+{$IFDEF DARWIN}
+  // Core Text takes the WFontName (the font of the canvas) when the system
+  // lacks the LFontName, as the PDF driver
+  if FTextFamilySet and (pc.InfoProvider is TRpCTInfoProvider) then
+    pc.Font.WFontName := Canvas.Font.Name;
+{$ENDIF}
   if ptFontSize > 0 then
     pc.Font.Size := ptFontSize
   else
