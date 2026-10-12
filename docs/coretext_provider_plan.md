@@ -234,6 +234,44 @@ fuentes de la línea; un párrafo en blanco conserva su altura.
 glifos con `CTFontDrawGlyphs`, rotación, recorte; subrayado y tachado ya los
 dibuja el driver. Se retira `DrawRunLCL` en Cocoa.
 
+**Resultados de las fases 3 y 4 (12-10-2026).**
+
+- **Pintar (fase 4)**: `lcl/rpcocoatext.pas` (en `reportman_lcl`) dibuja con
+  `CTFontDrawGlyphs` sobre el `CGContext` del lienzo de la LCL Cocoa (el mapa
+  de bits de la vista previa y el contexto PDF de Printer4Lazarus) los glifos
+  y posiciones de `TextExtent`, con el mismo `CTFont`; cada glifo se coloca
+  trasladando el sistema de coordenadas (giro y volteo en la matriz de
+  texto). `TRpTextPainter` lo usa (`UseCocoa`) cuando el proveedor es Core
+  Text; si no, sigue `DrawRunLCL`. `LclSnapshotTest` con
+  `RP_TEXT_ENGINE=coretext`: 18/18 y el árabe de `htmltest` unido.
+- **Caras sin contornos incrustables (fase 3)**: las caras de PingFang en
+  macOS 15 no tienen `glyf` ni `CFF`, sino `hvgl` (formato propio de Apple):
+  ni HarfBuzz ni un visor de PDF lo leen, así que el chino no se puede
+  incrustar con ellas. La lista de sustitución por defecto de Core Text
+  (`CTFontCopyDefaultCascadeListForLanguages`) pone PingFang antes que
+  Hiragino Sans GB (`CFF`); el proveedor aplica a cada fuente esa lista sin
+  las caras `hvgl` y `CFF2` (`kCTFontCascadeListAttribute`), y el chino sale
+  en Hiragino Sans GB.
+- **Instancias de fuentes variables `glyf`**: `GetFontStream` hace el
+  subconjunto de HarfBuzz fijando cada eje en el valor de la instancia
+  (`hb_subset_input_pin_axis_location`, HarfBuzz ≥ 6).
+- **Texto que se copia del PDF** (`rppdffile.pas`):
+  - en FPC el `ToUnicode` recorría el texto en UTF-8 como si fuera UTF-16
+    (copiar árabe o una ligadura daba basura): ahora UTF-16 en
+    `TextoDeCadaGlifo` y en el CMap, dentro de `{$IFDEF FPC}`;
+  - `/W` solo declaraba el glifo nominal de cada carácter: las formas unidas
+    del árabe y las ligaduras quedaban con `/DW 1000` (un em), y al copiar el
+    visor partía las palabras árabes letra a letra. Ahora declara también los
+    glifos de `glyphsInfo` (afecta a todas las plataformas, también Delphi:
+    es un fallo del PDF).
+- `tests/fpc/CoreTextProviderTest/run_macos.sh`: la prueba del proveedor, y
+  `htmltest`/`arab2wordwrap` a PDF con Core Text cuyo texto extrae PDFKit
+  (`pdftext.swift`) con las palabras árabes enteras.
+- Pendiente: los emoji de Apple Color Emoji son mapas de bits (`sbix`): en el
+  PDF no tienen contornos (igual que con FreeType). Y una familia que no
+  existe en el Mac («Noto Nask Arabic» de `htmltest.rep`) cae en la fuente
+  por defecto del sistema; fontconfig elegía la más parecida.
+
 **Fase 5 — Pruebas, documentación y paso a por defecto.**
 `LclSnapshotTest` (vista previa = PDF) y `PdfTest` en el Mac; comparación con la
 referencia de la fase 0; impresión real (RM_PDF y la HP); `docs/macos.md`,

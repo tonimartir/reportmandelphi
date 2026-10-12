@@ -31,6 +31,11 @@ interface
   {$DEFINE RPLCLCAIRO}
  {$ENDIF}
 {$ENDIF}
+// With LCL Cocoa and the Core Text provider, Core Graphics paints the glyphs
+// Core Text laid out (rpcocoatext)
+{$IF DEFINED(DARWIN) AND DEFINED(LCLCOCOA)}
+ {$DEFINE RPLCLCOCOA}
+{$IFEND}
 
 uses
 {$IFDEF MSWINDOWS}
@@ -44,6 +49,9 @@ uses
 {$ENDIF}
 {$IFNDEF MSWINDOWS}
  LCLType,rpfreetype2,rpinfoprovid,
+{$ENDIF}
+{$IFDEF RPLCLCOCOA}
+ rpcocoatext,
 {$ENDIF}
  Classes,sysutils,rpmetafile,rpmdconsts,Graphics,Forms,
  rpmunits,Dialogs, Controls,rplclfonts,Math,
@@ -2324,6 +2332,9 @@ type
     procedure DrawRunLCL(const AFont: TRpPaintFont; AColor: TColor;
       const Glyphs: TRpPaintGlyphArray; Count: Integer);
   public
+    // LCL Cocoa with the Core Text provider: the glyphs are painted with Core
+    // Graphics (rpcocoatext), not as characters with TextOut
+    UseCocoa: Boolean;
     constructor Create(ACanvas: TCanvas; ADpiX, ADpiY: Integer);
     destructor Destroy; override;
     procedure ClipTo(const R: TRect);
@@ -2695,6 +2706,10 @@ var
 {$ENDIF}
 begin
   Result := 0;
+{$IFDEF RPLCLCOCOA}
+  if UseCocoa then
+    Exit(RpCocoaGlyphForChar(AFont.Family, AFont.Bold, AFont.Italic, Ch));
+{$ENDIF}
 {$IFDEF RPLCLCAIRO}
   if not FUseCairo then
     exit;
@@ -2713,9 +2728,42 @@ var
   cg: array of TRpCairoGlyph;
   i, n: Integer;
 {$ENDIF}
+{$IFDEF RPLCLCOCOA}
+var
+  cgl: array of Cardinal;
+  cx, cy: array of Double;
+  k, j: Integer;
+  angle: Double;
+{$ENDIF}
 begin
   if Count <= 0 then
     exit;
+{$IFDEF RPLCLCOCOA}
+  if UseCocoa then
+  begin
+    // The glyphs Core Text laid out, at the engine positions (the rotated
+    // frame included), with the same CTFont
+    SetLength(cgl, Count);
+    SetLength(cx, Count);
+    SetLength(cy, Count);
+    k := 0;
+    for j := 0 to Count - 1 do
+    begin
+      if Glyphs[j].Index = 0 then
+        Continue;
+      cgl[k] := Glyphs[j].Index;
+      FrameToDev(Glyphs[j].X, Glyphs[j].Y, cx[k], cy[k]);
+      Inc(k);
+    end;
+    if FRotated then
+      angle := FRotAngle
+    else
+      angle := 0;
+    RpCocoaDrawGlyphs(PtrUInt(FCanvas.Handle), AFont.Family, AFont.Bold, AFont.Italic,
+      AFont.SizePt * FDpiY / 72, FDpiX / FDpiY, angle, ColorToRGB(AColor), cgl, cx, cy, k);
+    exit;
+  end;
+{$ENDIF}
 {$IFDEF RPLCLCAIRO}
   if FUseCairo then
   begin
@@ -3217,6 +3265,9 @@ begin
 
   painter := TRpTextPainter.Create(Canvas, aintdpix, aintdpiy);
   try
+{$IFDEF RPLCLCOCOA}
+    painter.UseCocoa := RpCocoaCanPaint(pc.InfoProvider, PtrUInt(Canvas.Handle));
+{$ENDIF}
     if Clipping then
       painter.ClipTo(ARect);
     linetop := posy;

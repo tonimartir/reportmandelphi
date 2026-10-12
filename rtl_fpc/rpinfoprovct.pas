@@ -68,6 +68,13 @@ type
     UnitsPerEm: Integer;
     Bold, Italic, FixedPitch: Boolean;
     TrueType, CFF: Boolean;
+    // Outlines a PDF can embed: glyf or CFF, not the hvgl of Apple (PingFang
+    // in macOS 15) nor CFF2
+    Embeddable: Boolean;
+    // The substitution list of Core Text for this face without the faces
+    // that cannot be embedded (kCTFontCascadeListAttribute); nil until used
+    Cascade: CTFontDescriptorRef;
+    CascadeBuilt: Boolean;
     Ascent, Descent, Height, Leading, CapHeight, MaxWidth: Integer;
     BBox: TRect;
     HasKerning: Boolean;
@@ -88,6 +95,9 @@ type
     function GetCharWidth(pdffont: TRpPDFFont; data: TRpTTFontData; charcode: System.WideChar): double; override;
     function GetGlyphWidth(pdffont: TRpPDFFont; data: TRpTTFontData; glyph: Integer; charC: System.WideChar): double; override;
     function GetKerning(pdffont: TRpPDFFont; data: TRpTTFontData; leftchar, rightchar: System.WideChar): integer; override;
+    // A named instance of a variable TrueType face is embedded as that
+    // instance (the axes pinned); the rest as the FreeType provider does
+    function GetFontStream(data: TRpTTFontData): TMemoryStream; override;
     function TextExtent(const Text: WideString; var Rect: TRect; adata: TRpTTFontData;
       pdfFont: TRpPDFFont; wordwrap: Boolean; singleline: Boolean; FontSize: Double;
       IsHtml: Boolean; RightToLeft: Boolean): TRpLineInfoArray; override;
@@ -110,7 +120,7 @@ implementation
 {$IFDEF DARWIN}
 
 uses
-  Math, rphtmlparser;
+  Math, dynlibs, rphtmlparser, rpHarfBuzz;
 
 {$linkframework CoreText}
 
@@ -211,6 +221,19 @@ begin
   t := OpenTable(AFont, ATag);
   Result := t.Data <> nil;
   CloseTable(t);
+end;
+
+const
+  CTagHvgl = $6876676C; // 'hvgl': the variable glyphs of Apple, macOS 15
+  CTagCFF2 = $43464632; // 'CFF2'
+
+// Outlines that a PDF can embed: TrueType (glyf) or CFF. The faces of
+// PingFang in macOS 15 keep theirs in hvgl, which neither HarfBuzz nor a PDF
+// viewer reads, and CFF2 has no place in a PDF font either
+function FontEmbeddable(AFont: CTFontRef): Boolean;
+begin
+  Result := (HasTable(AFont, kCTFontTableGlyf) or HasTable(AFont, kCTFontTableCFF)) and
+    not HasTable(AFont, CTagHvgl) and not HasTable(AFont, CTagCFF2);
 end;
 
 { The face of a file with a PostScript name: a font file has one; a
@@ -359,6 +382,8 @@ end;
 
 destructor TRpCTFace.Destroy;
 begin
+  if Cascade <> nil then
+    CFRelease(Cascade);
   if Font <> nil then
     CFRelease(Font);
   Kernings.Free;
@@ -449,6 +474,7 @@ begin
   Result.FixedPitch := (traits and kCTFontMonoSpaceTrait) <> 0;
   Result.CFF := HasTable(AFont, kCTFontTableCFF);
   Result.TrueType := (not Result.CFF) and HasTable(AFont, kCTFontTableGlyf);
+  Result.Embeddable := FontEmbeddable(AFont);
   Result.HasKerning := HasTable(AFont, kCTFontTableKern);
   cf := 1000 / Result.UnitsPerEm;
 
@@ -634,7 +660,153 @@ begin
   end;
 end;
 
+// The substitution list Core Text would use for a face, without the faces a
+// PDF cannot embed, as a descriptor to apply to its fonts (it is built once
+// per face). The default list puts PingFang (hvgl) before Hiragino Sans GB
+// (CFF): with it Chinese would come out in a font that cannot be embedded.
+function RpCTCascade(AFace: TRpCTFace): CTFontDescriptorRef;
+var
+  list: CFArrayRef;
+  filtered: CFMutableArrayRef;
+  i, n: Integer;
+  desc: CTFontDescriptorRef;
+  f: CTFontRef;
+  keys, values: array[0..0] of Pointer;
+  attrs: CFDictionaryRef;
+begin
+  GLock.Enter;
+  try
+    if AFace.CascadeBuilt then
+      Exit(AFace.Cascade);
+    AFace.CascadeBuilt := True;
+    AFace.Cascade := nil;
+    Result := nil;
+    list := CTFontCopyDefaultCascadeListForLanguages(AFace.Font, nil);
+    if list = nil then
+      Exit;
+    filtered := CFArrayCreateMutable(nil, 0, @kCFTypeArrayCallBacks);
+    try
+      n := CFArrayGetCount(list);
+      for i := 0 to n - 1 do
+      begin
+        desc := CTFontDescriptorRef(CFArrayGetValueAtIndex(list, i));
+        f := CTFontCreateWithFontDescriptor(desc, 12, nil);
+        if f <> nil then
+        begin
+          if FontEmbeddable(f) then
+            CFArrayAppendValue(filtered, desc);
+          CFRelease(f);
+        end;
+      end;
+      keys[0] := kCTFontCascadeListAttribute;
+      values[0] := filtered;
+      attrs := CFDictionaryCreate(nil, @keys[0], @values[0], 1,
+        @kCFTypeDictionaryKeyCallBacks, @kCFTypeDictionaryValueCallBacks);
+      AFace.Cascade := CTFontDescriptorCreateWithAttributes(attrs);
+      CFRelease(attrs);
+    finally
+      CFRelease(filtered);
+      CFRelease(list);
+    end;
+    Result := AFace.Cascade;
+  finally
+    GLock.Leave;
+  end;
+end;
+
+type
+  Thb_subset_input_pin_axis_location = function(input: Phb_subset_input_t;
+    face: THBFace; axis_tag: Cardinal; axis_value: Single): LongBool; cdecl;
+
+// A named instance of a variable TrueType face (PingFangSC-Regular is not:
+// hvgl): the subset of HarfBuzz with every axis pinned at the value of the
+// instance gives a static font with its outlines. nil when it cannot be made.
+function SubsetInstance(AData: TRpTTFontData; AFace: TRpCTFace): TMemoryStream;
+var
+  pin: Thb_subset_input_pin_axis_location;
+  blob, outBlob: Phb_blob_t;
+  hbface, newFace: THBFace;
+  input: Phb_subset_input_t;
+  glyphs: Phb_set_t;
+  info: TGlyphInfo;
+  outData: PByte;
+  outSize: Cardinal;
+  i: Integer;
+  fpuMask: TFPUExceptionMask;
+begin
+  Result := nil;
+  InitHarfBuzz;
+  if not HarfBuzzSubSetImplementation then
+    Exit;
+  pin := Thb_subset_input_pin_axis_location(
+    GetProcAddress(HarfBuzzlibSubSet, 'hb_subset_input_pin_axis_location'));
+  if not Assigned(pin) then
+    Exit;
+  fpuMask := GetExceptionMask;
+  SetExceptionMask(fpuMask + [exInvalidOp, exDenormalized, exZeroDivide,
+    exOverflow, exUnderflow, exPrecision]);
+  blob := hb_blob_create(AData.FontData.FontData.Memory, AData.FontData.FontData.Size,
+    hbmmReadonly, nil, nil);
+  try
+    hbface := hb_face_create(blob, AData.FontIndex);
+    input := hb_subset_input_create_or_fail;
+    try
+      if input = nil then
+        Exit;
+      hb_subset_input_set_flags(input, HB_SUBSET_FLAGS_RETAIN_GIDS);
+      glyphs := hb_subset_input_glyph_set(input);
+      for info in AData.glyphsInfo.Values do
+        hb_set_add(glyphs, info.Glyph);
+      for i := 0 to High(AFace.AxisTags) do
+        pin(input, hbface, AFace.AxisTags[i], AFace.AxisValues[i]);
+      newFace := hb_subset_or_fail(hbface, input);
+      // THBFace wraps the pointer hb_subset_or_fail returns (nil: it failed)
+      if PPointer(@newFace)^ = nil then
+        Exit;
+      try
+        outBlob := hb_face_reference_blob(newFace);
+        try
+          outData := hb_blob_get_data(outBlob, outSize);
+          if Assigned(outData) and (outSize > 0) then
+          begin
+            Result := TMemoryStream.Create;
+            Result.SetSize(Int64(outSize));
+            Move(outData^, Result.Memory^, outSize);
+            Result.Position := 0;
+          end;
+        finally
+          hb_blob_destroy(outBlob);
+        end;
+      finally
+        hb_face_destroy(newFace);
+      end;
+    finally
+      if input <> nil then
+        hb_subset_input_destroy(input);
+      hb_face_destroy(hbface);
+    end;
+  finally
+    hb_blob_destroy(blob);
+    SetExceptionMask(fpuMask);
+  end;
+end;
+
 { TRpCTInfoProvider }
+
+function TRpCTInfoProvider.GetFontStream(data: TRpTTFontData): TMemoryStream;
+var
+  face: TRpCTFace;
+begin
+  Result := nil;
+  if data.fdata is TRpCTFace then
+  begin
+    face := TRpCTFace(data.fdata);
+    if face.Variable and face.TrueType and (Length(face.AxisTags) > 0) then
+      Result := SubsetInstance(data, face);
+  end;
+  if Result = nil then
+    Result := inherited GetFontStream(data);
+end;
 
 function TRpCTInfoProvider.ResolveFace(pdffont: TRpPDFFont): TRpCTFace;
 var
@@ -1088,7 +1260,8 @@ begin
     // A CTFont per range, at its size
     SetLength(fonts, Length(ranges));
     for r := 0 to High(ranges) do
-      fonts[r] := CTFontCreateCopyWithAttributes(ranges[r].Face.Font, ranges[r].Size, nil, nil);
+      fonts[r] := CTFontCreateCopyWithAttributes(ranges[r].Face.Font, ranges[r].Size, nil,
+        RpCTCascade(ranges[r].Face));
     try
       paraStart := 0;
       while paraStart <= Length(plain) do

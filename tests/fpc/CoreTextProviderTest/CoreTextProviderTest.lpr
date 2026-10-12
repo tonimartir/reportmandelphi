@@ -299,7 +299,7 @@ var
   detail: string;
   styles, courier, marked: Integer;
   t: WideString;
-  ok: Boolean;
+  ok, embeddable: Boolean;
   face: TRpCTFace;
 begin
   WriteLn('== TextExtent');
@@ -362,6 +362,8 @@ begin
     20000, False, False, False, r);
   marked := 0;
   ok := True;
+  embeddable := True;
+  detail := '';
   for i := 0 to High(lines) do
     for j := 0 to High(lines[i].Glyphs) do
       if Copy(lines[i].Glyphs[j].FontFamily, 1, 1) = CRpCTFaceMark then
@@ -370,9 +372,15 @@ begin
         face := RpCTFace(lines[i].Glyphs[j].FontFamily, True, False);
         if (face = nil) or (CRpCTFaceMark + face.PostScriptName <> lines[i].Glyphs[j].FontFamily) then
           ok := False;
+        if (face <> nil) and not face.Embeddable then
+          embeddable := False;
+        if Pos(lines[i].Glyphs[j].FontFamily, detail) = 0 then
+          detail := detail + ' ' + lines[i].Glyphs[j].FontFamily;
       end;
+  WriteLn('   substituted faces:', detail);
   Check(marked = 3, 'Emoji and Chinese substituted (' + IntToStr(marked) + ' glyphs marked)');
   Check(ok, 'A marked face resolves to that face, even with the bold of the text');
+  Check(embeddable, 'The substituted faces can be embedded (not PingFang, hvgl)');
   // A blank paragraph keeps its height
   lines := Measure(ACt, 'Helvetica', False, 'A' + #13#10 + #13#10 + 'B', 20000, False, False, False, r);
   Check(Length(lines) = 2, 'Two lines of text');
