@@ -419,9 +419,15 @@ begin
 
   FTableGlyphOffset := TData.Location;
 
-  for K := 0 to FGlyphsInList.Count - 1 do
+  // A while, not a for: CheckGlyphComposite appends the components of a composite glyph to the
+  // list, and they can be composites too (the alef with hamza of DejaVu Sans is the alef and a
+  // composite hamza). The bound of a Pascal for is taken once, so the components of the second
+  // level were left out of the subset and drew nothing: the hamza was lost.
+  K := 0;
+  while K < FGlyphsInList.Count do
   begin
     CheckGlyphComposite(FGlyphsInList[K]);
+    Inc(K);
   end;
 end;
 
