@@ -995,6 +995,7 @@ var
   calculatedLines: TList<TLineGlyphs>;
   calculatedLine:TLineGlyphs;
   j, k: Integer;
+  lineEndCluster, nextLineCluster: Integer;
   visualRuns: TList<TBidiRun>;
   LineInfo: TRpLineInfo;
   possibleBreaksCharIdx: TDictionary<Integer,Integer>;
@@ -1543,9 +1544,36 @@ begin
           end;
 
           LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
-          LineInfo.Position := minCluster;
-          LineInfo.Size := maxCluster - minCluster + 1;
-          LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
+          // THE TEXT OF THE LINE AND ITS CLUSTERS (12-10-2026). The clusters are positions in the
+          // paragraph (`line`, from 1), and the line was cut from the whole text with them: from
+          // the second paragraph on, its text (the /ActualText, and the text the PDF gives each
+          // glyph) came from another place, and a viewer copied repeated and cut words. Position
+          // is now in the whole text (from 1, as the other providers), the text reaches the end
+          // of the last cluster (a lam-alef ligature is two characters), and the clusters of the
+          // glyphs are positions in the text of the line, from 0, as TextoDeCadaGlifo reads them.
+          if (Length(LineInfo.Glyphs) > 0) then
+          begin
+            nextLineCluster := Length(line);
+            if (lineIdx + 1 < calculatedLines.Count) then
+              for j := 0 to calculatedLines[lineIdx + 1].Glyphs.Count - 1 do
+                if (Integer(calculatedLines[lineIdx + 1].Glyphs[j].LineCluster) - 1 < nextLineCluster) then
+                  nextLineCluster := Integer(calculatedLines[lineIdx + 1].Glyphs[j].LineCluster) - 1;
+            lineEndCluster := maxCluster;
+            while ((lineEndCluster < nextLineCluster) and (lineEndCluster < Length(line)) and
+                   (line[lineEndCluster + 1] > ' ')) do
+              Inc(lineEndCluster);
+            LineInfo.Position := lineSubText.Position + minCluster - 1;
+            LineInfo.Size := lineEndCluster - minCluster + 1;
+            LineInfo.Text := Copy(line, minCluster, LineInfo.Size);
+            for k := 0 to High(LineInfo.Glyphs) do
+              LineInfo.Glyphs[k].LineCluster := LineInfo.Glyphs[k].LineCluster - Cardinal(minCluster);
+          end
+          else
+          begin
+            LineInfo.Position := lineSubText.Position;
+            LineInfo.Size := 0;
+            LineInfo.Text := '';
+          end;
 
           // Per-line width and max font size
           lw := 0;
