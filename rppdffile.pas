@@ -4216,7 +4216,14 @@ var
  FontStream:TMemoryStream;
  yadeclarados:TDictionary<Integer,Boolean>;
  sustituidos:TList<Integer>;
+{$IFDEF FPC}
+ // In FPC `glyphText` holds UTF-8 (TextoDeCadaGlifo): the CMap is written in
+ // UTF-16 code units, so it is decoded first
+ destino:UnicodeString;
+ destinoU8:string;
+{$ELSE}
  destino:string;
+{$ENDIF}
  ginfo:TGlyphInfo;
  g,k,desde,cuantos:integer;
 begin
@@ -4396,7 +4403,13 @@ begin
      // SIN UN DESTINO QUE VALGA NO SE DECLARA NADA: poner un cero o un caracter de control seria
      // cambiar un texto mudo por un texto sucio, y eso es peor. Se filtra AQUI y no al escribir,
      // porque el numero de entradas va delante del bloque.
+{$IFDEF FPC}
+     if adata.glyphText.TryGetValue(ginfo.Glyph,destinoU8) then
+      destino:=UTF8Decode(destinoU8)
+     else
+{$ELSE}
      if (not adata.glyphText.TryGetValue(ginfo.Glyph,destino)) then
+{$ENDIF}
       destino:=ginfo.Char;
      if ((Length(destino)=0) or (destino[1]<=' ')) then
       Continue;
@@ -4423,7 +4436,13 @@ begin
       g:=sustituidos[k];
       // La cadena entera si el glifo vale por varias letras; si no, el caracter que guardo el
       // proveedor. Es exactamente lo que la norma pide para una ligadura: `<glifo> <00660069>`.
+{$IFDEF FPC}
+      if adata.glyphText.TryGetValue(g,destinoU8) then
+       destino:=UTF8Decode(destinoU8)
+      else
+{$ELSE}
       if (not adata.glyphText.TryGetValue(g,destino)) then
+{$ENDIF}
        destino:=adata.glyphsInfo[g].Char;
       fromTo:=AnsiString('<'+IntToHex4(g)+'> ');
       cmaphead:=AnsiString(String(cmaphead)+String(fromTo)+' <');
@@ -4523,6 +4542,38 @@ begin
      end;
      inc(index);
     until ((index>adata.lastloaded) or (index>60000));
+    // THE GLYPHS OF THE SHAPING (12-10-2026): the loop above declares the nominal glyph of
+    // every loaded character, but shaping also draws glyphs that are not the nominal one of
+    // any character (the joined forms of Arabic, ligatures). Without an entry they took
+    // /DW 1000, a whole em: a viewer selects them as boxes far wider than the glyph and,
+    // copying the text, took the overlaps for word breaks (an Arabic word copied with a
+    // space between every letter). Their widths are in glyphsInfo, as the ToUnicode CMap
+    // already uses them; only the glyphs not declared above are added.
+    yadeclarados:=TDictionary<Integer,Boolean>.Create;
+    sustituidos:=TList<Integer>.Create;
+    try
+     for index:=adata.firstloaded to adata.lastloaded do
+      if ((index>=0) and (index<=65535) and adata.loaded[index]) then
+       yadeclarados.AddOrSetValue(Integer(adata.loadedglyphs[index]),true);
+     for ginfo in adata.glyphsInfo.Values do
+      if ((ginfo.Glyph>0) and (not yadeclarados.ContainsKey(ginfo.Glyph))) then
+      begin
+       yadeclarados.AddOrSetValue(ginfo.Glyph,true);
+       sustituidos.Add(ginfo.Glyph);
+      end;
+     sustituidos.Sort;
+     for k:=0 to sustituidos.Count-1 do
+     begin
+      awidths:=awidths+IntToStr(sustituidos[k])+'['+
+       FormatFloat('0.00',adata.glyphsInfo[sustituidos[k]].Width, NumberFormatSettings)+'] ';
+      acount:=acount+1;
+      if (acount mod 8)=7 then
+       awidths:=awidths+LINE_FEED;
+     end;
+    finally
+     sustituidos.Free;
+     yadeclarados.Free;
+    end;
     SWriteLine(FTempStream,awidths);
     SWriteLine(FTempStream,']');
    end;
@@ -4782,7 +4833,14 @@ var
 {$ELSE}
  i,k,c,fin,largo,pos,n:integer;
 {$ENDIF}
+{$IFDEF FPC}
+ // The clusters count UTF-16 code units and CharCode is one: in FPC the text
+ // of the line is UTF-8, so it is converted (and the texts of the glyphs go
+ // back as UTF-8, the strings of `glyphText`)
+ texto:UnicodeString;
+{$ELSE}
  texto:string;
+{$ENDIF}
  limites:TList<Integer>;
  cuantos:TDictionary<Integer,Integer>;
  primero:TDictionary<Integer,Integer>;
@@ -4868,7 +4926,11 @@ begin
    // Con un caracter y un solo glifo no hace falta declarar nada nuevo: `glyphsInfo` ya guarda ese
    // caracter y el CMap lo declara por su cuenta.
    if ((largo>1) or (cuantos[c]>1)) then
+{$IFDEF FPC}
+    textos[i]:=UTF8Encode(Copy(texto,c+1,largo));
+{$ELSE}
     textos[i]:=Copy(texto,c+1,largo);
+{$ENDIF}
   end;
  finally
   primero.Free;
