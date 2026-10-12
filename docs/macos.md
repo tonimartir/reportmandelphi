@@ -100,8 +100,23 @@ Los tests con HTTPS necesitan OpenSSL 3 (ver más abajo); para no instalarlo,
 
 ## Librerías del motor
 
-Fuera de Windows el motor mide y da forma al texto con FreeType, HarfBuzz,
-fontconfig e ICU, que se cargan al usarse (no hacen falta para compilar):
+**En macOS el texto lo mide, lo maqueta y lo pinta Core Text**, el motor de
+texto del sistema (`rtl_fpc/rpinfoprovct.pas` y, para la vista previa y la
+impresión, `lcl/rpcocoatext.pas`), como Windows con DirectWrite: las
+ligaduras árabes, la mezcla de direcciones y la sustitución de fuentes son las
+del sistema, y lo que se ve en la vista previa es lo que va al PDF.
+`RP_TEXT_ENGINE=freetype` vuelve al motor del resto de plataformas (HarfBuzz +
+FreeType + fontconfig), para comparar. Con Core Text no se usa fontconfig;
+HarfBuzz (y la FreeType que enlaza) se sigue cargando para hacer el
+subconjunto de las fuentes que se incrustan en el PDF, también el de la
+instancia de una fuente variable. Diseño, fases y resultados:
+`docs/coretext_provider_plan.md`. Prueba:
+`tests/fpc/CoreTextProviderTest/run_macos.sh` (el proveedor, el texto que se
+copia del PDF, `LclSnapshotTest` y la vista previa contra el PDF rasterizado).
+
+Fuera de Windows (y en macOS con `RP_TEXT_ENGINE=freetype`) el motor mide y da
+forma al texto con FreeType, HarfBuzz, fontconfig e ICU, que se cargan al
+usarse (no hacen falta para compilar):
 
 | Librería | En macOS |
 |---|---|
@@ -261,10 +276,11 @@ lpadmin -p RM_PDF -E -v ipp://localhost:8631/ipp/print -m everywhere
 
 Probado en ella: una etiqueta en vertical y en apaisado, `bold.rep`,
 `arab2wordwrap.rep` y `sample4.rep` (2 páginas, con imágenes), por
-`PrintReport` y por `PrintMetafile`, con y sin el parche de Lazarus. Lo que
-falta en `arab2wordwrap.rep` (cajas «?») falta también en el PDF del motor:
-son caracteres sin fuente en ese Mac. Las diferencias de texto respecto al
-PDF del motor salen igual en la vista previa LCL: no son de la impresión.
+`PrintReport` y por `PrintMetafile`, con y sin el parche de Lazarus. Con
+Core Text (12-10-2026) `htmltest.rep`, `arab2wordwrap.rep` y `bold.rep` se
+imprimen como su PDF: el árabe unido y los segmentos HTML en su sitio (con
+FreeType faltaban caracteres en `arab2wordwrap.rep` y el árabe salía sin
+unir, igual que en la vista previa).
 
 ## Notas del port
 

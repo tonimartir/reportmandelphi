@@ -277,6 +277,35 @@ dibuja el driver. Se retira `DrawRunLCL` en Cocoa.
 referencia de la fase 0; impresión real (RM_PDF y la HP); `docs/macos.md`,
 `CLAUDE.md`, lista del OPM; `.dmg` nuevo con Actions (con visto bueno).
 
+**Resultados de la fase 5 (12-10-2026).**
+
+- **Core Text es el motor por defecto en macOS** (`TrpPDFCanvas.Create`);
+  `RP_TEXT_ENGINE=freetype` vuelve a HarfBuzz + FreeType + fontconfig. Con Core
+  Text no se carga fontconfig; HarfBuzz (y su FreeType) sí, para el
+  subconjunto de las fuentes incrustadas.
+- **La vista previa contra el PDF**: `tests/fpc/LclSnapshotTest/previewvspdf.swift`
+  rasteriza el PDF de referencia que escribe `LclSnapshotTest` al tamaño de la
+  instantánea y mide qué parte de la tinta de cada una tiene tinta de la otra a
+  2 píxeles. Mínimos: 0,98 de la tinta del PDF en la vista previa (cada glifo
+  del PDF está en la vista previa) y 0,85 al revés (los bordes de un lápiz de
+  grosor 0 son trazos de 0,05 puntos en el PDF, casi invisibles al rasterizar,
+  y de un píxel en la vista previa). Con Core Text pasan `sample4`, `bold`,
+  `boldold`, `arab2wordwrap` (1,000 y 1,000) y `htmltest`; con FreeType fallan
+  `arab2wordwrap` (0,730: el árabe sin unir) y `boldold` (0,875). Va en
+  `tests/fpc/CoreTextProviderTest/run_macos.sh`, que también compila y pasa
+  `LclSnapshotTest` (18/18).
+- **Fallo encontrado**: la exportación a PDF/A-3, que incrusta todas las
+  fuentes, también las que no dibujan ningún glifo, daba un acceso inválido en
+  `RpHBVariableInstance`: el bucle de los glifos tenía una variable `Cardinal`
+  y con la lista vacía `Length - 1` era 4294967295. `LclSnapshotTest` captura
+  ahora las excepciones de cada prueba (la de esta llegaba a la aplicación, que
+  abría un diálogo modal y la ejecución se quedaba esperando).
+- **Impresión** en RM_PDF con `PrintReport`: `htmltest`, `arab2wordwrap` y
+  `bold` salen como su PDF (árabe unido, HTML en su sitio). `sample4` se queda
+  esperando con los dos motores (sus datos de ejemplo): no es del texto. La HP
+  queda para una prueba con papel.
+- Pendiente: el `.dmg` con Actions, con visto bueno.
+
 ## Riesgos y preguntas abiertas
 
 - Orden de los runs y de los glifos RTL en `CTLine` (fase 0).

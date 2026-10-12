@@ -200,8 +200,13 @@ Other FPC deliverables:
   it on `macos-15` (arm64) and `macos-15-intel` and tests the universal
   `.dmg` on both; the designer's `--check-https` tests TLS with the bundled
   OpenSSL. `rpconf.inc` defines `LINUX` for FPC on Darwin (the non-Windows
-  engine path); real macOS differences go under `DARWIN`. See
-  `docs/macos.md`.
+  engine path); real macOS differences go under `DARWIN`. On macOS the text
+  is measured, laid out and painted with Core Text (`rtl_fpc/rpinfoprovct.pas`,
+  `lcl/rpcocoatext.pas`); `RP_TEXT_ENGINE=freetype` goes back to HarfBuzz +
+  FreeType + fontconfig, and HarfBuzz (with the FreeType it links) is still
+  loaded to subset the fonts embedded in a PDF. `tests/fpc/CoreTextProviderTest/run_macos.sh` tests it,
+  including the preview against the rasterized PDF. See `docs/macos.md` and
+  `docs/coretext_provider_plan.md`.
 
 **Shared units rule:** the root `rp*.pas` units are also the Delphi product.
 Any change Delphi can see must be a genuine bug fix; all other port work goes

@@ -7,6 +7,10 @@
 #   2. PdfTest con RP_TEXT_ENGINE=coretext: htmltest.rep y arab2wordwrap.rep
 #      a PDF, y el texto que extrae PDFKit (el ToUnicode y las anchuras /W,
 #      como cualquier visor) tiene las palabras arabes enteras.
+#   3. LclSnapshotTest (Core Text es el motor por defecto en macOS) y, para
+#      sample4, bold, boldold, arab2wordwrap y htmltest, la vista previa contra
+#      el PDF rasterizado (LclSnapshotTest/previewvspdf.swift): los glifos que
+#      dibuja el PDF estan en la vista previa y al reves.
 #
 # Despues de compilar los paquetes (packages/fpc/build_fpc.sh) en el Mac:
 #   tests/fpc/CoreTextProviderTest/run_macos.sh
@@ -41,6 +45,21 @@ pdf() {
 }
 pdf htmltest "الاستدلال" "تغادر" "inferencia" "الجديد 1.0 بتحسين"
 pdf arab2wordwrap "المستندات" "الرقمية" "PDF"
+
+echo "== LclSnapshotTest y vista previa contra PDF"
+SNAP="$SRC/tests/fpc/LclSnapshotTest"
+if lazbuild --ws=cocoa --no-write-project "$SNAP/LclSnapshotTest.lpi" > "$DIR/build_snapshot.log" 2>&1 && swiftc -O -o "$DIR/previewvspdf" "$SNAP/previewvspdf.swift" > "$DIR/build_previewvspdf.log" 2>&1; then
+    # Con un limite: una excepcion que llegara a la aplicacion abriria un dialogo modal
+    (cd "$SNAP" && perl -e 'alarm 900; exec @ARGV' ./LclSnapshotTest > "$DIR/snapshot.log" 2>&1) || fail=1
+    grep -E "ERROR|Test Results" "$DIR/snapshot.log"
+    for rep in sample4 bold boldold arab2wordwrap htmltest; do
+        line=$("$DIR/previewvspdf" "$SNAP/snapshot_$rep.png" "$SNAP/snapshot_${rep}_ref.pdf" 0.98 0.85 "$DIR/diff_$rep.png")
+        if [ $? -ne 0 ]; then fail=1; echo "   $rep: FALLA, $line (diff_$rep.png)"; else echo "   $rep: $line"; fi
+    done
+else
+    echo "   no compila (build_snapshot.log, build_previewvspdf.log)"
+    fail=1
+fi
 
 if [ $fail -eq 0 ]; then
     echo "Core Text: todo correcto"

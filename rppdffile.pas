@@ -533,9 +533,10 @@ begin
 {$ENDIF}
 {$IFDEF LINUX}
 {$IF DEFINED(FPC) AND DEFINED(DARWIN)}
-  // macOS: Core Text, the text engine of the system (docs/coretext_provider_plan.md),
-  // while it is being built only with RP_TEXT_ENGINE=coretext
-  if SameText(GetEnvironmentVariable('RP_TEXT_ENGINE'),'coretext') then
+  // macOS: Core Text, the text engine of the system, measures, lays out and paints
+  // (docs/coretext_provider_plan.md); RP_TEXT_ENGINE=freetype goes back to HarfBuzz +
+  // FreeType + fontconfig, to compare
+  if not SameText(GetEnvironmentVariable('RP_TEXT_ENGINE'),'freetype') then
    FFtInfoProvider:=TRpCTInfoProvider.Create
   else
 {$IFEND}

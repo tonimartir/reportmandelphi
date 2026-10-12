@@ -905,6 +905,30 @@ end;
 
 var
   passed, total: Integer;
+// A test that raises is a failed test, with its message and where it was raised: the
+// exception reached the application, and the LCL showed it in a modal dialog that nobody
+// closes (the run stopped there).
+type
+  TTestFunc = function: Boolean;
+
+function RunTest(ATest: TTestFunc; const AName: string): Boolean;
+var
+  i: Integer;
+begin
+  try
+    Result := ATest();
+  except
+    on E: Exception do
+    begin
+      WriteLn('ERROR in ', AName, ': [', E.ClassName, '] ', E.Message);
+      WriteLn(BackTraceStrFunc(ExceptAddr));
+      for i := 0 to ExceptFrameCount - 1 do
+        WriteLn(BackTraceStrFunc(ExceptFrames[i]));
+      Result := False;
+    end;
+  end;
+end;
+
 begin
   Application.Initialize;
 
@@ -956,41 +980,41 @@ begin
     Inc(passed);
 
   Inc(total);
-  if TestPreviewFormInstantiation then
+  if RunTest(@TestPreviewFormInstantiation, 'TestPreviewFormInstantiation') then
     Inc(passed);
 
   Inc(total);
-  if TestMetafileExportPDFAndPNG then
+  if RunTest(@TestMetafileExportPDFAndPNG, 'TestMetafileExportPDFAndPNG') then
     Inc(passed);
 
   Inc(total);
-  if TestTextClipAndAlign then
+  if RunTest(@TestTextClipAndAlign, 'TestTextClipAndAlign') then
     Inc(passed);
 
   Inc(total);
-  if TestHtmlRuns then
+  if RunTest(@TestHtmlRuns, 'TestHtmlRuns') then
     Inc(passed);
 
   Inc(total);
-  if TestPngDpi then
+  if RunTest(@TestPngDpi, 'TestPngDpi') then
     Inc(passed);
 
   Inc(total);
-  if TestMultiPageBitmap then
+  if RunTest(@TestMultiPageBitmap, 'TestMultiPageBitmap') then
     Inc(passed);
 
   Inc(total);
-  if TestShapePenStyles then
+  if RunTest(@TestShapePenStyles, 'TestShapePenStyles') then
     Inc(passed);
 
 {$IF DEFINED(UNIX) AND NOT DEFINED(DARWIN)}
   Inc(total);
-  if TestCairoPrinterCanvas then
+  if RunTest(@TestCairoPrinterCanvas, 'TestCairoPrinterCanvas') then
     Inc(passed);
 {$IFEND}
 {$IFDEF MSWINDOWS}
   Inc(total);
-  if TestGdiHandles then
+  if RunTest(@TestGdiHandles, 'TestGdiHandles') then
     Inc(passed);
 {$ENDIF}
 
