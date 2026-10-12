@@ -1009,6 +1009,8 @@ var
   SegEndAbs: Integer;
   IntStart: Integer;
   IntEnd: Integer;
+  wordEndAbs: Integer;
+  firstWordWidth: Double;
   ChunkText: WideString;
   activeSize: Double;
   minCluster: Integer;
@@ -1326,6 +1328,32 @@ begin
                  positions[k].HasFontSize := Seg.HasFontSize;
                  positions[k].Color := Seg.Color;
                  positions[k].HasColor := Seg.HasColor;
+               end;
+
+               // A segment that starts a word after a space of the previous segment
+               // (12-10-2026): when its first word does not fit what is left of the
+               // line, the line ends before the segment. BreakChunksLTR/RTL only break
+               // after a glyph of the segment, so they took the glyphs that fitted and
+               // split the word: «...análisis de S» / «QL.» for «de <i>SQL</i>.». The
+               // positions are taken in PlainText (UTF-16), as the clusters.
+               if (WordWrap and (runWidth > remaining) and (remaining < lineWidthLimit) and
+                  (IntStart > 1) and ((PlainText[IntStart - 1] = ' ') or (PlainText[IntStart - 1] = #10))) then
+               begin
+                 wordEndAbs := IntStart;
+                 while ((wordEndAbs < IntEnd) and (PlainText[wordEndAbs] <> ' ') and
+                   (PlainText[wordEndAbs] <> #10)) do
+                   Inc(wordEndAbs);
+                 firstWordWidth := 0;
+                 for k:=0 to Length(positions)-1 do
+                   if ((Integer(positions[k].LineCluster) >= IntStart - lineSubText.Position) and
+                       (Integer(positions[k].LineCluster) < wordEndAbs - lineSubText.Position)) then
+                     firstWordWidth := firstWordWidth + positions[k].XAdvance;
+                 if (firstWordWidth > remaining) then
+                 begin
+                   calculatedLines.Add(currentChunk);
+                   currentChunk:=TLineGlyphs.Create(textOffset);
+                   remaining:=lineWidthLimit;
+                 end;
                end;
 
                if ((runWidth<=remaining) or (not WordWrap)) then
