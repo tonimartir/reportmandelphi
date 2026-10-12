@@ -914,6 +914,10 @@ end;
 // japones y latino contesta 'Zyyy' (comun); un tramo, en cambio, es de un solo script por
 // construccion, asi que se mira el suyo. Mismos rangos que el port .NET, para que los dos
 // motores conformen cada tramo con la misma etiqueta.
+//
+// DIGITS AND PUNCTUATION DO NOT DECIDE THE SCRIPT (12-10-2026): a right to left tramo is not
+// split, and one that began with "{{'0.'" or "<u>" was shaped as Latin, the Arabic after it
+// in isolated letters that did not join.
 function DetectaScript(const texto:WideString):string;
 var
  i,cp:integer;
@@ -922,6 +926,10 @@ begin
  begin
   cp:=Ord(texto[i]);
   if (cp<=32) then
+   continue;
+  // Neutral: ASCII digits and punctuation, and the signs of Latin-1
+  if ((cp<$41) or ((cp>$5A) and (cp<$61)) or ((cp>$7A) and (cp<$C0))
+      or (cp=$D7) or (cp=$F7)) then
    continue;
   if (((cp>=$0600) and (cp<=$06FF)) or ((cp>=$0750) and (cp<=$077F))
       or ((cp>=$08A0) and (cp<=$08FF)) or ((cp>=$FB50) and (cp<=$FDFF))
