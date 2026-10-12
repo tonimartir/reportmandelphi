@@ -39,7 +39,7 @@ pdf() {
     swift "$DIR/pdftext.swift" "$DIR/ct_$rep.pdf" "$@" > "$DIR/text_$rep.log" 2>&1 || fail=1
     grep -E "CHECK" "$DIR/text_$rep.log"
 }
-pdf htmltest "الاستدلال" "تغادر" "inferencia"
+pdf htmltest "الاستدلال" "تغادر" "inferencia" "الجديد 1.0 بتحسين"
 pdf arab2wordwrap "المستندات" "الرقمية" "PDF"
 
 if [ $fail -eq 0 ]; then
