@@ -1970,6 +1970,22 @@ begin
  SWriteLine(FFile.FsTempStream,'Q');
 end;
 
+// The text a line of HTML stands for, for the /ActualText of its glyphs (12-10-2026): its
+// position and size count the text laid out, without the tags, so the source copied from
+// them was a piece of HTML («<span style=...», «<b>C#</b>») shifted from the line. Viewers
+// that read /ActualText (Chrome, Acrobat) gave that piece as the text of the line. The text
+// of the line is the one the provider laid out; without it, the source as before.
+function LaidOutText(const ASource:WideString;const ALine:TRpLineInfo;AIsHtml:Boolean):WideString;
+begin
+ Result:=ASource;
+ if (AIsHtml and (Length(ALine.Text)>0)) then
+{$IFDEF FPC}
+  Result:=UTF8Decode(ALine.Text);
+{$ELSE}
+  Result:=ALine.Text;
+{$ENDIF}
+end;
+
 procedure TRpPDFCanvas.TextRect(ARect: TRect; Text: Widestring;
                        Alignment: integer; Clipping: boolean;Wordbreak:boolean;
                        Rotation:integer;RightToLeft:Boolean;IsHtml:Boolean);
@@ -2138,7 +2154,7 @@ begin
 
        for index:=0 to lwords.Count-1 do
        begin
-        TextOut(currpos,PosY+lInfo[i].TopPos,lwords.strings[index],lInfo[i].Width,Rotation,RightToLeft,lwordinfos[index],IsHtml);
+        TextOut(currpos,PosY+lInfo[i].TopPos,LaidOutText(lwords.strings[index],lwordinfos[index],IsHtml),lInfo[i].Width,Rotation,RightToLeft,lwordinfos[index],IsHtml);
         currpos:=currpos+StrToInt(lwidths.Strings[index])+alinedif;
        end;
       end
@@ -2167,7 +2183,7 @@ begin
      PenStyle:=oldPenStyle;
     end;
 
-    TextOut(PosX,PosY+lInfo[i].TopPos,astring,lInfo[i].Width,Rotation,RightToLeft,lInfo[i],IsHtml);
+    TextOut(PosX,PosY+lInfo[i].TopPos,LaidOutText(astring,lInfo[i],IsHtml),lInfo[i].Width,Rotation,RightToLeft,lInfo[i],IsHtml);
    end
   end;
  finally
