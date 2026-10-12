@@ -1655,7 +1655,12 @@ begin
     end;
     currentfont.data.FontData.Fontdata.Position := 0;
     mem := currentfont.data.FontData.Fontdata.Memory;
-    CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, currentfont.data.FontData.Fontdata.Size, 0, shapedata.FreeTypeFace));
+    // The face fontconfig chose (12-10-2026): its index in a collection and, in the upper 16
+    // bits, the named instance of a variable font. Face 0 shaped the first face of a .ttc
+    // while another was embedded, and the default instance of a variable font (its regular)
+    // while the bold was asked.
+    CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, currentfont.data.FontData.Fontdata.Size,
+      currentfont.fontIndex, shapedata.FreeTypeFace));
 
     currentfont.CustomImplementation := shapedata;
     currentfont.LoadedFace := True;
@@ -2984,6 +2989,9 @@ var
   outSize: Cardinal;
   isVariable: boolean;
   HasCCF2: boolean;
+  glyphList: array of Integer;
+  instanceBytes: TBytes;
+  k: Integer;
 begin
 
   HasCCF2 := False;
@@ -3005,11 +3013,26 @@ begin
      isVariable := FontHasCFF2OrFVAR(face);
      if  (isVariable or HasCCF2) then
      begin
-      //Result := TMemoryStream.Create;
-      //Result.SetSize(data.FontData.FontData.Size);
-      //Move(data.FontData.Fontdata.Memory^, Result.Memory^, data.FontData.FontData.Size);
-      //Result.Position := 0;
-      Result:=GetFontStreamNative(data);
+      // A variable font: a static instance of the one the text was shaped with
+      // (RpHBVariableInstance, 12-10-2026); without it (CFF2, or a HarfBuzz before 6.0)
+      // as before, which draws the default instance
+      SetLength(glyphList, data.glyphsInfo.Count);
+      k := 0;
+      for glyphInfo in data.glyphsInfo.Values do
+      begin
+        glyphList[k] := glyphInfo.Glyph;
+        Inc(k);
+      end;
+      if RpHBVariableInstance(data.FontData.FontData.Memory, data.FontData.FontData.Size,
+        Cardinal(data.FontIndex), 0, glyphList, instanceBytes) then
+      begin
+        Result := TMemoryStream.Create;
+        Result.SetSize(Int64(Length(instanceBytes)));
+        Move(instanceBytes[0], Result.Memory^, Length(instanceBytes));
+        Result.Position := 0;
+      end
+      else
+        Result:=GetFontStreamNative(data);
      end
      else
      begin
