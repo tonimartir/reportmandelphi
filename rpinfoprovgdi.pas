@@ -401,6 +401,7 @@ var
 {$IFDEF FPC}
   inTag: Boolean;
   firstStrongRTL: Boolean;
+  strongFound: Boolean;
   ci: Integer;
   cp: Integer;
   Segments: TList<THtmlSegment>;
@@ -481,6 +482,7 @@ begin
 {$IFDEF FPC}
   inTag := False;
   firstStrongRTL := False;
+  strongFound := False;
   for ci := 1 to Length(Text) do
   begin
     if Text[ci] = '<' then begin inTag := True; Continue; end;
@@ -490,6 +492,7 @@ begin
 {$ELSE}
   var inTag: Boolean := False;
   var firstStrongRTL: Boolean := False;
+  var strongFound: Boolean := False;
   for var ci := 1 to Length(Text) do
   begin
     if Text[ci] = '<' then begin inTag := True; Continue; end;
@@ -502,19 +505,23 @@ begin
     if ((cp >= $600) and (cp <= $6FF)) or ((cp >= $750) and (cp <= $77F)) or
        ((cp >= $8A0) and (cp <= $8FF)) or ((cp >= $FB50) and (cp <= $FDFF)) or
        ((cp >= $FE70) and (cp <= $FEFF)) then
-    begin firstStrongRTL := True; Break; end;
+    begin firstStrongRTL := True; strongFound := True; Break; end;
     // Hebrew
     if ((cp >= $590) and (cp <= $5FF)) or ((cp >= $FB1D) and (cp <= $FB4F)) then
-    begin firstStrongRTL := True; Break; end;
+    begin firstStrongRTL := True; strongFound := True; Break; end;
     // Latin, Greek, Cyrillic = LTR
     if (cp >= $41) and (cp <= $24F) then
-    begin Break; end;
+    begin strongFound := True; Break; end;
     // CJK = LTR
     if (cp >= $4E00) and (cp <= $9FFF) then
-    begin Break; end;
+    begin strongFound := True; Break; end;
   end;
-//  if firstStrongRTL then
-//    TextFormat.SetReadingDirection(1); // DWRITE_READING_DIRECTION_RIGHT_TO_LEFT = 1
+  // The bidi algorithm resolves the neutral characters (punctuation, brackets,
+  // spaces) by the direction of the paragraph: its first strong letter, else
+  // the direction of the object. Left to right, a period between Arabic and
+  // Latin text went with the Latin text.
+  if firstStrongRTL or ((not strongFound) and RightToLeft) then
+    TextFormat.SetReadingDirection(DWRITE_READING_DIRECTION_RIGHT_TO_LEFT);
 
   // Initialize per-character font info arrays
   SetLength(charFontFamilies, 0);

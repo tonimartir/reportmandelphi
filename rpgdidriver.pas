@@ -1875,6 +1875,7 @@ var
   gColor: Integer;
   gHasColor: Boolean;
   glyph: Word;
+  pixY: Integer;
 
   // Selects the font of the current run; returns the top of its glyphs in
   // pixels, on the baseline of the line
@@ -1966,14 +1967,18 @@ begin
       runHasColor := gHasColor;
     end;
 
-    // A glyph off its pen position, alone at its offset (YOffset is upwards)
+    // A glyph off its pen position, alone at its offset (YOffset is upwards),
+    // without underline and strikeout: the run of its base glyph draws them,
+    // here GDI would draw them again at the offset and over its own width
     if (linfo.Glyphs[k].XOffset <> 0) or (linfo.Glyphs[k].YOffset <> 0) then
     begin
       FlushRun;
       glyph := Word(linfo.Glyphs[k].GlyphIndex);
+      pixY := SelectRunFont;
+      Canvas.Font.Style := Canvas.Font.Style - [fsUnderline, fsStrikeOut];
       ExtTextOutW(Canvas.Handle,
         allPixPos[k] + Round(linfo.Glyphs[k].XOffset * aintdpix / 1440),
-        SelectRunFont - Round(linfo.Glyphs[k].YOffset * aintdpiy / 1440),
+        pixY - Round(linfo.Glyphs[k].YOffset * aintdpiy / 1440),
         ETO_GLYPH_INDEX, nil, PWideChar(@glyph), 1, nil);
       continue;
     end;
