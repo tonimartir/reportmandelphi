@@ -139,6 +139,42 @@ unidades por em, nombre PostScript, fichero y cara), anchuras de carácter y de
 glifo (`CTFontGetGlyphsForCharacters`, `CTFontGetAdvancesForGlyphs`), flujos
 de la fuente. `TextExtent` de una línea LTR. `sample4.rep` a PDF.
 
+**Resultados de la fase 1 (12-10-2026).** `rtl_fpc/rpinfoprovct.pas`
+(`TRpCTInfoProvider`, hereda de `TRpFTInfoProvider` solo la incrustación),
+en `reportman_rtl` y elegido en `TrpPDFCanvas.Create` con
+`RP_TEXT_ENGINE=coretext`. Prueba: `tests/fpc/CoreTextProviderTest` (compara
+con FreeType la cara, las métricas, las anchuras, el kerning y la fuente
+incrustada; sale con 1 si algo falla).
+
+- Con la misma cara (Arial normal/negrita/cursiva, Times New Roman, Courier
+  New, Helvetica Neue Bold, Geeza Pro) las métricas y las anchuras son
+  idénticas a las de FreeType (diferencia 0,000 milésimas); un carácter sin
+  glifo mide lo que el `.notdef`, como en FreeType.
+- La cara se encuentra en su fichero también en las colecciones (Helvetica
+  Neue Bold es la 1, Light la 7) y la fuente incrustada es esa cara (se
+  comprueba por los avances de los glifos usados: el subconjunto de HarfBuzz
+  conserva los números de glifo pero no el nombre).
+- Diferencias que son correcciones:
+  - **Helvetica**: FreeType elige Verdana en macOS (el apaño de Linux
+    Helvetica → Cantarell; fontconfig cae en Verdana); Core Text, Helvetica.
+    Hoy los informes con `LFontName` Helvetica salen en Verdana en el Mac.
+  - **Métricas de las colecciones**: `ReadOS2Metrics` de FreeType lee la
+    cabecera de la colección y no la tabla OS/2 de la cara (Geeza Pro:
+    interlineado 807 frente a 136); Core Text lee la tabla de la cara.
+  - **Kerning**: FreeType devuelve 0 en macOS; Core Text lee la tabla `kern`
+    (formato 0) en milésimas de em, como hace Windows.
+- **Fuentes variables** (fase 3): «PingFangSC-Regular» es la instancia
+  `wght`=400 de la cara 16 «PingFang SC» de `PingFangUI.ttc` (28 caras
+  variables; la instancia por defecto es PingFangSC-Medium). Se encuentra la
+  cara por familia y se guardan los valores de los ejes
+  (`CTFontCopyVariation`); falta incrustar la instancia (subconjunto de
+  HarfBuzz fijando los ejes). Hoy se incrusta el fichero entero (56 MB) con la
+  instancia por defecto, igual que con FreeType.
+- **El PDF de `sample4.rep` pasa a la fase 2**: guardado con «PrinterFonts =
+  Recalculate», el PDF fuerza la forma compleja en todo el texto
+  (`UsePdfFonts`), así que todo va por `TextExtent`; es el camino de los
+  informes actuales.
+
 **Fase 2 — TextExtent completo.** Varios párrafos (`DividesIntoLines`), corte
 por palabras, una sola línea, RTL con la semántica de `BidiParagraphLevel`
 (dirección de escritura del párrafo), clusters y `LineCluster` como

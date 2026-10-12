@@ -80,6 +80,9 @@ uses Classes,Sysutils,rpinfoprovid,
 {$IFDEF LINUX}
  rpinfoprovft,
 {$ENDIF}
+{$IF DEFINED(FPC) AND DEFINED(DARWIN)}
+ rpinfoprovct,
+{$IFEND}
 
  rpmdconsts,rptypes,rpmunits,dateutils,
 {$IFDEF FPC}
@@ -526,6 +529,13 @@ begin
   {$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
+{$IF DEFINED(FPC) AND DEFINED(DARWIN)}
+  // macOS: Core Text, the text engine of the system (docs/coretext_provider_plan.md),
+  // while it is being built only with RP_TEXT_ENGINE=coretext
+  if SameText(GetEnvironmentVariable('RP_TEXT_ENGINE'),'coretext') then
+   FFtInfoProvider:=TRpCTInfoProvider.Create
+  else
+{$IFEND}
   FFtInfoProvider:=TRpFtInfoProvider.Create;
   FInfoProvider:=FFtInfoProvider;
 {$ENDIF}
