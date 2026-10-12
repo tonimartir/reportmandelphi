@@ -19,11 +19,13 @@ unit rpinfoprovct;
 
   - A font of the report is its LFontName (as the FreeType provider on Linux
     and macOS) with bold and italic: a Core Text family plus the symbolic
-    traits. A name that is the PostScript name of an existing face is that
-    exact face, without applying the traits again: the substituted runs of a
-    Core Text line carry the PostScript name of their face in
-    TGlyphPos.FontFamily (their nameID 1 can be localized, "蘋方-簡", or lack
-    the weight, "Helvetica Neue" for Helvetica Neue Light).
+    traits (a PostScript or full name of a face is accepted too: "Helvetica"
+    is both a family and the PostScript name of its regular face, so the
+    family goes first). The substituted runs of a Core Text line carry
+    CRpCTFaceMark and the PostScript name of their face in
+    TGlyphPos.FontFamily: that exact face, without the style of the text
+    (their nameID 1 can be localized, "蘋方-簡", or lack the weight,
+    "Helvetica Neue" for Helvetica Neue Light).
   - Metrics and widths in thousandths of an em, as the other providers: a
     CTFont of size 1000 per face. Ascent, descent and height from the hhea
     table and then OS/2 as DirectWrite does (TRpFTInfoProvider.FillFontDataInt),
@@ -34,9 +36,8 @@ unit rpinfoprovct;
     index of a face inside a .ttc is found by its PostScript name in the
     name table of every face of the file.
 
-  Phase 1 of the plan: fonts, metrics, widths, kerning, embedding and
-  normalization (the PDF measures plain text with GetCharWidth). TextExtent
-  (RTL, HTML, shaping) comes in phase 2. }
+  - TextExtent (shaping, bidi, HTML, substitution of fonts, line breaks):
+    CTTypesetter, see the comment above its implementation. }
 
 interface
 
@@ -92,14 +93,24 @@ type
       IsHtml: Boolean; RightToLeft: Boolean): TRpLineInfoArray; override;
   end;
 
-// The face Core Text gives for a family (or PostScript name) and style; it
-// stays in a cache shared by every provider. nil when Core Text gives none.
+const
+  // Before a PostScript name in TGlyphPos.FontFamily: the exact face Core
+  // Text substituted in a run ("@PingFangSC-Regular"), not a family to which
+  // the style of the text is applied
+  CRpCTFaceMark = '@';
+
+// The face Core Text gives for a family (or a PostScript or full name of a
+// face) and style, or for CRpCTFaceMark + a PostScript name; it stays in a
+// cache shared by every provider. nil when Core Text gives none.
 function RpCTFace(const AName: string; ABold, AItalic: Boolean): TRpCTFace;
 {$ENDIF}
 
 implementation
 
 {$IFDEF DARWIN}
+
+uses
+  Math, rphtmlparser;
 
 {$linkframework CoreText}
 
@@ -489,6 +500,11 @@ begin
     begin
       Result.Ascent := Round(cf * t.U16(74));
       Result.Descent := -Round(cf * t.U16(76));
+      // DirectWrite: the line gap is what the height of hhea exceeds
+      // usWinAscent + usWinDescent, never negative, so a line is at least
+      // as high as its glyphs (Helvetica: hhea 1000, win 950 + 225). The
+      // FreeType provider keeps the hhea height.
+      Result.Height := Max(Result.Height, Result.Ascent - Result.Descent);
     end;
     Result.Leading := Result.Height - Result.Ascent + Result.Descent;
   end;
@@ -537,13 +553,15 @@ begin
     CFRelease(attrs);
     Result := CTFontCreateWithFontDescriptor(desc, 1000, nil);
     CFRelease(desc);
-    // A full name instead of a family ("Hiragino Sans W3")
+    // Not a family: a PostScript name ("HelveticaNeue-Light") or a full name
+    // ("Hiragino Sans W3") of a face
     if (Result <> nil) and
        (not SameText(TakeStr(CTFontCopyFamilyName(Result)), AName)) then
     begin
       styled := CTFontCreateWithName(name, 1000, nil);
       if (styled <> nil) and
-         SameText(TakeStr(CTFontCopyName(styled, kCTFontFullNameKey)), AName) then
+         ((TakeStr(CTFontCopyPostScriptName(styled)) = AName) or
+          SameText(TakeStr(CTFontCopyName(styled, kCTFontFullNameKey)), AName)) then
       begin
         CFRelease(Result);
         Result := styled;
@@ -562,9 +580,10 @@ begin
     traits := traits or kCTFontBoldTrait;
   if AItalic then
     traits := traits or kCTFontItalicTrait;
-  if (CTFontGetSymbolicTraits(Result) and mask) <> traits then
+  // Only to add a style the face lacks ("Helvetica Neue Light" stays light)
+  if (traits and not CTFontGetSymbolicTraits(Result) and mask) <> 0 then
   begin
-    // nil when the family has no such face: the regular one stays
+    // nil when the family has no such face: the face stays
     styled := CTFontCreateCopyWithSymbolicTraits(Result, 0, nil, traits, mask);
     if styled <> nil then
     begin
@@ -584,10 +603,19 @@ begin
   try
     if GRequests.TryGetValue(key, Result) then
       Exit;
-    // A PostScript name: that face, without the traits (a substituted run)
-    font := CreateByPostScriptName(AName);
+    // '@' and a PostScript name: the face Core Text substituted in a run,
+    // exactly, without the style of the text (it already has its own)
+    font := nil;
+    if Copy(AName, 1, 1) = CRpCTFaceMark then
+      font := CreateByPostScriptName(Copy(AName, 2, MaxInt));
+    // A family (or a PostScript or full name) with the style
     if font = nil then
-      font := CreateByFamily(AName, ABold, AItalic);
+    begin
+      if Copy(AName, 1, 1) = CRpCTFaceMark then
+        font := CreateByFamily(Copy(AName, 2, MaxInt), ABold, AItalic)
+      else
+        font := CreateByFamily(AName, ABold, AItalic);
+    end;
     Result := nil;
     if font <> nil then
     begin
@@ -853,12 +881,455 @@ begin
 {$ENDIF}
 end;
 
+{ TextExtent
+
+  The text (HTML segments or plain) is split in paragraphs at CR, LF or CR LF.
+  Each paragraph is an attributed string, with a font per segment (its family
+  or the LFontName of the report, bold and italic, size) and the direction of
+  the paragraph (BidiParagraphLevel: the first strong letter, and with none
+  the direction of the object). CTTypesetter shapes it, orders it (bidi),
+  substitutes the fonts that lack a character and breaks it in lines by
+  width; every CTLine gives its runs and glyphs in visual order with their
+  positions. The contract is the one of the other providers:
+  - XAdvance, XOffset and YOffset in twips: the PDF places a glyph at the
+    origin plus the sum of the previous advances plus XOffset, and YOffset
+    up. They are computed from the absolute positions of Core Text, so the
+    roundings do not add up along the line.
+  - Position (from 1) and Size: the characters of the line in the text, and
+    Text that substring; LineCluster, from 0 inside Text, the first
+    character of the cluster of the glyph (as the PDF reads it for ToUnicode).
+  - FontFamily: the family the glyph was measured with (the one of its
+    segment, or LFontName), and for a substituted run CRpCTFaceMark and the PostScript name of
+    its face, so that the PDF changes the font resource right there.
+  - The white space at the end of a line (and at the start of a wrapped one)
+    is removed, and the height of a line and its baseline come from the
+    fonts it uses, as in the FreeType and DirectWrite providers.
+  - A blank paragraph keeps its height (as DirectWrite). }
+
+type
+  TRpCTRange = record
+    Start, Len: Integer;      // in the plain text, from 0
+    Family: string;           // the name it was asked by (TGlyphPos.FontFamily)
+    Face: TRpCTFace;
+    Size: Double;
+    HasFontSize: Boolean;
+    Style: Integer;           // 1 bold, 2 italic, 4 underline, 8 strikeout
+    Color: Integer;
+    HasColor: Boolean;
+  end;
+
+  TRpCTGlyph = record
+    Glyph: CGGlyph;
+    X, Y, Advance: Double;    // points, from the start of the line
+    Pen: Double;              // sum of the previous advances
+    Index: Integer;           // character, from 0 in the plain text
+    FontName: string;         // PostScript name of the font of the run
+  end;
+
+// Strong direction of a character: 1 left to right, 2 right to left, 0 none
+function StrongDirection(C: Word; ALetters: CFCharacterSetRef): Integer;
+begin
+  if ((C >= $0590) and (C <= $08FF)) or ((C >= $FB1D) and (C <= $FDFF)) or
+     ((C >= $FE70) and (C <= $FEFF)) or (C = $200F) then
+    Result := 2
+  else if (C = $200E) or CFCharacterSetIsCharacterMember(ALetters, C) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+// The direction of a paragraph as ICU with BidiParagraphLevel: its first
+// strong letter decides; without one, the direction of the object
+function ParagraphIsRTL(const AText: UnicodeString; ARightToLeft: Boolean): Boolean;
+var
+  i, d: Integer;
+  letters: CFCharacterSetRef;
+begin
+  letters := CFCharacterSetGetPredefined(kCFCharacterSetLetter);
+  for i := 1 to Length(AText) do
+  begin
+    d := StrongDirection(Ord(AText[i]), letters);
+    if d <> 0 then
+      Exit(d = 2);
+  end;
+  Result := ARightToLeft;
+end;
+
+function IsBlank(C: System.WideChar): Boolean;
+begin
+  Result := (C = ' ') or (C = #9) or (C = #10) or (C = #13);
+end;
+
 function TRpCTInfoProvider.TextExtent(const Text: WideString; var Rect: TRect;
   adata: TRpTTFontData; pdfFont: TRpPDFFont; wordwrap: Boolean; singleline: Boolean;
   FontSize: Double; IsHtml: Boolean; RightToLeft: Boolean): TRpLineInfoArray;
+var
+  segs: THtmlSegmentList;
+  seg: THtmlSegment;
+  plain, segText, paraText: UnicodeString;
+  ranges: array of TRpCTRange;
+  charRange: array of Integer;
+  baseName: string;
+  i, r, n, p, paraStart, paraLen, pos, count, lineIdx, k, a, b, minIdx, maxIdx: Integer;
+  widthPt: Double;
+  rectTop, maxWidth: Double;
+  str: CFStringRef;
+  mas: CFMutableAttributedStringRef;
+  fonts: array of CTFontRef;
+  ts: CTTypesetterRef;
+  line: CTLineRef;
+  runs: CFArrayRef;
+  run: CTRunRef;
+  runFont: CTFontRef;
+  runName: string;
+  rtl: Boolean;
+  dir: CTWritingDirection;
+  setting: CTParagraphStyleSetting;
+  pstyle: CTParagraphStyleRef;
+  glyphs: array of TRpCTGlyph;
+  gl: array of CGGlyph;
+  ps: array of CGPoint;
+  advs: array of CGSize;
+  idx: array of CFIndex;
+  pen, penBase, penRel: Double;
+  lineInfo: TRpLineInfo;
+  gp: TGlyphPos;
+  face: TRpCTFace;
+  lineBaseline, lineHeight, gSize, gBase, gHeight: Double;
+  fpuMask: TFPUExceptionMask;
+
+  procedure AddRange(const AText: UnicodeString; const AFamily: string;
+    ABold, AItalic: Boolean; ASize: Double; AHasSize: Boolean; AStyle, AColor: Integer;
+    AHasColor: Boolean);
+  var
+    q: Integer;
+  begin
+    if AText = '' then
+      Exit;
+    q := Length(ranges);
+    SetLength(ranges, q + 1);
+    ranges[q].Start := Length(plain);
+    ranges[q].Len := Length(AText);
+    ranges[q].Family := AFamily;
+    ranges[q].Face := RpCTFace(AFamily, ABold, AItalic);
+    if ranges[q].Face = nil then
+      ranges[q].Face := ResolveFace(pdfFont);
+    ranges[q].Size := ASize;
+    ranges[q].HasFontSize := AHasSize;
+    ranges[q].Style := AStyle;
+    ranges[q].Color := AColor;
+    ranges[q].HasColor := AHasColor;
+    plain := plain + AText;
+  end;
+
+  // The height and baseline of a font at a size, in twips (as the FreeType
+  // provider: baseline = ascent + positive leading, height = line spacing)
+  procedure FontLine(AFace: TRpCTFace; ASize: Double; out ABase, AHeight: Double);
+  begin
+    ABase := (AFace.Ascent + Max(0, AFace.Leading)) / 1000.0 * ASize * 20.0;
+    AHeight := AFace.Height / 1000.0 * ASize * 20.0;
+  end;
+
 begin
   Result := nil;
-  raise Exception.Create('Core Text provider: TextExtent is phase 2 (docs/coretext_provider_plan.md)');
+  widthPt := (Rect.Right - Rect.Left) / 20.0;
+  if singleline then
+    wordwrap := False;
+  // The rectangle comes back relative: Left/Top 0, Right/Bottom the size
+  Rect.Left := 0;
+  Rect.Top := 0;
+  rectTop := 0;
+  maxWidth := 0;
+  baseName := UTF8Encode(pdfFont.LFontName);
+  if baseName = '' then
+    baseName := UTF8Encode(pdfFont.WFontName);
+  // Core Text (and HarfBuzz under it) may compute NaN that C ignores; FPC
+  // console programs run with the floating point exceptions unmasked
+  fpuMask := GetExceptionMask;
+  SetExceptionMask(fpuMask + [exInvalidOp, exDenormalized, exZeroDivide,
+    exOverflow, exUnderflow, exPrecision]);
+  try
+    // The segments, in UTF-16: the parser gives UTF-8 and their lengths are
+    // measured in the plain text, which is UTF-16
+    plain := '';
+    if IsHtml then
+    begin
+      segs := ParseHtml(UTF8Encode(Text));
+      try
+        for seg in segs do
+        begin
+          segText := UTF8Decode(seg.Text);
+          p := 0;
+          if hsBold in seg.Styles then p := p or 1;
+          if hsItalic in seg.Styles then p := p or 2;
+          if hsUnderline in seg.Styles then p := p or 4;
+          if hsStrikeOut in seg.Styles then p := p or 8;
+          if seg.FontFamily <> '' then
+            AddRange(segText, seg.FontFamily, pdfFont.Bold or (hsBold in seg.Styles),
+              pdfFont.Italic or (hsItalic in seg.Styles),
+              IfThen(seg.HasFontSize, seg.FontSize, FontSize), seg.HasFontSize, p,
+              seg.Color, seg.HasColor)
+          else
+            AddRange(segText, baseName, pdfFont.Bold or (hsBold in seg.Styles),
+              pdfFont.Italic or (hsItalic in seg.Styles),
+              IfThen(seg.HasFontSize, seg.FontSize, FontSize), seg.HasFontSize, p,
+              seg.Color, seg.HasColor);
+        end;
+      finally
+        segs.Free;
+      end;
+    end
+    else
+      AddRange(Text, baseName, pdfFont.Bold, pdfFont.Italic, FontSize, False, 0, 0, False);
+    SetLength(charRange, Length(plain));
+    for r := 0 to High(ranges) do
+      for i := ranges[r].Start to ranges[r].Start + ranges[r].Len - 1 do
+        charRange[i] := r;
+    // A CTFont per range, at its size
+    SetLength(fonts, Length(ranges));
+    for r := 0 to High(ranges) do
+      fonts[r] := CTFontCreateCopyWithAttributes(ranges[r].Face.Font, ranges[r].Size, nil, nil);
+    try
+      paraStart := 0;
+      while paraStart <= Length(plain) do
+      begin
+        // The paragraph: up to CR, LF or CR LF
+        paraLen := 0;
+        while (paraStart + paraLen < Length(plain)) and
+          not ((plain[paraStart + paraLen + 1] = #13) or (plain[paraStart + paraLen + 1] = #10)) do
+          Inc(paraLen);
+        if (paraLen = 0) and (paraStart + paraLen >= Length(plain)) then
+          Break;
+        if paraLen = 0 then
+        begin
+          // A blank paragraph keeps the height of a line of the base font
+          rectTop := rectTop + Round(adata.Height / 1000.0 * FontSize * 20.0);
+        end
+        else
+        begin
+          paraText := Copy(plain, paraStart + 1, paraLen);
+          str := CFStringCreateWithCharacters(nil, Pointer(PWideChar(paraText)), paraLen);
+          mas := CFAttributedStringCreateMutable(nil, 0);
+          try
+            CFAttributedStringReplaceString(mas, CFRangeMake(0, 0), str);
+            CFAttributedStringBeginEditing(mas);
+            for r := 0 to High(ranges) do
+            begin
+              a := Max(ranges[r].Start, paraStart);
+              b := Min(ranges[r].Start + ranges[r].Len, paraStart + paraLen);
+              if a < b then
+                CFAttributedStringSetAttribute(mas, CFRangeMake(a - paraStart, b - a),
+                  kCTFontAttributeName, fonts[r]);
+            end;
+            rtl := ParagraphIsRTL(paraText, RightToLeft);
+            if rtl then
+              dir := kCTWritingDirectionRightToLeft
+            else
+              dir := kCTWritingDirectionLeftToRight;
+            setting.spec := kCTParagraphStyleSpecifierBaseWritingDirection;
+            setting.valueSize := SizeOf(dir);
+            setting.value := @dir;
+            pstyle := CTParagraphStyleCreate(@setting, 1);
+            CFAttributedStringSetAttribute(mas, CFRangeMake(0, paraLen),
+              kCTParagraphStyleAttributeName, pstyle);
+            CFRelease(pstyle);
+            CFAttributedStringEndEditing(mas);
+            ts := CTTypesetterCreateWithAttributedString(CFAttributedStringRef(mas));
+            try
+              pos := 0;
+              lineIdx := 0;
+              while pos < paraLen do
+              begin
+                if wordwrap and (widthPt > 0) then
+                  count := CTTypesetterSuggestLineBreak(ts, pos, widthPt)
+                else
+                  count := paraLen - pos;
+                if count <= 0 then
+                  count := paraLen - pos;
+                line := CTTypesetterCreateLine(ts, CFRangeMake(pos, count));
+                try
+                  // The glyphs of the line in visual order
+                  SetLength(glyphs, 0);
+                  pen := 0;
+                  runs := CTLineGetGlyphRuns(line);
+                  for r := 0 to CFArrayGetCount(runs) - 1 do
+                  begin
+                    run := CTRunRef(CFArrayGetValueAtIndex(runs, r));
+                    n := CTRunGetGlyphCount(run);
+                    if n <= 0 then
+                      Continue;
+                    runFont := CTFontRef(CFDictionaryGetValue(CTRunGetAttributes(run),
+                      kCTFontAttributeName));
+                    runName := TakeStr(CTFontCopyPostScriptName(runFont));
+                    SetLength(gl, n);
+                    SetLength(ps, n);
+                    SetLength(advs, n);
+                    SetLength(idx, n);
+                    CTRunGetGlyphs(run, CFRangeMake(0, 0), @gl[0]);
+                    CTRunGetPositions(run, CFRangeMake(0, 0), @ps[0]);
+                    CTRunGetAdvances(run, CFRangeMake(0, 0), @advs[0]);
+                    CTRunGetStringIndices(run, CFRangeMake(0, 0), @idx[0]);
+                    k := Length(glyphs);
+                    SetLength(glyphs, k + n);
+                    for i := 0 to n - 1 do
+                    begin
+                      glyphs[k + i].Glyph := gl[i];
+                      glyphs[k + i].X := ps[i].x;
+                      glyphs[k + i].Y := ps[i].y;
+                      glyphs[k + i].Advance := advs[i].width;
+                      glyphs[k + i].Pen := pen;
+                      glyphs[k + i].Index := paraStart + idx[i];
+                      glyphs[k + i].FontName := runName;
+                      pen := pen + advs[i].width;
+                    end;
+                  end;
+                finally
+                  CFRelease(line);
+                end;
+                // White space at the end of the line, and at the start of a
+                // wrapped one (visual right and left; mirrored in RTL)
+                a := 0;
+                b := High(glyphs);
+                if not rtl then
+                begin
+                  while (b >= a) and IsBlank(plain[glyphs[b].Index + 1]) do
+                    Dec(b);
+                  if lineIdx > 0 then
+                    while (a <= b) and IsBlank(plain[glyphs[a].Index + 1]) do
+                      Inc(a);
+                end
+                else
+                begin
+                  while (a <= b) and IsBlank(plain[glyphs[a].Index + 1]) do
+                    Inc(a);
+                  if lineIdx > 0 then
+                    while (b >= a) and IsBlank(plain[glyphs[b].Index + 1]) do
+                      Dec(b);
+                end;
+                lineInfo := Default(TRpLineInfo);
+                SetLength(lineInfo.Glyphs, Max(0, b - a + 1));
+                minIdx := MaxInt;
+                maxIdx := -1;
+                for i := a to b do
+                begin
+                  if glyphs[i].Index < minIdx then
+                    minIdx := glyphs[i].Index;
+                  if glyphs[i].Index > maxIdx then
+                    maxIdx := glyphs[i].Index;
+                end;
+                if b >= a then
+                begin
+                  // The cluster of the last character reaches the next
+                  // cluster of the line (a ligature covers more than its
+                  // first character), or the end of the line; without the
+                  // white space removed above
+                  k := paraStart + pos + count;
+                  for i := 0 to High(glyphs) do
+                    if (glyphs[i].Index > maxIdx) and (glyphs[i].Index < k) then
+                      k := glyphs[i].Index;
+                  maxIdx := k - 1;
+                  while (maxIdx > minIdx) and IsBlank(plain[maxIdx + 1]) do
+                    Dec(maxIdx);
+                  lineInfo.Position := minIdx + 1;
+                  lineInfo.Size := maxIdx - minIdx + 1;
+                  lineInfo.Text := UTF8Encode(Copy(plain, lineInfo.Position, lineInfo.Size));
+                end;
+                penBase := 0;
+                if b >= a then
+                  penBase := glyphs[a].Pen;
+                // The base font of the object (as the other providers)
+                lineBaseline := (adata.Ascent + Max(0, adata.Leading)) / 1000.0 * FontSize * 20.0;
+                lineHeight := adata.Height / 1000.0 * FontSize * 20.0;
+                for i := a to b do
+                begin
+                  r := charRange[glyphs[i].Index];
+                  gp := Default(TGlyphPos);
+                  gp.GlyphIndex := glyphs[i].Glyph;
+                  penRel := glyphs[i].Pen - penBase;
+                  gp.XAdvance := Round((penRel + glyphs[i].Advance) * 20) - Round(penRel * 20);
+                  gp.XOffset := Round((glyphs[i].X - penBase) * 20) - Round(penRel * 20);
+                  gp.YOffset := Round(glyphs[i].Y * 20);
+                  gp.YAdvance := 0;
+                  gp.CharCode := plain[glyphs[i].Index + 1];
+                  gp.Cluster := glyphs[i].Index - paraStart;
+                  gp.LineCluster := glyphs[i].Index - minIdx;
+                  // The family it was measured with; the PostScript name of
+                  // the face Core Text took when it substituted the font
+                  if glyphs[i].FontName <> ranges[r].Face.PostScriptName then
+                  begin
+                    gp.FontFamily := CRpCTFaceMark + glyphs[i].FontName;
+                    face := RpCTFace(gp.FontFamily, False, False);
+                  end
+                  else
+                  begin
+                    gp.FontFamily := ranges[r].Family;
+                    face := ranges[r].Face;
+                  end;
+                  gp.FontSize := ranges[r].Size;
+                  gp.HasFontSize := ranges[r].HasFontSize;
+                  gp.Style := ranges[r].Style;
+                  gp.Color := ranges[r].Color;
+                  gp.HasColor := ranges[r].HasColor;
+                  lineInfo.Glyphs[i - a] := gp;
+                  if face <> nil then
+                  begin
+                    if ranges[r].HasFontSize then
+                      gSize := ranges[r].Size
+                    else
+                      gSize := FontSize;
+                    FontLine(face, gSize, gBase, gHeight);
+                    if gBase > lineBaseline then
+                      lineBaseline := gBase;
+                    if gHeight > lineHeight then
+                      lineHeight := gHeight;
+                  end;
+                end;
+                if b >= a then
+                  lineInfo.Width := Round((glyphs[b].Pen + glyphs[b].Advance - penBase) * 20)
+                else
+                  lineInfo.Width := 0;
+                lineInfo.TopPos := Round(rectTop) + Round(lineBaseline);
+                lineInfo.Height := Round(lineHeight);
+                lineInfo.LineHeight := Round(lineHeight);
+                lineInfo.lastline := False;
+                SetLength(Result, Length(Result) + 1);
+                Result[High(Result)] := lineInfo;
+                if lineInfo.Width > maxWidth then
+                  maxWidth := lineInfo.Width;
+                rectTop := rectTop + Round(lineHeight);
+                Inc(lineIdx);
+                Inc(pos, count);
+              end;
+            finally
+              CFRelease(ts);
+            end;
+          finally
+            CFRelease(mas);
+            CFRelease(str);
+          end;
+        end;
+        // Past the line break (CR LF is one)
+        paraStart := paraStart + paraLen;
+        if paraStart >= Length(plain) then
+          Break;
+        if (plain[paraStart + 1] = #13) and (paraStart + 1 < Length(plain)) and
+           (plain[paraStart + 2] = #10) then
+          Inc(paraStart, 2)
+        else
+          Inc(paraStart);
+      end;
+    finally
+      for r := 0 to High(fonts) do
+        if fonts[r] <> nil then
+          CFRelease(fonts[r]);
+    end;
+  finally
+    SetExceptionMask(fpuMask);
+  end;
+  if Length(Result) > 0 then
+    Result[High(Result)].lastline := True;
+  Rect.Right := Round(maxWidth);
+  Rect.Bottom := Round(rectTop);
 end;
 
 initialization

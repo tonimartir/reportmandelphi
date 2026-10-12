@@ -182,6 +182,51 @@ por palabras, una sola línea, RTL con la semántica de `BidiParagraphLevel`
 atribuidos (familia, tamaño, estilo, color), sustitución de fuentes,
 `NFCNormalize`.
 
+**Resultados de la fase 2 (12-10-2026).** `TRpCTInfoProvider.TextExtent`:
+párrafos (CR, LF, CR LF, sobre el texto UTF-16), una cadena atribuida por
+párrafo con la fuente de cada segmento HTML y la dirección del párrafo
+(`BidiParagraphLevel`: la primera letra fuerte, y sin ella la del objeto),
+`CTTypesetter` (forma, bidi, sustitución, corte por anchura con
+`CTTypesetterSuggestLineBreak`), runs y glifos en orden visual. Contrato:
+`XAdvance`/`XOffset`/`YOffset` en twips calculados desde las posiciones
+absolutas de Core Text (sin acumular redondeos); `Position` desde 1 en el
+texto, `Text` la línea, `LineCluster` desde 0 en `Text`; `FontFamily` la del
+segmento o `LFontName`, y en un run sustituido `@` + el nombre PostScript de
+su cara (`CRpCTFaceMark`: esa cara exacta, sin el estilo del texto); se
+quitan los blancos de los extremos de la línea; altura y línea base de las
+fuentes de la línea; un párrafo en blanco conserva su altura.
+
+- `CoreTextProviderTest` comprueba: lam-alif como un glifo, ningún glifo 0,
+  cada glifo en su carácter (`CharCode = Text[LineCluster+1]`), corte por
+  anchura, HTML (negrita, cursiva, fuente por segmento), sustitución marcada
+  (emoji, chino), párrafo en blanco, ligadura «ffi».
+- PDF con `RP_TEXT_ENGINE=coretext` de `htmltest`, `arab2wordwrap`, `bold`,
+  `boldold` y `sample4` (en `~/ctref/ct` del Mac, frente a `~/ctref/ft`):
+  - `arab2wordwrap`: con FreeType el PDF de hoy sale **roto** (cuadros con
+    interrogación, líneas que faltan); con Core Text, completo, ligado y
+    cortado.
+  - `htmltest`: los segmentos HTML en su sitio (con FreeType, desplazados en
+    el texto árabe) y las ligaduras árabes correctas.
+- Fallos del proveedor de FreeType que este no repite:
+  - `ParseHtml` da los segmentos en UTF-8 y FreeType mide su longitud en
+    bytes para situarlos en el texto UTF-16: en HTML con texto no ASCII los
+    estilos y las fuentes caen desplazados.
+  - `DividesIntoLines` recibe un `string` de 8 bits en FPC: las posiciones de
+    los párrafos son de bytes de UTF-8.
+  - Una línea en blanco desaparece (el texto de debajo sube); DirectWrite la
+    conserva.
+  - Mide con `LFontName` pero marca los glifos con `WFontName`: el PDF los
+    dibuja con otra fuente.
+  - Altura de línea: DirectWrite, sin `USE_TYPO_METRICS`, hace la línea al
+    menos `usWinAscent + usWinDescent`; FreeType se queda con la de `hhea`
+    (Helvetica: 1000 frente a 1175, líneas que se pisan).
+- Pendiente para la fase 3: `ToUnicode` en FPC compara el texto de la línea
+  (`string` de 8 bits, UTF-8) carácter a carácter con `CharCode` (UTF-16), así
+  que con texto no ASCII no atribuye las ligaduras (solo afecta a copiar
+  texto del PDF; igual con FreeType).
+- La vista previa y la impresión LCL miden ya con Core Text si se elige, pero
+  siguen pintando carácter a carácter (`DrawRunLCL`) hasta la fase 4.
+
 **Fase 3 — PDF.** Selección en `rppdffile`, incrustar las caras sustitutas,
 `ToUnicode` de las ligaduras (`glyphText`), PDF/A-3.
 

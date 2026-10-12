@@ -230,6 +230,164 @@ begin
   end;
 end;
 
+{ TextExtent (phase 2) }
+
+function Measure(ACt: TRpInfoProvider; const AFont: string; ABold: Boolean;
+  const AText: WideString; AWidthTwips: Integer; AWrap, AHtml, ARtl: Boolean;
+  out ARect: TRect): TRpLineInfoArray;
+var
+  pdffont: TRpPDFFont;
+  data: TRpTTFontData;
+begin
+  pdffont := TRpPDFFont.Create;
+  data := NewData;
+  try
+    pdffont.LFontName := WideString(AFont);
+    pdffont.WFontName := WideString(AFont);
+    pdffont.Bold := ABold;
+    pdffont.Size := 10;
+    ACt.FillFontData(pdffont, data, '');
+    ARect := Types.Rect(0, 0, AWidthTwips, 0);
+    Result := ACt.TextExtent(AText, ARect, data, pdffont, AWrap, False, 10, AHtml, ARtl);
+  finally
+    data.Free;
+    pdffont.Free;
+  end;
+end;
+
+// Every glyph points to its character in the text of its line
+function ClustersMatch(const ALines: TRpLineInfoArray; out ADetail: string): Boolean;
+var
+  i, j, bad, total: Integer;
+  t: UnicodeString;
+  c: Integer;
+begin
+  bad := 0;
+  total := 0;
+  for i := 0 to High(ALines) do
+  begin
+    t := UTF8Decode(ALines[i].Text);
+    for j := 0 to High(ALines[i].Glyphs) do
+    begin
+      Inc(total);
+      c := ALines[i].Glyphs[j].LineCluster;
+      if (c < 0) or (c >= Length(t)) or (t[c + 1] <> ALines[i].Glyphs[j].CharCode) then
+        Inc(bad);
+    end;
+  end;
+  ADetail := Format('%d glyphs, %d not at their character', [total, bad]);
+  Result := (total > 0) and (bad = 0);
+end;
+
+function GlyphCount(const ALines: TRpLineInfoArray): Integer;
+var
+  i: Integer;
+begin
+  Result := 0;
+  for i := 0 to High(ALines) do
+    Inc(Result, Length(ALines[i].Glyphs));
+end;
+
+procedure TestTextExtent(ACt: TRpInfoProvider);
+const
+  CArabic: WideString = #$0628#$0641#$0636#$0644#$0020#$0627#$0644#$0627#$0633#$062A#$062F#$0644#$0627#$0644 +
+    #$0020#$0644#$0627#$0020#$062A#$063A#$0627#$062F#$0631;
+var
+  lines: TRpLineInfoArray;
+  r: TRect;
+  i, j, total, letters, zero, sum: Integer;
+  detail: string;
+  styles, courier, marked: Integer;
+  t: WideString;
+  ok: Boolean;
+  face: TRpCTFace;
+begin
+  WriteLn('== TextExtent');
+  // Arabic: "بفضل الاستدلال لا تغادر", three lam-alef ligatures
+  lines := Measure(ACt, 'Arial', False, CArabic, 20000, False, False, True, r);
+  letters := 0;
+  for i := 1 to Length(CArabic) do
+    if CArabic[i] <> ' ' then
+      Inc(letters);
+  total := GlyphCount(lines);
+  zero := 0;
+  for i := 0 to High(lines) do
+    for j := 0 to High(lines[i].Glyphs) do
+      if lines[i].Glyphs[j].GlyphIndex = 0 then
+        Inc(zero);
+  WriteLn(Format('   Arabic: %d line(s), %d glyphs for %d letters and %d spaces, width %d twips',
+    [Length(lines), total, letters, Length(CArabic) - letters, r.Right]));
+  Check(Length(lines) = 1, 'Arabic in one line');
+  Check(total <= Length(CArabic) - 3, 'The lam-alef ligatures are one glyph each');
+  Check(zero = 0, 'No glyph is missing (glyph 0)');
+  ok := ClustersMatch(lines, detail);
+  Check(ok, 'Arabic: every glyph at its character (' + detail + ')');
+  // Wrapped Spanish text in 2 inches (2880 twips)
+  t := 'El nuevo motor de Reportman permite una optimizaci' + #$00F3 +
+    'n avanzada. Gracias a la inferencia local, los datos nunca abandonan el PC.';
+  lines := Measure(ACt, 'Helvetica', False, t, 2880, True, False, False, r);
+  ok := Length(lines) > 1;
+  sum := 0;
+  for i := 0 to High(lines) do
+  begin
+    if lines[i].Width > 2880 + 20 then
+      ok := False;
+    Inc(sum, lines[i].Height);
+  end;
+  WriteLn(Format('   wrapped: %d lines, rect %d x %d twips', [Length(lines), r.Right, r.Bottom]));
+  Check(ok, 'Wrapped in several lines, none wider than the box');
+  Check(lines[High(lines)].lastline and not lines[0].lastline, 'Only the last line is the last one');
+  Check(r.Bottom = sum, 'The height is the sum of the lines');
+  ok := ClustersMatch(lines, detail);
+  Check(ok, 'Wrapped: every glyph at its character (' + detail + ')');
+  // HTML segments
+  lines := Measure(ACt, 'Helvetica', False,
+    '<b>Negrita</b> normal <i>cursiva</i> <font face="Courier New">mono</font>', 20000, False,
+    True, False, r);
+  styles := 0;
+  courier := 0;
+  for i := 0 to High(lines) do
+    for j := 0 to High(lines[i].Glyphs) do
+    begin
+      styles := styles or lines[i].Glyphs[j].Style;
+      if lines[i].Glyphs[j].FontFamily = 'Courier New' then
+        Inc(courier);
+    end;
+  Check((styles and 3) = 3, 'HTML: bold and italic segments');
+  Check(courier = 4, 'HTML: the "mono" segment in Courier New (' + IntToStr(courier) + ' glyphs)');
+  ok := ClustersMatch(lines, detail);
+  Check(ok, 'HTML: every glyph at its character (' + detail + ')');
+  // Substitution: emoji and Chinese in Helvetica
+  lines := Measure(ACt, 'Helvetica', False, 'Hola ' + #$D83D#$DE00 + ' ' + #$62A5#$8868,
+    20000, False, False, False, r);
+  marked := 0;
+  ok := True;
+  for i := 0 to High(lines) do
+    for j := 0 to High(lines[i].Glyphs) do
+      if Copy(lines[i].Glyphs[j].FontFamily, 1, 1) = CRpCTFaceMark then
+      begin
+        Inc(marked);
+        face := RpCTFace(lines[i].Glyphs[j].FontFamily, True, False);
+        if (face = nil) or (CRpCTFaceMark + face.PostScriptName <> lines[i].Glyphs[j].FontFamily) then
+          ok := False;
+      end;
+  Check(marked = 3, 'Emoji and Chinese substituted (' + IntToStr(marked) + ' glyphs marked)');
+  Check(ok, 'A marked face resolves to that face, even with the bold of the text');
+  // A blank paragraph keeps its height
+  lines := Measure(ACt, 'Helvetica', False, 'A' + #13#10 + #13#10 + 'B', 20000, False, False, False, r);
+  Check(Length(lines) = 2, 'Two lines of text');
+  if Length(lines) = 2 then
+    Check(lines[1].TopPos - lines[0].TopPos = 2 * lines[0].Height,
+      Format('The blank line keeps its height (%d = 2 x %d)', [lines[1].TopPos - lines[0].TopPos, lines[0].Height]));
+  // Latin ligatures
+  lines := Measure(ACt, 'Hoefler Text', False, 'office', 20000, False, False, False, r);
+  Check(GlyphCount(lines) < 6, 'Hoefler Text: "office" with the ffi ligature (' +
+    IntToStr(GlyphCount(lines)) + ' glyphs)');
+  ok := ClustersMatch(lines, detail);
+  Check(ok, 'Ligature: every glyph at its character (' + detail + ')');
+  WriteLn;
+end;
+
 var
   ft, ct: TRpInfoProvider;
   i: Integer;
@@ -247,6 +405,12 @@ begin
           Check(False, CFonts[i].Name + ': ' + E.ClassName + ': ' + E.Message);
       end;
       WriteLn;
+    end;
+    try
+      TestTextExtent(ct);
+    except
+      on E: Exception do
+        Check(False, 'TextExtent: ' + E.ClassName + ': ' + E.Message);
     end;
     WriteLn('== NFC normalization');
     s := ct.NFCNormalize('e' + #$0301 + 'n' + #$0303);
