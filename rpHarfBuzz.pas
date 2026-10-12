@@ -1108,6 +1108,7 @@ var
   coords: array of Single;
   tags: array[0..255] of Cardinal;
   tagCount, axisCount, coordCount, i, instance: Cardinal;
+  k: Integer;
   hasFvar, hasGlyf, hasCFF2: Boolean;
   outData: PByte;
   outSize: Cardinal;
@@ -1165,6 +1166,8 @@ begin
       // A variable TrueType font: fvar and glyf, without CFF2
       tagCount := Length(tags);
       hb_face_get_table_tags(face, 0, tagCount, Phb_tag_t(@tags[0]));
+      if tagCount = 0 then
+        Exit;
       hasFvar := False;
       hasGlyf := False;
       hasCFF2 := False;
@@ -1206,8 +1209,10 @@ begin
         hb_subset_input_set_flags(input, HB_SUBSET_FLAGS_RETAIN_GIDS);
         glyphs := hb_subset_input_glyph_set(input);
         hb_set_add(glyphs, 0);
-        for i := 0 to Length(AGlyphs) - 1 do
-          hb_set_add(glyphs, Cardinal(AGlyphs[i]));
+        // An Integer: with i a Cardinal, Length - 1 of no glyphs is 4294967295 (a font embedded
+        // without any glyph drawn, as PDF/A-3 embeds every font) and the loop read past the array
+        for k := 0 to Length(AGlyphs) - 1 do
+          hb_set_add(glyphs, Cardinal(AGlyphs[k]));
         for i := 0 to axisCount - 1 do
           if not pin(input, face, axes[i].Tag, coords[i]) then
             Exit;
