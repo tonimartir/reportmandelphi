@@ -206,17 +206,17 @@ function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text: string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text: UnicodeString
 ): TList<TGlyphPosArray>;
 
 function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:UnicodeString
 ): TList<TGlyphPosArray>;
 
-function DividesIntoLines(const text: string): TList<TLineSubText>;
+function DividesIntoLines(const text: UnicodeString): TList<TLineSubText>;
 
 // The ICU paragraph level for ubidi_setPara of an object's line (see TRpInfoProvider.TextExtent).
 function BidiParagraphLevel(RightToLeft: Boolean): Byte;
@@ -237,10 +237,12 @@ begin
 end;
 
 
-function DividesIntoLines(const text: string): TList<TLineSubText>;
+function DividesIntoLines(const text: UnicodeString): TList<TLineSubText>;
 var
   i, lineStart, lineEnd: Integer;
-  c: Char;
+  // UTF-16, as the positions it gives: the text it is given (a WideString) went to a string,
+  // UTF-8 in FPC, and the positions came out in bytes (12-10-2026)
+  c: WideChar;
   lb: TLineSubText;
 begin
   Result := TList<TLineSubText>.Create;
@@ -474,7 +476,7 @@ function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:UnicodeString
 ): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;
@@ -567,7 +569,7 @@ function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:UnicodeString
 ): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;

@@ -1098,7 +1098,7 @@ function TRpGDIInfoProvider.TextExtent(
 var
   lineSubTexts: TList<TLineSubText>;
   lineSubText: TLineSubText;
-  line: string;
+  line: UnicodeString;
   Bidi: TICUBidi;
   logicalRuns: TList<TBidiRun>;
   logicalRun, vRun: TBidiRun;

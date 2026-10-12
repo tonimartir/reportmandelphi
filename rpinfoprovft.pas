@@ -974,7 +974,8 @@ function TRpFTInfoProvider.TextExtentHtml(
 var
   lineSubTexts: TList<TLineSubText>;
   lineSubText: TLineSubText;
-  line: string;
+  // UTF-16 as the clusters (in FPC a string is UTF-8: positions in bytes, 12-10-2026)
+  line: UnicodeString;
   Bidi: TICUBidi;
   logicalRuns: TList<TBidiRun>;
   logicalRun, vRun: TBidiRun;
