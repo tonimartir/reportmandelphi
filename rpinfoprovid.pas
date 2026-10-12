@@ -135,6 +135,9 @@ type
   CIDExtra:TDictionary<string, integer>;    // glyph + text -> its code
   CIDExtraGlyph:TList<integer>;             // code - GlyphCount -> glyph
   CIDExtraText:TList<string>;               // code - GlyphCount -> text
+  // Embedded as an OpenType font with CFF outlines (12-10-2026): /FontFile3 /OpenType and a
+  // CIDFontType0, not /FontFile2 and a CIDFontType2, which only holds TrueType outlines
+  CFFOpenType:boolean;
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;

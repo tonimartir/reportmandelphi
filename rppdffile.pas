@@ -334,7 +334,10 @@ procedure GetJPegInfo(astream:TStream;var width,height:integer;var format:string
 
 implementation
 
-
+// The font data readers of the CFF fonts (below, with ShapedGlyphCode)
+function SfntDirectory(m:TMemoryStream;ADirectoryOffset,AFontIndex:integer):Int64; forward;
+function SfntIsCFF(m:TMemoryStream;ABase:Int64):boolean; forward;
+function CFFGlyphsAreCIDs(m:TMemoryStream;ABase:Int64):boolean; forward;
 
 function IntToHex(nvalue:integer):string;
 begin
@@ -4292,6 +4295,18 @@ begin
    FObjectCount:=FObjectCount+1;
    FTempStream.Clear;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+    FontStream:=Canvas.InfoProvider.GetFontStream(adata);
+    //FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
+   // AN OPENTYPE FONT WITH CFF OUTLINES (12-10-2026) went as a TrueType font program
+   // (/FontFile2, CIDFontType2), which only holds glyf outlines: viewers warn of the mismatch
+   // and a PDF/A validator rejects it. It goes as /FontFile3 /OpenType with a CIDFontType0
+   // when its glyph numbers are its CIDs (CFFGlyphsAreCIDs); a CID-keyed font with another
+   // charset, or a whole collection, stays as it was.
+   adata.CFFOpenType:=(not adata.Type1) and Assigned(FontStream) and
+    SfntIsCFF(FontStream,0) and CFFGlyphsAreCIDs(FontStream,0);
+   if adata.CFFOpenType then
+    SWriteLine(FTempStream,'<< /Subtype /OpenType')
+   else
    if (FPDFConformance = PDF_A_3) then
    begin
     SWriteLine(FTempStream,'<< /Type /FontFile2');
@@ -4300,8 +4315,6 @@ begin
    begin
      SWriteLine(FTempStream,'<< ');
    end;
-    FontStream:=Canvas.InfoProvider.GetFontStream(adata);
-    //FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
    try
     WriteStream(FontStream,FTempStream);
    finally
@@ -4352,6 +4365,9 @@ begin
   begin
    if adata.Type1 then
     SWriteLine(FTempStream,'/FontFile '+
+     IntToStr(adata.ObjectIndex)+' 0 R')
+   else if adata.CFFOpenType then
+    SWriteLine(FTempStream,'/FontFile3 '+
      IntToStr(adata.ObjectIndex)+' 0 R')
    else
     SWriteLine(FTempStream,'/FontFile2 '+
@@ -4625,6 +4641,10 @@ begin
    begin
     SWriteLine(FTempStream,'/Subtype /CIDFontType1');
    end
+   else if adata.CFFOpenType then
+   begin
+    SWriteLine(FTempStream,'/Subtype /CIDFontType0');
+   end
    else
    begin
     SWriteLine(FTempStream,'/Subtype /CIDFontType2');
@@ -4720,7 +4740,9 @@ begin
    SWriteLine(FTempStream,awidths);
    SWriteLine(FTempStream,']');*)
 
-   if (cidmapIndex>0) then
+   // Only a CIDFontType2 has a CIDToGIDMap; a CIDFontType0 takes the CID as the glyph
+   if adata.CFFOpenType then
+   else if (cidmapIndex>0) then
     SWriteLine(FTempStream,'/CIDToGIDMap '+IntToStr(cidmapIndex)+' 0 R')
    else
     SWriteLine(FTempStream,'/CIDToGIDMap /Identity');
@@ -5180,6 +5202,236 @@ begin
   Result:=CountAt(adata.FontData.DirectoryOffset);
 end;
 
+// The start of the table directory of a font in its data: the one of AFontIndex in a
+// collection loaded whole (GDI loads a .ttc whole, with DirectoryOffset 0)
+function SfntDirectory(m:TMemoryStream;ADirectoryOffset,AFontIndex:integer):Int64;
+var
+ p:PByte;
+begin
+ Result:=ADirectoryOffset;
+ if ((ADirectoryOffset<>0) or (m.Size<16)) then
+  exit;
+ p:=m.Memory;
+ if ((p[0]=Ord('t')) and (p[1]=Ord('t')) and (p[2]=Ord('c')) and (p[3]=Ord('f'))) then
+ begin
+  if (AFontIndex<0) then
+   AFontIndex:=0;
+  if (12+AFontIndex*4+4<=m.Size) then
+   Result:=(Int64(p[12+AFontIndex*4]) shl 24) or (p[13+AFontIndex*4] shl 16) or
+    (p[14+AFontIndex*4] shl 8) or p[15+AFontIndex*4];
+ end;
+end;
+
+// Whether the font at ABase has CFF outlines (sfnt version 'OTTO')
+function SfntIsCFF(m:TMemoryStream;ABase:Int64):boolean;
+var
+ p:PByte;
+begin
+ Result:=false;
+ if ((ABase<0) or (ABase+4>m.Size)) then
+  exit;
+ p:=m.Memory;
+ Result:=(p[ABase]=Ord('O')) and (p[ABase+1]=Ord('T')) and (p[ABase+2]=Ord('T')) and
+  (p[ABase+3]=Ord('O'));
+end;
+
+// Whether the glyph numbers of the CFF font at ABase are its CIDs, as a CIDFontType0 reads
+// them (12-10-2026): a CFF that is not CID-keyed takes the CID as the glyph number, a
+// CID-keyed one maps the CID through its charset. The content stream writes glyph numbers,
+// so a CID-keyed font can only be declared as CFF when its charset is the identity (Adobe
+// Identity: Noto Sans CJK, Source Han); false when it is not or cannot be read.
+function CFFGlyphsAreCIDs(m:TMemoryStream;ABase:Int64):boolean;
+var
+ p:PByte;
+ size,cff,cffEnd,pos,dictStart,dictEnd,charset,charStrings:Int64;
+ tables,i,count,offSize,b0,op,nGlyphs,format,gid,first,left:integer;
+ cidKeyed:boolean;
+ operand:Int64;
+
+ function U8(APos:Int64):integer;
+ begin
+  if ((APos<0) or (APos>=size)) then
+   raise Exception.Create('CFF');
+  Result:=p[APos];
+ end;
+
+ function U16(APos:Int64):integer;
+ begin
+  Result:=(U8(APos) shl 8) or U8(APos+1);
+ end;
+
+ function U32(APos:Int64):Int64;
+ begin
+  Result:=(Int64(U16(APos)) shl 16) or U16(APos+2);
+ end;
+
+ function OffsetAt(APos:Int64;ASize:integer):Int64;
+ var
+  k:integer;
+ begin
+  Result:=0;
+  for k:=0 to ASize-1 do
+   Result:=(Result shl 8) or U8(APos+k);
+ end;
+
+ // An INDEX at APos: its count, the start of its data (minus 1, offsets are 1-based) and the
+ // offsets of its first element and of the end
+ procedure ReadIndex(APos:Int64;out ACount:integer;out AFirst,AEnd,ANext:Int64);
+ var
+  osz:integer;
+  dataBase:Int64;
+ begin
+  ACount:=U16(APos);
+  if (ACount=0) then
+  begin
+   AFirst:=APos+2;
+   AEnd:=APos+2;
+   ANext:=APos+2;
+   exit;
+  end;
+  osz:=U8(APos+2);
+  dataBase:=APos+3+Int64(ACount+1)*osz-1;
+  AFirst:=dataBase+OffsetAt(APos+3,osz);
+  AEnd:=dataBase+OffsetAt(APos+3+osz,osz);
+  ANext:=dataBase+OffsetAt(APos+3+Int64(ACount)*osz,osz);
+ end;
+
+var
+ dummy,nextPos:Int64;
+begin
+ Result:=false;
+ size:=m.Size;
+ p:=m.Memory;
+ try
+  // The 'CFF ' table
+  cff:=-1;
+  tables:=U16(ABase+4);
+  for i:=0 to tables-1 do
+   if (U32(ABase+12+i*16)=$43464620) then
+   begin
+    cff:=U32(ABase+12+i*16+8);
+    cffEnd:=cff+U32(ABase+12+i*16+12);
+    break;
+   end;
+  if (cff<0) then
+   exit;
+  if (cffEnd<size) then
+   size:=cffEnd;
+  // Header, Name INDEX, Top DICT INDEX (its first DICT)
+  pos:=cff+U8(cff+2);
+  ReadIndex(pos,count,dummy,dummy,nextPos);
+  ReadIndex(nextPos,count,dictStart,dictEnd,dummy);
+  if (count<1) then
+   exit;
+  cidKeyed:=false;
+  charset:=0;
+  charStrings:=-1;
+  operand:=0;
+  pos:=dictStart;
+  while (pos<dictEnd) do
+  begin
+   b0:=U8(pos);
+   if (b0<=21) then
+   begin
+    op:=b0;
+    Inc(pos);
+    if (b0=12) then
+    begin
+     op:=1200+U8(pos);
+     Inc(pos);
+    end;
+    case op of
+     1230: cidKeyed:=true;       // ROS
+     15: charset:=operand;
+     17: charStrings:=operand;
+    end;
+   end
+   else if (b0=28) then
+   begin
+    operand:=SmallInt(U16(pos+1));
+    Inc(pos,3);
+   end
+   else if (b0=29) then
+   begin
+    operand:=LongInt(U32(pos+1));
+    Inc(pos,5);
+   end
+   else if (b0=30) then
+   begin
+    // A real number: nibbles up to the end nibble $F
+    Inc(pos);
+    while ((U8(pos) and $0F)<>$0F) and ((U8(pos) shr 4)<>$0F) do
+     Inc(pos);
+    Inc(pos);
+   end
+   else if ((b0>=32) and (b0<=246)) then
+   begin
+    operand:=b0-139;
+    Inc(pos);
+   end
+   else if ((b0>=247) and (b0<=250)) then
+   begin
+    operand:=(b0-247)*256+U8(pos+1)+108;
+    Inc(pos,2);
+   end
+   else if ((b0>=251) and (b0<=254)) then
+   begin
+    operand:=-(b0-251)*256-U8(pos+1)-108;
+    Inc(pos,2);
+   end
+   else
+    Inc(pos);
+  end;
+  if (not cidKeyed) then
+  begin
+   Result:=true;
+   exit;
+  end;
+  // A CID-keyed font: its charset must give each glyph its own number as CID
+  if ((charStrings<0) or (charset<=2)) then
+   exit;
+  nGlyphs:=U16(cff+charStrings);
+  pos:=cff+charset;
+  format:=U8(pos);
+  Inc(pos);
+  gid:=1;
+  while (gid<nGlyphs) do
+  begin
+   case format of
+    0:
+     begin
+      if (U16(pos)<>gid) then
+       exit;
+      Inc(pos,2);
+      Inc(gid);
+     end;
+    1,2:
+     begin
+      first:=U16(pos);
+      if (format=1) then
+      begin
+       left:=U8(pos+2);
+       Inc(pos,3);
+      end
+      else
+      begin
+       left:=U16(pos+2);
+       Inc(pos,4);
+      end;
+      if (first<>gid) then
+       exit;
+      Inc(gid,left+1);
+     end;
+   else
+    exit;
+   end;
+  end;
+  Result:=true;
+ except
+  Result:=false;
+ end;
+end;
+
 // The code a shaped glyph is written with in the content stream, for the text it stands for
 // (TRpTTFontData.CIDClaim): its glyph number for the first text of the glyph, a code of its
 // own for any other. The text of a glyph number goes to `glyphText`, which the ToUnicode CMap
@@ -5196,10 +5448,20 @@ begin
   adata.glyphText.AddOrSetValue(AGlyph,AText);
   exit;
  end;
- if ((claimed=AText) or adata.Type1 or adata.CFF) then
+ if (claimed=AText) then
   exit;
  if (adata.GlyphCount<0) then
+ begin
   adata.GlyphCount:=FontGlyphCount(adata);
+  // GDI does not tell CFF outlines from TrueType ones: the data of the font does
+  if ((adata.FontData<>nil) and (adata.FontData.FontData<>nil) and
+      SfntIsCFF(adata.FontData.FontData,SfntDirectory(adata.FontData.FontData,
+        adata.FontData.DirectoryOffset,adata.FontIndex))) then
+   adata.CFF:=true;
+ end;
+ // A CIDFontType0 (CFF outlines) cannot carry a CIDToGIDMap
+ if (adata.Type1 or adata.CFF) then
+  exit;
  if (adata.GlyphCount<=AGlyph) then
   exit;
  key:=IntToStr(AGlyph)+'|'+AText;
