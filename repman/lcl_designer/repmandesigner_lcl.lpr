@@ -38,9 +38,22 @@ uses
 {$R *.res}
 
 type
-  { Writes unhandled GUI exceptions to stderr before showing them, so a
-    launch from a terminal or a smoke test sees them. }
+  { Writes unhandled GUI exceptions to stderr (message and backtrace), so a
+    launch from a terminal or a smoke test sees them, and shows them once
+    Application.HandleException has returned. Shown inside it, an exception
+    raised while the dialog is open (a timer or a repaint of the preview
+    that fails again) reaches HandleException a second time, and the LCL
+    takes that for a circular exception and halts the program. }
   TExceptionLogger = class
+  private
+    FQueue: TList;          // exceptions to show, the first one on screen (owned)
+    FInShow: Boolean;
+    function Key(E: Exception): string;
+    function Pending(const AKey: string): Boolean;
+    procedure ShowQueued(Data: PtrInt);
+  public
+    constructor Create;
+    destructor Destroy; override;
     procedure AppException(Sender: TObject; E: Exception);
   end;
 
@@ -63,14 +76,91 @@ var
   FinderOpener: TFinderOpener;
   {$ENDIF}
 
+constructor TExceptionLogger.Create;
+begin
+  inherited Create;
+  FQueue := TList.Create;
+end;
+
+destructor TExceptionLogger.Destroy;
+var
+  i: Integer;
+begin
+  Application.RemoveAsyncCalls(Self);
+  for i := 0 to FQueue.Count - 1 do
+    TObject(FQueue[i]).Free;
+  FQueue.Free;
+  inherited Destroy;
+end;
+
+function TExceptionLogger.Key(E: Exception): string;
+begin
+  Result := E.ClassName + ': ' + E.Message;
+end;
+
+function TExceptionLogger.Pending(const AKey: string): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 0 to FQueue.Count - 1 do
+    if Key(Exception(FQueue[i])) = AKey then
+      Exit(True);
+end;
+
 procedure TExceptionLogger.AppException(Sender: TObject; E: Exception);
+var
+  queued: Exception;
 begin
   WriteStd('ERROR: ' + E.ClassName + ': ' + E.Message, True);
-  // An error of the report, or one raised while the preview generates its
-  // pages: the designer selects its source and shows the message
-  if Assigned(MainForm) and MainForm.HandleApplicationException(E) then
+  // Where it was raised: with line info (-gl) the units and lines
+  DumpExceptionBackTrace(StdErr);
+  // The same error again while its dialog waits or is open (a repaint
+  // that keeps failing): logged only
+  if Pending(Key(E)) then
     Exit;
-  Application.ShowException(E);
+  // Kept for the dialog: the RTL frees the exception when its except block
+  // ends, unless it is acquired
+  if ExceptObject = E then
+  begin
+    AcquireExceptionObject;
+    queued := E;
+  end
+  else
+    queued := Exception.Create(E.Message);
+  FQueue.Add(queued);
+  // While a dialog is open the loop of ShowQueued takes the next one
+  if (FQueue.Count = 1) and not FInShow then
+    Application.QueueAsyncCall(ShowQueued, 0);
+end;
+
+procedure TExceptionLogger.ShowQueued(Data: PtrInt);
+var
+  E: Exception;
+begin
+  // The modal loop of a dialog runs the queued calls too
+  if FInShow then
+    Exit;
+  FInShow := True;
+  try
+    while FQueue.Count > 0 do
+    begin
+      E := Exception(FQueue[0]);
+      try
+        // An error of the report, or one raised while the preview generates
+        // its pages: the designer selects its source and shows the message
+        if not (Assigned(MainForm) and MainForm.HandleApplicationException(E)) then
+          Application.ShowException(E);
+      except
+        on E2: Exception do
+          WriteStd('ERROR: showing the error: ' + E2.ClassName + ': ' + E2.Message, True);
+      end;
+      FQueue.Delete(0);
+      E.Free;
+    end;
+  finally
+    FInShow := False;
+  end;
 end;
 
 procedure LoadPreferences(AForm: TFRpMainFLCL);
