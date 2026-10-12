@@ -19,8 +19,8 @@
 # meson: HarfBuzz se compila desde sus fuentes amalgamadas). Sin sudo.
 #
 # El motor busca las librerias en Contents/Frameworks del .app, junto al
-# ejecutable, en la ruta de dyld (DYLD_LIBRARY_PATH, ~/lib, /usr/local/lib) y
-# en los prefijos de Homebrew y MacPorts (rpdarwinlibs.RpLoadDarwinLibrary).
+# ejecutable, en la ruta de dyld (DYLD_LIBRARY_PATH), en ~/lib y /usr/local/lib
+# y en los prefijos de Homebrew y MacPorts (rpdarwinlibs.RpLoadDarwinLibrary).
 # El script las enlaza en ~/lib. Alternativa sin compilar nada:
 #   brew install fontconfig harfbuzz
 #
@@ -53,9 +53,10 @@ OSSL_VERSION=3.5.9
 OSSL=openssl-$OSSL_VERSION
 OSSL_SHA256=603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
 
-# Enlaces en ~/lib, la primera carpeta de la busqueda de dyld: asi las
-# encuentran tambien las aplicaciones abiertas desde el Finder (sin
-# DYLD_LIBRARY_PATH), los ejemplos y los disenadores compilados en este Mac.
+# Enlaces en ~/lib, donde el motor las busca: asi las encuentran tambien las
+# aplicaciones abiertas desde el Finder (sin DYLD_LIBRARY_PATH), los ejemplos
+# y los disenadores compilados en este Mac. La busqueda de dyld por nombre ya
+# no mira en ~/lib (macOS 15 solo en /usr/lib): el motor lo nombra.
 # RM_MACOS_NO_HOME_LIB=1 no los crea.
 link_home_lib() {
     if [ "${RM_MACOS_NO_HOME_LIB:-}" != "1" ]; then

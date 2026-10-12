@@ -111,8 +111,12 @@ fontconfig e ICU, que se cargan al usarse (no hacen falta para compilar):
 
 `RpLoadDarwinLibrary` (`rtl_fpc/rpdarwinlibs.pas`) busca cada `.dylib` en este
 orden: `Contents/Frameworks` del `.app`, junto al ejecutable, la búsqueda de
-dyld (`DYLD_LIBRARY_PATH`, `~/lib`, `/usr/local/lib`) y los prefijos de
-Homebrew (`/opt/homebrew/lib`) y MacPorts (`/opt/local/lib`). Si no hay
+dyld (`DYLD_LIBRARY_PATH`), `~/lib`, `/usr/local/lib` (Homebrew en Intel) y los
+prefijos de Homebrew (`/opt/homebrew/lib`) y MacPorts (`/opt/local/lib`).
+`~/lib` y `/usr/local/lib` van con su ruta: la búsqueda de dyld por nombre
+los tenía en macOS 11, pero en macOS 15 solo mira en `/usr/lib` (sin ellos,
+la vista previa de un texto con formato fallaba con «No harfbuzz library
+found» con las librerías de `build-deps.sh`). Si no hay
 fontconfig, el motor recorre las carpetas de fuentes de macOS.
 
 **OpenSSL.** El `openssl.pas` de FPC 3.2.2 no conoce OpenSSL 3 y en macOS
@@ -195,7 +199,8 @@ en este orden:
 
 1. La de la conexión: `VendorLib` (FireDAC / SQLdb) o `LibraryLocation` (Zeos),
    con la ruta completa del `.dylib`.
-2. La búsqueda de dyld (`~/lib`, `/usr/local/lib`, `/usr/lib`).
+2. La búsqueda de dyld (`/usr/lib`; antes de macOS 15 también `~/lib` y
+   `/usr/local/lib`).
 3. Las carpetas de los instaladores habituales:
 
 | Servidor | Dónde |

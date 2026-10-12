@@ -227,15 +227,21 @@ end;
 function RpLoadDarwinLibrary(const AName: string): TLibHandle;
 var
   LExeDir: string;
-  LPaths: array[0..4] of string;
+  LPaths: array[0..6] of string;
   I: Integer;
 begin
   LExeDir := ExtractFilePath(ParamStr(0));
   LPaths[0] := LExeDir + '../Frameworks/' + AName;
   LPaths[1] := LExeDir + AName;
   LPaths[2] := AName;
-  LPaths[3] := '/opt/homebrew/lib/' + AName;
-  LPaths[4] := '/opt/local/lib/' + AName;
+  // The fallback search of dyld (a name without a folder) no longer has
+  // ~/lib nor /usr/local/lib in recent macOS versions (15 looks only in
+  // /usr/lib): build-deps.sh links its libraries in ~/lib, Homebrew for
+  // Intel installs in /usr/local
+  LPaths[3] := GetEnvironmentVariable('HOME') + '/lib/' + AName;
+  LPaths[4] := '/usr/local/lib/' + AName;
+  LPaths[5] := '/opt/homebrew/lib/' + AName;
+  LPaths[6] := '/opt/local/lib/' + AName;
   Result := NilHandle;
   for I := Low(LPaths) to High(LPaths) do
   begin
