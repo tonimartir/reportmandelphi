@@ -518,7 +518,11 @@ begin
       while j <= High(positions) do
       begin
         acc := acc + positions[j].XAdvance;
-        if GlyphHasBreak(j) then
+        // A break after glyph j only when it fits, or is a blank (trimmed at the end of the
+        // line). The FreeType provider numbers its clusters from 1, so GlyphHasBreak is true
+        // for the last letter before a space: registered before the overflow test, a word
+        // whose last letter did not fit stayed on the line and went past its edge (12-10-2026)
+        if GlyphHasBreak(j) and ((acc <= lineWidthLimit) or (positions[j].CharCode = ' ')) then
           lastBreakGlyphIdx := j;
         if acc > lineWidthLimit then
           Break;
@@ -609,7 +613,11 @@ begin
       while j >= 0 do
       begin
         acc := acc + positions[j].XAdvance;
-        if GlyphHasBreak(j) then
+        // A break after glyph j only when it fits, or is a blank (trimmed at the end of the
+        // line). The FreeType provider numbers its clusters from 1, so GlyphHasBreak is true
+        // for the last letter before a space: registered before the overflow test, a word
+        // whose last letter did not fit stayed on the line and went past its edge (12-10-2026)
+        if GlyphHasBreak(j) and ((acc <= lineWidthLimit) or (positions[j].CharCode = ' ')) then
           lastBreakGlyphIdx := j;
         if acc > lineWidthLimit then
           Break;
