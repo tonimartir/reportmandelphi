@@ -19,7 +19,10 @@ unit rpfrmmonacoeditorlcl;
   Phase 4 (TryCreateWebView, SetTheme, OnWebMessage...).
 
   - Windows: the Monaco page of MonacoEditorAssets.res (the same zip as the
-    VCL) in the WebView2 of rplclwebview. Page messages:
+    VCL) in the WebView2 of rplclwebview. macOS (LCL Cocoa): the same page,
+    from MonacoEditor.zip in the Resources of the application bundle, in the
+    WKWebView of rplclwebview, which gives the page window.chrome.webview.
+    Page messages:
       00:  editor ready        01:<sql>  content changed
       02:<id>:<offset>\n<sql>  AI completion request (as the VCL: SuggestSql
            in a worker, answered with window.receiveAICompletions)
@@ -30,7 +33,8 @@ unit rpfrmmonacoeditorlcl;
            window.rpReceiveSchemaCompletions.
     The messages are handled after the WebView2 callback returns (the VCL
     uses TThread.ForceQueue); ProcessWebMessage handles one directly (tests).
-  - Linux, Windows without WebView2 or RPM_FORCE_WEBVIEW_FALLBACK: a SynEdit
+  - Linux, Windows without WebView2, a page that does not load or
+    RPM_FORCE_WEBVIEW_FALLBACK: a SynEdit
     with the SQL highlighter and a TSynCompletion that completes the tables
     and columns of the Hub schema and SQL keywords (Ctrl+Space, and on its
     own after "." and after FROM/JOIN). It also has the AI inline completion
@@ -160,6 +164,8 @@ type
     FNavRetryCount: Integer;
     FLastNavUrl: string;
     FRetryTimer: TTimer;
+    // The page loaded and the timer waits for its '00:' (Monaco started)
+    FAwaitingReady: Boolean;
     FPendingWebMessages: TStringList;
     FWebMessagesQueued: Boolean;
     // Hub context (VCL fields)
@@ -414,6 +420,7 @@ const
   CMonacoAISelectionWidth = 384;
   CMonacoAIButtonWidth = 46;
   CAICompletionDelayMs = 1000;
+  CMonacoReadyTimeoutMs = 20000;
 
   // Completion provider of the schema, installed in the Monaco page when it
   // is ready (the page itself is the one of the VCL, not modified)
@@ -1829,6 +1836,9 @@ begin
     FOnStatusLog(Self, AText);
 {$IFDEF MSWINDOWS}
   OutputDebugString(PChar('MonacoLCL: ' + AText));
+{$ELSE}
+  if SysUtils.GetEnvironmentVariable('RPM_WEBVIEW_LOG') <> '' then
+    WriteLn(StdErr, 'MonacoLCL: ' + AText);
 {$ENDIF}
 end;
 
@@ -1847,7 +1857,7 @@ end;
 function TFRpMonacoEditorLCL.EnsureMonacoAssetsExtracted: string;
 var
   LBasePath, LVersionPath, LActualRoot: string;
-  LZipCandidates: array[0..1] of string;
+  LZipCandidates: array[0..2] of string;
   LZipFound: string;
   LTempZip: string;
   I: Integer;
@@ -1902,11 +1912,14 @@ begin
   end;
 {$ENDIF}
 
-  // 2. MonacoEditor.zip shipped next to the executable
+  // 2. MonacoEditor.zip shipped next to the executable, or in the
+  //    Contents/Resources of the macOS application bundle
   if LZipFound = '' then
   begin
     LZipCandidates[0] := ExtractFilePath(ParamStr(0)) + 'MonacoEditor.zip';
     LZipCandidates[1] := ExtractFilePath(ParamStr(0)) + 'MonacoEditor' + DirectorySeparator + 'MonacoEditor.zip';
+    LZipCandidates[2] := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' +
+      DirectorySeparator + 'Resources' + DirectorySeparator + 'MonacoEditor.zip');
     for I := 0 to High(LZipCandidates) do
     begin
       if FileExists(LZipCandidates[I]) then
@@ -1952,9 +1965,11 @@ begin
 end;
 
 procedure TFRpMonacoEditorLCL.TryCreateWebView;
+{$IFDEF MSWINDOWS}
 var
   LDestPath: string;
   LDllCandidate: string;
+{$ENDIF}
 begin
   if FUseFallback or FWebView.WebViewCreated or FWebView.WebViewCreating then
     Exit;
@@ -1963,6 +1978,7 @@ begin
     if FAssetRootPath = '' then
       FAssetRootPath := EnsureMonacoAssetsExtracted;
 
+{$IFDEF MSWINDOWS}
     LDestPath := ObtainFolderLocalUserConfig('Reportman', 'Monaco', '');
     FWebView.UserDataFolder := LDestPath + DirectorySeparator + 'EdgeData';
 
@@ -1977,8 +1993,14 @@ begin
       FWebView.LoaderDllPath := LDllCandidate;
 
     LogStatus('Initializing WebView2 from ' + FWebView.LoaderDllPath);
-    if not FWebView.CreateWebView then
-      ActivateFallback('WebView2 initialization failed');
+{$ELSE}
+    LogStatus('Initializing WKWebView');
+{$ENDIF}
+    // Without the page there is nothing to show
+    if FindMonacoActualRoot(FAssetRootPath) = '' then
+      ActivateFallback('Monaco assets not found')
+    else if not FWebView.CreateWebView then
+      ActivateFallback('Web view initialization failed');
   except
     on E: Exception do
       ActivateFallback('TryCreateWebView exception: ' + E.Message);
@@ -1998,7 +2020,12 @@ begin
   if FUseFallback then
     Exit;
 
-{$IFDEF MSWINDOWS}
+  if not TRpLCLWebView.Supported then
+  begin
+    // No browser in this build (Linux): the SynEdit editor is the editor
+    ActivateFallback('No web view on this platform');
+    Exit;
+  end;
   if SysUtils.GetEnvironmentVariable('RPM_FORCE_WEBVIEW_FALLBACK') <> '' then
   begin
     ActivateFallback('Forced by RPM_FORCE_WEBVIEW_FALLBACK');
@@ -2006,10 +2033,6 @@ begin
   end;
 
   Application.QueueAsyncCall(AsyncInitWebView, 0);
-{$ELSE}
-  // No WebView2 out of Windows: the SynEdit editor is the editor
-  ActivateFallback('WebView2 is only available on Windows');
-{$ENDIF}
 end;
 
 procedure TFRpMonacoEditorLCL.Resize;
@@ -2077,11 +2100,16 @@ begin
   // Succeeded() lives in the Windows unit; HResult success is simply >= 0
   if AResult >= 0 then
   begin
-    LogStatus('WebView2 created successfully.');
+    LogStatus('Web view created successfully.');
     if FAssetRootPath = '' then
       FAssetRootPath := EnsureMonacoAssetsExtracted;
 
-    LURL := 'file:///' + StringReplace(FAssetRootPath, '\', '/', [rfReplaceAll]);
+    // file:///C:/... on Windows, file:///Users/... elsewhere
+    LURL := StringReplace(FAssetRootPath, '\', '/', [rfReplaceAll]);
+    if Copy(LURL, 1, 1) = '/' then
+      LURL := 'file://' + LURL
+    else
+      LURL := 'file:///' + LURL;
     if not (LURL[Length(LURL)] in ['/', '\']) then
       LURL := LURL + '/';
     LURL := LURL + 'Index.html';
@@ -2093,8 +2121,8 @@ begin
   end
   else
   begin
-    LogStatus('WebView2 creation failed (HRESULT ' + IntToHex(AResult, 8) + ')');
-    ActivateFallback('WebView2 create failed: ' + IntToHex(AResult, 8));
+    LogStatus('Web view creation failed (HRESULT ' + IntToHex(AResult, 8) + ')');
+    ActivateFallback('Web view create failed: ' + IntToHex(AResult, 8));
   end;
 end;
 
@@ -2104,6 +2132,15 @@ begin
   begin
     LogStatus('Monaco Index.html navigation completed successfully.');
     FNavRetryCount := 0;
+    // A page that loads but never starts Monaco (a script that fails in
+    // this browser) would leave the editor blank
+    if not FEditorReady then
+    begin
+      FAwaitingReady := True;
+      FRetryTimer.Enabled := False;
+      FRetryTimer.Interval := CMonacoReadyTimeoutMs;
+      FRetryTimer.Enabled := True;
+    end;
   end
   else
   begin
@@ -2111,6 +2148,7 @@ begin
     if FNavRetryCount < 3 then
     begin
       Inc(FNavRetryCount);
+      FAwaitingReady := False;
       FRetryTimer.Enabled := False;
       FRetryTimer.Interval := 300 * FNavRetryCount;
       FRetryTimer.Enabled := True;
@@ -2125,6 +2163,13 @@ begin
   FRetryTimer.Enabled := False;
   if FUseFallback then
     Exit;
+  if FAwaitingReady then
+  begin
+    FAwaitingReady := False;
+    if not FEditorReady then
+      ActivateFallback('Monaco did not start');
+    Exit;
+  end;
   if not FWebView.WebViewCreated then
     TryCreateWebView
   else if FLastNavUrl <> '' then
@@ -2181,6 +2226,7 @@ begin
   begin
     // Monaco editor initialized and ready
     FEditorReady := True;
+    FAwaitingReady := False;
     LogStatus('Monaco Editor ready signal (00:) received. Pushing SQL...');
     InstallSchemaBridge;
     SetSQL(FSQL);

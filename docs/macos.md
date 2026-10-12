@@ -273,6 +273,12 @@ PDF del motor salen igual en la vista previa LCL: no son de la impresión.
   flotante activadas (la LCL las enmascara): `CalcGlyphPositions` llama a
   HarfBuzz con ellas enmascaradas y restaura la máscara del programa.
 
+- **Editor SQL Monaco.** El editor SQL de los conjuntos de datos es Monaco
+  en el WKWebView del sistema (`design_lcl/rplclwebview.pas`), con la misma
+  página que en Windows (`MonacoEditor.zip`, en `Contents/Resources` del
+  `.app`). Si no arranca, el editor es SynEdit, como en Linux. Detalles en
+  `docs/fase7_3.md` (Monaco en macOS); `tests/fpc/LclMonacoTest` lo prueba
+  con `open -W -a LclMonacoTest.app --args --selftest`.
 - **`LINUX` en Darwin.** En las unidades raíz, `LINUX` significa «el camino del
   motor fuera de Windows» (FreeType en vez de GDI). `rpconf.inc` lo define
   también para FPC en Darwin; lo que de verdad cambia en macOS (nombres de

@@ -105,7 +105,8 @@ clave SQL. En el resto de casos no propone nada: ahí completa la IA.
 
 ### Editor alternativo: SynEdit
 
-Linux, Windows sin WebView2 o `RPM_FORCE_WEBVIEW_FALLBACK`: en lugar del
+Linux, Windows sin WebView2, una página que no arranca (sin el `00:` en 20 s)
+o `RPM_FORCE_WEBVIEW_FALLBACK`: en lugar del
 `TMemo` (el del VCL) un `TSynEdit` con:
 
 - resaltado SQL (`TSynSQLSyn`) con las tablas del esquema como nombres de
@@ -133,6 +134,42 @@ Linux, Windows sin WebView2 o `RPM_FORCE_WEBVIEW_FALLBACK`: en lugar del
 En Linux es el editor normal: ya no se intenta WebView2 ni se busca
 `MonacoEditor.zip`, y no se escriben los avisos de "fallback" en el registro
 (en Windows sí, como el VCL, con un texto traducible).
+
+### Monaco en macOS (WKWebView)
+
+Desde el 12-10-2026 el editor SQL de macOS (LCL Cocoa) es Monaco, como en
+Windows; SynEdit queda como alternativa. `rplclwebview` tiene un segundo
+motor, el WKWebView del sistema, con la misma API que el de WebView2:
+
+- el WKWebView es una subvista de la vista de contenido del control
+  (`lclContentView`), y se crea de forma síncrona;
+- un script de usuario al inicio del documento crea `window.chrome.webview`
+  (`postMessage` y el evento `message`) sobre un manejador de mensajes de
+  WebKit, así que la página de `MonacoEditor.zip` funciona sin cambios;
+- Cmd+C, Cmd+X y Cmd+V se convierten en `copy:`, `cut:` y `paste:` del
+  WKWebView (la LCL Cocoa solo los reenvía a un `NSTextView`); deshacer y
+  seleccionar todo los gestiona Monaco;
+- `CapturePreviewPng` usa `takeSnapshot` (lo usa `LclMonacoTest`, que guarda
+  `selftest_monaco.png`).
+
+El `.app` lleva `MonacoEditor.zip` en `Contents/Resources`
+(`build/macos/make-package.sh`); el de desarrollo, junto al ejecutable real
+en `repman/` (`build-designer.sh`). Se extrae, como en Windows, en la
+configuración del usuario (`~/.Reportman.Monaco.MonacoEditor`).
+
+Dos cosas que pide FPC 3.2.2: los tipos de Objective-C no pueden estar en la
+interfaz de `rplclwebview` (una unidad sin el modo Objective-C que la carga
+para con el error interno 200609171), y el bloque de `takeSnapshot` se
+construye a mano (un bloque global, sin variables capturadas).
+
+WebKit no pinta una página que no se ve: lanzado por SSH, un programa no pasa
+a primer plano y su ventana queda tapada (`document.visibilityState` es
+`hidden`, Monaco no dibuja). Para probarlo desde SSH, `open -W -a
+LclMonacoTest.app --args --selftest`.
+
+Linux sigue con SynEdit: el AppImage usa Qt6 y `libQt6Pas` no tiene
+QtWebEngine, y WebKitGTK ya no existe para GTK2. Cuando la LCL GTK3 esté
+lista, WebKitGTK 4.1 sería el tercer motor de `rplclwebview`.
 
 **Por qué SynEdit y no un popup propio sobre el `TMemo`.** SynEdit forma
 parte de toda instalación de Lazarus (el IDE es un SynEdit), se pinta con el

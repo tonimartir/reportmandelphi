@@ -42,6 +42,7 @@ type
     procedure EditorWebMessage(Sender: TObject; const AMessage: string);
     procedure EditorStatusLog(Sender: TObject; const AStatus: string);
     procedure LogMessage(const AText: string);
+    procedure SaveSnapshot;
     procedure UpdateStatusBar;
   public
   end;
@@ -223,12 +224,40 @@ begin
       if Pos('99999', AMessage) > 0 then
       begin
         LogMessage('[SelfTest] PRUEBA EXITOSA: Comunicacion bidireccional Pascal <-> Monaco confirmada.');
+        SaveSnapshot;
         MemoLog.Lines.SaveToFile(ExtractFilePath(ParamStr(0)) + 'selftest_result.log');
         if FSelfTestTimer <> nil then
           FSelfTestTimer.Enabled := False;
         Application.Terminate;
       end;
     end;
+  end;
+end;
+
+// selftest_monaco.png: what the page shows (the browser paints it, so a
+// screenshot of the form would not have it)
+procedure TMainForm.SaveSnapshot;
+var
+  LStream: TFileStream;
+  LName: string;
+  LOk: Boolean;
+begin
+  // Let Monaco paint the new text first
+  Sleep(500);
+  Application.ProcessMessages;
+  LName := ExtractFilePath(ParamStr(0)) + 'selftest_monaco.png';
+  LStream := TFileStream.Create(LName, fmCreate);
+  try
+    LOk := FMonacoEditor.WebView.CapturePreviewPng(LStream);
+  finally
+    LStream.Free;
+  end;
+  if LOk then
+    LogMessage('[SelfTest] Captura de la pagina: ' + LName)
+  else
+  begin
+    DeleteFile(LName);
+    LogMessage('[SelfTest] Sin captura de la pagina');
   end;
 end;
 

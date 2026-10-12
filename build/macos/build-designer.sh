@@ -13,7 +13,10 @@
 # anade a Contents/Resources/languages las traducciones de la LCL
 # (lclstrconsts.<idioma>.po de la Lazarus que compila, como los paquetes de
 # Linux): los botones y dialogos estandar en el idioma del usuario, el de
-# Preferencias del Sistema > Idioma y region.
+# Preferencias del Sistema > Idioma y region. Tambien deja MonacoEditor.zip,
+# el editor SQL Monaco que se abre en WKWebView, junto al ejecutable real
+# (repman/, gitignored): el editor lo busca junto a ParamStr(0), que es el
+# fichero enlazado, y en el .app del paquete en Contents/Resources.
 set -euo pipefail
 
 T=${RM_MACOS_TOOLS:-$HOME/dev}
@@ -32,4 +35,5 @@ mkdir -p "$APP/Contents/Resources/languages"
 for l in $LCL_LANGUAGES; do
     cp "$LAZ/lcl/languages/lclstrconsts.$l.po" "$APP/Contents/Resources/languages/"
 done
+cp "$SRC/MonacoEditor.zip" "$SRC/repman/"
 echo "Listo: open $APP"
