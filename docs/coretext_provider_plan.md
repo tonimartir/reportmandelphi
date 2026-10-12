@@ -91,6 +91,48 @@ sin Objective-C. Lo que falte del SDK moderno se declara a mano.
 - **Punto de decisión:** si el modelo de datos de Core Text no encaja con
   `TGlyphPos`/clusters, se para y se replantea.
 
+**Resultados de la fase 0 (12-10-2026, macOS 15.8.1).** Programa:
+`tests/fpc/CoreTextProbe/ctprobe.lpr` (`fpc -FUlib -FElib -k-framework -kCoreText
+ctprobe.lpr`). Referencia con el proveedor actual en el Mac de pruebas,
+`~/ctref/ft`: PDF del motor (`PdfTest <informe> <pdf>`) e instantáneas de la
+vista previa (`LclSnapshotTest`) de `htmltest`, `arab2wordwrap`, `bold`,
+`boldold` y `sample4`; volcado de la prueba en `~/ctref/ctprobe.out`.
+
+- **Los headers de FPC sirven** (`MacOSAll`); hay que enlazar el framework
+  `CoreText` explícitamente (`{$linkframework CoreText}` en la unidad), si no
+  falta `CTFontCreateCopyWithSymbolicTraits`.
+- **El modelo encaja con `TGlyphPos`**, con la misma semántica que HarfBuzz y
+  DirectWrite: los runs de una línea vienen en orden visual (de izquierda a
+  derecha) y los glifos de cada run también; cada glifo lleva el índice UTF-16
+  del primer carácter de su cluster (en un run RTL, decrecientes). Una ligadura
+  es un glifo con el índice de su primer carácter: lam-alif de «الاستدلال» y «لا»
+  (un glifo para dos caracteres, Arial), «ffi», «ffl», «fi» (Hoefler Text).
+- **Corte de líneas**: `CTTypesetterSuggestLineBreak` corta bien árabe y texto
+  con dos fuentes; el espacio final de una línea RTL sale como un run aparte.
+- **Sustitución**: Apple Color Emoji (emoji), PingFang SC (chino: cara 144 de
+  232 de `PingFangUI.ttc`, en `/System/Library/PrivateFrameworks/...`, legible),
+  Hiragino Sans W3 (japonés). Arial de macOS tiene árabe: no sustituye.
+- **El nameID 1 no sirve en macOS para volver a la misma cara** (decisión
+  cambiada respecto al diseño de arriba):
+  - puede estar localizado: el primero de PingFang SC es «蘋方-簡» y
+    `CTFontCreateWithName` con él da Helvetica;
+  - Apple pone el grosor en el nameID 2: el nameID 1 de Helvetica Neue Light es
+    «Helvetica Neue», y al resolverlo se pierde el Light.
+  Para los runs sustituidos, `TGlyphPos.FontFamily` llevará el **nombre
+  PostScript** (`PingFangSC-Regular`), que `CTFontCreateWithName` resuelve a esa
+  cara exacta; `FillFontData`, si el nombre es un PostScript que existe, toma
+  esa cara sin volver a aplicar negrita/cursiva. (En Windows el nameID 1
+  localizado no molesta: GDI acepta nombres de familia localizados.)
+- **Cara dentro del `.ttc`**: su posición en
+  `CTFontManagerCreateFontDescriptorsFromURL`; confirmar en la fase 1 que es el
+  mismo índice que el de HarfBuzz al incrustar.
+- **Pregunta abierta**: Apple Color Emoji es de mapas de bits (`sbix`), sin
+  contornos: ver cómo se incrusta en el PDF (hoy y con Core Text).
+- **`LclSnapshotTest` no detecta el fallo actual** (pasa 18 de 18 con el árabe
+  mal dibujado): comprueba posiciones, recortes y colores, no los glifos. En la
+  fase 5 hace falta una comprobación que compare la vista previa con el PDF
+  rasterizado.
+
 **Fase 1 — Esqueleto.** Resolver familia + negrita + cursiva → `CTFont`
 (con caché), `FillFontData` (ascent, descent, capheight, bbox, italic angle,
 unidades por em, nombre PostScript, fichero y cara), anchuras de carácter y de
