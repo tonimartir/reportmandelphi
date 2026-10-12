@@ -3600,6 +3600,11 @@ var
 begin
  pconfig.Changed:=false;
  gdidriver:=nil;
+ // Only PrinterSelection sets it, and the preview prints with the printer
+ // selection blocked (it was chosen in the print dialog): undefined, it moved
+ // the whole page off the paper (a blank sheet on macOS 15)
+ offset.X:=0;
+ offset.Y:=0;
  try
  if copies=0 then
   copies:=1;
