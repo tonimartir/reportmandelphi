@@ -357,6 +357,55 @@ begin
   Check(courier = 4, 'HTML: the "mono" segment in Courier New (' + IntToStr(courier) + ' glyphs)');
   ok := ClustersMatch(lines, detail);
   Check(ok, 'HTML: every glyph at its character (' + detail + ')');
+  // Underline in RTL: "ضمان <u>الخصوصية</u> للتقارير", only the 8 letters of
+  // the underlined word, not the spaces around it
+  lines := Measure(ACt, 'Geeza Pro', False,
+    #$0636#$0645#$0627#$0646' <u>'#$0627#$0644#$062E#$0635#$0648#$0635#$064A#$0629'</u> '#$0644#$0644#$062A#$0642#$0627#$0631#$064A#$0631,
+    20000, False, True, True, r);
+  marked := 0;
+  ok := True;
+  detail := '';
+  for i := 0 to High(lines) do
+    for j := 0 to High(lines[i].Glyphs) do
+    begin
+      detail := detail + Format(' %d:%x/%d', [j, Ord(lines[i].Glyphs[j].CharCode), lines[i].Glyphs[j].Style]);
+      if (lines[i].Glyphs[j].Style and 4) <> 0 then
+      begin
+        Inc(marked);
+        if lines[i].Glyphs[j].CharCode = ' ' then
+          ok := False;
+      end;
+    end;
+  WriteLn('   underline:', detail);
+  Check(ok and (marked >= 8), 'Underline: the letters of the word and no space (' + IntToStr(marked) + ' glyphs)');
+  // Wrapped RTL text: the lines end in white space, which Core Text hangs
+  // outside the line; the glyphs still start where the line starts (the
+  // first glyph of each line at its advance, the last one ending at Width)
+  t := CArabic + ' ' + CArabic + ' ' + CArabic + ' ' + CArabic;
+  lines := Measure(ACt, 'Geeza Pro', False, t, 3000, True, False, True, r);
+  ok := Length(lines) > 1;
+  detail := '';
+  for i := 0 to High(lines) do
+  begin
+    sum := 0;
+    for j := 0 to High(lines[i].Glyphs) do
+      Inc(sum, lines[i].Glyphs[j].XAdvance);
+    if (Length(lines[i].Glyphs) = 0) or (Abs(lines[i].Glyphs[0].XOffset) > 1) or
+       (sum <> lines[i].Width) or (lines[i].Width > 3000) then
+    begin
+      ok := False;
+      if Length(lines[i].Glyphs) > 0 then
+        detail := detail + Format(' line %d: offset %d, advances %d, width %d;',
+          [i, lines[i].Glyphs[0].XOffset, sum, lines[i].Width]);
+    end;
+  end;
+  Check(ok, Format('Wrapped RTL: %d lines inside the box, not shifted%s', [Length(lines), detail]));
+  // The font of an object: LFontName, or WFontName when the system lacks it
+  Check(RpCTBaseFontName('Helvetica', 'Arial') = 'Helvetica', 'Base font: LFontName when it exists');
+  Check(RpCTBaseFontName('Noto Nask Arabic', 'Geeza Pro') = 'Geeza Pro',
+    'Base font: WFontName when LFontName does not exist');
+  Check(RpCTBaseFontName('No Such Font', 'Nor This One') = 'No Such Font',
+    'Base font: LFontName (the default of Core Text) when neither exists');
   // Substitution: emoji and Chinese in Helvetica
   lines := Measure(ACt, 'Helvetica', False, 'Hola ' + #$D83D#$DE00 + ' ' + #$62A5#$8868,
     20000, False, False, False, r);

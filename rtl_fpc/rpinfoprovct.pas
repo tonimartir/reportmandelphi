@@ -18,7 +18,8 @@ unit rpinfoprovct;
   paints it. See docs/coretext_provider_plan.md.
 
   - A font of the report is its LFontName (as the FreeType provider on Linux
-    and macOS) with bold and italic: a Core Text family plus the symbolic
+    and macOS), or its WFontName when the system lacks the first and has the
+    second (RpCTBaseFontName), with bold and italic: a Core Text family plus the symbolic
     traits (a PostScript or full name of a face is accepted too: "Helvetica"
     is both a family and the PostScript name of its regular face, so the
     family goes first). The substituted runs of a Core Text line carry
@@ -113,6 +114,11 @@ const
 // face) and style, or for CRpCTFaceMark + a PostScript name; it stays in a
 // cache shared by every provider. nil when Core Text gives none.
 function RpCTFace(const AName: string; ABold, AItalic: Boolean): TRpCTFace;
+
+// The font of an object: LFontName when the system has it, else WFontName
+// when it has that one ("Noto Naskh Arabic" for Linux and "Noto Sans Arabic"
+// for Windows), else LFontName for Core Text to choose (its default font)
+function RpCTBaseFontName(const ALFontName, AWFontName: WideString): string;
 {$ENDIF}
 
 implementation
@@ -127,6 +133,7 @@ uses
 var
   GFaces: TObjectDictionary<string, TRpCTFace>;   // owns the faces
   GRequests: TDictionary<string, TRpCTFace>;      // request -> face
+  GKnown: TDictionary<string, Boolean>;           // name -> the system has it
   GLock: TCriticalSection;
 
 function CFStr(const S: string): CFStringRef;
@@ -660,6 +667,51 @@ begin
   end;
 end;
 
+// Whether a name is a family, a PostScript name or a full name of a font of
+// the system (for any other name Core Text gives its default font)
+function FontNameExists(const AName: string): Boolean;
+var
+  font: CTFontRef;
+begin
+  Result := False;
+  if AName = '' then
+    Exit;
+  GLock.Enter;
+  try
+    if GKnown.TryGetValue(AName, Result) then
+      Exit;
+    font := CreateByFamily(AName, False, False);
+    if font <> nil then
+    begin
+      Result := SameText(TakeStr(CTFontCopyFamilyName(font)), AName) or
+        (TakeStr(CTFontCopyPostScriptName(font)) = AName) or
+        SameText(TakeStr(CTFontCopyName(font, kCTFontFullNameKey)), AName);
+      CFRelease(font);
+    end;
+    GKnown.Add(AName, Result);
+  finally
+    GLock.Leave;
+  end;
+end;
+
+function RpCTBaseFontName(const ALFontName, AWFontName: WideString): string;
+var
+  lname, wname: string;
+begin
+  lname := UTF8Encode(ALFontName);
+  wname := UTF8Encode(AWFontName);
+  if FontNameExists(lname) then
+    Result := lname
+  else if FontNameExists(wname) then
+    Result := wname
+  else if lname <> '' then
+    Result := lname
+  else if wname <> '' then
+    Result := wname
+  else
+    Result := 'Helvetica';
+end;
+
 // The substitution list Core Text would use for a face, without the faces a
 // PDF cannot embed, as a descriptor to apply to its fonts (it is built once
 // per face). The default list puts PingFang (hvgl) before Hiragino Sans GB
@@ -812,11 +864,7 @@ function TRpCTInfoProvider.ResolveFace(pdffont: TRpPDFFont): TRpCTFace;
 var
   name: string;
 begin
-  name := UTF8Encode(pdffont.LFontName);
-  if name = '' then
-    name := UTF8Encode(pdffont.WFontName);
-  if name = '' then
-    name := 'Helvetica';
+  name := RpCTBaseFontName(pdffont.LFontName, pdffont.WFontName);
   Result := RpCTFace(name, pdffont.Bold, pdffont.Italic);
   if Result = nil then
     raise Exception.Create('Core Text has no font for ' + name);
@@ -1163,7 +1211,7 @@ var
   ps: array of CGPoint;
   advs: array of CGSize;
   idx: array of CFIndex;
-  pen, penBase, penRel: Double;
+  pen, penBase, posBase, penRel: Double;
   lineInfo: TRpLineInfo;
   gp: TGlyphPos;
   face: TRpCTFace;
@@ -1212,9 +1260,7 @@ begin
   Rect.Top := 0;
   rectTop := 0;
   maxWidth := 0;
-  baseName := UTF8Encode(pdfFont.LFontName);
-  if baseName = '' then
-    baseName := UTF8Encode(pdfFont.WFontName);
+  baseName := RpCTBaseFontName(pdfFont.LFontName, pdfFont.WFontName);
   // Core Text (and HarfBuzz under it) may compute NaN that C ignores; FPC
   // console programs run with the floating point exceptions unmasked
   fpuMask := GetExceptionMask;
@@ -1407,9 +1453,18 @@ begin
                   lineInfo.Size := maxIdx - minIdx + 1;
                   lineInfo.Text := UTF8Encode(Copy(plain, lineInfo.Position, lineInfo.Size));
                 end;
+                // The origin of the line is the first glyph kept, by its
+                // advances and by its position: Core Text hangs the white
+                // space at the end of an RTL line on the right, so the
+                // positions of the glyphs no longer follow the advances
+                // from the start of the line
                 penBase := 0;
+                posBase := 0;
                 if b >= a then
+                begin
                   penBase := glyphs[a].Pen;
+                  posBase := glyphs[a].X;
+                end;
                 // The base font of the object (as the other providers)
                 lineBaseline := (adata.Ascent + Max(0, adata.Leading)) / 1000.0 * FontSize * 20.0;
                 lineHeight := adata.Height / 1000.0 * FontSize * 20.0;
@@ -1420,7 +1475,7 @@ begin
                   gp.GlyphIndex := glyphs[i].Glyph;
                   penRel := glyphs[i].Pen - penBase;
                   gp.XAdvance := Round((penRel + glyphs[i].Advance) * 20) - Round(penRel * 20);
-                  gp.XOffset := Round((glyphs[i].X - penBase) * 20) - Round(penRel * 20);
+                  gp.XOffset := Round((glyphs[i].X - posBase) * 20) - Round(penRel * 20);
                   gp.YOffset := Round(glyphs[i].Y * 20);
                   gp.YAdvance := 0;
                   gp.CharCode := plain[glyphs[i].Index + 1];
@@ -1509,8 +1564,10 @@ initialization
   GLock := TCriticalSection.Create;
   GFaces := TObjectDictionary<string, TRpCTFace>.Create([doOwnsValues]);
   GRequests := TDictionary<string, TRpCTFace>.Create;
+  GKnown := TDictionary<string, Boolean>.Create;
 
 finalization
+  GKnown.Free;
   GRequests.Free;
   GFaces.Free;
   GLock.Free;
