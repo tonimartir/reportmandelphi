@@ -380,6 +380,7 @@ type
   private
     { Private declarations }
     fdesignframe:TFRpDesignFrameVCL;
+    MHelpItem:TMenuItem;
     fobjinsp:TFRpObjInspVCL;
     configfile,configfilelib:string;
     oldonException:TExceptionEvent;
@@ -500,6 +501,8 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 206;
     procedure WMHandleDesignContextPayload(var Message: TMessage); message WM_USER + 207;
+    procedure MHelpItemClick(Sender:TObject);
+    procedure ShowContextHelp;
   public
     { Public declarations }
     report:TRpReport;
@@ -1359,6 +1362,14 @@ begin
  BoolToStr(True,True);
  KeyPreview:=True;
  OnKeyDown:=FormKeyDown;
+ // Help on the selected item (F1), after Documentation
+ MHelpItem:=TMenuItem.Create(Self);
+ MHelpItem.Caption:=TranslateStr(2007,'Help on the selected item');
+ MHelpItem.Hint:=TranslateStr(2008,'Shows the documentation page of the selected item, or of the property being edited');
+ MHelpItem.ShortCut:=ShortCut(VK_F1,[]);
+ MHelpItem.OnClick:=MHelpItemClick;
+ MHelp.Insert(MHelp.IndexOf(MDoc)+1,MHelpItem);
+ MHelpItem.Visible:=MDoc.Visible;
  ALeft.ShortCut:=ShortCut(VK_LEFT,[ssCtrl]);
  ARight.ShortCut:=ShortCut(VK_RIGHT,[ssCtrl]);
  AUp.ShortCut:=ShortCut(VK_UP,[ssCtrl]);
@@ -2365,6 +2376,30 @@ begin
   ShowHelp('https://reportman.es/doc/'+document);
 end;
 
+procedure TFRpMainFVCL.MHelpItemClick(Sender:TObject);
+begin
+ ShowContextHelp;
+end;
+
+// THE HELP OF WHAT IS BEING EDITED (12-10-2026): the page of the property whose editor has the
+// focus in the object inspector, else the page of the selected item, else the documentation
+procedure TFRpMainFVCL.ShowContextHelp;
+var
+ page:string;
+begin
+ page:='';
+ if Assigned(fobjinsp) then
+ begin
+  page:=fobjinsp.HelpPageForControl(Screen.ActiveControl);
+  if Length(page)=0 then
+   page:=fobjinsp.ElementHelpPage;
+ end;
+ if Length(page)>0 then
+  ShowDoc(page)
+ else
+  ADocumentationExecute(nil);
+end;
+
 procedure TFRpMainFVCL.ADocumentationExecute(Sender: TObject);
 var
  aurl:string;
@@ -2411,6 +2446,8 @@ begin
  inif:=TIniFile.Create(ChangeFileExt(Application.ExeName,'.ini'));
  try
   MDoc.Visible:=inif.ReadBool('CONFIG','ShowAboutBox',true);
+  if Assigned(MHelpItem) then
+   MHelpItem.Visible:=MDoc.Visible;
   MAbout.Visible:=inif.ReadBool('CONFIG','ShowDocumentation',true);
  finally
   inif.free;

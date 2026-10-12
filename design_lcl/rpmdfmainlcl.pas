@@ -146,6 +146,7 @@ type
     MenuPrefPrintDialog: TMenuItem;
     MenuHelpDoc: TMenuItem;
     MenuHelpSysInfo: TMenuItem;
+    MenuHelpItem: TMenuItem;
     // Last used files (VCL Lastusedfiles), listed after File > Exit
     FLastUsedFiles: TRpLastUsedStrings;
     // Object inspector font (Preferences), applied when chosen
@@ -227,6 +228,8 @@ type
     procedure MenuHelpAboutClick(Sender: TObject);
     procedure MenuHelpDocClick(Sender: TObject);
     procedure MenuHelpSysInfoClick(Sender: TObject);
+    procedure MenuHelpItemClick(Sender: TObject);
+    procedure ShowContextHelp;
     procedure MenuFilePrintSetupClick(Sender: TObject);
     procedure MenuReportAddClick(Sender: TObject);
     procedure MenuReportDeleteSectionClick(Sender: TObject);
@@ -3036,6 +3039,15 @@ end;
 
 procedure TFRpMainFLCL.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
+{$IFDEF DARWIN}
+  // F1 (the menu item has Cmd+? on macOS)
+  if (Key = VK_F1) and (Shift = []) then
+  begin
+    Key := 0;
+    ShowContextHelp;
+  end
+  else
+{$ENDIF}
   if (Shift = [ssCtrl]) and (Key = VK_Z) and ShouldHandleDesignerUndoShortcut then
   begin
     Key := 0;
@@ -3559,6 +3571,16 @@ begin
   // VCL ASysInfo
   MenuHelpSysInfo := NewMenuItem(MenuHelp, SRpSsysInfo, SRpSsysInfoH, MenuHelpSysInfoClick);
   MenuHelp.Insert(1, MenuHelpSysInfo);
+  // Help on the selected item: F1, and Cmd+? on macOS (where F1 is handled by FormKeyDown)
+  MenuHelpItem := NewMenuItem(MenuHelp, TranslateStr(2007, 'Help on the selected item'),
+    TranslateStr(2008, 'Shows the documentation page of the selected item, or of the property being edited'),
+    MenuHelpItemClick);
+{$IFDEF DARWIN}
+  MenuHelpItem.ShortCut := ShortCut(VK_OEM_2, [ssMeta, ssShift]);
+{$ELSE}
+  MenuHelpItem.ShortCut := ShortCut(VK_F1, []);
+{$ENDIF}
+  MenuHelp.Insert(1, MenuHelpItem);
 
   UpdateFileMenu;
 end;
@@ -3920,6 +3942,30 @@ begin
     OpenDocument(aurl)
   else
     OpenURL('https://reportman.es');
+end;
+
+procedure TFRpMainFLCL.MenuHelpItemClick(Sender: TObject);
+begin
+  ShowContextHelp;
+end;
+
+// THE HELP OF WHAT IS BEING EDITED (12-10-2026): the page of the property whose editor has the
+// focus in the object inspector, else the page of the selected item, else the documentation
+procedure TFRpMainFLCL.ShowContextHelp;
+var
+  page: string;
+begin
+  page := '';
+  if Assigned(FObjInsp) then
+  begin
+    page := FObjInsp.HelpPageForControl(ActiveControl);
+    if Length(page) = 0 then
+      page := FObjInsp.ElementHelpPage;
+  end;
+  if Length(page) > 0 then
+    RpShowDocPage(page)
+  else
+    MenuHelpDocClick(nil);
 end;
 
 procedure TFRpMainFLCL.MenuHelpSysInfoClick(Sender: TObject);

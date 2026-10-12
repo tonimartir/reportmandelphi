@@ -21,7 +21,7 @@ interface
 
 uses
   Classes, SysUtils, Types,
-  Graphics, Forms, Controls, Dialogs, Menus, ExtCtrls, StdCtrls, ComCtrls,
+  Graphics, Forms, Controls, Dialogs, Menus, ExtCtrls, StdCtrls, ComCtrls, LCLIntf,
   rpmdconsts, rpmunits, rpprintitem, rpgraphutilslcl,
   rpsection, rpreport, rpsubreport, rptypes,
   rpmdobinsintlcl, rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfbarcodeintlcl,
@@ -78,6 +78,8 @@ type
     procedure AlignSelected(direction: Integer);
     procedure MoveSelected(direction: Integer; fast: Boolean);
     procedure UpdatePosValues;
+    function HelpPageForControl(AControl: TControl): string;
+    function ElementHelpPage: string;
     property CompItem: TRpSizeInterface read GetCompItem;
     property CurrentPanel: TRpPanelObjLCL read GetCurrentPanel;
     property DesignFrame: TObject read FDesignFrame write FDesignFrame;
@@ -115,6 +117,15 @@ type
     comboprintonly: TComboBox;
     FPControl: TPageControl;
     FUpdatingValues: Boolean;
+    FLabelPopup: TPopupMenu;
+    FLabelHelpItem: TMenuItem;
+    FIsSubReport: Boolean;
+    procedure SetHelpLabel(ALabel: TLabel; const APage: string);
+    procedure LabelMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure LabelMouseEnter(Sender: TObject);
+    procedure LabelMouseLeave(Sender: TObject);
+    procedure LabelPopupPopup(Sender: TObject);
+    procedure LabelHelpClick(Sender: TObject);
     procedure ComboObjectChange(Sender: TObject);
     procedure EditChange(Sender: TObject);
     procedure ShapeMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -142,6 +153,8 @@ type
     procedure SelectProperty(propname: string);
     procedure SetPropertyFull(propname: string; value: WideString); overload;
     procedure SetPropertyFull(propname: string; stream: TMemoryStream); overload;
+    function HelpPageOf(AControl: TControl): string;
+    function ElementHelpPage: string;
     property CompItem: TRpSizeInterface read FCompItem write FCompItem;
     property SubReport: TRpSubreport read subrep write subrep;
     property Combo: TComboBox read FCombo;
@@ -149,6 +162,10 @@ type
   end;
 
 function FindClassName(acompo: TRpSizeInterface): string;
+
+// Shows a page of the documentation: the copy in the doc folder beside the program when there is
+// one, else the page on reportman.es, as the VCL designer (TFRpMainFVCL.ShowDoc)
+procedure RpShowDocPage(const APage: string);
 
 implementation
 
@@ -227,6 +244,12 @@ begin
   LControls2 := TStringList.Create;
   AList := TStringList.Create;
   FUpdatingValues := False;
+  // The context menu of the labels: help on the property
+  FLabelPopup := TPopupMenu.Create(Self);
+  FLabelPopup.OnPopup := LabelPopupPopup;
+  FLabelHelpItem := TMenuItem.Create(FLabelPopup);
+  FLabelHelpItem.OnClick := LabelHelpClick;
+  FLabelPopup.Items.Add(FLabelHelpItem);
 end;
 
 destructor TRpPanelObjLCL.Destroy;
@@ -243,6 +266,126 @@ begin
   inherited Destroy;
 end;
 
+// THE HELP OF A PROPERTY (12-10-2026). Each property names the page of the documentation that
+// describes it (the hints of GetProperties); a click on its label, its context menu or F1 with
+// its editor focused show that page, as the VCL designer does with the click.
+procedure TRpPanelObjLCL.SetHelpLabel(ALabel: TLabel; const APage: string);
+begin
+  if Length(APage) = 0 then
+    Exit;
+  ALabel.Hint := APage;
+  ALabel.ShowHint := False;
+  ALabel.Cursor := crHelp;
+  ALabel.OnMouseUp := LabelMouseUp;
+  ALabel.PopupMenu := FLabelPopup;
+{$IFDEF DARWIN}
+  // Cocoa has no help cursor of its own: the label underlines under the mouse
+  ALabel.OnMouseEnter := LabelMouseEnter;
+  ALabel.OnMouseLeave := LabelMouseLeave;
+{$ENDIF}
+end;
+
+procedure TRpPanelObjLCL.LabelMouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbLeft then
+    RpShowDocPage(TLabel(Sender).Hint);
+end;
+
+procedure TRpPanelObjLCL.LabelMouseEnter(Sender: TObject);
+begin
+  TLabel(Sender).Font.Style := TLabel(Sender).Font.Style + [fsUnderline];
+end;
+
+procedure TRpPanelObjLCL.LabelMouseLeave(Sender: TObject);
+begin
+  TLabel(Sender).Font.Style := TLabel(Sender).Font.Style - [fsUnderline];
+end;
+
+procedure TRpPanelObjLCL.LabelPopupPopup(Sender: TObject);
+var
+  lab: TComponent;
+begin
+  lab := FLabelPopup.PopupComponent;
+  if lab is TLabel then
+  begin
+    FLabelHelpItem.Caption := Format(TranslateStr(2006, 'Help on %s'), [TLabel(lab).Caption]);
+    FLabelHelpItem.Hint := TLabel(lab).Hint;
+  end;
+end;
+
+procedure TRpPanelObjLCL.LabelHelpClick(Sender: TObject);
+begin
+  RpShowDocPage(FLabelHelpItem.Hint);
+end;
+
+// The page of the property whose editor is AControl (or inside it), '' when it is not one
+function TRpPanelObjLCL.HelpPageOf(AControl: TControl): string;
+begin
+  Result := '';
+  while Assigned(AControl) and (AControl.Owner <> Self) do
+    AControl := AControl.Parent;
+  if not Assigned(AControl) then
+    Exit;
+  if FIsSubReport then
+    Result := 'refsubreport.html'
+  else
+  if (AControl.Tag >= 0) and (AControl.Tag < LHints.Count) and
+     ((LControls.IndexOfObject(AControl) >= 0) or (LControls2.IndexOfObject(AControl) >= 0)) then
+    Result := LHints.Strings[AControl.Tag];
+end;
+
+// The page of the element: the one most of its properties name, besides the pages common to
+// every element (refcommon.html, refcommontext.html)
+function TRpPanelObjLCL.ElementHelpPage: string;
+var
+  counts: TStringList;
+  i, best: Integer;
+  page: string;
+begin
+  if FIsSubReport then
+    Exit('refsubreport.html');
+  Result := '';
+  counts := TStringList.Create;
+  try
+    for i := 0 to LHints.Count - 1 do
+    begin
+      page := LHints.Strings[i];
+      if Length(page) = 0 then
+        Continue;
+      if Length(Result) = 0 then
+        Result := page;
+      if SameText(page, 'refcommon.html') or SameText(page, 'refcommontext.html') then
+        Continue;
+      if counts.IndexOf(page) < 0 then
+        counts.AddObject(page, TObject(PtrInt(0)));
+      counts.Objects[counts.IndexOf(page)] := TObject(PtrInt(counts.Objects[counts.IndexOf(page)]) + 1);
+    end;
+    best := 0;
+    for i := 0 to counts.Count - 1 do
+      if PtrInt(counts.Objects[i]) > best then
+      begin
+        best := PtrInt(counts.Objects[i]);
+        Result := counts.Strings[i];
+      end;
+  finally
+    counts.Free;
+  end;
+end;
+
+procedure RpShowDocPage(const APage: string);
+var
+  local: string;
+begin
+  if Length(APage) = 0 then
+    Exit;
+  local := ExtractFilePath(Application.ExeName) + 'doc' + PathDelim + APage;
+  if FileExists(local) then
+    OpenDocument(local)
+  else
+    OpenURL('https://reportman.es/doc/' + APage);
+end;
+
 procedure TRpPanelObjLCL.CreateControlsSubReport;
 var
   posy, aheight: Integer;
@@ -251,6 +394,7 @@ var
   Psplit: TSplitter;
   ALabel: TLabel;
 begin
+  FIsSubReport := True;
   posy := 0;
   aheight := ScaleDpi(24);
 
@@ -297,6 +441,7 @@ begin
   ALabel.Left := ScaleDpi(CONS_LEFTGAP);
   ALabel.Top := posy + ScaleDpi(CONS_LABELTOPGAP);
   ALabel.Parent := PLeft;
+  SetHelpLabel(ALabel, 'refsubreport.html');
 
   ComboAlias := TComboBox.Create(Self);
   ComboAlias.Style := csDropDownList;
@@ -316,6 +461,7 @@ begin
   ALabel.Left := ScaleDpi(CONS_LEFTGAP);
   ALabel.Top := posy + ScaleDpi(CONS_LABELTOPGAP);
   ALabel.Parent := PLeft;
+  SetHelpLabel(ALabel, 'refsubreport.html');
 
   ComboPrintOnly := TComboBox.Create(Self);
   ComboPrintOnly.Style := csDropDownList;
@@ -488,6 +634,8 @@ begin
     ALabel.Left := ScaleDpi(CONS_LEFTGAP);
     ALabel.Top := posy + ScaleDpi(CONS_LABELTOPGAP);
     ALabel.Parent := PLeft;
+    if LHints.Count > i then
+      SetHelpLabel(ALabel, LHints.Strings[i]);
 
     // Label for Category page
     ALabel := TLabel.Create(Self);
@@ -496,6 +644,8 @@ begin
     ALabel.Left := ScaleDpi(CONS_LEFTGAP);
     ALabel.Top := apage.PosY + ScaleDpi(CONS_LABELTOPGAP);
     ALabel.Parent := apage.PLeft;
+    if LHints.Count > i then
+      SetHelpLabel(ALabel, LHints.Strings[i]);
 
     typename := LTypes.Strings[i];
 
@@ -1549,6 +1699,22 @@ begin
   FClassAncestors.Free;
 
   inherited Destroy;
+end;
+
+// The page of the property whose editor AControl is, '' when it is not in the inspector
+function TFRpObjInspLCL.HelpPageForControl(AControl: TControl): string;
+begin
+  Result := '';
+  if Assigned(CurrentPanel) then
+    Result := CurrentPanel.HelpPageOf(AControl);
+end;
+
+// The page of the selected element, '' when nothing is selected
+function TFRpObjInspLCL.ElementHelpPage: string;
+begin
+  Result := '';
+  if Assigned(CurrentPanel) then
+    Result := CurrentPanel.ElementHelpPage;
 end;
 
 function TFRpObjInspLCL.FindCommonClass(baseclass, newclass: string): string;

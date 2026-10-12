@@ -17,11 +17,11 @@ procedure RunVCLParityTests(const ASamplePath: string);
 implementation
 
 uses
-  Classes, SysUtils, Types, Forms, Controls, ComCtrls, Menus, LCLType,
+  Classes, SysUtils, Types, Forms, Controls, ComCtrls, Menus, LCLType, StdCtrls,
   rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
   rpprintitem, rplabelitem, rpmdbarcode,
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
-  rpmdfmainlcl, rpmdimageslcl, rplclpreview, rplclreport,
+  rpmdfmainlcl, rpmdimageslcl, rplclpreview, rplclreport, rpmdobjinsplcl,
   Clipbrd, rpgraphutilslcl, rpeval, uregressiontests, umainform;
 
 procedure Fail(const Msg: string);
@@ -906,6 +906,90 @@ begin
   end;
 end;
 
+// THE HELP OF THE OBJECT INSPECTOR (12-10-2026): every property of every kind of item names a
+// page that exists in doc/doc, its label in the inspector shows it (help cursor), the item has
+// its own page, and the editor of a property gives the page of that property (F1).
+procedure TestInspectorHelp(mf: TFRpMainFLCL; const ASamplePath: string);
+const
+  Tools: array[0..5] of TRpDesignTool = (dtLabel, dtExpression, dtShape, dtImage, dtBarcode, dtChart);
+  Pages: array[0..5] of string = ('reflabel.html', 'refexpression.html', 'refdraw.html',
+    'refimage.html', 'refbarcode.html', 'refchart.html');
+var
+  docdir: string;
+  detail: TRpSection;
+  secint: TRpSectionInterface;
+  comp: TRpSizeInterface;
+  names, types, hints, cats: TRpWideStrings;
+  panel: TRpPanelObjLCL;
+  i, helpLabels: Integer;
+
+  procedure CheckItem(AItem: TRpSizeInterface; const AExpected, AWhat: string);
+  var
+    j: Integer;
+  begin
+    names.Clear; types.Clear; hints.Clear; cats.Clear;
+    AItem.GetProperties(names, types, nil, hints, cats);
+    Check(hints.Count > 0, AWhat + ': its properties name help pages');
+    for j := 0 to hints.Count - 1 do
+      Check((Length(hints.Strings[j]) = 0) or FileExists(docdir + hints.Strings[j]),
+        Format('%s, property %s: the page %s exists in doc/doc', [AWhat, names.Strings[j], hints.Strings[j]]));
+    // As the designer selects (a ProcessMessages here let the designer apply its own,
+    // empty, selection again)
+    if AItem is TRpSizePosInterface then
+      mf.DesignerFrame.SelectComponent(TRpSizePosInterface(AItem), False)
+    else
+      mf.ObjInsp.AddCompItem(AItem, True);
+    CheckStr(AExpected, mf.ObjInsp.ElementHelpPage, AWhat + ': page of the item');
+    panel := mf.ObjInsp.CurrentPanel;
+    Check(Assigned(panel), AWhat + ': inspector panel');
+    helpLabels := 0;
+    for j := 0 to panel.ComponentCount - 1 do
+      if (panel.Components[j] is TLabel) and (TLabel(panel.Components[j]).Cursor = crHelp) then
+      begin
+        Inc(helpLabels);
+        Check(FileExists(docdir + TLabel(panel.Components[j]).Hint),
+          AWhat + ': the label ' + TLabel(panel.Components[j]).Caption + ' shows a page that exists');
+      end;
+    Check(helpLabels >= hints.Count, Format('%s: %d labels with help for %d properties',
+      [AWhat, helpLabels, hints.Count]));
+    Check(panel.ControlsList.Count > 0, AWhat + ': property editors');
+    CheckStr(hints.Strings[TControl(panel.ControlsList.Objects[0]).Tag],
+      mf.ObjInsp.HelpPageForControl(TControl(panel.ControlsList.Objects[0])),
+      AWhat + ': the editor of a property gives its page (F1)');
+    CheckStr('', mf.ObjInsp.HelpPageForControl(mf.DesignerFrame), AWhat + ': no property page outside the inspector');
+  end;
+
+begin
+  LogMsg('VCL parity: help of the object inspector');
+  docdir := ExpandFileName(ExtractFilePath(ASamplePath) + '..' + PathDelim + '..' + PathDelim +
+    'doc' + PathDelim + 'doc' + PathDelim);
+  Check(DirectoryExists(docdir), 'The documentation folder ' + docdir);
+  FreshReport(mf);
+  detail := FindSectionOfType(mf.Report.SubReports[0].SubReport, rpsecdetail);
+  secint := SecIntOf(mf.DesignerFrame, detail);
+  Check(Assigned(secint), 'Detail interface');
+  names := TRpWideStrings.Create;
+  types := TRpWideStrings.Create;
+  hints := TRpWideStrings.Create;
+  cats := TRpWideStrings.Create;
+  try
+    for i := Low(Tools) to High(Tools) do
+    begin
+      comp := secint.CreateNewComponent(Tools[i], 10 + i * 60, 5, 0, 0);
+      Check(Assigned(comp), 'New item ' + Pages[i]);
+      CheckItem(comp, Pages[i], Pages[i]);
+    end;
+    CheckItem(secint, 'refsection.html', 'Detail section');
+  finally
+    names.Free;
+    types.Free;
+    hints.Free;
+    cats.Free;
+  end;
+  mf.ObjInsp.ClearMultiSelect;
+  TUndoCue(mf.Report.UndoCue).MarkClean;
+end;
+
 procedure RunVCLParityTests(const ASamplePath: string);
 var
   mf: TFRpMainFLCL;
@@ -925,6 +1009,7 @@ begin
     TestCtrlArrows(mf);
     TestToolbar(mf);
     TestToolbarCommands(mf);
+    TestInspectorHelp(mf, ASamplePath);
     TUndoCue(mf.Report.UndoCue).MarkClean;
   finally
     mf.Free;

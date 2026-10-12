@@ -86,6 +86,8 @@ type
     destructor Destroy;override;
     procedure AlignSelected(direction:integer);
     procedure MoveSelected(direction:integer;fast:boolean);
+    function HelpPageForControl(AControl:TControl):string;
+    function ElementHelpPage:string;
     property CompItem:TRpSizeInterface read GetCompItem;
     property DesignFrame:TObject read FDesignFrame write FDesignFrame;
     property Combo:TComboBox read GetComboBox;
@@ -120,6 +122,12 @@ type
     comboprintonly:TComboBox;
     LPages:TStringList;
     FPControl:TPAgeControl;
+    FLabelPopup:TPopupMenu;
+    FLabelHelpItem:TMenuItem;
+    FIsSubReport:Boolean;
+    procedure SetHelpLabel(ALabel:TLabel;const APage:string);
+    procedure LabelPopupPopup(Sender:TObject);
+    procedure LabelHelpClick(Sender:TObject);
     procedure ComboObjectChange(Sender:TObject);
     procedure EditChange(Sender:TObject);
     procedure SendToBackClick(Sender:TObject);
@@ -149,6 +157,8 @@ type
     procedure LabelMouseDown(Sender:TObject;
      Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure AssignPropertyValues;
+    function HelpPageOf(AControl:TControl):string;
+    function ElementHelpPage:string;
   end;
 
 
@@ -412,8 +422,94 @@ procedure TrpPanelObj.LabelMouseDown(Sender:TObject;
 var
  FRpMainf:TFRpMainFVCL;
 begin
+ if Button<>mbLeft then
+  exit;
  FRpMainf:=TFRpMainFVCL(Owner.Owner);
  FRpMainf.ShowDoc(TLabel(Sender).Hint);
+end;
+
+// THE HELP OF A PROPERTY (12-10-2026): its label shows its page with a click (as before),
+// with its context menu and with F1 while its editor has the focus (TFRpMainFVCL)
+procedure TrpPanelObj.SetHelpLabel(ALabel:TLabel;const APage:string);
+begin
+ ALabel.Hint:=APage;
+ ALabel.ParentShowHint:=False;
+ ALabel.ShowHint:=False;
+ ALabel.Cursor:=crHelp;
+ ALabel.OnMouseDown:=LabelMouseDown;
+ ALabel.PopupMenu:=FLabelPopup;
+end;
+
+procedure TrpPanelObj.LabelPopupPopup(Sender:TObject);
+begin
+ if FLabelPopup.PopupComponent is TLabel then
+ begin
+  FLabelHelpItem.Caption:=WideFormat(TranslateStr(2006,'Help on %s'),[TLabel(FLabelPopup.PopupComponent).Caption]);
+  FLabelHelpItem.Hint:=TLabel(FLabelPopup.PopupComponent).Hint;
+ end;
+end;
+
+procedure TrpPanelObj.LabelHelpClick(Sender:TObject);
+begin
+ TFRpMainFVCL(Owner.Owner).ShowDoc(FLabelHelpItem.Hint);
+end;
+
+// The page of the property whose editor is AControl (or inside it), '' when it is not one
+function TrpPanelObj.HelpPageOf(AControl:TControl):string;
+begin
+ Result:='';
+ while Assigned(AControl) and (AControl.Owner<>Self) do
+  AControl:=AControl.Parent;
+ if not Assigned(AControl) then
+  exit;
+ if FIsSubReport then
+  Result:='refsubreport.html'
+ else
+ if (AControl.Tag>=0) and (AControl.Tag<LHints.Count) and
+    ((LControls.IndexOfObject(AControl)>=0) or (LControls2.IndexOfObject(AControl)>=0)) then
+  Result:=LHints.Strings[AControl.Tag];
+end;
+
+// The page of the element: the one most of its properties name, besides the pages common to
+// every element (refcommon.html, refcommontext.html)
+function TrpPanelObj.ElementHelpPage:string;
+var
+ counts:TStringList;
+ i,best,index:integer;
+ page:string;
+begin
+ if FIsSubReport then
+ begin
+  Result:='refsubreport.html';
+  exit;
+ end;
+ Result:='';
+ counts:=TStringList.Create;
+ try
+  for i:=0 to LHints.Count-1 do
+  begin
+   page:=LHints.Strings[i];
+   if Length(page)=0 then
+    continue;
+   if Length(Result)=0 then
+    Result:=page;
+   if SameText(page,'refcommon.html') or SameText(page,'refcommontext.html') then
+    continue;
+   index:=counts.IndexOf(page);
+   if index<0 then
+    index:=counts.AddObject(page,TObject(0));
+   counts.Objects[index]:=TObject(NativeInt(counts.Objects[index])+1);
+  end;
+  best:=0;
+  for i:=0 to counts.Count-1 do
+   if NativeInt(counts.Objects[i])>best then
+   begin
+    best:=NativeInt(counts.Objects[i]);
+    Result:=counts.Strings[i];
+   end;
+ finally
+  counts.Free;
+ end;
 end;
 
 // Creates an object inspector panel for the component
@@ -428,6 +524,7 @@ var
  PRight:TPanel;
  Psplit:TSplitter;
 begin
+ FIsSubReport:=True;
  AScrollBox:=TScrollBox.Create(Self);
  AScrollBox.Parent:=Self;
  AScrollBox.Align:=alClient;
@@ -479,11 +576,9 @@ begin
  ALabel.parent:=PLeft;
  LLabels.Add(ALabel);
  ALabel.Caption:=SRpMainDataset;
- ALabel.Hint:='refsubreport.html';
+ SetHelpLabel(ALabel,'refsubreport.html');
  ALabel.Left:=ScaleDpi(CONS_LEFTGAP);
  ALabel.Top:=posy+ScaleDpi(CONS_LABELTOPGAP);
- ALabel.Cursor:=crHelp;
- ALabel.OnMouseDown:=LabelMouseDown;
 
  ComboAlias:=TComboBox.Create(Self);
  ComboAlias.Style:=csDropDownList;
@@ -499,9 +594,7 @@ begin
  ALabel.parent:=PLeft;
  LLabels.Add(ALabel);
  ALabel.Caption:=SRpSPOnlyData;
- ALabel.Hint:='refsubreport.html';
- ALabel.Cursor:=crHelp;
- ALabel.OnMouseDown:=LabelMouseDown;
+ SetHelpLabel(ALabel,'refsubreport.html');
  ALabel.Left:=ScaleDpi(CONS_LEFTGAP);
  ALabel.Top:=posy+ScaleDpi(CONS_LABELTOPGAP);
  ComboPrintOnly:=TComboBox.Create(Self);
@@ -596,6 +689,28 @@ begin
  end;
 end;
 
+
+// The page of the property whose editor AControl is, '' when it is not in the inspector
+function TFRpObjInspVCL.HelpPageForControl(AControl:TControl):string;
+var
+ apanel:TRpPanelObj;
+begin
+ Result:='';
+ apanel:=GetCurrentPanel;
+ if Assigned(apanel) then
+  Result:=apanel.HelpPageOf(AControl);
+end;
+
+// The page of the selected element, '' when nothing is selected
+function TFRpObjInspVCL.ElementHelpPage:string;
+var
+ apanel:TRpPanelObj;
+begin
+ Result:='';
+ apanel:=GetCurrentPanel;
+ if Assigned(apanel) then
+  Result:=apanel.ElementHelpPage;
+end;
 
 function TFRpObjInspVCL.GetCurrentPanel:TRpPanelObj;
 var
@@ -1740,13 +1855,7 @@ begin
   ALabel.Caption:=LNames.Strings[i];
   if LHints.Count>i then
    if Length(LHints.Strings[i])>0 then
-   begin
-    ALabel.Hint:=LHints.Strings[i];
-    ALabel.ParentShowHint:=False;
-    ALabel.ShowHint:=False;
-    ALabel.Cursor:=crHelp;
-    ALabel.OnMouseDown:=LabelMouseDown;
-   end;
+    SetHelpLabel(ALabel,LHints.Strings[i]);
   ALabel.Left:=ScaleDpi(CONS_LEFTGAP);
   ALabel.Top:=posy+ScaleDpi(CONS_LABELTOPGAP);
 
@@ -1756,13 +1865,7 @@ begin
   ALabel.Caption:=LNames.Strings[i];
   if LHints.Count>i then
    if Length(LHints.Strings[i])>0 then
-   begin
-    ALabel.Hint:=LHints.Strings[i];
-    ALabel.ParentShowHint:=False;
-    ALabel.ShowHint:=False;
-    ALabel.Cursor:=crHelp;
-    ALabel.OnMouseDown:=LabelMouseDown;
-   end;
+    SetHelpLabel(ALabel,LHints.Strings[i]);
   ALabel.Left:=ScaleDpi(CONS_LEFTGAP);
   ALabel.Top:=apage.posy+ScaleDpi(CONS_LABELTOPGAP);
 
@@ -2105,6 +2208,12 @@ begin
  LControls2:=TStringList.Create;
  LPages:=TStringList.Create;
  AList:=TStringList.Create;
+ // The context menu of the labels: help on the property
+ FLabelPopup:=TPopupMenu.Create(Self);
+ FLabelPopup.OnPopup:=LabelPopupPopup;
+ FLabelHelpItem:=TMenuItem.Create(FLabelPopup);
+ FLabelHelpItem.OnClick:=LabelHelpClick;
+ FLabelPopup.Items.Add(FLabelHelpItem);
  BorderStyle:=bsNone;
  BevelInner:=bvNone;
  BevelOuter:=bvNone;
