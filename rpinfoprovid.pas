@@ -123,6 +123,18 @@ type
   // puede guardar uno. Lo llena el emisor de glifos conformados a partir del cluster, y lo consume
   // el CMap de ToUnicode. Vacio para todo lo demas: con un solo caracter basta el de `glyphsInfo`.
   glyphText:TDictionary<integer, string>;
+  // CODES OF THEIR OWN for a glyph drawn for different texts (12-10-2026). The content stream
+  // writes each glyph by a code (CID) that is its glyph number, and the ToUnicode CMap gives one
+  // text per code. A font that splits the dots of its letters into marks (Noto Sans Arabic,
+  // Noto Naskh Arabic) draws the same skeleton for several letters, and the same dots for
+  // several more: with one text per glyph, the text copied from the PDF had wrong letters. The
+  // first text of a glyph keeps its glyph number as its code (CIDClaim); another text gets a
+  // code of its own from GlyphCount up (CIDExtra), drawn through a CIDToGIDMap.
+  GlyphCount:integer;                       // glyphs of the font (maxp); -1 not read, 0 unknown
+  CIDClaim:TDictionary<integer, string>;    // glyph -> the text of its own number
+  CIDExtra:TDictionary<string, integer>;    // glyph + text -> its code
+  CIDExtraGlyph:TList<integer>;             // code - GlyphCount -> glyph
+  CIDExtraText:TList<string>;               // code - GlyphCount -> text
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;
@@ -324,6 +336,11 @@ begin
 {$ENDIF}
  glyphsInfo:=TDictionary<integer, TGlyphInfo>.Create;
  glyphText:=TDictionary<integer, string>.Create;
+ GlyphCount:=-1;
+ CIDClaim:=TDictionary<integer, string>.Create;
+ CIDExtra:=TDictionary<string, integer>.Create;
+ CIDExtraGlyph:=TList<integer>.Create;
+ CIDExtraText:=TList<string>.Create;
 end;
 
 destructor TRpTTFontData.Destroy;
@@ -331,6 +348,10 @@ var
  i:integer;
 begin
  glyphText.Free;
+ CIDClaim.Free;
+ CIDExtra.Free;
+ CIDExtraGlyph.Free;
+ CIDExtraText.Free;
  for i:=0 to kerningsadded.count-1 do
  begin
   loadedkernings[StrToInt(kerningsadded.Strings[i])].Free;

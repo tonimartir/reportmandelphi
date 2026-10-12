@@ -388,6 +388,8 @@ var
   ascentSpacing:integer;
   PWideChartext: PWideChar;
   PlainText: WideString;
+  LayoutText: WideString;
+  lineEnd, nextStart: Integer;
   minLineCluster:integer;
   maxLineCluster:integer;
   lineCluster:integer;
@@ -674,6 +676,12 @@ begin
     );
   end;
 
+  // The text DirectWrite lays out, which its clusters count
+  if IsHtml then
+    LayoutText := PlainText
+  else
+    LayoutText := Text;
+
   // --- Obtener métricas de la fuente ---
   FontFace.GetMetrics(FontMetrics);
   scale := FontSizeInDips / FontMetrics.DesignUnitsPerEm;
@@ -722,7 +730,15 @@ begin
       begin
         LineInfo.Position := minLineCluster+1;
         LineINfo.Size:=maxLineCluster-minLineCluster+1;
-        LineInfo.Text := Copy(Text, LineInfo.Position, LineInfo.Size);
+        // THE TEXT OF THE LINE AND ITS CLUSTERS, as the other providers (12-10-2026): the
+        // clusters of DirectWrite count the characters of the whole text laid out (without
+        // the HTML tags), while the PDF reads them as positions in Text of the line
+        // (TextoDeCadaGlifo, ToUnicode). The text was copied from the HTML source and the
+        // clusters were absolute: they only matched on the first line, before any tag.
+        LineInfo.Text := Copy(LayoutText, LineInfo.Position, LineInfo.Size);
+        for j:=0 to Length(LineInfo.Glyphs)-1 do
+          if (LineInfo.Glyphs[j].LineCluster>=Cardinal(minLineCluster)) then
+            LineInfo.Glyphs[j].LineCluster := LineInfo.Glyphs[j].LineCluster - Cardinal(minLineCluster);
       end
       else
       begin
@@ -748,6 +764,31 @@ begin
 
       Result[i] := LineInfo;
     end;
+
+    // The text of a line ends where its last cluster does, not where it starts: a ligature
+    // (lam-alef) at the end of a line is two characters. Up to the next line, without the
+    // white space and line breaks in between.
+    for i := 0 to High(Result) do
+      if (Result[i].Size > 0) then
+      begin
+        nextStart := Length(LayoutText);
+        for j := i + 1 to High(Result) do
+          if (Result[j].Size > 0) then
+          begin
+            nextStart := Result[j].Position - 1;
+            break;
+          end;
+        lineEnd := nextStart;
+        while ((lineEnd > Result[i].Position - 1 + Result[i].Size) and
+          ((LayoutText[lineEnd] = ' ') or (LayoutText[lineEnd] = #9) or
+           (LayoutText[lineEnd] = #10) or (LayoutText[lineEnd] = #13))) do
+          Dec(lineEnd);
+        if (lineEnd > Result[i].Position - 1 + Result[i].Size) then
+        begin
+          Result[i].Size := lineEnd - (Result[i].Position - 1);
+          Result[i].Text := Copy(LayoutText, Result[i].Position, Result[i].Size);
+        end;
+      end;
 
     // Ajustar rectángulo final
     Rect.Right := Rect.Left + Round(TotalWidth);
@@ -1825,6 +1866,11 @@ begin
     mat.eM12.value := 0; mat.eM12.fract := 0;
     mat.eM21.value := 0; mat.eM21.fract := 0;
     mat.eM22.value := 1; mat.eM22.fract := 0;
+   // The font of the glyph, and its advance in thousandths of an em as GetCharWidth: GDI
+   // gives it in pixels of the font selected at TTF_PRECISION points (12-10-2026). The pixels
+   // went to the /W widths of the PDF, 4/3 too wide at 96 dpi: the boxes of the shaped glyphs
+   // overlapped and a viewer copied their text with spaces in the middle of the words.
+   SelectFont(pdffont);
    res:=GetGlyphOutlineW(adc,glyph,GGO_METRICS or GGO_GLYPH_INDEX,gm,0,nil,mat);
    if res = GDI_ERROR then
       width:=0
@@ -1834,11 +1880,11 @@ begin
     if (not data.glyphsInfo.ContainsKey(glyph)) then
     begin
      ginfo.Glyph := glyph;
-     ginfo.Width := width;
+     ginfo.Width := width/GetDeviceCaps(adc,LOGPIXELSX)*72000.0/TTF_PRECISION;
      ginfo.Char := charC;
      data.glyphsInfo.Add(glyph,ginfo);
     end;
-    Result:=width;
+    Result:=width/GetDeviceCaps(adc,LOGPIXELSX)*72000.0/TTF_PRECISION;
  end;
 end;
 

@@ -4226,6 +4226,27 @@ var
 {$ENDIF}
  ginfo:TGlyphInfo;
  g,k,desde,cuantos:integer;
+ propios:TList<Integer>;
+ cidmapIndex:integer;
+ cidbytes:array[0..1] of Byte;
+
+ // Whether the loaded character AIndex declares its nominal glyph. Not when the shaped text
+ // already gave that glyph another text (ShapedGlyphCode): the text drawn wins (12-10-2026).
+ // In Noto Sans Arabic the isolated «ي» is the glyph of «ى» with two dots as marks, and with
+ // a «ى» loaded somewhere in the text, the «ي» copied as «ى».
+ function DeclaresNominal(AIndex:integer):boolean;
+ var
+  claimed:string;
+ begin
+  Result:=adata.loaded[AIndex];
+  if (Result and adata.CIDClaim.TryGetValue(Integer(adata.loadedglyphs[AIndex]),claimed)) then
+{$IFDEF FPC}
+   Result:=(claimed=UTF8Encode(UnicodeString(WideChar(AIndex))));
+{$ELSE}
+   Result:=(claimed=string(WideChar(AIndex)));
+{$ENDIF}
+ end;
+
 begin
  if (FPDFConformance=PDF_1_4) then
  begin
@@ -4351,7 +4372,7 @@ begin
     while (index<=adata.lastloaded) do
     begin
      nextindex:=index;
-     if adata.loaded[index] then
+     if DeclaresNominal(index) then
      begin
       Inc(aunicodecount);
       if (aunicodecount>=100) then
@@ -4365,7 +4386,7 @@ begin
       ' beginbfchar'+LINE_FEED);
      for index := currentindex to nextindex do
      begin
-      if adata.loaded[index] then
+      if DeclaresNominal(index) then
       begin
        fromTo:=AnsiString('<'+ IntToHex4(Integer(adata.loadedglyphs[index]))+'> ');
        cmaphead:=AnsiString(String(cmaphead)+String(fromTo)+' <'+IntToHex4(index)+'>'+LINE_FEED);
@@ -4394,7 +4415,7 @@ begin
    sustituidos:=TList<Integer>.Create;
    try
     for index:=adata.firstloaded to adata.lastloaded do
-     if ((index>=0) and (index<=65535) and adata.loaded[index]) then
+     if ((index>=0) and (index<=65535) and DeclaresNominal(index)) then
       yadeclarados.AddOrSetValue(Integer(adata.loadedglyphs[index]),true);
     for ginfo in adata.glyphsInfo.Values do
     begin
@@ -4457,6 +4478,50 @@ begin
     sustituidos.Free;
     yadeclarados.Free;
    end;
+   // THE CODES OF THEIR OWN (ShapedGlyphCode, 12-10-2026): a glyph drawn for a text other than
+   // the one of its number, each code with its text. The same filter as above: no empty text
+   // (a glyph that stands for nothing), no control character, no lone surrogate.
+   propios:=TList<Integer>.Create;
+   try
+    for k:=0 to adata.CIDExtraText.Count-1 do
+    begin
+{$IFDEF FPC}
+     destino:=UTF8Decode(adata.CIDExtraText[k]);
+{$ELSE}
+     destino:=adata.CIDExtraText[k];
+{$ENDIF}
+     if ((Length(destino)=0) or (destino[1]<=' ')) then
+      Continue;
+     if ((Length(destino)=1) and (destino[1]>=#$D800) and (destino[1]<=#$DFFF)) then
+      Continue;
+     propios.Add(k);
+    end;
+    desde:=0;
+    while (desde<propios.Count) do
+    begin
+     cuantos:=propios.Count-desde;
+     if (cuantos>100) then
+      cuantos:=100;
+     cmaphead:=AnsiString(String(cmaphead)+IntToStr(cuantos)+' beginbfchar'+LINE_FEED);
+     for k:=desde to desde+cuantos-1 do
+     begin
+{$IFDEF FPC}
+      destino:=UTF8Decode(adata.CIDExtraText[propios[k]]);
+{$ELSE}
+      destino:=adata.CIDExtraText[propios[k]];
+{$ENDIF}
+      fromTo:=AnsiString('<'+IntToHex4(adata.GlyphCount+propios[k])+'> ');
+      cmaphead:=AnsiString(String(cmaphead)+String(fromTo)+' <');
+      for index:=1 to Length(destino) do
+       cmaphead:=AnsiString(String(cmaphead)+IntToHex4(Integer(destino[index])));
+      cmaphead:=AnsiString(String(cmaphead)+'>'+LINE_FEED);
+     end;
+     cmaphead:=cmaphead+'endbfchar'+LINE_FEED;
+     desde:=desde+cuantos;
+    end;
+   finally
+    propios.Free;
+   end;
    cmaphead:= cmaphead+'endcmap' +LINE_FEED+
                'CMapName currentdict /CMap defineresource pop'+LINE_FEED+
                'end end'+LINE_FEED;
@@ -4487,6 +4552,37 @@ begin
   adata:=TRpTTFontData(Canvas.FFontTTData.Objects[i]);
   if adata.isunicode then
   begin
+   // The codes of their own (ShapedGlyphCode) need a CIDToGIDMap: the glyph of every code, two
+   // bytes each, its own number up to GlyphCount
+   cidmapIndex:=0;
+   if ((adata.CIDExtraGlyph.Count>0) and (not adata.Type1)) then
+   begin
+    FObjectCount:=FObjectCount+1;
+    cidmapIndex:=FObjectCount;
+    FTempStream.Clear;
+    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+    FCMapStream:=TMemoryStream.Create;
+    try
+     for k:=0 to adata.GlyphCount+adata.CIDExtraGlyph.Count-1 do
+     begin
+      if (k<adata.GlyphCount) then
+       g:=k
+      else
+       g:=adata.CIDExtraGlyph[k-adata.GlyphCount];
+      cidbytes[0]:=Byte(g shr 8);
+      cidbytes[1]:=Byte(g and $FF);
+      FCMapStream.WriteBuffer(cidbytes,2);
+     end;
+     FCMapStream.Position:=0;
+     SWriteLine(FTempStream,'<< ');
+     WriteStream(FCMapStream,FTempStream);
+    finally
+     FCMapStream.Free;
+    end;
+    SWriteLine(FTempStream,'endobj');
+    AddToOffset(FTempStream.Size);
+    FTempStream.SaveToStream(FMainPDF);
+   end;
    FObjectCount:=FObjectCount+1;
    FTempStream.Clear;
    adata.ObjectIndexParent:=FObjectCount;
@@ -4570,6 +4666,16 @@ begin
       if (acount mod 8)=7 then
        awidths:=awidths+LINE_FEED;
      end;
+     // The codes of their own (ShapedGlyphCode), with the width of their glyph
+     for k:=0 to adata.CIDExtraGlyph.Count-1 do
+      if adata.glyphsInfo.TryGetValue(adata.CIDExtraGlyph[k],ginfo) then
+      begin
+       awidths:=awidths+IntToStr(adata.GlyphCount+k)+'['+
+        FormatFloat('0.00',ginfo.Width, NumberFormatSettings)+'] ';
+       acount:=acount+1;
+       if (acount mod 8)=7 then
+        awidths:=awidths+LINE_FEED;
+      end;
     finally
      sustituidos.Free;
      yadeclarados.Free;
@@ -4598,15 +4704,10 @@ begin
    SWriteLine(FTempStream,awidths);
    SWriteLine(FTempStream,']');*)
 
-   if (PDFConformance = PDF_A_3) then
-   begin
-    SWriteLine(FTempStream,'/CIDToGIDMap /Identity');
-    // SWriteLine(FTempStream,'/CDIToGDIMap ' + IntToStr(adata.CIDToGIDMapIndex)+' 0 R');
-   end
+   if (cidmapIndex>0) then
+    SWriteLine(FTempStream,'/CIDToGIDMap '+IntToStr(cidmapIndex)+' 0 R')
    else
-   begin
     SWriteLine(FTempStream,'/CIDToGIDMap /Identity');
-   end;
 
 
    SWriteLine(FTempStream,'>>');
@@ -4844,6 +4945,10 @@ var
  limites:TList<Integer>;
  cuantos:TDictionary<Integer,Integer>;
  primero:TDictionary<Integer,Integer>;
+ ultimo:TDictionary<Integer,Integer>;
+ elegido:TDictionary<Integer,Integer>;
+ f,l:integer;
+ rtl:boolean;
  limpio:boolean;
 begin
  SetLength(textos,Length(lInfo.Glyphs));
@@ -4854,6 +4959,8 @@ begin
  limites:=TList<Integer>.Create;
  cuantos:=TDictionary<Integer,Integer>.Create;
  primero:=TDictionary<Integer,Integer>.Create;
+ ultimo:=TDictionary<Integer,Integer>.Create;
+ elegido:=TDictionary<Integer,Integer>.Create;
  try
   // LOS LIMITES SE SACAN DE LOS VALORES, NO DEL ORDEN DE LOS GLIFOS: asi da igual que la escritura
   // vaya de derecha a izquierda, donde los clusters van decreciendo. El final de un cluster es el
@@ -4871,8 +4978,26 @@ begin
     limites.Add(c);
     primero.Add(c,i);
    end;
+   ultimo.AddOrSetValue(c,i);
   end;
   limites.Sort;
+  // The glyph of each cluster that carries its text: the first in the order of the shaper,
+  // the last on the page in a right to left run (the neighbouring clusters decrease)
+  for c in primero.Keys do
+  begin
+   f:=primero[c];
+   l:=ultimo[c];
+   rtl:=false;
+   if ((l<High(lInfo.Glyphs)) and (Integer(lInfo.Glyphs[l+1].LineCluster)>=0) and
+       (Integer(lInfo.Glyphs[l+1].LineCluster)<c)) then
+    rtl:=true
+   else if ((f>0) and (Integer(lInfo.Glyphs[f-1].LineCluster)>c)) then
+    rtl:=true;
+   if rtl then
+    elegido.Add(c,l)
+   else
+    elegido.Add(c,f);
+  end;
   for i:=0 to High(lInfo.Glyphs) do
   begin
    c:=Integer(lInfo.Glyphs[i].LineCluster);
@@ -4918,10 +5043,44 @@ begin
    // `glyphsInfo` acierta con cada una. Callar ahi en bloque costaba la «ي» y la «ع» de un informe
    // que ya salia bien: MEDIDO, no supuesto. Se probo tambien elegir al que avanza el lapiz, y
    // salio peor en devanagari, asi que se quedo esto.
-   if ((largo=1) and (cuantos[c]>1) and (primero[c]<>i)) then
+   //
+   // THE FIRST IN THE ORDER OF THE SHAPER, NOT ON THE PAGE (12-10-2026): the glyphs of a right
+   // to left run come in visual order, reversed, so there the first of the cluster is its last
+   // glyph. A letter whose dots are marks (Noto Sans Arabic) gave its text to the dots and left
+   // its skeleton without one, and a viewer names a glyph without text by its glyph name: the
+   // skeleton of «ت» copied as «ٮ», a letter more.
+   if ((largo=1) and (cuantos[c]>1) and (elegido[c]<>i)) then
    begin
     callar[i]:=true;
     continue;
+   end;
+   // SEVERAL CHARACTERS IN SEVERAL GLYPHS (a letter and its vowel, 12-10-2026): each glyph
+   // declared the whole cluster and the text came out twice («دًدًا»). As many glyphs as
+   // characters: each its own, in the order of the shaper. Otherwise the whole cluster in the
+   // first glyph and the others silent, without losing a letter.
+   if ((largo>1) and (cuantos[c]>1)) then
+   begin
+    if (cuantos[c]=largo) then
+    begin
+     if (elegido[c]=ultimo[c]) then
+      k:=ultimo[c]-i
+     else
+      k:=i-primero[c];
+     if ((k>=0) and (k<largo)) then
+     begin
+{$IFDEF FPC}
+      textos[i]:=UTF8Encode(UnicodeString(texto[c+1+k]));
+{$ELSE}
+      textos[i]:=texto[c+1+k];
+{$ENDIF}
+      continue;
+     end;
+    end;
+    if (elegido[c]<>i) then
+    begin
+     callar[i]:=true;
+     continue;
+    end;
    end;
    // Con un caracter y un solo glifo no hace falta declarar nada nuevo: `glyphsInfo` ya guarda ese
    // caracter y el CMap lo declara por su cuenta.
@@ -4933,10 +5092,112 @@ begin
 {$ENDIF}
   end;
  finally
+  elegido.Free;
+  ultimo.Free;
   primero.Free;
   cuantos.Free;
   limites.Free;
  end;
+end;
+
+// The number of glyphs of a font, from its maxp table in the data loaded to embed it; 0 when
+// it cannot be read. Of a collection (.ttc, which GDI loads whole) the largest of its fonts,
+// so it is never short: a code of its own (TRpTTFontData.CIDExtra) must not be a glyph number.
+function FontGlyphCount(adata:TRpTTFontData):integer;
+var
+ m:TMemoryStream;
+ p:PByte;
+ fonts,f,n:integer;
+
+ function U16(pos:Int64):integer;
+ begin
+  Result:=0;
+  if ((pos>=0) and (pos+2<=m.Size)) then
+   Result:=(p[pos] shl 8) or p[pos+1];
+ end;
+
+ function U32(pos:Int64):Int64;
+ begin
+  Result:=-1;
+  if ((pos>=0) and (pos+4<=m.Size)) then
+   Result:=(Int64(p[pos]) shl 24) or (p[pos+1] shl 16) or (p[pos+2] shl 8) or p[pos+3];
+ end;
+
+ // numGlyphs of the font whose table directory starts at ABase
+ function CountAt(ABase:Int64):integer;
+ var
+  i,tables:integer;
+  rec:Int64;
+ begin
+  Result:=0;
+  tables:=U16(ABase+4);
+  for i:=0 to tables-1 do
+  begin
+   rec:=ABase+12+i*16;
+   if (U32(rec)=$6D617870) then // 'maxp'
+   begin
+    Result:=U16(U32(rec+8)+4);
+    exit;
+   end;
+  end;
+ end;
+
+begin
+ Result:=0;
+ if ((adata.FontData=nil) or (adata.FontData.FontData=nil)) then
+  exit;
+ m:=adata.FontData.FontData;
+ if (m.Size<12) then
+  exit;
+ p:=m.Memory;
+ if ((adata.FontData.DirectoryOffset=0) and (U32(0)=$74746366)) then // 'ttcf'
+ begin
+  fonts:=U32(8);
+  for f:=0 to fonts-1 do
+  begin
+   n:=CountAt(U32(12+f*4));
+   if (n>Result) then
+    Result:=n;
+  end;
+ end
+ else
+  Result:=CountAt(adata.FontData.DirectoryOffset);
+end;
+
+// The code a shaped glyph is written with in the content stream, for the text it stands for
+// (TRpTTFontData.CIDClaim): its glyph number for the first text of the glyph, a code of its
+// own for any other. The text of a glyph number goes to `glyphText`, which the ToUnicode CMap
+// declares. A font that cannot carry a CIDToGIDMap (CFF) or whose glyphs cannot be counted
+// keeps the glyph number, as before.
+function ShapedGlyphCode(adata:TRpTTFontData;AGlyph:integer;const AText:string):integer;
+var
+ claimed,key:string;
+begin
+ Result:=AGlyph;
+ if (not adata.CIDClaim.TryGetValue(AGlyph,claimed)) then
+ begin
+  adata.CIDClaim.Add(AGlyph,AText);
+  adata.glyphText.AddOrSetValue(AGlyph,AText);
+  exit;
+ end;
+ if ((claimed=AText) or adata.Type1 or adata.CFF) then
+  exit;
+ if (adata.GlyphCount<0) then
+  adata.GlyphCount:=FontGlyphCount(adata);
+ if (adata.GlyphCount<=AGlyph) then
+  exit;
+ key:=IntToStr(AGlyph)+'|'+AText;
+ if adata.CIDExtra.TryGetValue(key,Result) then
+  exit;
+ Result:=adata.GlyphCount+adata.CIDExtraGlyph.Count;
+ if (Result>65535) then
+ begin
+  Result:=AGlyph;
+  exit;
+ end;
+ adata.CIDExtra.Add(key,Result);
+ adata.CIDExtraGlyph.Add(AGlyph);
+ adata.CIDExtraText.Add(AText);
 end;
 
 function TRpPDFCanvas.PDFCompatibleTextShaping(
@@ -4967,6 +5228,8 @@ var
   newFontSize: Single;
   textos: TArray<string>;
   callar: TArray<Boolean>;
+  code: Integer;
+  glyphTextHere: string;
 {$IFDEF FPC}
   actualColor: Integer;
   originalColor: Integer;
@@ -5058,17 +5321,28 @@ begin
     // glifo queda registrado -con su caracter- para el subconjunto y para el CMap de ToUnicode.
     InfoProvider.GetCharWidth(pdffont, adata, g.CharCode);
     InfoProvider.GetGlyphWidth(pdffont, adata, g.GlyphIndex, g.CharCode);
-    // DE QUE TEXTO SALE ESTE GLIFO, para el CMap de ToUnicode. Con un caracter basta el que ya
-    // guarda `glyphsInfo`; aqui se anota lo que alli no cabe -una ligadura- y se manda CALLAR a los
-    // glifos que no son el primero de su cluster, para no repetir letras. Una cadena buena nunca se
-    // pisa con un silencio: el mismo glifo puede aparecer en otro sitio donde si se sepa.
+    // THE TEXT THIS GLYPH STANDS FOR, for the ToUnicode CMap: the whole cluster for a ligature,
+    // nothing for the glyphs after the first of a split character (TextoDeCadaGlifo), else its
+    // character. ONE TEXT PER CODE, NOT PER GLYPH (12-10-2026): the same glyph can stand for
+    // different texts (the skeleton of a letter whose dots are marks, shared by several
+    // letters), and the CMap gives one text per code: the first text of a glyph keeps its
+    // number and any other gets a code of its own (ShapedGlyphCode).
+    code := g.GlyphIndex;
     if (Assigned(adata) and (i<=High(textos))) then
     begin
      if (Length(textos[i])>0) then
-      adata.glyphText.AddOrSetValue(g.GlyphIndex, textos[i])
-     else if (callar[i] and (not adata.glyphText.ContainsKey(g.GlyphIndex))) then
-      adata.glyphText.AddOrSetValue(g.GlyphIndex, '');
+      glyphTextHere:=textos[i]
+     else if callar[i] then
+      glyphTextHere:=''
+     else
+{$IFDEF FPC}
+      glyphTextHere:=UTF8Encode(UnicodeString(g.CharCode));
+{$ELSE}
+      glyphTextHere:=g.CharCode;
+{$ENDIF}
+     code:=ShapedGlyphCode(adata, g.GlyphIndex, glyphTextHere);
     end;
+    gidHex := IntToHex4(code);
 
     // calcular posiciones PDF como hacías
     absY := posY - g.YOffset;
