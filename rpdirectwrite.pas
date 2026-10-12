@@ -695,6 +695,20 @@ type
       out actualHitTestMetricsCount: Cardinal): HResult; stdcall;
   end;
 
+  // The font DirectWrite has for a GDI font (dwrite.h, in its method order)
+  IDWriteGdiInterop = interface(IUnknown)
+    [SID_IDWriteGdiInterop]
+    function CreateFontFromLOGFONT(var logFont: LOGFONTW;
+      out font: IDWriteFont): HResult; stdcall;
+    function ConvertFontToLOGFONT(const font: IDWriteFont; var logFont: LOGFONTW;
+      var isSystemFont: BOOL): HResult; stdcall;
+    function ConvertFontFaceToLOGFONT(const font: IDWriteFontFace;
+      var logFont: LOGFONTW): HResult; stdcall;
+    function CreateFontFaceFromHdc(hdc: HDC; out fontFace: IDWriteFontFace): HResult; stdcall;
+    function CreateBitmapRenderTarget(hdc: HDC; width, height: Cardinal;
+      out renderTarget: IUnknown): HResult; stdcall;
+  end;
+
   IDWriteFactory = interface(IUnknown)
     [SID_IDWriteFactory]
     function GetSystemFontCollection(out fontCollection: IDWriteFontCollection;

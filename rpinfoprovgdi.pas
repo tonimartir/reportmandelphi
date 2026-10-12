@@ -346,6 +346,75 @@ begin
 end;
 {$ENDIF}
 
+// The font DirectWrite has for a GDI font name (12-10-2026). A GDI family can be a face of a
+// typographic family: «Gotham Light», «Segoe UI Light» and «Arial Narrow» are, for DirectWrite,
+// the families Gotham, Segoe UI and Arial with their weight or stretch. FindFamilyName does not
+// find them; the font GDI takes for that name, through IDWriteGdiInterop, gives the family,
+// weight, style and stretch to lay the text out with, and the font face. False when DirectWrite
+// has no font for it.
+function DWriteFontForGdiName(const AFactory: IDWriteFactory; var AFamily: WideString;
+  ABold, AItalic: Boolean; var AWeight: DWRITE_FONT_WEIGHT; var AStyle: DWRITE_FONT_STYLE;
+  var AStretch: DWRITE_FONT_STRETCH; out AFace: IDWriteFontFace): Boolean;
+var
+  interop: IDWriteGdiInterop;
+{$IFDEF FPC}
+  unk: IUnknown;
+{$ENDIF}
+  lf: LOGFONTW;
+  font: IDWriteFont;
+  family: IDWriteFontFamily;
+  names: IDWriteLocalizedStrings;
+  index, len: Cardinal;
+  exists: BOOL;
+  name: WideString;
+begin
+  Result := False;
+  AFace := nil;
+{$IFDEF FPC}
+  if not Succeeded(AFactory.GetGdiInterop(unk)) then
+    Exit;
+  if not Supports(unk, IDWriteGdiInterop, interop) then
+    Exit;
+{$ELSE}
+  if not Succeeded(AFactory.GetGdiInterop(interop)) then
+    Exit;
+{$ENDIF}
+  FillChar(lf, SizeOf(lf), 0);
+  lf.lfHeight := -100;
+  if ABold then
+    lf.lfWeight := FW_BOLD
+  else
+    lf.lfWeight := FW_NORMAL;
+  if AItalic then
+    lf.lfItalic := 1;
+  lf.lfCharSet := DEFAULT_CHARSET;
+  lf.lfOutPrecision := OUT_TT_ONLY_PRECIS;
+  Move(PWideChar(AFamily)^, lf.lfFaceName[0], Min(Length(AFamily), LF_FACESIZE - 1) * SizeOf(WideChar));
+  if not Succeeded(interop.CreateFontFromLOGFONT(lf, font)) or (font = nil) then
+    Exit;
+  if not Succeeded(font.CreateFontFace(AFace)) then
+    Exit;
+  AWeight := font.GetWeight;
+  AStyle := font.GetStyle;
+  AStretch := font.GetStretch;
+  if Succeeded(font.GetFontFamily(family)) and Succeeded(family.GetFamilyNames(names)) then
+  begin
+    index := 0;
+    exists := False;
+    names.FindLocaleName(PWideChar(WideString('en-us')), index, exists);
+    if not exists then
+      index := 0;
+    len := 0;
+    if Succeeded(names.GetStringLength(index, len)) and (len > 0) then
+    begin
+      SetLength(name, len);
+      if Succeeded(names.GetString(index, PWideChar(name), len + 1)) then
+        AFamily := name;
+    end;
+  end;
+  Result := True;
+end;
+
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -376,6 +445,7 @@ var
   FamilyNameWide: WideString;
   FontWeight: DWRITE_FONT_WEIGHT;
   FontStyle: DWRITE_FONT_STYLE;
+  FontStretch: DWRITE_FONT_STRETCH;
   FontCollection: IDWriteFontCollection;
   FontFamily: IDWriteFontFamily;
   Font: IDWriteFont;
@@ -454,6 +524,7 @@ begin
 
   // --- Obtener FontFace ---
   FontFace := nil;
+  FontStretch := DWRITE_FONT_STRETCH_NORMAL;
   Factory.GetSystemFontCollection(FontCollection, False);
   FontCollection.FindFamilyName(PWideChar(FamilyNameWide), Index, Exists);
   if Exists then
@@ -461,7 +532,14 @@ begin
     FontCollection.GetFontFamily(Index, FontFamily);
     FontFamily.GetFirstMatchingFont(FontWeight, DWRITE_FONT_STRETCH_NORMAL, FontStyle, Font);
     Font.CreateFontFace(FontFace);
-  end;
+  end
+  else
+    // A GDI name of a face of a typographic family; without a font face the metrics below
+    // raised an access violation
+    DWriteFontForGdiName(Factory, FamilyNameWide, pdfFont.Bold, pdfFont.Italic,
+      FontWeight, FontStyle, FontStretch, FontFace);
+  if FontFace = nil then
+    raise Exception.Create('DirectWrite has no font for ' + String(FamilyNameWide));
   lastTopPos:=0;
 
   // --- Crear TextFormat ---
@@ -470,7 +548,7 @@ begin
     nil,
     FontWeight,
     FontStyle,
-    DWRITE_FONT_STRETCH_NORMAL,
+    FontStretch,
     FontSizeInDips,
 {$IFDEF FPC}
     PWideChar(WideString('en-us')),
