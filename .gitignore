@@ -285,6 +285,7 @@ tests/fpc/HubClientTest/HubClientTest
 tests/fpc/HubClientTest/delphi/out/
 tests/fpc/LclAIChatTest/LclAIChatTest
 tests/fpc/SqldbDriversTest/SqldbDriversTest
+tests/fpc/CoreTextProviderTest/CoreTextProviderTest
 # Output the FPC test apps wrote when run from the repo root / sample folder
 # (root-level only: PDFs under doc/ must stay visible)
 /*.pdf
