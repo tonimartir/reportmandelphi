@@ -626,6 +626,19 @@ begin
   end;
 end;
 
+// COURIER IS DRAWN WITH COURIER NEW (13-10-2026). Courier.ttc of macOS, embedded
+// by Quartz in a print job, restarts some printers (HP M477fdw over AirPrint)
+// and goes the same way into a PDF/A-3 printed from Preview. Courier New ships
+// with macOS, has the same widths and prints. A family name only: a face Core
+// Text substituted ('@' and its PostScript name) stays as it is.
+function RpCTFamilyAlias(const AName: string): string;
+begin
+  if SameText(AName, 'Courier') then
+    Result := 'Courier New'
+  else
+    Result := AName;
+end;
+
 function RpCTFace(const AName: string; ABold, AItalic: Boolean): TRpCTFace;
 var
   key, psname: string;
@@ -647,7 +660,7 @@ begin
       if Copy(AName, 1, 1) = CRpCTFaceMark then
         font := CreateByFamily(Copy(AName, 2, MaxInt), ABold, AItalic)
       else
-        font := CreateByFamily(AName, ABold, AItalic);
+        font := CreateByFamily(RpCTFamilyAlias(AName), ABold, AItalic);
     end;
     Result := nil;
     if font <> nil then
@@ -694,12 +707,42 @@ begin
   end;
 end;
 
+// The family of an X11 font name: 'adobe-courier' (foundry-family, as the
+// reports made with Kylix and the Qt designers carry them) or a whole XLFD
+// ('-adobe-courier-medium-r-normal--12-...'); '' when the name is not one
+function RpCTX11Family(const AName: string): string;
+var
+  rest: string;
+  p: Integer;
+begin
+  Result := '';
+  rest := AName;
+  // XLFD: -foundry-family-weight-...
+  if Copy(rest, 1, 1) = '-' then
+    Delete(rest, 1, 1);
+  p := Pos('-', rest);
+  if p <= 1 then
+    Exit;
+  Delete(rest, 1, p);
+  p := Pos('-', rest);
+  if p > 0 then
+    rest := Copy(rest, 1, p - 1);
+  Result := Trim(rest);
+end;
+
 function RpCTBaseFontName(const ALFontName, AWFontName: WideString): string;
 var
-  lname, wname: string;
+  lname, wname, x11: string;
 begin
   lname := UTF8Encode(ALFontName);
   wname := UTF8Encode(AWFontName);
+  // Core Text knows no X11 names: 'adobe-courier' went to the WFontName (Arial)
+  if not FontNameExists(lname) then
+  begin
+    x11 := RpCTX11Family(lname);
+    if (x11 <> '') and FontNameExists(x11) then
+      lname := x11;
+  end;
   if FontNameExists(lname) then
     Result := lname
   else if FontNameExists(wname) then

@@ -166,7 +166,16 @@ type
    // rendering can match the PDF output exactly (PrinterFonts=rppfontsrecalculate or
    // TRpGDIDriver.UsePdfFonts).
    ForceComplexShaping: Boolean;
+   // A metafile laid out as PDF 1.4 written as PDF/A-3 (SaveMetafileToPDF): the
+   // fonts are embedded, but the lines keep the PDF 1.4 spacing and baseline they
+   // were measured with, those of MeasuredFont (the font of the metafile object;
+   // PDF/A-3 turns a standard one into poEmbedded). With the font height of
+   // PDF/A-3 the text grew taller than its section and its last line fell under
+   // the next one.
+   MeasuredAsPDF14: Boolean;
+   MeasuredFont: TRpType1Font;
    procedure GetStdLineSpacing(var linespacing,leading,ascent:integer);
+   procedure StdLineSpacingOf(AFont:TRpType1Font;var linespacing,leading,ascent:integer);
    property InfoProvider:TRpInfoProvider read FInfoProvider write SetInfoProvider;
    function UnitsToXPos(Value:double):double;
    function UnitsToTextX(Value:double):string;
@@ -2264,6 +2273,8 @@ var
  ascent:integer;
  shapedOutput:boolean;
  nliney:integer;
+ stdmeasured:boolean;
+ stdlinespacing,stdleading,stdascent:integer;
 {$IFDEF FPC}
  decCursor: Double;
  inUnderline: Boolean;
@@ -2283,6 +2294,10 @@ var
  soEndX: Double;
 {$ENDIF}
 begin
+ // A standard font measured as PDF 1.4 (embedded here)
+ stdmeasured:=MeasuredAsPDF14 and (not (MeasuredFont in [poLinked,poEmbedded]));
+ if stdmeasured then
+  StdLineSpacingOf(MeasuredFont,stdlinespacing,stdleading,stdascent);
  /// Add Font leading
  adata:=GetTTFontData;
  // Per-glyph (shaped) output: mandatory for RTL/HTML, opt-in for plain text through
@@ -2316,6 +2331,12 @@ begin
   begin
    ascent:=FFont.Size*20;
   end;
+ end;
+ if stdmeasured then
+ begin
+  linespacing:=stdlinespacing;
+  leading:=stdleading;
+  ascent:=FFont.Size*20;
  end;
  linespacing:=Round(linespacing*FFont.Size*20/1000);
  leading:=Round(leading*FFont.Size*20/1000);
@@ -2969,7 +2990,12 @@ end;
 
 procedure TRpPDFCanvas.GetStdLineSpacing(var linespacing, leading, ascent: integer);
 begin
-  case FFont.Name of
+  StdLineSpacingOf(FFont.Name,linespacing,leading,ascent);
+end;
+
+procedure TRpPDFCanvas.StdLineSpacingOf(AFont:TRpType1Font;var linespacing, leading, ascent: integer);
+begin
+  case AFont of
     poHelvetica:
       begin
         linespacing := 1270;
@@ -3066,14 +3092,25 @@ var
  charsProcessed: integer;
  leading:integer;
  ascent:integer;
+ stdmeasured:boolean;
 begin
  havekerning:=false;
+ // A standard font measured as PDF 1.4 (embedded here)
+ stdmeasured:=MeasuredAsPDF14 and (not (MeasuredFont in [poLinked,poEmbedded]));
+ if stdmeasured then
+  StdLineSpacingOf(MeasuredFont,linespacing,leading,ascent);
  adata:=GetTTFontData;
+ if stdmeasured then
+ begin
+  if assigned(adata) and adata.havekerning then
+   havekerning:=true;
+ end
+ else
  if assigned(adata) then
  begin
   if adata.havekerning then
    havekerning:=true;
-  if (PDFConformance > PDF_1_4) then
+  if (PDFConformance > PDF_1_4) and (not MeasuredAsPDF14) then
   begin
    linespacing:=adata.Height;
   end
@@ -3090,7 +3127,7 @@ begin
   GetStdLineSpacing(linespacing,leading,ascent);
   //WriteToStdError('No family'  +  ' NoBidi Ascent-Descent+Leading: '+IntToStr(lineSpacing)+chr(10));
  end;
- if (PDFConformance > PDF_1_4) then
+ if (PDFConformance > PDF_1_4) and (not MeasuredAsPDF14) then
  begin
   linespacing:=Round(linespacing*FFont.Size*20/1000);
  end
