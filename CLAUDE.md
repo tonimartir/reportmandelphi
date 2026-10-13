@@ -144,8 +144,12 @@ C:\lazarus\lazbuild.exe --ws=win32 --no-write-project tests\fpc\LclDesignerTest\
 tests\fpc\LclDesignerTest\LclDesignerTest.exe --selftest
 ```
 
-On Linux use `packages/fpc/build_fpc.sh` (WSL Ubuntu has Lazarus 3.0/gtk2 with
-the packages registered). Each package builds in a single pass, as in the IDE /
+(The Lazarus install path varies per machine: `C:\lazarus` is the default of the
+Windows installer, not a given.) On Linux use `packages/fpc/build_fpc.sh`. The
+Linux packages and their `--selftest` are built in Docker with Lazarus 4.8
+(`build\linux\build-linux.ps1`, see below), not with a Lazarus of the host: the
+WSL Ubuntu 22.04 only has the distribution's Lazarus 2.2, without the packages
+registered. Each package builds in a single pass, as in the IDE /
 Online Package Manager; `clean` rebuilds `reportman_rtl` from scratch. Keep it
 that way: with FPC 3.2.2 a `System.*` unit (e.g. `System.NetEncoding`) in the
 *implementation* uses of an engine unit hides the interface's `System` unit
