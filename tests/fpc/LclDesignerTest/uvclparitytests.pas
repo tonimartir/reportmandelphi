@@ -916,6 +916,7 @@ const
     'refimage.html', 'refbarcode.html', 'refchart.html');
 var
   docdir: string;
+  havedocs: Boolean;
   detail: TRpSection;
   secint: TRpSectionInterface;
   comp: TRpSizeInterface;
@@ -931,7 +932,7 @@ var
     AItem.GetProperties(names, types, nil, hints, cats);
     Check(hints.Count > 0, AWhat + ': its properties name help pages');
     for j := 0 to hints.Count - 1 do
-      Check((Length(hints.Strings[j]) = 0) or FileExists(docdir + hints.Strings[j]),
+      Check((Length(hints.Strings[j]) = 0) or (not havedocs) or FileExists(docdir + hints.Strings[j]),
         Format('%s, property %s: the page %s exists in doc/doc', [AWhat, names.Strings[j], hints.Strings[j]]));
     // As the designer selects (a ProcessMessages here let the designer apply its own,
     // empty, selection again)
@@ -947,7 +948,7 @@ var
       if (panel.Components[j] is TLabel) and (TLabel(panel.Components[j]).Cursor = crHelp) then
       begin
         Inc(helpLabels);
-        Check(FileExists(docdir + TLabel(panel.Components[j]).Hint),
+        Check((not havedocs) or FileExists(docdir + TLabel(panel.Components[j]).Hint),
           AWhat + ': the label ' + TLabel(panel.Components[j]).Caption + ' shows a page that exists');
       end;
     Check(helpLabels >= hints.Count, Format('%s: %d labels with help for %d properties',
@@ -963,7 +964,10 @@ begin
   LogMsg('VCL parity: help of the object inspector');
   docdir := ExpandFileName(ExtractFilePath(ASamplePath) + '..' + PathDelim + '..' + PathDelim +
     'doc' + PathDelim + 'doc' + PathDelim);
-  Check(DirectoryExists(docdir), 'The documentation folder ' + docdir);
+  // The Linux packages are built from a copy of the sources without the web
+  havedocs := DirectoryExists(docdir);
+  if not havedocs then
+    LogMsg('No documentation folder ' + docdir + ': the pages are not checked to exist');
   FreshReport(mf);
   detail := FindSectionOfType(mf.Report.SubReports[0].SubReport, rpsecdetail);
   secint := SecIntOf(mf.DesignerFrame, detail);
