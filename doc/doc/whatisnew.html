@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Release notes and version history - Report Manager Docs</title>
-<meta name="description" content="Version 4.0.20 release notes: the macOS designer with Core Text, printing and PDF/A-3 fixes, help in the object inspector, plus version history.">
+<meta name="description" content="Version 4.0.20 release notes: the macOS designer with Core Text and help in the object inspector, plus version history.">
 <link rel="canonical" href="https://reportman.es/doc/whatisnew.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -238,28 +238,9 @@
         out and painted with Core Text, the text engine of macOS: the preview, the
         print and the PDF show the same glyphs, Arabic and other complex scripts
         included. See <a href="installmac.html">macOS</a>.</li>
-      <li><b>Printing from the preview</b> &mdash; on macOS the print dialog no
-        longer stays behind the preview, which looked hung; on macOS and Linux the
-        last line of a long text no longer falls under the next section when
-        printing from the preview.</li>
-      <li><b>PDF/A-3 from the preview</b> &mdash; saving or mailing as PDF/A-3 a
-        report laid out as PDF 1.4 keeps its line spacing: the last line of a long
-        text was hidden by the next section (Windows, Linux and macOS).</li>
-      <li><b>Courier on macOS</b> is drawn with Courier New: the Courier font of
-        macOS restarts some printers (an HP Color LaserJet over AirPrint). X11 font
-        names such as <code>adobe-courier</code> find their font instead of Arial.</li>
       <li><b>Help in the object inspector</b> of the Windows, Linux and macOS
         designers: click the name of a property, use its context menu or press
         <kbd>F1</kbd> (<kbd>Cmd</kbd>+<kbd>?</kbd> on the Mac).</li>
-      <li>PDF fonts: variable fonts are embedded at the instance the report asks
-        for; OpenType fonts with CFF outlines are declared as such; nested composite
-        glyphs keep their components; the text copied from a PDF with shaped glyphs
-        (Arabic, HTML) is the text of the report.</li>
-      <li>Text layout: a word whose last letter does not fit goes to the next line;
-        the lines of a text from its second paragraph on keep their text and
-        clusters; digits and punctuation no longer choose the fallback font of a
-        script; right-to-left paragraphs on Windows (DirectWrite) read right to
-        left and their marks are drawn at their offsets.</li>
     </ul>
 
     <p>Version 4.0.16 include these new features (September 2026)</p>
