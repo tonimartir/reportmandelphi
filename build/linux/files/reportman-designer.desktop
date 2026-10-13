@@ -19,3 +19,4 @@ MimeType=application/x-reportman-report;
 Keywords=report;designer;PDF;database;
 Keywords[es]=informe;diseñador;PDF;base de datos;
 StartupNotify=true
+StartupWMClass=reportman-designer

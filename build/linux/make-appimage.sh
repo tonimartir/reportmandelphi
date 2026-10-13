@@ -114,6 +114,20 @@ done
 nf=$(LD_LIBRARY_PATH=$AD/usr/lib ldd "$AD/usr/plugins/$p" | grep 'not found' | grep -v 'libcups.so.2' || true)
 [ -z "$nf" ] || { echo "ERROR: $p: $nf" >&2; exit 1; }
 
+# APPRUN STARTS THE DESIGNER WITH ITS OWN NAME (13-10-2026). linuxdeploy makes
+# AppRun a link to the executable, so the program ran as "AppRun": Qt names the
+# application after argv[0] (WM_CLASS "AppRun"), the desktop did not match its
+# windows with reportman-designer.desktop (dock, icon, pinning) and dialogs
+# without a title of their own said "AppRun". A script passes the name of the
+# .deb as argv[0]; the engine finds its files through /proc/self/exe
+# (ParamStr(0) of FPC on Linux), not through argv[0].
+rm -f "$AD/AppRun"
+cat > "$AD/AppRun" <<EOF
+#!/bin/bash
+HERE=\$(dirname "\$(readlink -f "\$0")")
+exec -a $APP_ID "\$HERE$APP_PREFIX/$APP_ID" "\$@"
+EOF
+chmod 0755 "$AD/AppRun"
 echo "   AppRun: $(readlink "$AD/AppRun" || echo '(script)')"
 echo "   RUNPATH: $(readelf -d "$AD$APP_PREFIX/$APP_ID" | grep -E 'RUNPATH|RPATH' || echo '(ninguno)')"
 echo "   usr/lib: $(find "$AD/usr/lib" -maxdepth 1 -name '*.so*' | wc -l) librerias, $(du -sm "$AD/usr/lib" | cut -f1) MB"
