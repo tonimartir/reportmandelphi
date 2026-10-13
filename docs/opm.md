@@ -389,6 +389,23 @@ El JSON publicado es el que genera el script: su `CommunityDescription` por
 defecto ya es la que escribió Toni para el primer envío (con la IA y los
 ejemplos).
 
+### 4.0.20 (13-10-2026, commit 6ddf1080)
+
+Publicado en `https://reportman.es/opm/` (zip, `ReportManager.json` y JSON de
+actualizaciones); los ficheros de la 4.0.17 quedan en la VM, en
+`~/webs/opm-anteriores/4.0.17`. Novedades para quien lo instala: en macOS el
+texto se mide, maqueta y pinta con Core Text (`rtl_fpc/rpinfoprovct.pas`,
+`lcl/rpcocoatext.pas`, `lcl/rpcocoaprint.pas`) y la impresión desde la vista
+previa (panel delante, interlineado, aviso sin impresoras). Zip de 197
+ficheros, 5.676.907 bytes, MD5 `c7fb4a424686879f7c68b26720afbeef`.
+
+Validado desde el zip, con una configuración de Lazarus vacía y Zeos, los tres
+paquetes con `-B`: en Linux con la imagen `reportman-linux-builder` (Lazarus
+4.8, `--ws=gtk2` y `--ws=qt6`) y en macOS con `build/macos/opm-check.sh`
+(Intel: los tres paquetes, los cuatro ejemplos y `pdfconsole`). **Windows no
+se validó** esta vez: este PC no tiene Lazarus para Windows y la imagen
+`win32cross` no se conservó.
+
 ## 5. Actualizaciones mediante el JSON externo
 
 El campo `DownloadURL` de la entrada (*Update link (JSON)* en el formulario)
