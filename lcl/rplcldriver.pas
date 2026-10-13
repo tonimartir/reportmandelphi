@@ -389,11 +389,30 @@ begin
 end;
 
 
+{$IFDEF LCLCOCOA}
+type
+ // The result of a print panel shown as a sheet (DoShowPrintDialog)
+ TRpPrintSheetWait=class
+  Done,Success:boolean;
+  procedure DialogResult(Sender:TObject;ASuccess:Boolean);
+ end;
+
+procedure TRpPrintSheetWait.DialogResult(Sender:TObject;ASuccess:Boolean);
+begin
+ Success:=ASuccess;
+ Done:=true;
+end;
+{$ENDIF}
+
 function DoShowPrintDialog(var allpages:boolean;
  var frompage,topage,copies:integer;var collate:boolean;disablecopies:boolean=false):boolean;
 var
  dia:TPrintDialog;
  diarange:TFRpVCLProgress;
+ executed:boolean;
+{$IFDEF LCLCOCOA}
+ sheetwait:TRpPrintSheetWait;
+{$ENDIF}
 begin
  Result:=False;
  if disablecopies then
@@ -448,7 +467,35 @@ begin
   end;
   dia.frompage:=frompage;
   dia.topage:=topage;
-  if dia.execute then
+{$IFDEF LCLCOCOA}
+  // FROM A MODAL FORM, A SHEET OF IT (13-10-2026). The print panel is a window of the
+  // application at the normal level, and LCL Cocoa brings a form to the front whenever it
+  // activates while there is a modal session (TLCLWindowCallback.Activate): printing from the
+  // preview, a modal form, left the panel behind it, and the program, waiting for the panel,
+  // looked hung. As a sheet the panel is attached to the form; its result arrives in
+  // OnDialogResult, and the messages are processed until then.
+  sheetwait:=nil;
+  if Assigned(Screen.ActiveCustomForm) and (fsModal in Screen.ActiveCustomForm.FormState) then
+  begin
+   sheetwait:=TRpPrintSheetWait.Create;
+   dia.AttachTo:=Screen.ActiveCustomForm;
+   dia.OnDialogResult:=sheetwait.DialogResult;
+  end;
+  try
+   executed:=dia.execute;
+   if Assigned(sheetwait) then
+   begin
+    while (not sheetwait.Done) and (not Application.Terminated) do
+     Application.HandleMessage;
+    executed:=sheetwait.Done and sheetwait.Success;
+   end;
+  finally
+   sheetwait.Free;
+  end;
+{$ELSE}
+  executed:=dia.execute;
+{$ENDIF}
+  if executed then
   begin
    allpages:=false;
 //   collate:=GetPrinterCollation;
@@ -3061,7 +3108,9 @@ begin
         // family: a viewer substitutes that one
         case pc.Font.Name of
           poHelvetica: runFont.Family := 'Helvetica';
-          poCourier: runFont.Family := 'Courier';
+          // macOS: Courier.ttc embedded in the print job restarts some
+          // printers (HP M477fdw over AirPrint); Courier New has the same widths
+          poCourier: runFont.Family := {$IFDEF DARWIN}'Courier New'{$ELSE}'Courier'{$ENDIF};
           poTimesRoman: runFont.Family := 'Times';
           poSymbol: runFont.Family := 'Symbol';
           poZapfDingbats: runFont.Family := 'ZapfDingbats';
@@ -3706,6 +3755,10 @@ begin
   // Get the time
   mmfirst:=GetTickCount;
   gdidriver:=TRpGDIDriver.Create;
+  // NewDocument is never called here: without the metafile the text was laid
+  // out as PDF/A-3 (font height line spacing) while it had been measured as
+  // PDF 1.4, and the last line of a long text fell under the next section
+  gdidriver.FReport:=metafile;
   try
    currentorientation:=Printer.Orientation;
    // Sets page size and orientation
@@ -3990,6 +4043,8 @@ begin
     Result.Canvas.FillRect(arec);
 
     gdidriver := TRpGDIDriver.Create;
+    // The text is laid out with the conformance the metafile was measured with
+    gdidriver.FReport := metafile;
     try
       for i := 0 to metafile.CurrentPageCount - 1 do
       begin
