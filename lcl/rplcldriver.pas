@@ -415,6 +415,13 @@ var
 {$ENDIF}
 begin
  Result:=False;
+ // Printer4Lazarus closes its print dialog at once, without a word, when there
+ // is no printer (Qt and GTK2 with no CUPS queue): Print seemed to do nothing
+ if Printer.Printers.Count=0 then
+ begin
+  rpgraphutilslcl.RpMessageBox(SRpMustInstall);
+  exit;
+ end;
  if disablecopies then
  begin
   diarange:=TFRpVCLProgress.Create(Application);
