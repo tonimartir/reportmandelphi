@@ -476,9 +476,11 @@ reciben el instalador de Windows. Se comprueba con
   Xcode lo quite, pasar a FPC 3.2.4 en macOS (o al 3.2.4rc1 con el que se
   publica Lazarus 4.8 para macOS).
 - Imprimir en una impresora de verdad (en la impresora PDF virtual ya sale
-  bien, ver [Impresión](#impresión)). Con LCL en Cocoa el texto no se ve
-  como en el PDF del motor, ni en la vista previa ni al imprimir: letras
-  con separación irregular, otra fuente y el árabe sin enlazar.
+  bien, ver [Impresión](#impresión)). Lo que aquí decía de que el texto no
+  salía como en el PDF del motor —separación irregular, otra fuente y el árabe
+  sin enlazar— lo arregló Core Text el 12-10-2026: la vista previa y el papel
+  se comprueban contra el PDF, ver [Librerías del motor](#librerías-del-motor)
+  e [Impresión](#impresión).
 - Los tooltips no aparecen en LCL Cocoa (Lazarus 4.8), en ningún control:
   la LCL nunca llega a pedirlos (`Application.OnShowHint` no se llama).
   `TLCLCommonCallback.MouseMove` avisa de la entrada del usuario con
