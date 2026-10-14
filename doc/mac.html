@@ -76,7 +76,9 @@
         <li>Connect to your database. Both engine drivers work on macOS &mdash; FireDAC connections opened with SQLdb and Zeos connections &mdash; for PostgreSQL, MySQL or MariaDB, Firebird, SQLite and ODBC. See <a href="doc/installmac.html">databases on macOS</a> for the client libraries each one needs.</li>
         <li>Reach a remote database through the Reportman DB Agent, outbound-only, without a VPN.</li>
         <li>Export to PDF, SVG, HTML, text and CSV, and print from the macOS print dialog.</li>
-        <li>Use the AI assistants: the report design chat, the SQL and expression chats, and inline suggestions in the SQL editor, which also completes from your schema.</li>
+        <li>Use the AI assistants: the report design chat, the SQL and expression chats, and the Monaco SQL editor &mdash; the same one as on Windows &mdash; with completion from your schema and inline suggestions.</li>
+        <li>Get the same text everywhere: it is measured, laid out and painted with Core&nbsp;Text, the text engine of macOS, so the preview, the printed page and the PDF show the same glyphs, Arabic and other complex scripts included.</li>
+        <li>Ask the object inspector what a property does: click its name, use its context menu or press <kbd>Cmd</kbd>+<kbd>?</kbd>.</li>
         <li>Open a <code>.rep</code> file straight from the Finder. The samples are installed with the application.</li>
       </ul>
 
@@ -95,8 +97,6 @@
       <p>We would rather say it here than have you find out:</p>
       <ul>
         <li>Printing works, and on macOS it needed fixing: Lazarus itself printed blank sheets, because its Cocoa printer leaves the page margins undefined, so the designer sets them. It is tested through the macOS printing system, with a printer that writes each job to PDF: portrait and landscape, several reports, one of them two pages with images.</li>
-        <li>With LCL on Cocoa, text in the preview and on paper is not drawn exactly as the engine draws it: uneven letter spacing and a different font. The PDF, SVG and HTML you export are not affected.</li>
-        <li>The Monaco SQL editor is Windows only. On macOS the SQL editor is the native one, with schema completion and AI inline suggestions, as on Linux.</li>
         <li>On Apple Silicon, so far only the automated tests have been run on every release.</li>
       </ul>
 

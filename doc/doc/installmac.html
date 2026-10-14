@@ -416,12 +416,15 @@ open repman/repmandesigner_lcl.app</code></pre>
 
 <h2>Differences and limitations</h2>
 <ul>
-  <li>The SQL editor of the designer is the native editor with schema completion and the AI inline
-    suggestion, as on <a href="installlin.html">Linux</a> (the Monaco editor is Windows only).</li>
+  <li>The SQL editor of the designer is Monaco, as on Windows, in the system WKWebView. Without the
+    web view or its assets it falls back to the native editor with schema completion and the AI
+    inline suggestion, as on <a href="installlin.html">Linux</a>.</li>
+  <li>Text is measured, laid out and painted with Core Text, the text engine of macOS, so the
+    preview, the printed page and the PDF show the same glyphs.</li>
   <li>Printing: Lazarus 4.8 printed blank sheets on macOS (its Cocoa printer leaves the page margins
     undefined); Report Manager sets them itself, so printing works with an unpatched Lazarus too.
-    Tested with a virtual PDF printer; a real printer is pending. On Apple Silicon only the
-    automatic tests have run so far.</li>
+    Tested through the macOS printing system with a printer that writes each job to PDF. On Apple
+    Silicon only the automatic tests have run so far.</li>
   <li>The installation package is signed ad hoc and not notarized (see
     <a href="#package">Installation package</a>).</li>
 </ul>

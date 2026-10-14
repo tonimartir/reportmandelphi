@@ -76,7 +76,9 @@
         <li>Conectar con su base de datos. Los dos controladores del motor funcionan en macOS &mdash;conexiones FireDAC abiertas con SQLdb y conexiones Zeos&mdash; para PostgreSQL, MySQL o MariaDB, Firebird, SQLite y ODBC. En <a href="doc/installmac.html">bases de datos en macOS</a> están las librerías cliente que necesita cada una.</li>
         <li>Llegar a una base de datos remota con el Reportman DB Agent, solo con conexiones salientes y sin VPN.</li>
         <li>Exportar a PDF, SVG, HTML, texto y CSV, e imprimir con el diálogo de impresión de macOS.</li>
-        <li>Usar los asistentes de IA: el chat de diseño del informe, los de SQL y expresiones, y la sugerencia en línea del editor de SQL, que además completa con su esquema.</li>
+        <li>Usar los asistentes de IA: el chat de diseño del informe, los de SQL y expresiones, y el editor de SQL Monaco &mdash;el mismo que en Windows&mdash;, que completa con su esquema y sugiere en línea.</li>
+        <li>Ver el mismo texto en todas partes: se mide, se compone y se pinta con Core&nbsp;Text, el motor de texto de macOS, así que la vista previa, el papel y el PDF enseñan los mismos glifos, el árabe y las demás escrituras complejas incluidos.</li>
+        <li>Preguntarle al inspector de objetos qué hace una propiedad: pulse su nombre, use su menú contextual o <kbd>Cmd</kbd>+<kbd>?</kbd>.</li>
         <li>Abrir un fichero <code>.rep</code> desde el Finder. Los ejemplos se instalan con la aplicación.</li>
       </ul>
 
@@ -95,8 +97,6 @@
       <p>Preferimos decirlo aquí a que se lo encuentre usted:</p>
       <ul>
         <li>La impresión funciona, y en macOS hubo que arreglarla: Lazarus imprimía folios en blanco, porque su impresora Cocoa deja los márgenes de la página sin fijar, así que los fija el diseñador. Está probada a través del sistema de impresión de macOS, con una impresora que guarda cada trabajo en PDF: en vertical y en apaisado, varios informes, uno de ellos de dos páginas con imágenes.</li>
-        <li>Con LCL en Cocoa el texto de la vista previa y del papel no sale exactamente como lo dibuja el motor: separación irregular entre letras y otra tipografía. El PDF, el SVG y el HTML que exporte no se ven afectados.</li>
-        <li>El editor de SQL Monaco es solo de Windows. En macOS el editor de SQL es el nativo, con completado del esquema y sugerencia de IA en línea, igual que en Linux.</li>
         <li>En Apple Silicon, de momento en cada versión solo se han ejecutado las pruebas automáticas.</li>
       </ul>
 
