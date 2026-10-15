@@ -183,6 +183,28 @@ begin
     strings.Add(VarToStr(arrayValue[index]));
 end;
 
+// The lines of a string array as one text, without a line break after the
+// last one
+function StringArrayToText(const value: Variant): string;
+var
+  list: TStringList;
+  index: Integer;
+begin
+  Result := '';
+  list := TStringList.Create;
+  try
+    VariantArrayToStrings(value, list);
+    for index := 0 to list.Count - 1 do
+    begin
+      if index > 0 then
+        Result := Result + sLineBreak;
+      Result := Result + list[index];
+    end;
+  finally
+    list.Free;
+  end;
+end;
+
 function JSONStringArrayToVariant(jValue: TJSONValue): Variant;
 var
   jsonArray: TJSONArray;
@@ -985,7 +1007,9 @@ function TUndoCue.GetComponentByName(const name: string): TObject;
 var
   compo: TObject;
 begin
-  if UpperCase(name) = 'REPORT' then
+  // An empty name is the report too: the AI server (C# engine) recorded its
+  // changes of report properties with the report's Name, which is empty
+  if (name = '') or (UpperCase(name) = 'REPORT') then
     Result := FReport
   else
   begin
@@ -1664,10 +1688,22 @@ begin
     mappedPropName := MapUndoPropertyName(target, prop.propertyName);
     if (prop.propertyType = ptStringArray) and ApplyStringArrayProperty(target, mappedPropName, nvalue) then
       Continue;
+    // The C# engine (the AI server) records the label text (allStrings) and
+    // the bidi modes as string arrays; the components take them as text, one
+    // line per item, like this cue records them. An array assigned to a
+    // string raised a variant conversion error
+    if VarIsArray(nvalue) then
+      nvalue := StringArrayToText(nvalue);
     if (operation.operation = otModify) and (prop.propertyType = ptString) and
        IsInspectorDisplayText(propsItem, mappedPropName, nvalue) then
       Continue;
-    propsItem.SetItemProperty(mappedPropName, nvalue);
+    try
+      propsItem.SetItemProperty(mappedPropName, nvalue);
+    except
+      // Which property could not be applied: the variant errors do not say
+      on E: Exception do
+        raise Exception.Create(prop.propertyName + ': ' + E.Message);
+    end;
   end;
 end;
 

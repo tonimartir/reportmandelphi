@@ -88,6 +88,7 @@ type
     procedure TestDirtyState;
     procedure TestFailingOperation;
     procedure TestDeleteRestoresAll;
+    procedure TestDeleteFromCSharpCue;
     // L1 + L2: designer (TFRpMainFLCL)
     procedure TestDesigner(const ASamplePath: string);
     // Parity with the VCL designer: item properties, context menu, painting
@@ -883,6 +884,61 @@ begin
     rep.Free;
   end;
   LogMsg('Undo of a delete restores chart and BidiModes verified');
+end;
+
+// The AI server (C# engine) records the text of a deleted label (allStrings)
+// and its BidiModes as string arrays, where this cue records text: undo of
+// such a delete raised "Invalid variant type cast" and left the change half
+// undone. The operation as Newtonsoft writes it in the report (BINCUE)
+procedure TRegressionTests.TestDeleteFromCSharpCue;
+const
+  // The first operation changed a report property: the server recorded it
+  // with the report's Name, which is empty
+  CSHARP_REMOVE = '{"GroupId":7,"UndoOperations":[' +
+    '{"Operation":1,"GroupId":7,"ComponentName":null,"ComponentClass":null,' +
+    '"ParentName":null,"OldItemIndex":null,"Properties":[' +
+    '{"PropertyName":"TwoPass","PropertyType":6,"OldValue":false,"NewValue":true}]},' +
+    '{"Operation":2,"GroupId":7,' +
+    '"ComponentName":"CS_LABEL","ComponentClass":"TRPLABEL","ParentName":"%s",' +
+    '"OldItemIndex":0,"OldParentName":null,"Date":"2026-10-15T10:00:00",' +
+    '"ExpandedProperties":true,"Properties":[' +
+    '{"PropertyName":"posX","PropertyType":1,"OldValue":null,"NewValue":120},' +
+    '{"PropertyName":"bidiModes","PropertyType":8,"OldValue":null,"NewValue":["BidiNo","BidiFull"]},' +
+    '{"PropertyName":"fontSize","PropertyType":1,"OldValue":null,"NewValue":14},' +
+    '{"PropertyName":"allStrings","PropertyType":8,"OldValue":null,"NewValue":["Page","Pagina"]}' +
+    ']}],"RedoOperations":[]}';
+var
+  rep: TRpReport;
+  sec: TRpSection;
+  lab: TRpLabel;
+  cue: TUndoCue;
+begin
+  LogMsg('5.6: undo of a delete recorded by the C# engine (string arrays)');
+  rep := NewEngineReport(sec);
+  try
+    cue := TUndoCue(rep.UndoCue);
+    rep.TwoPass := True;
+    cue.FromJSON(Format(CSHARP_REMOVE, [sec.Name]));
+    CheckInt(2, cue.UndoOperations.Count, 'C# cue: both operations loaded');
+    cue.Undo.Free;
+    CheckInt(0, cue.UndoOperations.Count, 'C# cue: the whole change is undone');
+    Check(not rep.TwoPass, 'C# cue: the report property without a name is undone');
+    lab := TRpLabel(FindItem(rep, 'CS_LABEL'));
+    Check(Assigned(lab), 'C# cue: undo recreates the label');
+    if Assigned(lab) then
+    begin
+      CheckInt(120, lab.PosX, 'C# cue: PosX restored');
+      CheckInt(14, lab.FontSize, 'C# cue: FontSize restored');
+      CheckInt(2, lab.BidiModes.Count, 'C# cue: BidiModes of both languages');
+      CheckStr('BidiFull', lab.BidiModes[1], 'C# cue: BidiModes language 1');
+      CheckInt(2, lab.AllStrings.Count, 'C# cue: text of both languages');
+      CheckStr('Page', lab.AllStrings.Strings[0], 'C# cue: text language 0');
+      CheckStr('Pagina', lab.AllStrings.Strings[1], 'C# cue: text language 1');
+    end;
+  finally
+    rep.Free;
+  end;
+  LogMsg('Undo of a delete recorded by the C# engine verified');
 end;
 
 { L1 + L2: designer }
@@ -3066,6 +3122,7 @@ begin
     t.TestDirtyState;
     t.TestFailingOperation;
     t.TestDeleteRestoresAll;
+    t.TestDeleteFromCSharpCue;
     t.TestDesigner(ASamplePath);
     t.TestItemInterfaces;
     t.TestParamsDialog;
