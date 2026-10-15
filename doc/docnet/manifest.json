@@ -50,7 +50,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Designer.AILoginForm",
-      "Summary": "<p sourcefile=\"api/Reportman.Designer.AILoginForm.yml\" sourcestartlinenumber=\"1\">Port of Delphi's TFRpLoginVCL: modal dialog with Google, Microsoft, and Email OTP login.\nUses RpAuthManager for all auth operations.</p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.AILoginForm.yml\" sourcestartlinenumber=\"1\">Port of Delphi's TFRpLoginVCL: modal dialog with Google, Microsoft, Apple and Email OTP login.\nUses RpAuthManager for all auth operations.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -792,7 +792,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "Reportman.Designer.RpAuthManager",
-      "Summary": "<p sourcefile=\"api/Reportman.Designer.RpAuthManager.yml\" sourcestartlinenumber=\"1\">Port of Delphi's TRpAuthManager: singleton managing authentication,\nprofile, tiers, OAuth flows (Google/Microsoft), email OTP, and config persistence.\nConfig is saved to %LOCALAPPDATA%\\Reportman\\reportman_auth.ini (shared with Delphi).</p>\n"
+      "Summary": "<p sourcefile=\"api/Reportman.Designer.RpAuthManager.yml\" sourcestartlinenumber=\"1\">Port of Delphi's TRpAuthManager: singleton managing authentication,\nprofile, tiers, OAuth flows (Google/Microsoft/Apple), email OTP, and config persistence.\nConfig is saved to %LOCALAPPDATA%\\Reportman\\reportman_auth.ini (shared with Delphi).</p>\n"
     },
     {
       "type": "ManagedReference",
