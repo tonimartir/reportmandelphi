@@ -50,7 +50,7 @@ const
 
 
 const
- RM_VERSION='4.0.20';
+ RM_VERSION='4.0.21';
  REPMAN_WEBSITE='https://reportman.es';
  MAX_PAGECOUNT=999999;
 type
