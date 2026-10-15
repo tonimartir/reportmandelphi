@@ -14,8 +14,10 @@
 # resto (traducciones, ejemplos, fontconfig, licencias) tiene que ser igual.
 # El Info.plist es el de la x86_64 con la version minima de macOS de cada
 # arquitectura (LSMinimumSystemVersionByArchitecture: 10.15 Intel, 11.0
-# Apple Silicon). Firma ad hoc, como make-package.sh. Lo usa el workflow
-# .github/workflows/macos.yml, que compila cada .app en su Mac.
+# Apple Silicon). Con RP_SIGN_IDENTITY la firma es Developer ID y la imagen
+# se notariza (sign-notarize.sh); si no, firma ad hoc, como make-package.sh.
+# Lo usa el workflow .github/workflows/macos.yml, que compila cada .app en
+# su Mac.
 set -euo pipefail
 
 SRC=$(cd "$(dirname "$0")/../.." && pwd)
@@ -98,17 +100,23 @@ for f in $MACHO; do
 done
 [ $bad -eq 0 ] || { echo "ERROR: algun Mach-O no tiene x86_64 y arm64" >&2; exit 1; }
 
-echo "== Firma ad hoc"
-codesign --force --deep --sign - "$APP"
-codesign --verify --deep --strict "$APP"
+if [ -n "${RP_SIGN_IDENTITY:-}" ]; then
+    # Developer ID, hardened runtime, notarizacion y ticket grapado
+    # (sign-notarize.sh; el workflow pone la identidad y la clave de Apple)
+    bash "$SRC/build/macos/sign-notarize.sh" "$APP" "$DMG" "$APP_NAME $VERSION"
+else
+    echo "== Firma ad hoc"
+    codesign --force --deep --sign - "$APP"
+    codesign --verify --deep --strict "$APP"
 
-echo "== Imagen de disco"
-STAGE=$OUT/dmg
-mkdir -p "$STAGE"
-cp -R "$APP" "$STAGE/"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -quiet -volname "$APP_NAME $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
-rm -rf "$STAGE"
+    echo "== Imagen de disco"
+    STAGE=$OUT/dmg
+    mkdir -p "$STAGE"
+    cp -R "$APP" "$STAGE/"
+    ln -s /Applications "$STAGE/Applications"
+    hdiutil create -quiet -volname "$APP_NAME $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+    rm -rf "$STAGE"
+fi
 (cd "$OUT" && shasum -a 256 "$(basename "$DMG")" > SHA256SUMS)
 
 echo "Listo:"

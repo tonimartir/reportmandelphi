@@ -154,7 +154,8 @@ jobs:
     name: Aplicacion universal y .dmg
     needs: build
     runs-on: macos-15
-    timeout-minutes: 30
+    # La notarizacion de Apple suele tardar minutos, pero puede tardar horas
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7
 
@@ -162,6 +163,44 @@ jobs:
         with:
           pattern: designer-app-*
           path: ${{ runner.temp }}/apps
+
+      # Firma Developer ID y notarizacion: con los secretos del repositorio
+      # (sin ellos, en un fork, la firma es ad hoc, como antes). El
+      # certificado va a un llavero temporal con el intermedio G2 de Apple
+      # (build/macos/certs) y la clave de App Store Connect a un fichero
+      # temporal; los dos se borran al final del job
+      - name: Certificado Developer ID y clave de notarizacion
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then
+            echo "Sin certificado Developer ID: firma ad hoc"
+            exit 0
+          fi
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KP=$(uuidgen)
+          security create-keychain -p "$KP" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KP" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security import build/macos/certs/DeveloperIDG2CA.cer -k "$KC"
+          printf '%s' "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/devid.p12"
+          security import "$RUNNER_TEMP/devid.p12" -k "$KC" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/devid.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KP" "$KC" > /dev/null
+          security find-identity -v -p codesigning "$KC"
+          printf '%s' "$NOTARY_KEY_P8" > "$RUNNER_TEMP/notary.p8"
+          {
+            echo "RP_SIGN_IDENTITY=Developer ID Application"
+            echo "RP_SIGN_KEYCHAIN=$KC"
+            echo "NOTARY_KEY_P8=$RUNNER_TEMP/notary.p8"
+            echo "NOTARY_KEY_ID=$NOTARY_KEY_ID"
+            echo "NOTARY_ISSUER_ID=$NOTARY_ISSUER_ID"
+          } >> "$GITHUB_ENV"
 
       - name: Unir con lipo (make-universal.sh)
         run: |
@@ -176,11 +215,18 @@ jobs:
           {
             echo '### .dmg universal'
             echo '```'
-            sed -n '/== Arquitecturas/,/== Firma/p' "$RUNNER_TEMP/universal.log" | sed '$d'
+            sed -n '/== Arquitecturas/,/== \(Firma\|Developer ID\)/p' "$RUNNER_TEMP/universal.log" | sed '$d'
+            grep -E '^ *(Authority|TeamIdentifier|submission|source)=?' "$RUNNER_TEMP/universal.log" || true
             ls -l "$RUNNER_TEMP"/universal/*.dmg | awk '{print $5, $9}'
             cat "$RUNNER_TEMP/universal/SHA256SUMS"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Borrar el llavero y la clave
+        if: always()
+        run: |
+          [ -n "${RP_SIGN_KEYCHAIN:-}" ] && security delete-keychain "$RP_SIGN_KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP/notary.p8" "$RUNNER_TEMP/devid.p12"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -221,6 +267,13 @@ jobs:
           echo "APP=$APP" >> "$GITHUB_ENV"
           echo "EXE=$APP/Contents/MacOS/repmandesigner_lcl" >> "$GITHUB_ENV"
           codesign --verify --deep --strict "$APP"
+          # Firmado con Developer ID: Gatekeeper lo acepta como notarizado, y
+          # el hardened runtime hace que dyld ignore DYLD_PRINT_LIBRARIES
+          if codesign -dv "$APP" 2>&1 | grep -q 'flags=.*runtime'; then
+            spctl --assess --type exec --verbose=4 "$APP" 2>&1 | tee spctl.out
+            grep -q 'source=Notarized Developer ID' spctl.out
+            echo "HARDENED=1" >> "$GITHUB_ENV"
+          fi
           /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" -c "Print :LSMinimumSystemVersionByArchitecture" "$APP/Contents/Info.plist"
           for f in "$APP"/Contents/MacOS/* "$APP"/Contents/Frameworks/*; do
             echo "$(basename "$f"): $(lipo -archs "$f")"
@@ -240,6 +293,9 @@ jobs:
           grep -E 'libssl|libcrypto' dyld.log || true
           [ $rc -eq 0 ] || { tail -n 20 dyld.log; exit 1; }
           grep -q '^HTTPS: .* -> [1-5][0-9][0-9]' https.out
+          grep -q "^OpenSSL: *$APP/Contents/Frameworks/libssl" https.out || { echo "ERROR: no es el OpenSSL de Contents/Frameworks"; exit 1; }
+          # Con hardened runtime dyld no escribe nada: basta la linea OpenSSL
+          [ -n "${HARDENED:-}" ] && exit 0
           for l in libssl.3.dylib libcrypto.3.dylib; do
             grep -q "$APP/Contents/Frameworks/$l" dyld.log \
               || { echo "ERROR: $l no se ha cargado de Contents/Frameworks"; exit 1; }
@@ -255,11 +311,13 @@ jobs:
           sleep 25
           kill -0 $pid || { echo "ERROR: el disenador ha terminado"; cat gui.out; tail -n 30 gui-dyld.log; exit 1; }
           screencapture -x "$RUNNER_TEMP/designer-${{ matrix.arch }}.png" || true
-          code=$(vmmap $pid 2>/dev/null | sed -n 's/^Code Type:[[:space:]]*//p' | head -n 1)
+          # vmmap necesita root con un proceso de hardened runtime
+          code=$(sudo vmmap $pid 2>/dev/null | sed -n 's/^Code Type:[[:space:]]*//p' | head -n 1)
           echo "Proceso $pid: $code (uname -m: $(uname -m))"
-          kill $pid || true
           echo "Librerias de Contents/Frameworks cargadas:"
-          grep -o "Contents/Frameworks/[^ ]*" gui-dyld.log | sort -u || true
+          # dyld no las escribe con hardened runtime; lsof las ve en los dos casos
+          lsof -p $pid 2>/dev/null | grep -o "Contents/Frameworks/[^ ]*" | sort -u || true
+          kill $pid || true
           [ "$code" = "${{ matrix.codetype }}" ] || { echo "ERROR: se esperaba ${{ matrix.codetype }}"; exit 1; }
           if grep '^ERROR' gui.out; then exit 1; fi
 
