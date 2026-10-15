@@ -93,13 +93,6 @@
       <p>Download <code>reportman-designer-&lt;version&gt;-macos-universal.dmg</code> from the <a href="https://sourceforge.net/projects/reportman/files/Report%20Manager%20Designer/Designer%204.0/macOS/" target="_blank" rel="noopener"><code>macOS</code> folder</a> of the release on SourceForge, open it and drag the application to Applications.</p>
       <p>The application is signed with an Apple Developer ID and <b>notarized by Apple</b>, so it opens with a double click, like any other application. It carries its own OpenSSL 3 for HTTPS, which is what the login, the AI assistants and the Reportman DB Agent driver use.</p>
 
-      <h2>The small print</h2>
-      <p>We would rather say it here than have you find out:</p>
-      <ul>
-        <li>Printing works, and on macOS it needed fixing: Lazarus itself printed blank sheets, because its Cocoa printer leaves the page margins undefined, so the designer sets them. It is tested through the macOS printing system, with a printer that writes each job to PDF: portrait and landscape, several reports, one of them two pages with images.</li>
-        <li>On Apple Silicon, so far only the automated tests have been run on every release.</li>
-      </ul>
-
       <h2>For Lazarus and Free Pascal developers</h2>
       <p>The engine, the LCL preview and the embeddable designer are also <a href="doc/lazaruscomp.html">Lazarus packages</a>, and everything &mdash; packages, examples and designer &mdash; builds from the source code on macOS with Cocoa: see <a href="doc/installmac.html">Report Manager on macOS (Lazarus, Cocoa)</a> for the toolchain, the fonts, OpenSSL 3 and the database client libraries.</p>
 
