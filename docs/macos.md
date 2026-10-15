@@ -405,7 +405,7 @@ workflow de Actions):
   (`/etc/ssl/cert.pem`). `Contents/Resources/licenses` lleva las licencias de
   las librerías de dentro.
 - `Contents/Resources`: `reportmanres.*`, `languages/lclstrconsts.*.po`, los
-  ejemplos en `samples/` (sin los PDF) y el icono, hecho de `doc/icon-512.png`.
+  ejemplo `sample4.rep` con sus datos (`biolife.*`) en `samples/` y el icono, hecho de `doc/icon-512.png`.
 - `Info.plist`: `LSMinimumSystemVersion` es la mayor versión mínima que
   piden el ejecutable y las librerías según `otool` (hoy 10.15, la de
   `MACOSX_DEPLOYMENT_TARGET` en `build-deps.sh`; el ejecutable de FPC pide

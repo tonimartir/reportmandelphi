@@ -45,8 +45,8 @@ lazarus_lcl_languages() {
 #                                                      (lclstrconsts.*.po de
 #                                                      Lazarus: botones de los
 #                                                      dialogos...)
-#   <raiz>/opt/reportman-designer/samples/             informes de ejemplo y
-#                                                      sus datos (sin los PDF)
+#   <raiz>/opt/reportman-designer/samples/             el ejemplo sample4.rep
+#                                                      y sus datos (biolife.*)
 #   <raiz>/usr/share/applications/reportman-designer.desktop
 #   <raiz>/usr/share/mime/packages/reportman-designer.xml
 #   <raiz>/usr/share/icons/hicolor/<n>x<n>/apps/reportman-designer.png
@@ -71,8 +71,12 @@ stage_app() {
     for l in $LCL_LANGUAGES; do
         install -m 0644 "$lazlang/lclstrconsts.$l.po" "$app/languages/"
     done
-    find "$src/repman/repsamples" -maxdepth 1 -type f ! -iname '*.pdf' \
-        -exec install -m 0644 {} "$app/samples/" \;
+    # Solo el ejemplo que instala Windows, con sus datos (el motor de Linux lee
+    # el biolife.xml, no el .cds binario): el resto de repsamples son informes
+    # de prueba del desarrollo, que no funcionan en otra maquina
+    for f in "$src/repman/repsamples/sample4.rep" "$src"/repman/repsamples/biolife.*; do
+        install -m 0644 "$f" "$app/samples/"
+    done
 
     install -D -m 0644 "$FILES_DIR/reportman-designer.desktop" \
         "$root/usr/share/applications/$APP_ID.desktop"

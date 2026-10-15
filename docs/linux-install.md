@@ -66,7 +66,7 @@ Qué instala:
 
 | Ruta | Contenido |
 |---|---|
-| `/opt/reportman-designer/` | El programa, las traducciones (`reportmanres.*`, y en `languages/` las de la LCL) y los ejemplos (`samples/`) |
+| `/opt/reportman-designer/` | El programa, las traducciones (`reportmanres.*`, y en `languages/` las de la LCL) y el informe de ejemplo (`samples/`) |
 | `/opt/reportman-designer/lib/` | Solo Qt 6: `libQt6Pas`, el enlace de la LCL con Qt 6 (Ubuntu 22.04/24.04 y Debian 12 no la tienen); el resto de Qt 6 es el de la distribución |
 | `/usr/bin/reportman-designer` | Enlace al programa |
 | `/usr/share/applications/reportman-designer.desktop` | Entrada del menú |
@@ -150,19 +150,13 @@ distribución no soportada o algo falla.
 
 ## Primeros pasos
 
-- Los ejemplos están en `/opt/reportman-designer/samples/`. Esa carpeta es de
-  solo lectura; para modificarlos, cópialos a tu carpeta personal:
+- El informe de ejemplo, `sample4.rep`, está en
+  `/opt/reportman-designer/samples/` junto con sus datos (`biolife.*`). Esa
+  carpeta es de solo lectura; para modificarlo, cópialo a tu carpeta personal:
 
   ```sh
   cp -r /opt/reportman-designer/samples ~/reportman-ejemplos
   ```
-
-  Los ejemplos con datos necesitan su conexión: las de prueba (por ejemplo
-  `SQLITETEST`, SQLite sobre `clientes.db`) están en
-  `samples/dbxconnections.ini`. Dalas de alta con los mismos parámetros en
-  Informe > Configuración de datos > Configurar (el editor de
-  `~/.borland/dbxconnections`, o de `~/.dbxconnections` si el primero no
-  existe), o copia sus secciones a ese fichero.
 - El idioma del diseñador (menús, barras de herramientas, diálogos y
   mensajes, también los botones de los diálogos estándar) sigue `LC_ALL`,
   `LC_MESSAGES` o `LANG`, en ese orden (español, inglés, catalán, francés,

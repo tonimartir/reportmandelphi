@@ -299,7 +299,7 @@ sudo apt install ./reportman-designer_4.0.21_amd64.deb        # back to Qt 6</co
 </ul>
 <table>
   <tr><th>Path</th><th>Contents</th></tr>
-  <tr><td><code>/opt/reportman-designer/</code></td><td>The program, its translations and the sample reports (<code>samples/</code>)</td></tr>
+  <tr><td><code>/opt/reportman-designer/</code></td><td>The program, its translations and the sample report (<code>samples/</code>)</td></tr>
   <tr><td><code>/opt/reportman-designer/lib/</code></td><td>Qt&nbsp;6 only: <code>libQt6Pas</code>, the Lazarus binding to Qt&nbsp;6 (not packaged by Ubuntu 22.04/24.04 or Debian 12); the rest of Qt&nbsp;6 comes from the distribution</td></tr>
   <tr><td><code>/usr/bin/reportman-designer</code></td><td>Link to the program</td></tr>
   <tr><td><code>/usr/share/applications/reportman-designer.desktop</code></td><td>Menu entry</td></tr>
@@ -358,14 +358,9 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
 
 <h2>First steps</h2>
 <ul>
-  <li>The sample reports are in <code>/opt/reportman-designer/samples/</code>. That folder is
-    read-only; copy it to modify the samples:
-    <code>cp -r /opt/reportman-designer/samples ~/reportman-samples</code>. The samples with data need
-    their connection: the test connections (for example <code>SQLITETEST</code>, SQLite over
-    <code>clientes.db</code>) are in <code>samples/dbxconnections.ini</code>. Add them with the same
-    parameters in <i>Report &gt; Data access configuration &gt; Configure</i> (the editor of
-    <code>~/.borland/dbxconnections</code>, or of <code>~/.dbxconnections</code> when the first one
-    does not exist), or copy their sections to that file.</li>
+  <li>The sample report, <code>sample4.rep</code>, is in <code>/opt/reportman-designer/samples/</code>
+    with its data (<code>biolife.*</code>). That folder is read-only; copy it to modify the sample:
+    <code>cp -r /opt/reportman-designer/samples ~/reportman-samples</code>.</li>
   <li>The designer language (menus, toolbars, dialogs and messages) follows <code>LC_ALL</code>,
     <code>LC_MESSAGES</code> or <code>LANG</code>, in that order: English, Spanish, Catalan, French,
     German, Italian, Portuguese, Czech and Lithuanian. For example

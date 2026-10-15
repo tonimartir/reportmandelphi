@@ -22,8 +22,9 @@
 #                                       motor fija FONTCONFIG_PATH al cargarla)
 #   Contents/Resources/reportmanres.*   traducciones del motor
 #   Contents/Resources/languages/       traducciones de la LCL (Lazarus)
-#   Contents/Resources/samples/         los ejemplos (sample4.rep y su
-#                                       biolife.cds, sin los PDF)
+#   Contents/Resources/samples/         el ejemplo sample4.rep y sus datos
+#                                       (biolife.*: el motor de macOS lee el
+#                                       .xml, no el .cds binario de Windows)
 #   Contents/Resources/MonacoEditor.zip el editor SQL Monaco (el zip del
 #                                       disenador de Windows), en WKWebView
 #   Contents/Resources/licenses/        las licencias de esas librerias
@@ -175,8 +176,10 @@ cp "$SRC"/repman/reportmanres.* "$APP/Contents/Resources/"
 for l in $LCL_LANGUAGES; do
     cp "$LAZ/lcl/languages/lclstrconsts.$l.po" "$APP/Contents/Resources/languages/"
 done
-find "$SRC/repman/repsamples" -maxdepth 1 -type f ! -iname '*.pdf' \
-    -exec cp {} "$APP/Contents/Resources/samples/" \;
+# Solo el ejemplo que instala Windows, con sus datos: el resto de repsamples
+# son informes de prueba del desarrollo, que no funcionan en otra maquina
+cp "$SRC/repman/repsamples/sample4.rep" "$SRC"/repman/repsamples/biolife.* \
+    "$APP/Contents/Resources/samples/"
 # Editor SQL Monaco: se extrae en la configuracion del usuario al usarlo
 cp "$SRC/MonacoEditor.zip" "$APP/Contents/Resources/"
 
