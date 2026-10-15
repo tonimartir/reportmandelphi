@@ -101,6 +101,7 @@ rpzlibzutil.pas
 # --- reportman_rtl: include y recursos en la raiz ---
 rpconf.inc
 rpfdmidas.inc
+rploginicons.inc
 zconf.inc
 REPORTMANRES.RES
 dbxdrivers.RES

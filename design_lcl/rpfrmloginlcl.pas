@@ -27,7 +27,7 @@ unit rpfrmloginlcl;
 interface
 
 uses
-  SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
+  SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls, Buttons,
   rpauthmanager, rpaithreadslcl;
 
 type
@@ -39,6 +39,7 @@ type
     FMailboxRef: IRpAsyncMailbox;
     FBusy: Boolean;
     procedure BuildControls;
+    procedure SetupProviderIcons;
     procedure SetBusy(AValue: Boolean);
     procedure StartAction(AAction: TRpLoginAction);
     procedure HandleMessage(AMessage: TRpAsyncMessage);
@@ -48,10 +49,10 @@ type
     procedure FormKeyPress(Sender: TObject; var Key: Char);
   public
     LTitle: TLabel;
-    BtnGoogle: TButton;
-    BtnMicrosoft: TButton;
-    BtnApple: TButton;
-    BtnEmail: TButton;
+    BtnGoogle: TBitBtn;
+    BtnMicrosoft: TBitBtn;
+    BtnApple: TBitBtn;
+    BtnEmail: TBitBtn;
     PanelEmail: TPanel;
     LEmail: TLabel;
     EditEmail: TEdit;
@@ -83,6 +84,10 @@ implementation
 
 uses
   rpmdconsts, rpchatmodernstylelcl, rplcllayout;
+
+// The icons of the login buttons, the same as the VCL dialog's (relative to
+// this unit, with the exact case of the file)
+{$I ../rploginicons.inc}
 
 type
   TRpLoginResultMessage = class(TRpAsyncMessage)
@@ -194,32 +199,33 @@ begin
   LTitle.Font.Size := 12;
 
   LTop := Scale(56);
-  BtnGoogle := TButton.Create(Self);
+  BtnGoogle := TBitBtn.Create(Self);
   BtnGoogle.Parent := Self;
   BtnGoogle.SetBounds(LLeft, LTop, LWidth, Scale(40));
   BtnGoogle.Caption := TranslateStr(1501, 'Login with Google');
   BtnGoogle.OnClick := BtnGoogleClick;
 
   Inc(LTop, Scale(52));
-  BtnMicrosoft := TButton.Create(Self);
+  BtnMicrosoft := TBitBtn.Create(Self);
   BtnMicrosoft.Parent := Self;
   BtnMicrosoft.SetBounds(LLeft, LTop, LWidth, Scale(40));
   BtnMicrosoft.Caption := TranslateStr(1502, 'Login with Microsoft');
   BtnMicrosoft.OnClick := BtnMicrosoftClick;
 
   Inc(LTop, Scale(52));
-  BtnApple := TButton.Create(Self);
+  BtnApple := TBitBtn.Create(Self);
   BtnApple.Parent := Self;
   BtnApple.SetBounds(LLeft, LTop, LWidth, Scale(40));
   BtnApple.Caption := TranslateStr(2009, 'Login with Apple');
   BtnApple.OnClick := BtnAppleClick;
 
   Inc(LTop, Scale(52));
-  BtnEmail := TButton.Create(Self);
+  BtnEmail := TBitBtn.Create(Self);
   BtnEmail.Parent := Self;
   BtnEmail.SetBounds(LLeft, LTop, LWidth, Scale(40));
   BtnEmail.Caption := TranslateStr(1503, 'Login with Email Code');
   BtnEmail.OnClick := BtnEmailClick;
+  SetupProviderIcons;
 
   Inc(LTop, Scale(50));
   PanelEmail := TPanel.Create(Self);
@@ -334,6 +340,56 @@ procedure TFRpLoginLCL.SetStatus(const AText: string; AColor: TColor);
 begin
   LStatus.Caption := AText;
   LStatus.Font.Color := AColor;
+end;
+
+// The logo of each provider on its button, next to the caption. The image
+// list keeps the three sizes of each icon (rploginicons.inc) and the buttons
+// draw the one of the screen (the 40 pixel one on a Retina screen)
+procedure TFRpLoginLCL.SetupProviderIcons;
+const
+  CNames: array[0..3] of string = ('google', 'microsoft', 'apple', 'email');
+  CSizes: array[0..2] of Integer = (20, 30, 40);
+var
+  LImages: TImageList;
+  LPngs: array[0..2] of TCustomBitmap;
+  LStream: TMemoryStream;
+  LButtons: array[0..3] of TBitBtn;
+  I, J: Integer;
+begin
+  LImages := TImageList.Create(Self);
+  LImages.Width := CSizes[0];
+  LImages.Height := CSizes[0];
+  LImages.Scaled := True;
+  LImages.RegisterResolutions(CSizes);
+  LButtons[0] := BtnGoogle;
+  LButtons[1] := BtnMicrosoft;
+  LButtons[2] := BtnApple;
+  LButtons[3] := BtnEmail;
+  for I := Low(CNames) to High(CNames) do
+  begin
+    for J := Low(CSizes) to High(CSizes) do
+    begin
+      LPngs[J] := TPortableNetworkGraphic.Create;
+      LStream := TMemoryStream.Create;
+      try
+        RpLoginIconPng(CNames[I], CSizes[J], LStream);
+        LStream.Position := 0;
+        LPngs[J].LoadFromStream(LStream);
+      finally
+        LStream.Free;
+      end;
+    end;
+    try
+      LImages.AddMultipleResolutions(LPngs);
+    finally
+      for J := Low(LPngs) to High(LPngs) do
+        LPngs[J].Free;
+    end;
+    LButtons[I].Images := LImages;
+    LButtons[I].ImageIndex := I;
+    LButtons[I].ImageWidth := CSizes[0];
+    LButtons[I].Spacing := Scale(10);
+  end;
 end;
 
 procedure TFRpLoginLCL.SetBusy(AValue: Boolean);
