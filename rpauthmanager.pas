@@ -122,6 +122,8 @@ type
     FOAuthGotCallback: Boolean;
     FOAuthState: string;
     FOAuthExpectedState: string;
+    // Sign in with Apple: the API sends its own token back, not a code
+    FOAuthToken: string;
     FPendingAuthUrl: string;
   {$ELSE}
   {$IFDEF MSWINDOWS}
@@ -131,8 +133,12 @@ type
     FOAuthGotCallback: Boolean;
     FOAuthState: string;
     FOAuthExpectedState: string;
+    // Sign in with Apple: the API sends its own token back, not a code
+    FOAuthToken: string;
   {$ENDIF}
   {$ENDIF}
+    // Why the last login failed when the server said so (empty otherwise)
+    FLastLoginError: string;
     procedure DispatchAuthListener(AListener: TRpAuthEvent; ASuccess: Boolean);
   {$IFDEF MSWINDOWS}
   {$IFNDEF FPC}
@@ -165,6 +171,11 @@ type
     procedure SetIsLoggedIn(Value: Boolean);
     procedure SetAIEnabled(Value: Boolean);
     procedure SetAILanguage(const Value: string);
+    // The URL that starts Sign in with Apple on the API, answered at once with
+    // a redirect to Apple; otherwise the answer of the API ('' = redirect)
+    function ApiLoginRefusal(const AUrl: string): string;
+    // Signs in with the token the API sent to the loopback listener
+    function LoginWithApiToken(const AToken: string): Boolean;
   {$IFDEF FPC}
     function WaitForOAuthCallback(APort: Integer; const AAuthUrl: string): Boolean;
     procedure OpenPendingAuthUrl(Sender: TObject);
@@ -228,6 +239,12 @@ type
     // AI/OAuth additions
     function LoginGoogle: Boolean;
     function LoginMicrosoft: Boolean;
+    // Sign in with Apple, through the API's web flow (Apple only returns to a
+    // registered https address, with a form POST): the API hands its token to
+    // a listener of this program on 127.0.0.1
+    function LoginApple: Boolean;
+    // Why the last login failed when the server said so (empty otherwise)
+    property LastLoginError: string read FLastLoginError;
     procedure CheckStatus;
     procedure UpdateProfileFromJson(AProfileObj: TJSONObject);
     function UsesFreeCredits: Boolean;
@@ -1408,6 +1425,7 @@ begin
   FOAuthCode := '';
   FOAuthError := '';
   FOAuthState := '';
+  FOAuthToken := '';
   FOAuthGotCallback := False;
   FPendingAuthUrl := AAuthUrl;
   Log('Loopback server listening on port ' + IntToStr(APort) + '...');
@@ -1415,7 +1433,8 @@ begin
     OpenPendingAuthUrl) then
     if LError <> '' then
       Log('Loopback server: ' + LError);
-  Result := FOAuthGotCallback and (FOAuthCode <> '') and OAuthStateMatches;
+  Result := FOAuthGotCallback and ((FOAuthCode <> '') or (FOAuthToken <> '')) and
+    OAuthStateMatches;
 end;
 
 procedure TRpAuthManager.HandleOAuthLoopbackRequest(const APath, AQuery: string;
@@ -1437,10 +1456,13 @@ begin
     FOAuthCode := '';
     FOAuthError := '';
     FOAuthState := '';
+    FOAuthToken := '';
     for I := 0 to LPairs.Count - 1 do
     begin
       if SameText(LPairs.Names[I], 'code') then
         FOAuthCode := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I])
+      else if SameText(LPairs.Names[I], 'token') then
+        FOAuthToken := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I])
       else if SameText(LPairs.Names[I], 'state') then
         FOAuthState := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[I])
       else if SameText(LPairs.Names[I], 'error') then
@@ -1449,9 +1471,10 @@ begin
   finally
     LPairs.Free;
   end;
-  if (FOAuthCode <> '') and (FOAuthError = '') and (FOAuthState <> FOAuthExpectedState) then
+  if ((FOAuthCode <> '') or (FOAuthToken <> '')) and (FOAuthError = '') and
+    (FOAuthState <> FOAuthExpectedState) then
     FOAuthError := 'The response does not belong to this login request (state)';
-  if (FOAuthCode <> '') or (FOAuthError <> '') then
+  if (FOAuthCode <> '') or (FOAuthToken <> '') or (FOAuthError <> '') then
   begin
     FOAuthGotCallback := True;
     ADone := True;
@@ -1518,6 +1541,7 @@ begin
   FOAuthCode := '';
   FOAuthError := '';
   FOAuthState := '';
+  FOAuthToken := '';
   FOAuthGotCallback := False;
 
   LListenSocket := Winapi.WinSock.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -1579,10 +1603,13 @@ begin
                 FOAuthCode := '';
                 FOAuthError := '';
                 FOAuthState := '';
+                FOAuthToken := '';
                 for i := 0 to LPairs.Count - 1 do
                 begin
                   if SameText(LPairs.Names[i], 'code') then
                     Self.FOAuthCode := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i])
+                  else if SameText(LPairs.Names[i], 'token') then
+                    Self.FOAuthToken := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i])
                   else if SameText(LPairs.Names[i], 'state') then
                     Self.FOAuthState := TNetEncoding.URL.Decode(LPairs.ValueFromIndex[i])
                   else if SameText(LPairs.Names[i], 'error') then
@@ -1591,10 +1618,11 @@ begin
               finally
                 LPairs.Free;
               end;
-              if (FOAuthCode <> '') and (FOAuthError = '') and (FOAuthState <> FOAuthExpectedState) then
+              if ((FOAuthCode <> '') or (FOAuthToken <> '')) and (FOAuthError = '') and
+                (FOAuthState <> FOAuthExpectedState) then
                 FOAuthError := 'The response does not belong to this login request (state)';
 
-              if (FOAuthCode <> '') or (FOAuthError <> '') then
+              if (FOAuthCode <> '') or (FOAuthToken <> '') or (FOAuthError <> '') then
               begin
                 FOAuthGotCallback := True;
                 if FOAuthError <> '' then
@@ -1617,7 +1645,8 @@ begin
         end;
       end;
     end; // end while
-    Result := FOAuthGotCallback and (FOAuthCode <> '') and OAuthStateMatches;
+    Result := FOAuthGotCallback and ((FOAuthCode <> '') or (FOAuthToken <> '')) and
+      OAuthStateMatches;
   finally
     closesocket(LListenSocket);
   end;
@@ -1927,6 +1956,116 @@ begin
 end;
 {$ENDIF}
 {$ENDIF}
+// A query value with everything but the unreserved characters of RFC 3986
+// percent-encoded: the '?', '=', '&' and ':' of a return address stay in it
+function RpEncodeQueryValue(const AValue: string): string;
+var
+  LUtf8: UTF8String;
+  I: Integer;
+  B: Byte;
+begin
+  Result := '';
+  LUtf8 := UTF8Encode(AValue);
+  for I := 1 to Length(LUtf8) do
+  begin
+    B := Ord(LUtf8[I]);
+    if B in [Ord('A')..Ord('Z'), Ord('a')..Ord('z'), Ord('0')..Ord('9'),
+      Ord('-'), Ord('_'), Ord('.'), Ord('~')] then
+      Result := Result + Char(B)
+    else
+      Result := Result + '%' + IntToHex(B, 2);
+  end;
+end;
+
+function TRpAuthManager.ApiLoginRefusal(const AUrl: string): string;
+var
+  LClient: TNetHTTPClient;
+  LResponse: IHTTPResponse;
+begin
+  LClient := TNetHTTPClient.Create(nil);
+  try
+    ConfigureDebugHttpClient(LClient);
+    LClient.HandleRedirects := False;
+    try
+      LResponse := LClient.Get(AUrl);
+      if (LResponse.StatusCode >= 300) and (LResponse.StatusCode < 400) then
+        Result := ''
+      else
+      begin
+        Result := Trim(LResponse.ContentAsString);
+        if Result = '' then
+          Result := 'HTTP ' + IntToStr(LResponse.StatusCode);
+      end;
+    except
+      on E: Exception do
+        Result := E.Message;
+    end;
+  finally
+    LClient.Free;
+  end;
+end;
+
+function TRpAuthManager.LoginWithApiToken(const AToken: string): Boolean;
+begin
+  SetToken(AToken);
+  SetIsLoggedIn(GetToken <> '');
+  // The profile and tiers of the new session (a token the API refuses logs out)
+  CheckStatus;
+  Result := GetToken <> '';
+  if Result then
+    SaveConfig;
+end;
+
+// SIGN IN WITH APPLE (15-10-2026), as the WPF and Avalonia designers do: the
+// browser opens api/login/apple/web, Apple answers the API with a form POST
+// and the API sends the browser to the return address of this program with
+// its token (or an error). The state goes in that address: the API keeps its
+// query and adds token=, email= or error= to it.
+function TRpAuthManager.LoginApple: Boolean;
+{$IF DEFINED(FPC) OR DEFINED(MSWINDOWS)}
+var
+  LPort: Integer;
+  LReturnUrl, LLoginUrl: string;
+{$IFNDEF FPC}
+  LWSAData: TWSAData;
+{$ENDIF}
+begin
+  Result := False;
+  FLastLoginError := '';
+{$IFNDEF FPC}
+  if WSAStartup(MakeWord(2, 2), LWSAData) <> 0 then Exit;
+  try
+{$ENDIF}
+    LPort := PickLoopbackPort;
+    LReturnUrl := 'http://127.0.0.1:' + IntToStr(LPort) + '/?state=' + NewOAuthState;
+    LLoginUrl := HUB_API_URL + '/api/login/apple/web?returnUrl=' +
+      RpEncodeQueryValue(LReturnUrl) + '&installId=' + RpEncodeQueryValue(GetInstallId);
+    Log('Auth: Apple, return address ' + LReturnUrl);
+    // Asked first, without following its redirect: a server where Sign in
+    // with Apple is not configured says so at once, instead of leaving the
+    // browser on an error page while this program waits
+    FLastLoginError := ApiLoginRefusal(LLoginUrl);
+    if FLastLoginError <> '' then
+    begin
+      Log('Sign in with Apple is not available: ' + FLastLoginError);
+      Exit;
+    end;
+    if WaitForOAuthCallback(LPort, LLoginUrl) then
+      Result := LoginWithApiToken(FOAuthToken)
+    else
+      FLastLoginError := FOAuthError;
+{$IFNDEF FPC}
+  finally
+    WSACleanup;
+  end;
+{$ENDIF}
+end;
+{$ELSE}
+begin
+  Result := False;
+  Log('Sign in with Apple is not supported on this platform.');
+end;
+{$IFEND}
 
 function TRpAuthManager.RefreshTiers: Boolean;
 {$IFDEF FIREDAC}

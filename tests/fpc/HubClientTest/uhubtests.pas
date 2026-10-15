@@ -77,6 +77,12 @@ var
   GRedirect: TRedirectThread;
   // The simulated browser returns a different OAuth state (forged redirect)
   GTamperState: Boolean = False;
+  // Sign in with Apple: the server answers that it is not configured
+  GAppleNotConfigured: Boolean = False;
+  // What api/login/apple/web received, and the pages the "browser" opened
+  GAppleReturnUrl: string = '';
+  GAppleInstallId: string = '';
+  GBrowserCalls: Integer = 0;
 
 function ProfileJson(const ATierName: string): string;
 begin
@@ -302,6 +308,21 @@ begin
       else
         SendJson(AResponse, 400, '{}');
     end
+    else if P = '/api/login/apple/web' then
+    begin
+      // The API's start of Sign in with Apple: a redirect to Apple, or 503
+      // where it is not configured
+      GAppleReturnUrl := ARequest.QueryFields.Values['returnUrl'];
+      GAppleInstallId := ARequest.QueryFields.Values['installId'];
+      if GAppleNotConfigured then
+        SendText(AResponse, 503, 'text/plain',
+          'Sign in with Apple is not configured on this server (Apple:ServicesId).')
+      else
+      begin
+        AResponse.Location := 'https://appleid.apple.com/auth/authorize?client_id=es.reportman';
+        SendText(AResponse, 302, 'text/plain', '');
+      end;
+    end
     else if P = '/api/userprofile/status' then
     begin
       Inc(StatusCalls);
@@ -441,6 +462,21 @@ function FakeBrowser(const AURL: string): Boolean;
 var
   LRedirectUri, LCode, LState: string;
 begin
+  Inc(GBrowserCalls);
+  if Pos('/api/login/apple/web', AURL) > 0 then
+  begin
+    // The API after Apple: back to the return address of the program (it
+    // carries the state) with the API's own token
+    LRedirectUri := QueryValue(AURL, 'returnUrl');
+    if GTamperState then
+      LRedirectUri := StringReplace(LRedirectUri, 'state=', 'state=X', []);
+    FreeAndNil(GRedirect);
+    GRedirect := TRedirectThread.Create(True);
+    GRedirect.FreeOnTerminate := False;
+    GRedirect.Url := LRedirectUri + '&token=tokA&email=ana%40example.com';
+    GRedirect.Start;
+    Exit(LRedirectUri <> '');
+  end;
   LRedirectUri := QueryValue(AURL, 'redirect_uri');
   if Pos('accounts.google.com', AURL) > 0 then
     LCode := 'gcode%201'
@@ -1299,6 +1335,7 @@ end;
 procedure OAuthTests;
 var
   LAuth: TRpAuthManager;
+  LCalls: Integer;
 begin
   Section('OAuth login with the loopback redirect (simulated browser)');
   LAuth := TRpAuthManager.Instance;
@@ -1314,6 +1351,15 @@ begin
     CheckContains('POST /mslogin/common/oauth2/v2.0/token', GHub.RequestLog, 'Microsoft token request');
     LAuth.Logout;
     Check(not LAuth.IsLoggedIn, 'logged out');
+    // Sign in with Apple through the API: its token comes back to 127.0.0.1
+    Check(LAuth.LoginApple, 'LoginApple (the API web flow)');
+    CheckEquals('tokA', LAuth.Token, 'Apple token');
+    CheckEquals(200, GRedirect.Status, 'the browser got the "login successful" page (Apple)');
+    Check(Pos('http://127.0.0.1:', GAppleReturnUrl) = 1,
+      'Apple: the return address is on 127.0.0.1: ' + GAppleReturnUrl);
+    Check(Pos('?state=', GAppleReturnUrl) > 0, 'Apple: the state travels in the return address');
+    CheckEquals(LAuth.InstallId, GAppleInstallId, 'Apple: the install id of this installation');
+    LAuth.Logout;
     // A redirect whose state is not the one sent is rejected (the state was
     // never checked)
     GTamperState := True;
@@ -1322,8 +1368,23 @@ begin
       Check(not LAuth.IsLoggedIn, 'not logged in after the forged redirect');
       GRedirect.WaitFor;
       CheckContains('Login failed', GRedirect.Body, 'the browser gets the "login failed" page');
+      Check(not LAuth.LoginApple, 'LoginApple rejected when the state does not match');
+      Check(not LAuth.IsLoggedIn, 'not logged in after the forged Apple redirect');
+      GRedirect.WaitFor;
+      CheckContains('Login failed', GRedirect.Body, 'the browser gets the "login failed" page (Apple)');
     finally
       GTamperState := False;
+    end;
+    // A server where Sign in with Apple is not configured: its reason, at
+    // once, and no browser left on an error page
+    GAppleNotConfigured := True;
+    try
+      LCalls := GBrowserCalls;
+      Check(not LAuth.LoginApple, 'LoginApple fails on a server without Apple');
+      CheckContains('not configured', LAuth.LastLoginError, 'the reason the server gave');
+      CheckEquals(LCalls, GBrowserCalls, 'no browser opened');
+    finally
+      GAppleNotConfigured := False;
     end;
     // The loopback port is checked before the browser is opened
     PortCheckTest;

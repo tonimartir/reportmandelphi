@@ -24,6 +24,7 @@ type
     LTitle: TLabel;
     BtnGoogle: TButton;
     BtnMicrosoft: TButton;
+    BtnApple: TButton;
     BtnEmail: TButton;
     PanelEmail: TPanel;
     LEmail: TLabel;
@@ -38,6 +39,7 @@ type
     LnkAgentDownload: TLabel;
     procedure BtnGoogleClick(Sender: TObject);
     procedure BtnMicrosoftClick(Sender: TObject);
+    procedure BtnAppleClick(Sender: TObject);
     procedure BtnEmailClick(Sender: TObject);
     procedure BtnSendCodeClick(Sender: TObject);
     procedure BtnLoginCodeClick(Sender: TObject);
@@ -120,6 +122,30 @@ begin
   begin
     AddLog('LoginMicrosoft returned False');
     LStatus.Caption := 'Microsoft login failed or cancelled.';
+    LStatus.Font.Color := clRed;
+  end;
+end;
+
+procedure TFRpLoginVCL.BtnAppleClick(Sender: TObject);
+begin
+  LStatus.Caption := 'Starting Apple Login...';
+  AddLog('BtnAppleClick: Requesting Apple login');
+  LStatus.Font.Color := clWindowText;
+  Application.ProcessMessages;
+
+  if TRpAuthManager.Instance.LoginApple then
+  begin
+    AddLog('LoginApple returned True');
+    ModalResult := mrOk;
+  end
+  else
+  begin
+    AddLog('LoginApple returned False');
+    // What the server said (Sign in with Apple not configured...)
+    if TRpAuthManager.Instance.LastLoginError <> '' then
+      LStatus.Caption := TRpAuthManager.Instance.LastLoginError
+    else
+      LStatus.Caption := 'Apple login failed or cancelled.';
     LStatus.Font.Color := clRed;
   end;
 end;

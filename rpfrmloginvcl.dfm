@@ -3,7 +3,7 @@ object FRpLoginVCL: TFRpLoginVCL
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Login to Reportman.AI'
-  ClientHeight = 510
+  ClientHeight = 566
   ClientWidth = 400
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -30,7 +30,7 @@ object FRpLoginVCL: TFRpLoginVCL
   end
   object LStatus: TLabel
     Left = 24
-    Top = 320
+    Top = 376
     Width = 352
     Height = 13
     AutoSize = False
@@ -61,22 +61,31 @@ object FRpLoginVCL: TFRpLoginVCL
     TabOrder = 1
     OnClick = BtnMicrosoftClick
   end
-  object BtnEmail: TButton
+  object BtnApple: TButton
     Left = 24
     Top = 168
     Width = 352
     Height = 41
-    Caption = 'Login with Email Code'
+    Caption = 'Login with Apple'
     TabOrder = 2
+    OnClick = BtnAppleClick
+  end
+  object BtnEmail: TButton
+    Left = 24
+    Top = 224
+    Width = 352
+    Height = 41
+    Caption = 'Login with Email Code'
+    TabOrder = 3
     OnClick = BtnEmailClick
   end
   object PanelEmail: TPanel
     Left = 24
-    Top = 216
+    Top = 272
     Width = 352
     Height = 97
     BevelOuter = bvNone
-    TabOrder = 3
+    TabOrder = 4
     Visible = False
     object LEmail: TLabel
       Left = 0
@@ -127,7 +136,7 @@ object FRpLoginVCL: TFRpLoginVCL
   end
   object MemoLog: TMemo
     Left = 24
-    Top = 344
+    Top = 400
     Width = 352
     Height = 89
     Color = clInfoBk
@@ -139,11 +148,11 @@ object FRpLoginVCL: TFRpLoginVCL
     ParentFont = False
     ReadOnly = True
     ScrollBars = ssVertical
-    TabOrder = 4
+    TabOrder = 5
   end
   object LAgentInfo: TLabel
     Left = 24
-    Top = 443
+    Top = 499
     Width = 352
     Height = 39
     AutoSize = False
@@ -155,7 +164,7 @@ object FRpLoginVCL: TFRpLoginVCL
   end
   object LnkAgentDownload: TLabel
     Left = 24
-    Top = 485
+    Top = 541
     Width = 132
     Height = 13
     Cursor = crHandPoint

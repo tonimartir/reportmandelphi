@@ -31,7 +31,7 @@ uses
   rpauthmanager, rpaithreadslcl;
 
 type
-  TRpLoginAction = (rlaGoogle, rlaMicrosoft, rlaSendCode, rlaLoginCode);
+  TRpLoginAction = (rlaGoogle, rlaMicrosoft, rlaApple, rlaSendCode, rlaLoginCode);
 
   TFRpLoginLCL = class(TForm)
   private
@@ -50,6 +50,7 @@ type
     LTitle: TLabel;
     BtnGoogle: TButton;
     BtnMicrosoft: TButton;
+    BtnApple: TButton;
     BtnEmail: TButton;
     PanelEmail: TPanel;
     LEmail: TLabel;
@@ -67,6 +68,7 @@ type
     destructor Destroy; override;
     procedure BtnGoogleClick(Sender: TObject);
     procedure BtnMicrosoftClick(Sender: TObject);
+    procedure BtnAppleClick(Sender: TObject);
     procedure BtnEmailClick(Sender: TObject);
     procedure BtnSendCodeClick(Sender: TObject);
     procedure BtnLoginCodeClick(Sender: TObject);
@@ -110,6 +112,8 @@ begin
       LOk := TRpAuthManager.Instance.LoginGoogle;
     rlaMicrosoft:
       LOk := TRpAuthManager.Instance.LoginMicrosoft;
+    rlaApple:
+      LOk := TRpAuthManager.Instance.LoginApple;
     rlaSendCode:
       LOk := TRpAuthManager.Instance.RequestLoginCode(Email);
   else
@@ -176,7 +180,7 @@ begin
   Position := poMainFormCenter;
   Caption := TranslateStr(1499, 'Login to Reportman.AI');
   ClientWidth := Scale(400);
-  ClientHeight := Scale(540);
+  ClientHeight := Scale(592);
   KeyPreview := True;
   OnKeyPress := FormKeyPress;
   LLeft := Scale(24);
@@ -202,6 +206,13 @@ begin
   BtnMicrosoft.SetBounds(LLeft, LTop, LWidth, Scale(40));
   BtnMicrosoft.Caption := TranslateStr(1502, 'Login with Microsoft');
   BtnMicrosoft.OnClick := BtnMicrosoftClick;
+
+  Inc(LTop, Scale(52));
+  BtnApple := TButton.Create(Self);
+  BtnApple.Parent := Self;
+  BtnApple.SetBounds(LLeft, LTop, LWidth, Scale(40));
+  BtnApple.Caption := TranslateStr(2009, 'Login with Apple');
+  BtnApple.OnClick := BtnAppleClick;
 
   Inc(LTop, Scale(52));
   BtnEmail := TButton.Create(Self);
@@ -330,6 +341,7 @@ begin
   FBusy := AValue;
   BtnGoogle.Enabled := not AValue;
   BtnMicrosoft.Enabled := not AValue;
+  BtnApple.Enabled := not AValue;
   BtnEmail.Enabled := not AValue;
   BtnSendCode.Enabled := not AValue;
   BtnLoginCode.Enabled := not AValue;
@@ -364,7 +376,7 @@ begin
   if LResult.ErrorText <> '' then
     AddLog(LResult.ErrorText);
   case LResult.Action of
-    rlaGoogle, rlaMicrosoft:
+    rlaGoogle, rlaMicrosoft, rlaApple:
       if LResult.Success then
       begin
         AddLog('Login returned True');
@@ -373,7 +385,11 @@ begin
       else
       begin
         AddLog('Login returned False');
-        SetStatus(TranslateStr(1508, 'Login failed or cancelled.'), clRed);
+        // What the server said (Sign in with Apple not configured...)
+        if (LResult.Action = rlaApple) and (TRpAuthManager.Instance.LastLoginError <> '') then
+          SetStatus(TRpAuthManager.Instance.LastLoginError, clRed)
+        else
+          SetStatus(TranslateStr(1508, 'Login failed or cancelled.'), clRed);
       end;
     rlaSendCode:
       if LResult.Success then
@@ -404,6 +420,13 @@ begin
   SetStatus(TranslateStr(1507, 'Complete the login in your browser...'), clWindowText);
   AddLog('BtnMicrosoftClick: Requesting Microsoft login');
   StartAction(rlaMicrosoft);
+end;
+
+procedure TFRpLoginLCL.BtnAppleClick(Sender: TObject);
+begin
+  SetStatus(TranslateStr(1507, 'Complete the login in your browser...'), clWindowText);
+  AddLog('BtnAppleClick: Requesting Apple login');
+  StartAction(rlaApple);
 end;
 
 procedure TFRpLoginLCL.BtnEmailClick(Sender: TObject);
