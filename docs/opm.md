@@ -389,6 +389,22 @@ El JSON publicado es el que genera el script: su `CommunityDescription` por
 defecto ya es la que escribió Toni para el primer envío (con la IA y los
 ejemplos).
 
+### 4.0.21 (15-10-2026, commit abf949db)
+
+Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.20 quedan en la
+VM, en `~/webs/opm-anteriores/4.0.20`. Novedades para quien lo instala: el
+diálogo de inicio de sesión del diseñador ofrece Sign in with Apple y lleva el
+logo de cada proveedor (`rploginicons.inc`, nuevo en la lista de ficheros), y
+deshacer aplica los historiales del servidor de IA (texto y modos bidi como
+listas, cambios del informe sin nombre). Zip de 198 ficheros, 5.690.182 bytes,
+MD5 `83018f39fce494ad00297025d6af7dd2`.
+
+Validado desde el zip, con una configuración de Lazarus vacía y Zeos, los tres
+paquetes con `-B`: en Linux con la imagen `reportman-linux-builder` (Lazarus
+4.8, `--ws=gtk2` y `--ws=qt6`) y en macOS con `build/macos/opm-check.sh`
+(Intel: los tres paquetes, los cuatro ejemplos y `pdfconsole`). Windows no se
+validó (este PC no tiene Lazarus para Windows).
+
 ### 4.0.20 (13-10-2026, commit 6ddf1080)
 
 Publicado en `https://reportman.es/opm/` (zip, `ReportManager.json` y JSON de
