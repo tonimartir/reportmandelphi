@@ -6,7 +6,8 @@ Lazarus 4.8. Probado a mano en macOS 11 Big Sur (Intel, x86_64) y, con
 [GitHub Actions](#github-actions-intel-y-apple-silicon), en macOS 15 Intel y
 Apple Silicon (arm64). El [paquete de instalación](#paquete-de-instalación) es
 un `.dmg` con la aplicación firmada ad hoc; el universal lleva las dos
-arquitecturas.
+arquitecturas y, desde la 4.0.21, está firmado con Developer ID y notarizado
+por Apple ([firma y notarización](#firma-developer-id-y-notarización)).
 
 ## Compilar
 
@@ -417,6 +418,35 @@ workflow de Actions):
 - Firma ad hoc (`codesign -s -`) y `.dmg` comprimido con un enlace a
   Aplicaciones.
 
+### Firma Developer ID y notarización
+
+Desde la 4.0.21 el `.dmg` universal del workflow va firmado con el certificado
+«Developer ID Application» de la cuenta de Apple Developer y notarizado por
+Apple, así que Gatekeeper lo abre con doble clic. Lo hace
+`build/macos/sign-notarize.sh <app> <dmg> [volumen]`, al que llama
+`make-universal.sh` cuando está `RP_SIGN_IDENTITY`:
+
+- Firma con *hardened runtime* (`--options runtime`) y sello de tiempo, de
+  dentro afuera: cada Mach-O de `Contents` y luego el paquete con
+  `designer.entitlements`, cuyo único derecho es
+  `com.apple.security.cs.disable-library-validation` (el diseñador carga las
+  librerías cliente de las bases de datos que instala el usuario, firmadas
+  por otros o sin firmar).
+- Crea y firma el `.dmg`, lo envía con `xcrun notarytool submit --wait`
+  (clave de API de App Store Connect: `NOTARY_KEY_P8`, `NOTARY_KEY_ID`,
+  `NOTARY_ISSUER_ID`), muestra el informe de Apple si no lo acepta y grapa el
+  ticket (`stapler staple`); `spctl` lo comprueba.
+- El llavero necesita también el intermedio público «Developer ID
+  Certification Authority» G2 (`build/macos/certs/DeveloperIDG2CA.cer`): un
+  Mac sin Xcode no lo tiene y entonces `codesign` no encuentra la identidad.
+
+En Actions, `macos.yml` importa el certificado en un llavero temporal desde
+los secretos `MACOS_CERT_P12` y `MACOS_CERT_PASSWORD`, deja la clave `.p8` en
+un fichero temporal y borra los dos al final. Sin esos secretos (un fork) la
+firma sigue siendo ad hoc. Con *hardened runtime* dyld ignora las variables
+`DYLD_*`, así que la prueba del `.dmg` mira las librerías cargadas con `lsof`
+y comprueba que `spctl` lo da por `Notarized Developer ID`.
+
 **OpenSSL en las aplicaciones de los usuarios de Lazarus.** Los paquetes no
 llevan binarios. Para distribuir una aplicación a Macs sin Homebrew,
 `build/macos/bundle-openssl.sh MiApp.app [carpeta]` copia `libssl.3.dylib` y
@@ -467,9 +497,6 @@ reciben el instalador de Windows. Se comprueba con
 
 ## Pendiente
 
-- Firmar el paquete con un certificado Developer ID y notarizarlo (cuenta
-  de desarrollador de Apple), para que Gatekeeper lo abra sin «clic
-  derecho > Abrir».
 - Probar el `.dmg` universal a mano en un Mac con Apple Silicon (en Actions
   pasan la selftest y las pruebas del `.dmg`, pero nadie lo ha usado).
 - FPC 3.2.2 depende de `-ld_classic`, que Apple da por obsoleto: cuando un
