@@ -8,7 +8,7 @@ uses
 {$ENDIF}
   Classes, SysUtils,
   rpreport, rppdfdriver, rppdfreport, uembeddedtests, utextformattests, udatainfotests,
-  uencodingtests;
+  uencodingtests, ushapingtests;
 
 {$IFDEF DARWIN}
 // Where the executable was loaded (it is PIE): the backtrace addresses are
@@ -151,6 +151,8 @@ begin
       allOk := False;
 
     if not RunEncodingTests then
+      allOk := False;
+    if not RunShapingTests then
       allOk := False;
   end;
 

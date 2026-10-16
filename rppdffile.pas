@@ -347,6 +347,8 @@ implementation
 function SfntDirectory(m:TMemoryStream;ADirectoryOffset,AFontIndex:integer):Int64; forward;
 function SfntIsCFF(m:TMemoryStream;ABase:Int64):boolean; forward;
 function CFFGlyphsAreCIDs(m:TMemoryStream;ABase:Int64):boolean; forward;
+// Whether a text is laid out glyph by glyph (below, with NeedsUnicodeFont)
+function NeedsComplexShaping(const Text:WideString):Boolean; forward;
 
 function IntToHex(nvalue:integer):string;
 begin
@@ -2304,7 +2306,8 @@ begin
  // ForceComplexShaping so the PDF and the glyph-indexed GDI redraw share advances.
  // Rotated text keeps the legacy pipeline (the GDI exact path excludes rotation).
  shapedOutput:=(RightToLeft) or (IsHtml) or
-  (ForceComplexShaping and (Rotation=0) and (Length(lInfo.Glyphs)>0));
+  ((ForceComplexShaping or NeedsComplexShaping(Text)) and (Rotation=0) and
+   (Length(lInfo.Glyphs)>0));
  if assigned(adata) then
  begin
   ascent:=adata.Ascent;
@@ -2663,6 +2666,7 @@ var
  FCompressionStream:TCompressionStream;
 {$ENDIF}
  fimagestream:TMemoryStream;
+ datastream:TMemoryStream;
  // tmpBitmap:TBitmap;
  // y: integer;
   aheight,awidth:integer;
@@ -2799,57 +2803,63 @@ begin
   // Saves the bitmap to temp bitmaps
   if newstream then
   begin
-   astream:=TMemoryStream.Create;
-   FFile.FBitmapStreams.Add(astream);
-   SWriteLine(astream,'<< /Type /XObject');
-   SWriteLine(astream,'/Subtype /Image');
-   SWriteLine(astream,'/Width '+IntToStr(bitmapwidth));
-   SWriteLine(astream,'/Height '+IntToStr(bitmapheight));
-   if indexed then
-   begin
-    SWriteLine(astream,'/ColorSpace');
-    SWriteLine(astream,'[/Indexed');
-    SWriteLine(astream,'/DeviceRGB '+IntToStr(numcolors));
-    SWriteLine(astream,palette);
-    SWriteLine(astream,']');
-    SWriteLine(astream,'/BitsPerComponent '+IntToStr(bitsperpixel))
-   end
-   else
-   begin
-    SWriteLine(astream,'/ColorSpace /DeviceRGB');
-    SWriteLine(astream,'/BitsPerComponent 8');
-   end;
-   SWriteLine(astream,'/Length '+IntToStr(imagesize));
-   SWriteLine(astream,'/Name /Im'+IntToStr(imageindex));
-   if isjpeg then
-   begin
-    SWriteLine(astream,'/Filter [/DCTDecode]');
-   end
-   else
-   begin
+   // The data first, compressed or not: /Length is the number of bytes
+   // between stream and endstream, not the size of the bitmap
+   datastream:=TMemoryStream.Create;
+   try
+    FImageStream.Seek(0,soFrombeginning);
  {$IFDEF USEZLIB}
-    if FFile.FCompressed then
-     SWriteLine(astream,'/Filter [/FlateDecode]');
+    if ((FFile.FCompressed) and (not isjpeg)) then
+    begin
+     FCompressionStream := TCompressionStream.Create(clDefault,datastream);
+     try
+      CopyStreamContent(FImageStream, FCompressionStream);
+     finally
+      FCompressionStream.Free;
+     end;
+    end
+    else
  {$ENDIF}
-   end;
-   SWriteLine(astream,'>>');
-   SWriteLine(astream,'stream');
-   FImageStream.Seek(0,soFrombeginning);
- {$IFDEF USEZLIB}
-   if ((FFile.FCompressed) and (not isjpeg)) then
-   begin
-    FCompressionStream := TCompressionStream.Create(clDefault,astream);
-    try
-     FImageStream.Seek(0, soBeginning);
-     CopyStreamContent(FImageStream, FCompressionStream);
-     // FCompressionStream.CopyFrom(FImageStream, FImageStream.Size);
-    finally
-     FCompressionStream.Free;
+     FImageStream.SaveToStream(datastream);
+    astream:=TMemoryStream.Create;
+    FFile.FBitmapStreams.Add(astream);
+    SWriteLine(astream,'<< /Type /XObject');
+    SWriteLine(astream,'/Subtype /Image');
+    SWriteLine(astream,'/Width '+IntToStr(bitmapwidth));
+    SWriteLine(astream,'/Height '+IntToStr(bitmapheight));
+    if indexed then
+    begin
+     SWriteLine(astream,'/ColorSpace');
+     SWriteLine(astream,'[/Indexed');
+     SWriteLine(astream,'/DeviceRGB '+IntToStr(numcolors));
+     SWriteLine(astream,palette);
+     SWriteLine(astream,']');
+     SWriteLine(astream,'/BitsPerComponent '+IntToStr(bitsperpixel))
+    end
+    else
+    begin
+     SWriteLine(astream,'/ColorSpace /DeviceRGB');
+     SWriteLine(astream,'/BitsPerComponent 8');
     end;
-   end
-   else
+    SWriteLine(astream,'/Length '+IntToStr(datastream.Size));
+    SWriteLine(astream,'/Name /Im'+IntToStr(imageindex));
+    if isjpeg then
+    begin
+     SWriteLine(astream,'/Filter [/DCTDecode]');
+    end
+    else
+    begin
+ {$IFDEF USEZLIB}
+     if FFile.FCompressed then
+      SWriteLine(astream,'/Filter [/FlateDecode]');
  {$ENDIF}
-    FImageStream.SaveToStream(astream);
+    end;
+    SWriteLine(astream,'>>');
+    SWriteLine(astream,'stream');
+    datastream.SaveToStream(astream);
+   finally
+    datastream.Free;
+   end;
   end;
  finally
   FImageStream.Free;
@@ -3048,11 +3058,12 @@ begin
   Result:=InfoProvider.TextExtent(Text,rect,Self.GetTTFontData,Font,wordbreak,singleline,Font.Size,IsHtml,
    rightToLeft);
  end
- else if ForceComplexShaping then
+ else if ForceComplexShaping or NeedsComplexShaping(Text) then
  begin
-  // Forced shaping for plain text: the shaper needs a TrueType font, promote
-  // standard Type1 fonts to linked, then measure with per-glyph advances so
-  // TextOut/ExtTextOutW can reproduce identical positions.
+  // Forced shaping for plain text (and text of a complex script, always): the
+  // shaper needs a TrueType font, promote standard Type1 fonts to linked, then
+  // measure with per-glyph advances so TextOut/ExtTextOutW can reproduce
+  // identical positions.
   if not (Font.Name in [poLinked,poEmbedded]) then
    Font.Name:=poLinked;
   GetTTFontData;
@@ -4893,6 +4904,48 @@ begin
     Result:=true;
     break;
    end;
+  end;
+ end;
+end;
+
+// True when the text has a character of a script that must be shaped (the
+// form and the place of a letter depend on its neighbours: Arabic and Hebrew
+// without the right to left mode, the Indic scripts, Thai, Lao, Tibetan,
+// Myanmar, Khmer, Hangul jamo...) or that the font of an object seldom has
+// (CJK, characters outside the basic plane). Such a text is laid out and
+// written glyph by glyph, as with ForceComplexShaping: the shaping engine of
+// the provider joins and places its letters, and takes another font for the
+// characters the font of the object lacks. Written character by character an
+// Indic word comes out with its vowels in the wrong place and its conjuncts
+// broken, Thai with loose marks, and a script the font lacks not at all.
+function NeedsComplexShaping(const Text:WideString):Boolean;
+var
+ i:integer;
+ c:Word;
+begin
+ Result:=false;
+ for i:=1 to Length(Text) do
+ begin
+  c:=Word(Text[i]);
+  if c<$0590 then
+   continue;
+  case c of
+   $0590..$08FF,   // Hebrew, Arabic, Syriac, Thaana, NKo, Samaritan...
+   $0900..$109F,   // Indic scripts, Sinhala, Thai, Lao, Tibetan, Myanmar
+   $1100..$11FF,   // Hangul jamo
+   $1780..$18AF,   // Khmer, Mongolian
+   $1900..$1CFF,   // Limbu, Tai Le, Buginese, Balinese, Sundanese...
+   $2E80..$A4CF,   // CJK, kana, bopomofo, Yi
+   $A800..$ABFF,   // Syloti Nagri, Saurashtra, Javanese, Meetei Mayek...
+   $AC00..$D7AF,   // Hangul syllables
+   $D800..$DFFF,   // outside the basic plane: emoji, CJK extensions...
+   $F900..$FAFF,   // CJK compatibility ideographs
+   $FE30..$FE4F,   // CJK compatibility forms
+   $FF00..$FFEF:   // halfwidth and fullwidth forms
+    begin
+     Result:=true;
+     break;
+    end;
   end;
  end;
 end;
