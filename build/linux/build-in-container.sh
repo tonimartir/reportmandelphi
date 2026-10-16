@@ -67,7 +67,7 @@ EXCL=(--exclude='lib/' --exclude='backup/' --exclude='*.ppu' --exclude='*.o'
 # tests/local_schema_file: the local schema file of the LocalSchemas dialog test
 for d in rtl_fpc lcl design_lcl packages/fpc packages/fpc_lcl \
          tests/fpc/LclDesignerTest tests/fpc/LclAIChatTest tests/fpc/HubClientTest \
-         tests/local_schema_file repman/lcl_designer repman/repsamples build/linux; do
+         tests/local_schema_file repman/lcl_designer repman/repsamples samples build/linux; do
     mkdir -p "$B/$d"
     rsync -a "${EXCL[@]}" "$SRC/$d/" "$B/$d/"
 done

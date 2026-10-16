@@ -381,6 +381,7 @@ type
     { Private declarations }
     fdesignframe:TFRpDesignFrameVCL;
     MHelpItem:TMenuItem;
+    MSamples:TMenuItem;
     fobjinsp:TFRpObjInspVCL;
     configfile,configfilelib:string;
     oldonException:TExceptionEvent;
@@ -502,6 +503,8 @@ type
     procedure WMHandleDesignChatPayload(var Message: TMessage); message WM_USER + 206;
     procedure WMHandleDesignContextPayload(var Message: TMessage); message WM_USER + 207;
     procedure MHelpItemClick(Sender:TObject);
+    procedure MSamplesClick(Sender:TObject);
+    procedure ShowWelcome(AtStartup:Boolean);
     procedure ShowContextHelp;
   public
     { Public declarations }
@@ -525,7 +528,7 @@ procedure ExecuteReportDotNet(report:TRpReport;preview:boolean;Version:integer);
 implementation
 
 uses rpmdfdatasetsvcl, rpchatdialogvcl, System.Contnrs, rplocalschemas,
-  rpfrmlocalschemasvcl;
+  rpfrmlocalschemasvcl, rpfrmwelcomevcl;
 
 {$R *.dfm}
 
@@ -1370,6 +1373,13 @@ begin
  MHelpItem.OnClick:=MHelpItemClick;
  MHelp.Insert(MHelp.IndexOf(MDoc)+1,MHelpItem);
  MHelpItem.Visible:=MDoc.Visible;
+ // The welcome window with the sample reports, first in Help
+ MSamples:=TMenuItem.Create(Self);
+ MSamples.Caption:=TranslateStr(2012,'Sample reports...');
+ MSamples.Hint:=TranslateStr(2013,'Shows the welcome window, with the sample reports');
+ MSamples.OnClick:=MSamplesClick;
+ MHelp.Insert(0,MSamples);
+ MHelp.InsertNewLineAfter(MSamples);
  ALeft.ShortCut:=ShortCut(VK_LEFT,[ssCtrl]);
  ARight.ShortCut:=ShortCut(VK_RIGHT,[ssCtrl]);
  AUp.ShortCut:=ShortCut(VK_UP,[ssCtrl]);
@@ -2886,6 +2896,52 @@ begin
  Application.OnIdle:=oldappidle;
 
  WindowState:=wsMaximized;
+ // The designer itself (not inside the IDE) without a report to open: the
+ // welcome window with the sample reports, unless the user hid it
+ if browsecommandline and (Length(filename)=0) then
+  ShowWelcome(true);
+end;
+
+procedure TFRpMainFVCL.MSamplesClick(Sender:TObject);
+begin
+ ShowWelcome(false);
+end;
+
+// The welcome window ([Preferences] ShowWelcome of repmand.ini, shared with
+// the Lazarus and .NET designers) and what the user chooses there
+procedure TFRpMainFVCL.ShowWelcome(AtStartup:Boolean);
+var
+ inif:TIniFile;
+ oldshow,showatstartup:Boolean;
+ action:TRpWelcomeAction;
+ samplepath:string;
+begin
+ inif:=TIniFile.Create(configfile);
+ try
+  oldshow:=inif.ReadBool('Preferences','ShowWelcome',True);
+  if AtStartup and (not oldshow) then
+   exit;
+  showatstartup:=oldshow;
+  action:=RpShowWelcomeVCL(Self,showatstartup,samplepath);
+  if showatstartup<>oldshow then
+  begin
+   inif.WriteBool('Preferences','ShowWelcome',showatstartup);
+   inif.UpdateFile;
+  end;
+ finally
+  inif.free;
+ end;
+ case action of
+  rwaOpenSample:
+   begin
+    DoOpen(samplepath,false);
+    FormResize(Self);
+   end;
+  rwaNewReport:
+   ANewExecute(Self);
+  rwaOpenReport:
+   AOpenExecute(Self);
+ end;
 end;
 
 procedure TFRpMainFVCL.ASysInfoExecute(Sender: TObject);
@@ -3147,6 +3203,8 @@ begin
    filename:=oldfilename;
    raise;
   end;
+  // A relative SQLite database of the report is looked for in its folder
+  report.ReportFolder:=ExtractFilePath(ExpandFileName(filename));
   alibrary:='';
   areportname:='';
   Savedialog1.filename:=filename;

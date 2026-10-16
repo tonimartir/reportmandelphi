@@ -1223,6 +1223,8 @@
         <DCCReference Include="..\rplocalschemas.pas"/>
         <DCCReference Include="..\rpdesignerclientsql.pas"/>
         <DCCReference Include="..\rpfrmlocalschemasvcl.pas"/>
+        <DCCReference Include="..\rpsamplesutil.pas"/>
+        <DCCReference Include="..\rpfrmwelcomevcl.pas"/>
         <DCCReference Include="..\rpbasereport.pas"/>
         <DCCReference Include="..\rprulervcl.pas"/>
         <DCCReference Include="..\rpsection.pas"/>

@@ -20,7 +20,7 @@ uses
   rpfrmaischemaselectorlcl, rpfrmaireportlcl, rpfrmchatlcl, rpdbxconfiglcl, 
   rpmdfsampledatalcl, rpmdfdatatextlcl, rpdbxadminlcl, 
   rpmdfnewreportwizardlcl, rpmdsysinfolcl, rpmdftreelcl, rpeditconnlcl, 
-  rpfrmlocalschemaslcl, LazarusPackageIntf;
+  rpfrmlocalschemaslcl, rpfrmwelcomelcl, LazarusPackageIntf;
 
 implementation
 

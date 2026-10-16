@@ -22,7 +22,7 @@ uses
   rpDelphiZXIngQRCode, rpfpcutils, rpmreg, rpcolumnar, rpbase64fpc, rpjsonfpc, 
   rphttpclientfpc, rpnetencodingfpc, rpioutilsfpc, rpsysutilsfpc, 
   rpaireportcontracts, rpreportdesignercontracts, rpauthmanager, rpdatahttp, 
-  rpsqldbconnfpc, rpdarwinlibs, rplocalschemas, rpdesignerclientsql, rpinfoprovct, 
+  rpsqldbconnfpc, rpdarwinlibs, rplocalschemas, rpdesignerclientsql, rpinfoprovct, rpsamplesutil, 
   LazarusPackageIntf;
 
 implementation

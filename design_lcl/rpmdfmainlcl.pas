@@ -147,6 +147,7 @@ type
     MenuHelpDoc: TMenuItem;
     MenuHelpSysInfo: TMenuItem;
     MenuHelpItem: TMenuItem;
+    MenuHelpSamples: TMenuItem;
     // Last used files (VCL Lastusedfiles), listed after File > Exit
     FLastUsedFiles: TRpLastUsedStrings;
     // Object inspector font (Preferences), applied when chosen
@@ -226,6 +227,7 @@ type
     procedure MenuViewUnitsClick(Sender: TObject);
     procedure MenuViewScaleClick(Sender: TObject);
     procedure MenuHelpAboutClick(Sender: TObject);
+    procedure MenuHelpSamplesClick(Sender: TObject);
     procedure MenuHelpDocClick(Sender: TObject);
     procedure MenuHelpSysInfoClick(Sender: TObject);
     procedure MenuHelpItemClick(Sender: TObject);
@@ -408,6 +410,13 @@ type
     // previous ones): Undo reverts the change step by step. A document that
     // does not load raises and leaves the report as it was.
     procedure ApplyModifiedReportDocument(const AModifiedReportDocument: string);
+    // The welcome window with the sample reports (rpfrmwelcomelcl) and what
+    // the user chooses there; at startup only when the user did not hide it
+    // ([Preferences] ShowWelcome of repmand, shared with the VCL designer)
+    procedure ShowWelcome(AtStartup: Boolean);
+    // At startup (Application.QueueAsyncCall of the program): only when no
+    // report was opened
+    procedure ShowWelcomeAtStartup(Data: PtrInt);
 
     property Report: TRpReport read FReport write SetReport;
     property FileName: string read FFileName write SetFileName;
@@ -477,7 +486,9 @@ uses
   rpeditconnlcl, rpmdftreelcl,
   rplcldriver,
   // The local schema of the direct connections for the design assistant
-  rplocalschemas, rpfrmlocalschemaslcl;
+  rplocalschemas, rpfrmlocalschemaslcl,
+  // The welcome window with the sample reports
+  rpfrmwelcomelcl;
 
 const
   // Width of the recent file names in the File menu (VCL C_FILENAME_WIDTH)
@@ -1415,9 +1426,12 @@ begin
   FReport := ANewReport;
   FOwnsReport := True;
   FFileName := AFileName;
-  // Its MyBase files with a relative name are next to it
+  // Its MyBase files and SQLite databases with a relative name are next to it
   if AFileName <> '' then
+  begin
     RpReportFolder := ExtractFilePath(ExpandFileName(AFileName));
+    ANewReport.ReportFolder := RpReportFolder;
+  end;
   FLibraryName := '';
   FLibraryReportName := '';
   cue := GetUndoCue;
@@ -3435,6 +3449,53 @@ begin
   ShowAbout;
 end;
 
+procedure TFRpMainFLCL.MenuHelpSamplesClick(Sender: TObject);
+begin
+  ShowWelcome(False);
+end;
+
+procedure TFRpMainFLCL.ShowWelcomeAtStartup(Data: PtrInt);
+begin
+  if (FFileName = '') and (FLibraryReportName = '') then
+    ShowWelcome(True);
+end;
+
+procedure TFRpMainFLCL.ShowWelcome(AtStartup: Boolean);
+var
+  inif: TIniFile;
+  oldShow, showAtStartup: Boolean;
+  action: TRpWelcomeAction;
+  samplePath: string;
+begin
+  inif := TIniFile.Create(DesignerConfigFileName);
+  try
+    oldShow := inif.ReadBool('Preferences', 'ShowWelcome', True);
+    if AtStartup and (not oldShow) then
+      Exit;
+    showAtStartup := oldShow;
+    action := RpShowWelcomeLCL(Self, showAtStartup, samplePath);
+    if showAtStartup <> oldShow then
+    begin
+      try
+        inif.WriteBool('Preferences', 'ShowWelcome', showAtStartup);
+        inif.UpdateFile;
+      except
+        // A read only configuration keeps the window at startup
+      end;
+    end;
+  finally
+    inif.Free;
+  end;
+  case action of
+    rwaOpenSample:
+      OpenReportFile(samplePath);
+    rwaNewReport:
+      BtnNewClick(Self);
+    rwaOpenReport:
+      BtnOpenClick(Self);
+  end;
+end;
+
 procedure TFRpMainFLCL.MenuFileExitClick(Sender: TObject);
 begin
   Close;
@@ -3564,13 +3625,19 @@ begin
   MenuPrefPrintDialog.Checked := True;
   MenuPreferences.Add(MenuPrefPrintDialog);
 
+  // Help > Sample reports (the welcome window), the first item
+  MenuHelpSamples := NewMenuItem(MenuHelp, TranslateStr(2012, 'Sample reports...'),
+    TranslateStr(2013, 'Shows the welcome window, with the sample reports'),
+    MenuHelpSamplesClick);
+  MenuHelp.Insert(0, MenuHelpSamples);
+  MenuHelp.Insert(1, NewMenuItem(MenuHelp, '-', '', nil));
   // Help > Documentation, before About
   MenuHelpDoc := NewMenuItem(MenuHelp, TranslateStr(60, 'Documentation'),
     TranslateStr(61, 'Display Report Manager Designer Documentation'), MenuHelpDocClick);
-  MenuHelp.Insert(0, MenuHelpDoc);
+  MenuHelp.Insert(2, MenuHelpDoc);
   // VCL ASysInfo
   MenuHelpSysInfo := NewMenuItem(MenuHelp, SRpSsysInfo, SRpSsysInfoH, MenuHelpSysInfoClick);
-  MenuHelp.Insert(1, MenuHelpSysInfo);
+  MenuHelp.Insert(3, MenuHelpSysInfo);
   // Help on the selected item: F1, and Cmd+? on macOS (where F1 is handled by FormKeyDown)
   MenuHelpItem := NewMenuItem(MenuHelp, TranslateStr(2007, 'Help on the selected item'),
     TranslateStr(2008, 'Shows the documentation page of the selected item, or of the property being edited'),
@@ -3580,7 +3647,7 @@ begin
 {$ELSE}
   MenuHelpItem.ShortCut := ShortCut(VK_F1, []);
 {$ENDIF}
-  MenuHelp.Insert(1, MenuHelpItem);
+  MenuHelp.Insert(3, MenuHelpItem);
 
   UpdateFileMenu;
 end;

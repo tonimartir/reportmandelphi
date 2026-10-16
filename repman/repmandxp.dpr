@@ -112,6 +112,8 @@ uses
   rplocalschemas in '..\rplocalschemas.pas',
   rpdesignerclientsql in '..\rpdesignerclientsql.pas',
   rpfrmlocalschemasvcl in '..\rpfrmlocalschemasvcl.pas',
+  rpsamplesutil in '..\rpsamplesutil.pas',
+  rpfrmwelcomevcl in '..\rpfrmwelcomevcl.pas',
   rpbasereport in '..\rpbasereport.pas',
   rprulervcl in '..\rprulervcl.pas',
   rpsection in '..\rpsection.pas',

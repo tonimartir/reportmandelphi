@@ -304,9 +304,9 @@ jobs:
             echo "ERROR: se ha cargado otro OpenSSL"; exit 1
           fi
 
-      - name: Abrir sample4.rep (arquitectura del proceso)
+      - name: Abrir un ejemplo (arquitectura del proceso)
         run: |
-          DYLD_PRINT_LIBRARIES=1 "$EXE" "$APP/Contents/Resources/samples/sample4.rep" > gui.out 2> gui-dyld.log &
+          DYLD_PRINT_LIBRARIES=1 "$EXE" "$APP/Contents/Resources/samples/fishes.rep" > gui.out 2> gui-dyld.log &
           pid=$!
           sleep 25
           kill -0 $pid || { echo "ERROR: el disenador ha terminado"; cat gui.out; tail -n 30 gui-dyld.log; exit 1; }

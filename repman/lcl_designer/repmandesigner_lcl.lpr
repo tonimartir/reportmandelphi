@@ -302,7 +302,11 @@ begin
     Application.CreateForm(TFRpMainFLCL, MainForm);
     LoadPreferences(MainForm);
     if FileArg <> '' then
-      OpenFromCommandLine(MainForm, FileArg);
+      OpenFromCommandLine(MainForm, FileArg)
+    else
+      // The welcome window with the sample reports once the main window is
+      // shown (a file the Finder opens meanwhile keeps it hidden)
+      Application.QueueAsyncCall(MainForm.ShowWelcomeAtStartup, 0);
     {$IFDEF DARWIN}
     FinderOpener := TFinderOpener.Create;
     Application.AddOnDropFilesHandler(FinderOpener.OpenFiles);

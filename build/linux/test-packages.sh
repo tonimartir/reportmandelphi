@@ -28,12 +28,12 @@
 # Registros y capturas en <artefactos>/tests/; resumen al final (codigo de
 # salida 1 si falla alguna prueba).
 #
-# Variables: SAMPLE (informe de repman/repsamples, por defecto sample4.rep),
+# Variables: SAMPLE (informe de samples/, por defecto fishes.rep),
 #            WAIT (segundos de ejecucion, 15), SHOTS=0 (sin capturas),
 #            PARALLEL (contenedores a la vez, 5).
 set -uo pipefail
 
-SAMPLE=${SAMPLE:-sample4.rep}
+SAMPLE=${SAMPLE:-fishes.rep}
 WAIT=${WAIT:-15}
 SHOTS=${SHOTS:-1}
 PARALLEL=${PARALLEL:-5}
@@ -350,7 +350,7 @@ run_case() {   # run_case <imagen> <deb|deb-gtk2|appimage> <fichero> [otra varia
     log=$RES/$tag-$mode.log
     docker run --rm -e SAMPLE="$SAMPLE" -e WAIT="$WAIT" -e SHOTS="$SHOTS" \
         -v "$OUTDIR:/pkg:ro" -v "$HERE:/tests:ro" -v "$RES:/res" \
-        -v "$REPO/repman/repsamples:/samples:ro" \
+        -v "$REPO/samples:/samples:ro" \
         "$img" bash /tests/test-packages.sh --inside "$mode" "/pkg/$(basename "$file")" "$tag" \
         ${other:+"/pkg/$(basename "$other")"} > "$log" 2>&1
     echo "<<< $img $mode: $(tail -n 1 "$log")"

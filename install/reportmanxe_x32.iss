@@ -35,8 +35,10 @@ OutputBaseFilename=reportman_designer_{#AppVerU}_x86
 
 [Files]
 Source: "c:\desarrollo\prog\toni\reportman\repman\binr32\repmandxp.exe"; DestDir: "{app}"
-Source: "c:\desarrollo\prog\toni\reportman\repman\repsamples\sample4.rep"; DestDir: "{app}\Examples"
-Source: "c:\desarrollo\prog\toni\reportman\repman\biolife.cds"; DestDir: "{app}\Examples"
+; The sample reports with their SQLite database (samples/ of the repository, the same for
+; every designer): the welcome window of the designer lists them and opens a copy in
+; Documents\Report Manager\Samples
+Source: "c:\desarrollo\prog\toni\reportman\samples\*"; DestDir: "{app}\samples"; Flags: recursesubdirs createallsubdirs
 ; net2 (.NET designer + printreport) se instala aparte con el instalador independiente
 ; "Report Manager .NET Designer": reportmanxe_net_64.iss / reportmanxe_net_x32.iss
 Source: "c:\desarrollo\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{%PUBLIC}"
@@ -102,5 +104,5 @@ Filename: "{app}\Report Manager Web.url"; Section: "InternetShortcut"; Key: "URL
 Type: files; Name: "{app}\Report Manager Web.url"
 
 [Run]
-Filename: "{app}\Examples\sample4.rep"; Flags: postinstall runasoriginaluser nowait shellexec; Description: "Report Manager sample report"
+Filename: "{app}\repmandxp.exe"; Flags: postinstall runasoriginaluser nowait; Description: "Report Manager Designer (sample reports)"
   

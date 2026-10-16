@@ -45,8 +45,9 @@ lazarus_lcl_languages() {
 #                                                      (lclstrconsts.*.po de
 #                                                      Lazarus: botones de los
 #                                                      dialogos...)
-#   <raiz>/opt/reportman-designer/samples/             el ejemplo sample4.rep
-#                                                      y sus datos (biolife.*)
+#   <raiz>/opt/reportman-designer/samples/             los informes de ejemplo
+#                                                      (samples/ del repositorio,
+#                                                      con samples.db y samples.ini)
 #   <raiz>/usr/share/applications/reportman-designer.desktop
 #   <raiz>/usr/share/mime/packages/reportman-designer.xml
 #   <raiz>/usr/share/icons/hicolor/<n>x<n>/apps/reportman-designer.png
@@ -71,12 +72,13 @@ stage_app() {
     for l in $LCL_LANGUAGES; do
         install -m 0644 "$lazlang/lclstrconsts.$l.po" "$app/languages/"
     done
-    # Solo el ejemplo que instala Windows, con sus datos (el motor de Linux lee
-    # el biolife.xml, no el .cds binario): el resto de repsamples son informes
-    # de prueba del desarrollo, que no funcionan en otra maquina
-    for f in "$src/repman/repsamples/sample4.rep" "$src"/repman/repsamples/biolife.*; do
-        install -m 0644 "$f" "$app/samples/"
-    done
+    # Los informes de ejemplo, los mismos que instala Windows: samples/ del
+    # repositorio (la ventana de bienvenida los lista y abre una copia en los
+    # documentos del usuario). repman/repsamples son informes de prueba del
+    # desarrollo, que no funcionan en otra maquina
+    cp -R "$src/samples/." "$app/samples/"
+    find "$app/samples" -type d -exec chmod 0755 {} +
+    find "$app/samples" -type f -exec chmod 0644 {} +
 
     install -D -m 0644 "$FILES_DIR/reportman-designer.desktop" \
         "$root/usr/share/applications/$APP_ID.desktop"

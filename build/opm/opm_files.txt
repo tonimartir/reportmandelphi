@@ -75,6 +75,7 @@ rppdfreport.pas
 rpprintitem.pas
 rpreport.pas
 rpreportdesignercontracts.pas
+rpsamplesutil.pas
 rpsection.pas
 rpsecutil.pas
 rpsubreport.pas
@@ -158,6 +159,7 @@ design_lcl/rpfrmlocalschemaslcl.pas
 design_lcl/rpfrmloginframelcl.pas
 design_lcl/rpfrmloginlcl.pas
 design_lcl/rpfrmmonacoeditorlcl.pas
+design_lcl/rpfrmwelcomelcl.pas
 design_lcl/rplclwebview.pas
 design_lcl/rpmarkdownlcl.pas
 design_lcl/rpmdcueviewlcl.pas
