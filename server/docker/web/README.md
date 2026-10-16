@@ -20,6 +20,35 @@ Si finalmente quieres otro nombre de repositorio en Docker Hub, solo cambia la p
 - `dbxdrivers.conf` y `dbxconnections.conf` viven en `/usr/local/etc`.
 - `reportmanserver` en Linux termina resolviendose en `${HOME}/.etc.reportmanserver`.
 - En esta imagen `HOME=/var/lib/reportman`, asi que el fichero de servidor queda en `/var/lib/reportman/.etc.reportmanserver`.
+- La base es **Ubuntu 24.04**: su HarfBuzz (8.3) trae `libharfbuzz-subset0`, con la que el motor
+  incrusta en el PDF solo los glifos usados. En 22.04 no existe y cada fuente iba entera (una
+  pagina en japones ocupaba 28 MB; ahora, 424 KB). `repwebexe` esta enlazado contra glibc 2.28
+  (SDK de Rocky 8), asi que funciona en cualquier distribucion posterior.
+- Fuentes: DejaVu, Liberation (las metricas de Arial, Times New Roman y Courier New) y Noto (arabe,
+  hebreo, devanagari, tailandes, chino, japones, coreano...).
+
+---
+
+## Informes de ejemplo
+
+La imagen lleva los informes de ejemplo de los disenadores (la carpeta `samples/` del
+repositorio, los mismos nueve de Delphi, Lazarus y .NET) en `/opt/reportman/samples`, con la base
+SQLite que leen (`samples.db`, junto a ellos: cada informe lleva su conexion FireDAC SQLite dentro
+y busca la base en su carpeta, sin tocar `dbxconnections.conf`).
+
+- Una **instalacion nueva** (un volumen `repweb_home` sin `.etc.reportmanserver`) arranca con el
+  alias `SAMPLES=/opt/reportman/samples` en `[ALIASES]`. Si el administrador lo quita, no vuelve.
+- Una **instalacion existente** no cambia: para verlos, anade en el panel de administracion
+  (`/admin/aliases`) el alias `SAMPLES` de tipo carpeta con la ruta `/opt/reportman/samples`.
+- Son de solo lectura y van con la imagen: una version nueva de la imagen trae sus ejemplos
+  nuevos sin tocar nada del volumen.
+
+Prueba rapida (configuracion vacia: usuario `ADMIN` sin contrasena hasta que se cree el
+administrador en `/admin/login`):
+
+```bash
+curl -o fishes.pdf "http://localhost:8080/execute.pdf?username=ADMIN&password=&aliasname=SAMPLES&reportname=fishes"
+```
 
 ---
 
@@ -34,7 +63,7 @@ Zeos pueden conectar a estos backends sin pasos extra:
 | MySQL / MariaDB | mysql / mariadb | libmariadb3 |
 | Firebird | firebird-3.0 | libfbclient2 |
 | Interbase | interbase | libfbclient2 |
-| SQLite | sqlite | libsqlite3-0 |
+| SQLite | sqlite | libsqlite3-0 (y el enlace `libsqlite3.so`, el nombre que carga FireDAC) |
 | MS SQL Server (FreeTDS) | mssql | freetds-bin, libsybdb5, tdsodbc |
 | Sybase ASE | sybase | freetds-bin, libsybdb5 |
 | ODBC PostgreSQL / MySQL | odbc | odbc-postgresql, odbc-mariadb |
@@ -142,6 +171,8 @@ Resultado esperado:
 - `dbxdrivers.conf` y `dbxconnections.conf` persisten en `repweb_etc`
 - `reportmanserver` persiste en `repweb_home`
 - el panel admin queda accesible en `http://localhost:8080/admin/login`
+- el alias `SAMPLES` lista los nueve informes de ejemplo y cada uno sale en PDF (ver
+  «Informes de ejemplo»)
 
 ---
 

@@ -17,7 +17,13 @@ if [ ! -f "${REPORTMAN_ETC_DIR}/dbxconnections.conf" ]; then
 fi
 
 if [ ! -f "${REPORTMAN_HOME}/.etc.reportmanserver" ]; then
-  : > "${REPORTMAN_HOME}/.etc.reportmanserver"
+  # A new installation: the sample reports of the image under the SAMPLES alias
+  # (only now: an alias the administrator removes later stays removed).
+  if [ -d /opt/reportman/samples ]; then
+    printf '[ALIASES]\nSAMPLES=/opt/reportman/samples\n' > "${REPORTMAN_HOME}/.etc.reportmanserver"
+  else
+    : > "${REPORTMAN_HOME}/.etc.reportmanserver"
+  fi
 fi
 
 exec /opt/reportman/repwebexe -selfhosted -port="${REPORTMAN_HTTP_PORT}" -bind="${REPORTMAN_BIND}"

@@ -2,10 +2,12 @@
 # (.git, build outputs, MonacoEditor, binaries...) is packed and sent to the
 # Docker daemon on every build, which is very slow.
 #
-# The web image only needs three files, none of which match the excludes below:
+# The web image only needs these, none of which match the excludes below:
 #   server/docker/web/artifacts/linux64/repwebexe
 #   server/docker/web/scripts/docker-entrypoint.sh
 #   repman/dbxdrivers.ini
+#   samples/ (the .rep files, samples.db and samples.ini; the thumbnails are
+#   left out with every .png, repwebexe does not show them)
 
 .git
 .github

@@ -9,7 +9,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl gnupg ca-certificates \
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
          | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list \
+    && curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list \
          | sed 's#deb #deb [signed-by=/usr/share/keyrings/microsoft-prod.gpg] #' \
          > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \

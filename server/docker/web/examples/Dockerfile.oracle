@@ -6,8 +6,11 @@ ARG BASE_IMAGE=tonimartir/reportman-web:latest
 FROM ${BASE_IMAGE}
 
 USER root
+# Ubuntu 24.04 names libaio libaio1t64 (libaio.so.1t64); the Instant Client
+# asks for libaio.so.1.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libaio1 unzip \
+    && apt-get install -y --no-install-recommends libaio1t64 unzip \
+    && ln -sf /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1 \
     && rm -rf /var/lib/apt/lists/*
 COPY instantclient.zip /tmp/instantclient.zip
 RUN mkdir -p /opt/oracle \
