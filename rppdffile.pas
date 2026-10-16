@@ -4969,7 +4969,7 @@ begin
 end;
 
 
-{$IFDEF FPC}
+{$IF Defined(FPC) or not Defined(MSWINDOWS)}
 // The byte of a character in WinAnsiEncoding (Windows-1252), the encoding of
 // the PDF standard fonts. The FPC strings are UTF-8 on Linux and macOS, so
 // adding the WideChar to the string would write its UTF-8 bytes, which a PDF
@@ -5009,7 +5009,29 @@ begin
   Result:='?';
  end;
 end;
+{$IFEND}
 
+{$IFNDEF FPC}
+{$IFNDEF MSWINDOWS}
+// Delphi on Linux: its AnsiString is UTF-8, so the line writer (SWriteLine)
+// turned a character above $7F of a standard font into two bytes, which a
+// reader shows as two Windows-1252 characters (a middle dot came out after
+// an A with a circumflex). The byte of WinAnsiEncoding goes as an octal
+// escape of the PDF string: plain ASCII.
+function WinAnsiEscape(achar:WideChar):string;
+var
+ b:Byte;
+begin
+ b:=Byte(WinAnsiChar(achar));
+ if b<$80 then
+  Result:=Char(b)
+ else
+  Result:='\'+IntToStr(b shr 6)+IntToStr((b shr 3) and 7)+IntToStr(b and 7);
+end;
+{$ENDIF}
+{$ENDIF}
+
+{$IFDEF FPC}
 // Appends the Windows-1252 byte of a character. The text is marked with the
 // code page of the system first: its constants ('(') come from this unit,
 // UTF-8 (the file has a BOM), and on Windows (Windows-1252) the next
@@ -5789,11 +5811,15 @@ begin
 {$IFDEF FPC}
    AddWinAnsiChar(Result,astring[i]);
 {$ELSE}
+{$IFDEF MSWINDOWS}
    // Euro exception
    if (Ord(astring[i])=8364) then
     Result:=Result+AnsiChar(128)
    else
     Result:=Result+astring[i];
+{$ELSE}
+   Result:=Result+WinAnsiEscape(astring[i]);
+{$ENDIF}
 {$ENDIF}
    if (i<Length(astring)) then
    begin
@@ -5842,11 +5868,15 @@ begin
 {$IFDEF FPC}
    AddWinAnsiChar(Result,nchar);
 {$ELSE}
+{$IFDEF MSWINDOWS}
    // Euro character exception
    if (Ord(nchar)=8364) then
     Result:=Result+AnsiChar(128)
    else
     Result:=Result+nchar;
+{$ELSE}
+   Result:=Result+WinAnsiEscape(nchar);
+{$ENDIF}
 {$ENDIF}
   end;
   Result:=Result+')';
