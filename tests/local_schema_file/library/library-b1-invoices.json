@@ -1,0 +1,124 @@
+{
+  "IsExample": false,
+  "Name": "Nueva Base de Datos",
+  "Provider": 5,
+  "Dialect": 9,
+  "ConnectionParameters": [],
+  "SchemaTables": [
+    {
+      "Name": "Empresas",
+      "Context": "Tabla maestra en la base de datos actual. El campo 'DBName' contiene el nombre físico de las otras bases de datos en el mismo servidor SQL.",
+      "Columns": [
+        {
+          "Name": "DBName",
+          "DataType": 4,
+          "Context": "Nombre de la base de datos de la empresa (ej: 'SBO_PROD_ES'). REGLA: Úsalo para construir la ruta: [{DBName}].dbo.{TABLA}.",
+          "AllowedValues": [
+            {
+              "Value": "SBO_EMPRESA_1",
+              "Label": "Textil"
+            },
+            {
+              "Value": "SBO_EMPRESA_2",
+              "Label": "Metal"
+            }
+          ],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "CompName",
+          "DataType": 4,
+          "Context": "Nombre de la sociedad.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "[{DB_NAME}].dbo.OINV",
+      "Context": "Facturas (Cabecera). REGLA: Sustituye '{DB_NAME}' por el valor de Empresas.DBName. Si no se especifica empresa, haz UNION ALL de todas las bases de datos de la lista AllowedValues.",
+      "Columns": [
+        {
+          "Name": "DocEntry",
+          "DataType": 1,
+          "Context": "ID interno (PK).",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "DocNum",
+          "DataType": 1,
+          "Context": "Nº Factura visible.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "DocDate",
+          "DataType": 6,
+          "Context": "Fecha contabilización.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "CardCode",
+          "DataType": 4,
+          "Context": "Código cliente (Link a OCRD).",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "DocTotal",
+          "DataType": 2,
+          "Context": "Total con IVA.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "[{DB_NAME}].dbo.INV1",
+      "Context": "Facturas (Líneas). Debe usar el mismo prefijo [{DB_NAME}] que la cabecera en el JOIN.",
+      "Columns": [
+        {
+          "Name": "DocEntry",
+          "DataType": 1,
+          "Context": "Link a OINV.",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "ItemCode",
+          "DataType": 4,
+          "Context": "Código artículo (Link a OITM).",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "Quantity",
+          "DataType": 2,
+          "Context": "Unidades.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "LineTotal",
+          "DataType": 2,
+          "Context": "Importe neto línea.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    }
+  ],
+  "PasswordPrompt": false,
+  "DbId": null,
+  "UserId": null,
+  "IsBusyAnalyzing": false,
+  "AnalysisStatus": "",
+  "AnalysisProgress": 0,
+  "AnalysisExplanation": "",
+  "IsAnalysisIndeterminate": false
+}

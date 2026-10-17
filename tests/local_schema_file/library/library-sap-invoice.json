@@ -1,0 +1,252 @@
+{
+  "IsExample": false,
+  "Name": "SAP",
+  "Provider": 5,
+  "Dialect": 9,
+  "ConnectionParameters": [],
+  "SchemaTables": [
+    {
+      "Name": "T000",
+      "Context": "Maestro de Mandantes. Define las empresas/entornos del sistema.",
+      "Columns": [
+        {
+          "Name": "MANDT",
+          "DataType": 4,
+          "Context": "ID del Mandante. Clave primaria.",
+          "AllowedValues": [
+            {
+              "Value": "100",
+              "Label": "Empresa Principal S.A."
+            },
+            {
+              "Value": "200",
+              "Label": "Filial Internacional"
+            }
+          ],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "MTEXT",
+          "DataType": 4,
+          "Context": "Nombre del Mandante/Empresa.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "T001W",
+      "Context": "Maestro de Centros (Plants). Traduce códigos de centro a nombres físicos.",
+      "Columns": [
+        {
+          "Name": "MANDT",
+          "DataType": 4,
+          "Context": "Mandante",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "WERKS",
+          "DataType": 4,
+          "Context": "Código de Centro (4 caracteres).",
+          "AllowedValues": [
+            {
+              "Value": "1000",
+              "Label": "Planta Madrid"
+            },
+            {
+              "Value": "2000",
+              "Label": "Almacén Barcelona"
+            }
+          ],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "NAME1",
+          "DataType": 4,
+          "Context": "Nombre del Centro/Planta.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "KNA1",
+      "Context": "Maestro de Clientes.",
+      "Columns": [
+        {
+          "Name": "MANDT",
+          "DataType": 4,
+          "Context": "Mandante",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "KUNNR",
+          "DataType": 4,
+          "Context": "Código de Cliente (10 pos. con ceros a la izquierda si es numérico).",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "NAME1",
+          "DataType": 4,
+          "Context": "Nombre del Cliente.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "STCEG",
+          "DataType": 4,
+          "Context": "NIF / Identificación Fiscal.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "MAKT",
+      "Context": "Descripciones de Artículos.",
+      "Columns": [
+        {
+          "Name": "MANDT",
+          "DataType": 4,
+          "Context": "Mandante",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "MATNR",
+          "DataType": 4,
+          "Context": "Código Material (18 pos. con ceros a la izquierda si es numérico).",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "SPRAS",
+          "DataType": 4,
+          "Context": "Idioma (S=Español). Filtrar siempre por SPRAS='S'.",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "MAKTX",
+          "DataType": 4,
+          "Context": "Nombre comercial del producto.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "VBRK",
+      "Context": "Cabecera de Factura.",
+      "Columns": [
+        {
+          "Name": "MANDT",
+          "DataType": 4,
+          "Context": "Mandante",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "VBELN",
+          "DataType": 4,
+          "Context": "Nº Factura.",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "FKDAT",
+          "DataType": 4,
+          "Context": "Fecha Factura (String YYYYMMDD). Ejemplo: '20260223'.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "KUNRG",
+          "DataType": 4,
+          "Context": "Código Pagador (FK a KNA1).",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "NETWR",
+          "DataType": 2,
+          "Context": "Total Neto Factura.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "VBRP",
+      "Context": "Líneas de Factura.",
+      "Columns": [
+        {
+          "Name": "MANDT",
+          "DataType": 4,
+          "Context": "Mandante",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "VBELN",
+          "DataType": 4,
+          "Context": "Nº Factura.",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "POSNR",
+          "DataType": 1,
+          "Context": "Nº Línea (Posición).",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "MATNR",
+          "DataType": 4,
+          "Context": "Código Artículo.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "WERKS",
+          "DataType": 4,
+          "Context": "Código Centro Logístico (FK a T001W).",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "FKIMG",
+          "DataType": 2,
+          "Context": "Cantidad Facturada.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "NETWR",
+          "DataType": 2,
+          "Context": "Neto de la línea.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    }
+  ],
+  "PasswordPrompt": false,
+  "DbId": null,
+  "UserId": null,
+  "IsBusyAnalyzing": false,
+  "AnalysisStatus": "",
+  "AnalysisProgress": 0,
+  "AnalysisExplanation": "",
+  "IsAnalysisIndeterminate": false
+}

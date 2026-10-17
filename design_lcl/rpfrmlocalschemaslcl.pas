@@ -240,9 +240,9 @@ type
     // The line at the bottom (what Export and Import did)
     procedure ShowInfo(const AText: string);
     // After an import (a file or the library): the new subschema chosen and
-    // not saved, and what was not imported
+    // not saved, what was not imported and the values of the templates
     procedure ImportDone(ACount: Integer; const AName: string;
-      ASkipped: TStrings);
+      ASkipped, AValues: TStrings);
     procedure ListSchemasClick(Sender: TObject);
     procedure BAddClick(Sender: TObject);
     procedure BDuplicateClick(Sender: TObject);
@@ -1558,15 +1558,129 @@ begin
   end;
 end;
 
+{ The values of the templates }
+
+// The value of a placeholder of the templates of a schema to import that
+// the catalog has several values of, chosen by the user: '' when cancelled
+function ChooseTemplateValue(AOwner: TComponent; const APlaceholder: string;
+  AValues: TStrings): string;
+var
+  LBottom, LButtons: TPanel;
+  LButton: TButton;
+  LForm: TForm;
+  LLabel: TLabel;
+  LList: TListBox;
+
+  function S(AValue: Integer): Integer;
+  begin
+    Result := (AValue * Screen.PixelsPerInch) div 96;
+  end;
+
+begin
+  Result := '';
+  LForm := TForm.CreateNew(AOwner);
+  try
+    LForm.Caption := string(TranslateStr(2029, 'Template value'));
+    LForm.Position := poScreenCenter;
+    LForm.BorderIcons := [biSystemMenu];
+    LForm.Width := S(460);
+    LForm.Height := S(320);
+    LForm.Constraints.MinWidth := S(320);
+    LForm.Constraints.MinHeight := S(220);
+    LBottom := TPanel.Create(LForm);
+    LBottom.Parent := LForm;
+    LBottom.BevelOuter := bvNone;
+    LBottom.Caption := '';
+    LBottom.Align := alBottom;
+    LBottom.Height := S(44);
+    LButtons := TPanel.Create(LForm);
+    LButtons.Parent := LBottom;
+    LButtons.BevelOuter := bvNone;
+    LButtons.Caption := '';
+    LButtons.Align := alRight;
+    LButtons.Width := S(216);
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(93, 'OK'));
+    LButton.ModalResult := mrOk;
+    LButton.Default := True;
+    LButton.SetBounds(S(4), S(9), S(96), S(26));
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(94, 'Cancel'));
+    LButton.ModalResult := mrCancel;
+    LButton.Cancel := True;
+    LButton.SetBounds(S(110), S(9), S(96), S(26));
+    LLabel := TLabel.Create(LForm);
+    LLabel.Parent := LForm;
+    LLabel.Align := alTop;
+    LLabel.BorderSpacing.Left := S(10);
+    LLabel.BorderSpacing.Top := S(10);
+    LLabel.BorderSpacing.Right := S(10);
+    LLabel.BorderSpacing.Bottom := S(4);
+    LLabel.AutoSize := False;
+    LLabel.WordWrap := True;
+    LLabel.Height := S(54);
+    LLabel.Caption := Format(string(TranslateStr(2030, 'The schema builds ' +
+      'the names of its tables with %s, and this database has several ' +
+      'values. Choose one:')), ['{' + APlaceholder + '}']);
+    LList := TListBox.Create(LForm);
+    LList.Parent := LForm;
+    LList.Align := alClient;
+    LList.BorderSpacing.Left := S(10);
+    LList.BorderSpacing.Top := S(4);
+    LList.BorderSpacing.Right := S(10);
+    LList.Items.Assign(AValues);
+    LList.ItemIndex := 0;
+    if (LForm.ShowModal = mrOk) and (LList.ItemIndex >= 0) then
+      Result := LList.Items[LList.ItemIndex];
+  finally
+    LForm.Free;
+  end;
+end;
+
+// AChosen gets the values for the templates of a schema to import that the
+// catalog has several values of ('NAME=value'): the user chooses them, the
+// others are not asked. False when the user cancels one
+function ChooseTemplateValues(AOwner: TComponent; AFile: TRpLocalSchemaFile;
+  const AJson: string; AChosen: TStrings): Boolean;
+var
+  I: Integer;
+  LNames, LValues: TStringList;
+  LValue: string;
+begin
+  Result := True;
+  AChosen.Clear;
+  LNames := TStringList.Create;
+  LValues := TStringList.Create;
+  try
+    RpImportPlaceholders(AFile, AJson, LNames);
+    for I := 0 to LNames.Count - 1 do
+    begin
+      RpImportPlaceholderValues(AFile, AJson, LNames[I], LValues);
+      if LValues.Count < 2 then
+        Continue;
+      LValue := ChooseTemplateValue(AOwner, LNames[I], LValues);
+      if LValue = '' then
+        Exit(False);
+      AChosen.Add(LNames[I] + '=' + LValue);
+    end;
+  finally
+    LValues.Free;
+    LNames.Free;
+  end;
+end;
+
 procedure TFRpLocalSchemasLCL.BImportClick(Sender: TObject);
 var
   LCount: Integer;
   LDialog: TOpenDialog;
-  LName: string;
-  LSkipped: TStringList;
+  LJson, LName: string;
+  LSkipped, LValues: TStringList;
 begin
   LDialog := TOpenDialog.Create(Self);
   LSkipped := TStringList.Create;
+  LValues := TStringList.Create;
   try
     LDialog.Title := DialogTitle(BImport.Caption);
     LDialog.Filter := SchemaFileFilter;
@@ -1574,22 +1688,27 @@ begin
     LDialog.Options := LDialog.Options + [ofFileMustExist];
     if not LDialog.Execute then
       Exit;
-    LCount := RpImportSchemaFile(FFile, LDialog.FileName, LName, LSkipped);
+    LJson := RpReadSchemaFile(LDialog.FileName);
+    if not ChooseTemplateValues(Self, FFile, LJson, LValues) then
+      Exit;
+    LCount := RpImportSchemaJson(FFile, LJson, LDialog.FileName, LName,
+      LSkipped, LValues);
     if LCount < 0 then
     begin
       RpMessageBox(string(TranslateStr(1938,
         'The file is not a schema exported by Reportman AI.')), '', [smbOK], smsCritical);
       Exit;
     end;
-    ImportDone(LCount, LName, LSkipped);
+    ImportDone(LCount, LName, LSkipped, LValues);
   finally
+    LValues.Free;
     LSkipped.Free;
     LDialog.Free;
   end;
 end;
 
 procedure TFRpLocalSchemasLCL.ImportDone(ACount: Integer; const AName: string;
-  ASkipped: TStrings);
+  ASkipped, AValues: TStrings);
 var
   LText: string;
 begin
@@ -1608,36 +1727,51 @@ begin
   Pages.ActivePageIndex := 1;
   LText := Format(string(TranslateStr(1936,
     'Imported as %s: %s tables. Save to keep it.')), [AName, IntToStr(ACount)]);
+  // The values a template took (the company of a Dynamics BC) are said with
+  // what was left out
+  if AValues.Count > 0 then
+    LText := LText + ' ' + Format(string(TranslateStr(2031,
+      'Template values: %s')), [RpTemplateValuesText(AValues)]) + '.';
   if ASkipped.Count > 0 then
-  begin
     LText := LText + ' ' + Format(string(TranslateStr(1937,
       'Not in the database, not imported: %s')), [RpShortNameList(ASkipped, 8)]);
-    ShowInfo(LText);
+  ShowInfo(LText);
+  if (ASkipped.Count > 0) or (AValues.Count > 0) then
     RpMessageBox(LText);
-  end
-  else
-    ShowInfo(LText);
 end;
 
 { The library of Reportman AI }
 
 type
-  // The categories of the library and their schemas: one is chosen
+  // The categories of the library and their schemas: one is chosen. Each
+  // schema says how many of its tables this database has, and the one that
+  // matches it best is chosen at first (spec D2)
   TFRpSchemaLibraryLCL = class(TForm)
   private
     FLibrary: TJSONArray;
+    // 'id=matched,total' of the schemas read
+    FCoverage: TStringList;
     ComboCategory: TComboBox;
     LDescription: TLabel;
+    LDetected: TLabel;
+    LSchemaLabel: TLabel;
     ListSchemas: TListView;
     BOK: TButton;
     function S(AValue: Integer): Integer;
+    function Coverage(ASchema: TJSONObject; out AMatched,
+      ATotal: Integer): Boolean;
+    procedure ChooseDetected;
     procedure FillSchemas;
     procedure ComboCategoryChange(Sender: TObject);
     procedure ListSchemasSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure ListSchemasDblClick(Sender: TObject);
   public
-    constructor CreateFor(AOwner: TComponent; ALibrary: TJSONArray);
+    // AIds and AFullSchemas: the schemas read and their fullSchema, to
+    // measure them against the catalog of AFile
+    constructor CreateFor(AOwner: TComponent; ALibrary: TJSONArray;
+      AFile: TRpLocalSchemaFile; AIds, AFullSchemas: TStrings);
+    destructor Destroy; override;
     function SelectedId: Int64;
     function SelectedName: string;
   end;
@@ -1648,9 +1782,10 @@ begin
 end;
 
 constructor TFRpSchemaLibraryLCL.CreateFor(AOwner: TComponent;
-  ALibrary: TJSONArray);
+  ALibrary: TJSONArray; AFile: TRpLocalSchemaFile; AIds,
+  AFullSchemas: TStrings);
 var
-  I: Integer;
+  I, LMatched, LTotal: Integer;
   LTop, LBottom, LButtons: TPanel;
   LLabel: TLabel;
   LColumn: TListColumn;
@@ -1658,11 +1793,17 @@ var
 begin
   inherited CreateNew(AOwner);
   FLibrary := ALibrary;
+  FCoverage := TStringList.Create;
+  for I := 0 to AIds.Count - 1 do
+  begin
+    RpImportCoverage(AFile, AFullSchemas[I], LMatched, LTotal);
+    FCoverage.Add(AIds[I] + '=' + IntToStr(LMatched) + ',' + IntToStr(LTotal));
+  end;
   Caption := string(TranslateStr(1988, 'Schema library'));
   Position := poScreenCenter;
   BorderIcons := [biSystemMenu];
-  Width := S(560);
-  Height := S(440);
+  Width := S(620);
+  Height := S(460);
   Constraints.MinWidth := S(420);
   Constraints.MinHeight := S(320);
   // Bottom: OK and Cancel at the right
@@ -1719,11 +1860,21 @@ begin
   LDescription.Height := S(30);
   LDescription.Top := S(2000);
   LDescription.Align := alTop;
-  LLabel := TLabel.Create(Self);
-  LLabel.Parent := LTop;
-  LLabel.Caption := string(TranslateStr(1528, 'Schema'));
-  LLabel.Top := S(3000);
-  LLabel.Align := alTop;
+  // The schema that matches this database (ChooseDetected)
+  LDetected := TLabel.Create(Self);
+  LDetected.Parent := LTop;
+  LDetected.AutoSize := False;
+  LDetected.WordWrap := True;
+  LDetected.Font.Style := [fsBold];
+  LDetected.Height := S(22);
+  LDetected.Top := S(2500);
+  LDetected.Align := alTop;
+  LDetected.Visible := False;
+  LSchemaLabel := TLabel.Create(Self);
+  LSchemaLabel.Parent := LTop;
+  LSchemaLabel.Caption := string(TranslateStr(1528, 'Schema'));
+  LSchemaLabel.Top := S(3000);
+  LSchemaLabel.Align := alTop;
   ListSchemas := TListView.Create(Self);
   ListSchemas.Parent := Self;
   ListSchemas.Align := alClient;
@@ -1735,10 +1886,13 @@ begin
   ListSchemas.HideSelection := False;
   LColumn := ListSchemas.Columns.Add;
   LColumn.Caption := string(TranslateStr(544, 'Name'));
-  LColumn.Width := S(380);
+  LColumn.Width := S(310);
   LColumn := ListSchemas.Columns.Add;
   LColumn.Caption := string(TranslateStr(91, 'Version'));
-  LColumn.Width := S(110);
+  LColumn.Width := S(90);
+  LColumn := ListSchemas.Columns.Add;
+  LColumn.Caption := string(TranslateStr(2026, 'In this database'));
+  LColumn.Width := S(150);
   ListSchemas.OnSelectItem := ListSchemasSelectItem;
   ListSchemas.OnDblClick := ListSchemasDblClick;
   for I := 0 to FLibrary.Count - 1 do
@@ -1748,11 +1902,94 @@ begin
   if ComboCategory.Items.Count > 0 then
     ComboCategory.ItemIndex := 0;
   FillSchemas;
+  ChooseDetected;
+  if LDetected.Visible then
+    LTop.Height := LTop.Height + LDetected.Height;
+end;
+
+destructor TFRpSchemaLibraryLCL.Destroy;
+begin
+  FCoverage.Free;
+  inherited Destroy;
+end;
+
+function TFRpSchemaLibraryLCL.Coverage(ASchema: TJSONObject; out AMatched,
+  ATotal: Integer): Boolean;
+var
+  LText: string;
+begin
+  AMatched := 0;
+  ATotal := 0;
+  LText := FCoverage.Values[JsonText(ASchema, 'id')];
+  Result := LText <> '';
+  if Result then
+  begin
+    AMatched := StrToIntDef(Copy(LText, 1, Pos(',', LText) - 1), 0);
+    ATotal := StrToIntDef(Copy(LText, Pos(',', LText) + 1, Length(LText)), 0);
+  end;
+end;
+
+// The schema written for this database chosen, and said: the detected one
+// with more tables in it, then the one with more of its own, then the first
+// in the library
+procedure TFRpSchemaLibraryLCL.ChooseDetected;
+var
+  I, J, LBestCategory, LBestMatched, LBestTotal, LMatched, LTotal: Integer;
+  LBest, LSchema: TJSONObject;
+  LSchemas: TJSONValue;
+begin
+  LBest := nil;
+  LBestCategory := -1;
+  LBestMatched := 0;
+  LBestTotal := 1;
+  for I := 0 to ComboCategory.Items.Count - 1 do
+  begin
+    LSchemas := TJSONObject(ComboCategory.Items.Objects[I]).Values['schemas'];
+    if not (LSchemas is TJSONArray) then
+      Continue;
+    for J := 0 to TJSONArray(LSchemas).Count - 1 do
+    begin
+      if not (TJSONArray(LSchemas).Items[J] is TJSONObject) then
+        Continue;
+      LSchema := TJSONObject(TJSONArray(LSchemas).Items[J]);
+      if not Coverage(LSchema, LMatched, LTotal) or
+        not RpImportCoverageDetected(LMatched, LTotal) then
+        Continue;
+      if (LMatched > LBestMatched) or ((LMatched = LBestMatched) and
+        (LMatched * LBestTotal > LBestMatched * LTotal)) then
+      begin
+        LBest := LSchema;
+        LBestCategory := I;
+        LBestMatched := LMatched;
+        LBestTotal := LTotal;
+      end;
+    end;
+  end;
+  if LBest = nil then
+    Exit;
+  ComboCategory.ItemIndex := LBestCategory;
+  FillSchemas;
+  for I := 0 to ListSchemas.Items.Count - 1 do
+    if ListSchemas.Items[I].Data = Pointer(LBest) then
+    begin
+      ListSchemas.Items[I].Selected := True;
+      ListSchemas.Items[I].Focused := True;
+      Break;
+    end;
+  LDetected.Caption := Format(string(TranslateStr(2028, 'Detected: %s, ' +
+    'schema %s (%s of %s tables are in this database)')),
+    [ComboCategory.Items[LBestCategory], JsonText(LBest, 'name'),
+    IntToStr(LBestMatched), IntToStr(LBestTotal)]);
+  // Shown above "Schema" (a control of alTop shown later goes where its Top
+  // says)
+  LDetected.Top := LSchemaLabel.Top - 1;
+  LDetected.Visible := True;
+  BOK.Enabled := ListSchemas.Selected <> nil;
 end;
 
 procedure TFRpSchemaLibraryLCL.FillSchemas;
 var
-  I: Integer;
+  I, LMatched, LTotal: Integer;
   LCategory, LSchema: TJSONObject;
   LSchemas: TJSONValue;
   LItem: TListItem;
@@ -1776,6 +2013,11 @@ begin
       LItem := ListSchemas.Items.Add;
       LItem.Caption := JsonText(LSchema, 'name');
       LItem.SubItems.Add(JsonText(LSchema, 'version'));
+      if Coverage(LSchema, LMatched, LTotal) then
+        LItem.SubItems.Add(Format(string(TranslateStr(2027, '%s of %s')),
+          [IntToStr(LMatched), IntToStr(LTotal)]))
+      else
+        LItem.SubItems.Add('');
       LItem.Data := Pointer(LSchema);
     end;
   finally
@@ -1816,21 +2058,58 @@ begin
     Result := ListSchemas.Selected.Caption;
 end;
 
+// The schemas of the library read (AIds, their fullSchema in AFullSchemas),
+// to say how many of their tables each database has: one that can not be
+// read says nothing, and is read again if it is chosen
+procedure ReadLibrarySchemas(AHttp: TRpDatabaseHttp; ALibrary: TJSONArray;
+  AIds, AFullSchemas: TStrings);
+var
+  I, J: Integer;
+  LId: string;
+  LSchemas: TJSONValue;
+begin
+  for I := 0 to ALibrary.Count - 1 do
+  begin
+    if not (ALibrary.Items[I] is TJSONObject) then
+      Continue;
+    LSchemas := TJSONObject(ALibrary.Items[I]).Values['schemas'];
+    if not (LSchemas is TJSONArray) then
+      Continue;
+    for J := 0 to TJSONArray(LSchemas).Count - 1 do
+    begin
+      if not (TJSONArray(LSchemas).Items[J] is TJSONObject) then
+        Continue;
+      LId := JsonText(TJSONObject(TJSONArray(LSchemas).Items[J]), 'id');
+      if (StrToInt64Def(LId, 0) <= 0) or (AIds.IndexOf(LId) >= 0) then
+        Continue;
+      try
+        AFullSchemas.Add(AHttp.GetLibrarySchema(StrToInt64(LId)));
+        AIds.Add(LId);
+      except
+        // Without its coverage
+      end;
+    end;
+  end;
+end;
+
 procedure TFRpLocalSchemasLCL.BLibraryClick(Sender: TObject);
 var
-  LCount: Integer;
+  LCount, LIndex: Integer;
   LCursor: TCursor;
   LDialog: TFRpSchemaLibraryLCL;
   LFullSchema, LName, LSchemaName: string;
   LHttp: TRpDatabaseHttp;
   LId: Int64;
   LLibrary: TJSONArray;
-  LSkipped: TStringList;
+  LFullSchemas, LIds, LSkipped, LValues: TStringList;
 begin
   ShowInfo('');
   LLibrary := nil;
   LHttp := TRpDatabaseHttp.Create;
   LSkipped := TStringList.Create;
+  LValues := TStringList.Create;
+  LIds := TStringList.Create;
+  LFullSchemas := TStringList.Create;
   try
     LHttp.Token := TRpAuthManager.Instance.Token;
     LHttp.InstallId := TRpAuthManager.Instance.InstallId;
@@ -1849,10 +2128,12 @@ begin
           Exit;
         end;
       end;
+      ReadLibrarySchemas(LHttp, LLibrary, LIds, LFullSchemas);
     finally
       Screen.Cursor := LCursor;
     end;
-    LDialog := TFRpSchemaLibraryLCL.CreateFor(Self, LLibrary);
+    LDialog := TFRpSchemaLibraryLCL.CreateFor(Self, LLibrary, FFile, LIds,
+      LFullSchemas);
     try
       if LDialog.ShowModal <> mrOk then
         Exit;
@@ -1863,26 +2144,36 @@ begin
     end;
     if LId <= 0 then
       Exit;
-    Screen.Cursor := crHourGlass;
-    try
+    LIndex := LIds.IndexOf(IntToStr(LId));
+    if LIndex >= 0 then
+      LFullSchema := LFullSchemas[LIndex]
+    else
+    begin
+      Screen.Cursor := crHourGlass;
       try
-        LFullSchema := LHttp.GetLibrarySchema(LId);
-      except
-        on E: Exception do
-        begin
-          Screen.Cursor := LCursor;
-          RpMessageBox(Format(string(TranslateStr(1989,
-            'The library could not be read: %s')), [E.Message]), '', [smbOK],
-            smsCritical);
-          Exit;
+        try
+          LFullSchema := LHttp.GetLibrarySchema(LId);
+        except
+          on E: Exception do
+          begin
+            Screen.Cursor := LCursor;
+            RpMessageBox(Format(string(TranslateStr(1989,
+              'The library could not be read: %s')), [E.Message]), '', [smbOK],
+              smsCritical);
+            Exit;
+          end;
         end;
+      finally
+        Screen.Cursor := LCursor;
       end;
-    finally
-      Screen.Cursor := LCursor;
     end;
+    // The values of its templates (the company of a Dynamics BC), when the
+    // catalog has several
+    if not ChooseTemplateValues(Self, FFile, LFullSchema, LValues) then
+      Exit;
     // The import of a file (F7), named after the schema of the library
     LCount := RpImportLibrarySchemaJson(FFile, LFullSchema, LSchemaName, LName,
-      LSkipped);
+      LSkipped, LValues);
     if LCount < 0 then
     begin
       RpMessageBox(Format(string(TranslateStr(1989,
@@ -1891,8 +2182,11 @@ begin
         smsCritical);
       Exit;
     end;
-    ImportDone(LCount, LName, LSkipped);
+    ImportDone(LCount, LName, LSkipped, LValues);
   finally
+    LFullSchemas.Free;
+    LIds.Free;
+    LValues.Free;
     LSkipped.Free;
     LHttp.Free;
     LLibrary.Free;

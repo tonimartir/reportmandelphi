@@ -1,0 +1,155 @@
+{
+  "IsExample": false,
+  "Name": "Nueva Base de Datos",
+  "Provider": 5,
+  "Dialect": 9,
+  "ConnectionParameters": [],
+  "SchemaTables": [
+    {
+      "Name": "Company",
+      "Context": "Tabla maestra de empresas. REGLA DE ORO: El campo 'Name' es la clave para construir los nombres de las tablas de gestión.",
+      "Columns": [
+        {
+          "Name": "Name",
+          "DataType": 4,
+          "Context": "Nombre técnico de la empresa. Para el SQL: 1. Cambia puntos '.' por guiones bajos '_'. 2. Mantén los espacios. 3. Añade '$' al final.",
+          "AllowedValues": [
+            {
+              "Value": "CRONUS España S.A.",
+              "Label": "Empresa Principal"
+            }
+          ],
+          "IsPrimaryKey": true
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "[{COMPANY_NAME}$Customer]",
+      "Context": "Maestro de Clientes. Sustituye '{COMPANY_NAME}' por el valor transformado de Company.Name.",
+      "Columns": [
+        {
+          "Name": "No_",
+          "DataType": 4,
+          "Context": "Código de cliente.",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "Name",
+          "DataType": 4,
+          "Context": "Nombre del cliente.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "[{COMPANY_NAME}$Item]",
+      "Context": "Maestro de Artículos. Sustituye '{COMPANY_NAME}' por el valor transformado de Company.Name.",
+      "Columns": [
+        {
+          "Name": "No_",
+          "DataType": 4,
+          "Context": "Código de artículo.",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "Description",
+          "DataType": 4,
+          "Context": "Nombre del producto.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "[{COMPANY_NAME}$Sales Invoice Header]",
+      "Context": "Cabeceras de Venta. REGLA MULTIEMPRESA: Si el usuario no pide una empresa concreta, la IA debe hacer un UNION ALL de esta tabla para cada valor de la lista de empresas en 'Company'.",
+      "Columns": [
+        {
+          "Name": "No_",
+          "DataType": 4,
+          "Context": "Nº Factura.",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "Sell-to Customer No_",
+          "DataType": 4,
+          "Context": "Código cliente (Link a Customer).",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "Posting Date",
+          "DataType": 6,
+          "Context": "Fecha factura.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "Amount",
+          "DataType": 2,
+          "Context": "Base Imponible.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    },
+    {
+      "Name": "[{COMPANY_NAME}$Sales Invoice Line]",
+      "Context": "Líneas de factura. El prefijo '{COMPANY_NAME}$' debe coincidir con el de la cabecera en el mismo JOIN.",
+      "Columns": [
+        {
+          "Name": "Document No_",
+          "DataType": 4,
+          "Context": "Link a Header (No_).",
+          "AllowedValues": [],
+          "IsPrimaryKey": true
+        },
+        {
+          "Name": "Type",
+          "DataType": 1,
+          "Context": "Filtra siempre Type=2 para Artículos.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "No_",
+          "DataType": 4,
+          "Context": "Código Artículo (Link a Item).",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "Quantity",
+          "DataType": 2,
+          "Context": "Unidades.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        },
+        {
+          "Name": "Line Amount",
+          "DataType": 2,
+          "Context": "Importe línea.",
+          "AllowedValues": [],
+          "IsPrimaryKey": false
+        }
+      ],
+      "ForeignKeys": []
+    }
+  ],
+  "PasswordPrompt": false,
+  "DbId": null,
+  "UserId": null,
+  "IsBusyAnalyzing": false,
+  "AnalysisStatus": "",
+  "AnalysisProgress": 0,
+  "AnalysisExplanation": "",
+  "IsAnalysisIndeterminate": false
+}

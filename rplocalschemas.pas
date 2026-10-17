@@ -404,20 +404,53 @@ procedure RpExportSchemaToFile(AFile: TRpLocalSchemaFile;
 //   description to the one the dictionary has, or enters by hand; one
 //   excluded at the root comes back (AddRelation).
 // What is not in the catalog is added to ASkipped ('TABLE', 'TABLE.COLUMN').
+// A table of the file is the one of the catalog with its name; else the one
+// with the last part of a qualified name ('[{DB_NAME}].dbo.OINV': OINV);
+// else, when that part is a template of the library ('{COMPANY_NAME}$Item',
+// see RpImportPlaceholders), the one its placeholders give with the values
+// of ATemplateValues ('COMPANY_NAME=CRONUS'), the first value of the catalog
+// for those it does not have. When ATemplateValues is not nil it ends with
+// the values used, those of the placeholders that gave some table.
 // Returns the tables of the new subschema; 0, and nothing is created, when
 // none of its tables is in the catalog (a schema of another database);
 // -1, and nothing changes, when AJson is not a schema (not JSON or without
 // schemaTables)
 function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
-  AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+  AFileName: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings = nil): Integer;
 function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
-  const AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+  const AFileName: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings = nil): Integer;
 // The same import with another origin, a schema of the library of Reportman
 // AI (5.7.1 C2, the fullSchema of GET api/schema/{id}): the new subschema is
 // named after ALibraryName, the name of the schema in the library ("name 2"
 // when it exists), not after the "name" of the JSON
 function RpImportLibrarySchemaJson(AFile: TRpLocalSchemaFile; const AJson,
-  ALibraryName: string; out ANewName: string; ASkipped: TStrings): Integer;
+  ALibraryName: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings = nil): Integer;
+// The placeholders of the templates of a schema to import that tables of the
+// catalog fill, in the order of the schema: the library names the tables of
+// some systems with them ('[{COMPANY_NAME}$Customer]' in Dynamics BC, whose
+// tables are 'CRONUS S_A_$Customer', one set per company). ANames gets their
+// names ('COMPANY_NAME'); a placeholder only in a qualifier that the import
+// drops ('{DB_NAME}' of '[{DB_NAME}].dbo.OINV') is not one of them
+procedure RpImportPlaceholders(AFile: TRpLocalSchemaFile; const AJson: string;
+  ANames: TStrings);
+// The values of the catalog for one of them: the one that gives more tables
+// of the schema first (then in the order they are found)
+procedure RpImportPlaceholderValues(AFile: TRpLocalSchemaFile; const AJson,
+  APlaceholder: string; AValues: TStrings);
+// How many tables of a schema to import are in the catalog (as the import
+// finds them, the templates with any value) of the ATotal it has
+procedure RpImportCoverage(AFile: TRpLocalSchemaFile; const AJson: string;
+  out AMatched, ATotal: Integer);
+// A schema of the library with that coverage was written for this database:
+// two tables at least (or its only one) and half of them
+function RpImportCoverageDetected(AMatched, ATotal: Integer): Boolean;
+// 'NAME=value' lines as the user reads them: '{NAME} = value, ...'
+function RpTemplateValuesText(AValues: TStrings): string;
+// The text of a file to import (UTF-8, with a BOM or without one)
+function RpReadSchemaFile(const AFileName: string): string;
 // 'A, B, C, ...': the first AMax names of a list, an ellipsis for the rest
 function RpShortNameList(AList: TStrings; AMax: Integer): string;
 
@@ -3689,11 +3722,451 @@ begin
   WriteUtf8File(AFileName, RpExportSchemaJson(AFile, ASchemaName));
 end;
 
+{ The templates of the library }
+
+type
+  // A part of a table name: a literal, or a placeholder ('{COMPANY_NAME}')
+  // that takes one character at least
+  TRpNameSegment = record
+    Placeholder: Boolean;
+    Text: string;
+  end;
+  TRpNameSegments = array of TRpNameSegment;
+
+  // The tables of a schema to import as the catalog names them: its name;
+  // the last part of a qualified one; a template whose placeholders take
+  // the values of Values ('NAME=value') or, without one, the first table of
+  // the catalog that fills it
+  TRpImportResolver = class(TObject)
+  private
+    FFile: TRpLocalSchemaFile;
+    FNames: TStringList;
+  public
+    Values: TStringList;
+    constructor Create(AFile: TRpLocalSchemaFile);
+    destructor Destroy; override;
+    function Resolve(const AName: string): TJSONObject;
+    function IsTemplate(const AName: string): Boolean;
+    procedure GetCandidates(ATables: TJSONArray; APlaceholders: TStringList);
+  end;
+
+// The name of a table without its qualifiers ('[{DB_NAME}].dbo.OINV':
+// OINV): the part after the last dot out of brackets and quotes, without
+// the brackets or quotes around it
+function LastNamePart(const AName: string): string;
+var
+  I, LStart: Integer;
+  LClose: Char;
+begin
+  Result := Trim(AName);
+  LStart := 1;
+  LClose := #0;
+  for I := 1 to Length(Result) do
+    if LClose <> #0 then
+    begin
+      if Result[I] = LClose then
+        LClose := #0;
+    end
+    else if Result[I] = '[' then
+      LClose := ']'
+    else if Result[I] = '"' then
+      LClose := '"'
+    else if Result[I] = '.' then
+      LStart := I + 1;
+  Result := Trim(Copy(Result, LStart, Length(Result)));
+  if (Length(Result) >= 2) and (((Result[1] = '[') and
+    (Result[Length(Result)] = ']')) or ((Result[1] = '"') and
+    (Result[Length(Result)] = '"'))) then
+    Result := Trim(Copy(Result, 2, Length(Result) - 2));
+end;
+
+// The literals and placeholders of a name; False when it has no placeholder
+function NameSegments(const AName: string;
+  out ASegments: TRpNameSegments): Boolean;
+var
+  I, J: Integer;
+  LLiteral: string;
+
+  procedure Add(APlaceholder: Boolean; const AText: string);
+  begin
+    SetLength(ASegments, Length(ASegments) + 1);
+    ASegments[High(ASegments)].Placeholder := APlaceholder;
+    ASegments[High(ASegments)].Text := AText;
+  end;
+
+begin
+  ASegments := nil;
+  Result := False;
+  LLiteral := '';
+  I := 1;
+  while I <= Length(AName) do
+  begin
+    if AName[I] = '{' then
+    begin
+      J := I + 1;
+      while (J <= Length(AName)) and CharInSet(AName[J],
+        ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+        Inc(J);
+      if (J > I + 1) and (J <= Length(AName)) and (AName[J] = '}') then
+      begin
+        if LLiteral <> '' then
+          Add(False, LLiteral);
+        LLiteral := '';
+        Add(True, Copy(AName, I + 1, J - I - 1));
+        Result := True;
+        I := J + 1;
+        Continue;
+      end;
+    end;
+    LLiteral := LLiteral + AName[I];
+    Inc(I);
+  end;
+  if LLiteral <> '' then
+    Add(False, LLiteral);
+end;
+
+// A name of the catalog fills the segments from ASegment on, at APos: the
+// literals in order (case insensitive), a placeholder with one character at
+// least, the shortest first. AValues ('NAME=value') gives the value of a
+// placeholder it has, and gets the ones taken
+function MatchSegments(const ASegments: TRpNameSegments; ASegment: Integer;
+  const AName: string; APos: Integer; AValues: TStrings): Boolean;
+var
+  LIndex, LLength: Integer;
+  LText: string;
+begin
+  if ASegment > High(ASegments) then
+    Exit(APos = Length(AName) + 1);
+  LText := ASegments[ASegment].Text;
+  if ASegments[ASegment].Placeholder then
+  begin
+    LIndex := AValues.IndexOfName(LText);
+    if LIndex >= 0 then
+      LText := AValues.ValueFromIndex[LIndex]
+    else
+    begin
+      for LLength := 1 to Length(AName) - APos + 1 do
+      begin
+        AValues.Add(LText + '=' + Copy(AName, APos, LLength));
+        if MatchSegments(ASegments, ASegment + 1, AName, APos + LLength,
+          AValues) then
+          Exit(True);
+        AValues.Delete(AValues.Count - 1);
+      end;
+      Exit(False);
+    end;
+  end;
+  Result := (LText <> '') and SameText(Copy(AName, APos, Length(LText)), LText) and
+    MatchSegments(ASegments, ASegment + 1, AName, APos + Length(LText), AValues);
+end;
+
+// The tables of a schema to import: schemaTables, or the bare array of a
+// schema of the library
+function ImportTables(AJson: TJSONValue): TJSONArray;
+begin
+  Result := nil;
+  if AJson is TJSONArray then
+    Result := TJSONArray(AJson)
+  else if AJson is TJSONObject then
+    Result := JArrCI(TJSONObject(AJson), 'schemaTables');
+end;
+
+constructor TRpImportResolver.Create(AFile: TRpLocalSchemaFile);
+begin
+  inherited Create;
+  FFile := AFile;
+  FNames := TStringList.Create;
+  AFile.GetTableNames(FNames);
+  Values := TStringList.Create;
+end;
+
+destructor TRpImportResolver.Destroy;
+begin
+  Values.Free;
+  FNames.Free;
+  inherited Destroy;
+end;
+
+function TRpImportResolver.IsTemplate(const AName: string): Boolean;
+var
+  LSegments: TRpNameSegments;
+begin
+  Result := (FFile.FindTable(Trim(AName)) = nil) and
+    NameSegments(LastNamePart(AName), LSegments);
+end;
+
+function TRpImportResolver.Resolve(const AName: string): TJSONObject;
+var
+  I: Integer;
+  LTaken: TStringList;
+  LPart: string;
+  LSegments: TRpNameSegments;
+begin
+  Result := FFile.FindTable(Trim(AName));
+  if Result <> nil then
+    Exit;
+  LPart := LastNamePart(AName);
+  if not NameSegments(LPart, LSegments) then
+  begin
+    if LPart <> '' then
+      Result := FFile.FindTable(LPart);
+    Exit;
+  end;
+  LTaken := TStringList.Create;
+  try
+    for I := 0 to FNames.Count - 1 do
+    begin
+      LTaken.Assign(Values);
+      if MatchSegments(LSegments, 0, FNames[I], 1, LTaken) then
+        Exit(FFile.FindTable(FNames[I]));
+    end;
+  finally
+    LTaken.Free;
+  end;
+end;
+
+// APlaceholders (owning its objects) gets the placeholders of the templates
+// of ATables that the catalog fills, in the order of the schema, each one
+// with the list of its values (owning, as objects, the tables of the schema
+// each value gives): the one that gives more first, then in the order they
+// are found (the tables of the schema, for each one the catalog)
+procedure TRpImportResolver.GetCandidates(ATables: TJSONArray;
+  APlaceholders: TStringList);
+var
+  I, J, K, LIndex: Integer;
+  LKey, LName: string;
+  LTaken, LValues, LTables: TStringList;
+  LSegments: TRpNameSegments;
+begin
+  APlaceholders.Clear;
+  APlaceholders.OwnsObjects := True;
+  if ATables = nil then
+    Exit;
+  LTaken := TStringList.Create;
+  try
+    for I := 0 to ATables.Count - 1 do
+    begin
+      LName := Trim(JStrCI(JObj(ATables, I), 'name'));
+      if (LName = '') or not IsTemplate(LName) then
+        Continue;
+      NameSegments(LastNamePart(LName), LSegments);
+      LKey := UpperCase(LName);
+      for J := 0 to FNames.Count - 1 do
+      begin
+        LTaken.Clear;
+        if not MatchSegments(LSegments, 0, FNames[J], 1, LTaken) then
+          Continue;
+        for K := 0 to LTaken.Count - 1 do
+        begin
+          LIndex := APlaceholders.IndexOf(LTaken.Names[K]);
+          if LIndex < 0 then
+          begin
+            LValues := TStringList.Create;
+            LValues.OwnsObjects := True;
+            LIndex := APlaceholders.AddObject(LTaken.Names[K], LValues);
+          end;
+          LValues := TStringList(APlaceholders.Objects[LIndex]);
+          LIndex := LValues.IndexOf(LTaken.ValueFromIndex[K]);
+          if LIndex < 0 then
+            LIndex := LValues.AddObject(LTaken.ValueFromIndex[K],
+              TStringList.Create);
+          LTables := TStringList(LValues.Objects[LIndex]);
+          if LTables.IndexOf(LKey) < 0 then
+            LTables.Add(LKey);
+        end;
+      end;
+    end;
+  finally
+    LTaken.Free;
+  end;
+  // The one that gives more tables first; a tie keeps the order found
+  for I := 0 to APlaceholders.Count - 1 do
+  begin
+    LValues := TStringList(APlaceholders.Objects[I]);
+    for J := 1 to LValues.Count - 1 do
+    begin
+      K := J;
+      while (K > 0) and (TStringList(LValues.Objects[K - 1]).Count <
+        TStringList(LValues.Objects[K]).Count) do
+      begin
+        LValues.Exchange(K - 1, K);
+        Dec(K);
+      end;
+    end;
+  end;
+end;
+
+// The values of the placeholders of AJson for an import: those of AGiven
+// ('NAME=value'), the first of the catalog for the others
+procedure ImportTemplateValues(AResolver: TRpImportResolver;
+  ATables: TJSONArray; AGiven: TStrings);
+var
+  I, LIndex: Integer;
+  LPlaceholders: TStringList;
+begin
+  AResolver.Values.Clear;
+  LPlaceholders := TStringList.Create;
+  try
+    AResolver.GetCandidates(ATables, LPlaceholders);
+    for I := 0 to LPlaceholders.Count - 1 do
+    begin
+      LIndex := -1;
+      if AGiven <> nil then
+        LIndex := AGiven.IndexOfName(LPlaceholders[I]);
+      if LIndex >= 0 then
+        AResolver.Values.Add(LPlaceholders[I] + '=' +
+          AGiven.ValueFromIndex[LIndex])
+      else if TStringList(LPlaceholders.Objects[I]).Count > 0 then
+        AResolver.Values.Add(LPlaceholders[I] + '=' +
+          TStringList(LPlaceholders.Objects[I])[0]);
+    end;
+  finally
+    LPlaceholders.Free;
+  end;
+end;
+
+// The placeholders of the template of a table resolved go to AUsed
+procedure AddUsedPlaceholders(AResolver: TRpImportResolver;
+  const AName: string; AUsed: TStrings);
+var
+  I: Integer;
+  LSegments: TRpNameSegments;
+begin
+  if not AResolver.IsTemplate(AName) then
+    Exit;
+  NameSegments(LastNamePart(AName), LSegments);
+  for I := 0 to High(LSegments) do
+    if LSegments[I].Placeholder and (AUsed.IndexOf(LSegments[I].Text) < 0) then
+      AUsed.Add(LSegments[I].Text);
+end;
+
+procedure RpImportPlaceholders(AFile: TRpLocalSchemaFile; const AJson: string;
+  ANames: TStrings);
+var
+  LPlaceholders: TStringList;
+  LResolver: TRpImportResolver;
+  LRoot: TJSONValue;
+begin
+  ANames.Clear;
+  try
+    LRoot := TJSONObject.ParseJSONValue(AJson);
+  except
+    LRoot := nil;
+  end;
+  LResolver := TRpImportResolver.Create(AFile);
+  LPlaceholders := TStringList.Create;
+  try
+    LResolver.GetCandidates(ImportTables(LRoot), LPlaceholders);
+    ANames.Assign(LPlaceholders);
+  finally
+    LPlaceholders.Free;
+    LResolver.Free;
+    LRoot.Free;
+  end;
+end;
+
+procedure RpImportPlaceholderValues(AFile: TRpLocalSchemaFile; const AJson,
+  APlaceholder: string; AValues: TStrings);
+var
+  LIndex: Integer;
+  LPlaceholders: TStringList;
+  LResolver: TRpImportResolver;
+  LRoot: TJSONValue;
+begin
+  AValues.Clear;
+  try
+    LRoot := TJSONObject.ParseJSONValue(AJson);
+  except
+    LRoot := nil;
+  end;
+  LResolver := TRpImportResolver.Create(AFile);
+  LPlaceholders := TStringList.Create;
+  try
+    LResolver.GetCandidates(ImportTables(LRoot), LPlaceholders);
+    LIndex := LPlaceholders.IndexOf(APlaceholder);
+    if LIndex >= 0 then
+      AValues.AddStrings(TStringList(LPlaceholders.Objects[LIndex]));
+    // The tables of each value are owned by the list freed here
+    for LIndex := 0 to AValues.Count - 1 do
+      AValues.Objects[LIndex] := nil;
+  finally
+    LPlaceholders.Free;
+    LResolver.Free;
+    LRoot.Free;
+  end;
+end;
+
+procedure RpImportCoverage(AFile: TRpLocalSchemaFile; const AJson: string;
+  out AMatched, ATotal: Integer);
+var
+  I: Integer;
+  LName: string;
+  LNames: TStringList;
+  LResolver: TRpImportResolver;
+  LRoot: TJSONValue;
+  LTables: TJSONArray;
+begin
+  AMatched := 0;
+  ATotal := 0;
+  try
+    LRoot := TJSONObject.ParseJSONValue(AJson);
+  except
+    LRoot := nil;
+  end;
+  LResolver := TRpImportResolver.Create(AFile);
+  LNames := TStringList.Create;
+  try
+    LTables := ImportTables(LRoot);
+    if LTables = nil then
+      Exit;
+    for I := 0 to LTables.Count - 1 do
+    begin
+      LName := Trim(JStrCI(JObj(LTables, I), 'name'));
+      if (LName = '') or (LNames.IndexOf(LName) >= 0) then
+        Continue;
+      LNames.Add(LName);
+      Inc(ATotal);
+      if LResolver.Resolve(LName) <> nil then
+        Inc(AMatched);
+    end;
+  finally
+    LNames.Free;
+    LResolver.Free;
+    LRoot.Free;
+  end;
+end;
+
+function RpImportCoverageDetected(AMatched, ATotal: Integer): Boolean;
+begin
+  Result := ((AMatched >= 2) or ((AMatched = 1) and (ATotal = 1))) and
+    (AMatched * 2 >= ATotal);
+end;
+
+function RpTemplateValuesText(AValues: TStrings): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  if AValues <> nil then
+    for I := 0 to AValues.Count - 1 do
+    begin
+      if Result <> '' then
+        Result := Result + ', ';
+      Result := Result + '{' + AValues.Names[I] + '} = ' +
+        AValues.ValueFromIndex[I];
+    end;
+end;
+
+function RpReadSchemaFile(const AFileName: string): string;
+begin
+  Result := ReadUtf8File(AFileName);
+end;
+
 // The import of RpImportSchemaJson; AForcedName names the new subschema
 // instead of the "name" of the JSON when it is not empty
 function ImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
   AFileName, AForcedName: string; out ANewName: string;
-  ASkipped: TStrings): Integer;
+  ASkipped, ATemplateValues: TStrings): Integer;
 var
   I, J: Integer;
   LRoot: TJSONValue;
@@ -3702,6 +4175,9 @@ var
   LChosen, LNames, LOrdered, LSource, LTarget: TStringList;
   LSchema: TRpLocalSubSchema;
   LColumnName, LName, LTableName, LText: string;
+  LResolver: TRpImportResolver;
+  LTargetTable: TJSONObject;
+  LUsed: TStringList;
 begin
   Result := -1;
   ANewName := '';
@@ -3717,12 +4193,17 @@ begin
   LOrdered := TStringList.Create;
   LSource := TStringList.Create;
   LTarget := TStringList.Create;
+  LResolver := TRpImportResolver.Create(AFile);
+  LUsed := TStringList.Create;
   try
     if not (LRoot is TJSONObject) then
       Exit;
     LTables := JArrCI(TJSONObject(LRoot), 'schemaTables');
     if LTables = nil then
       Exit;
+    // The templates of the library take the values given, the first of the
+    // catalog for the others
+    ImportTemplateValues(LResolver, LTables, ATemplateValues);
     LName := AForcedName;
     if Trim(LName) = '' then
       LName := JStrCI(TJSONObject(LRoot), 'name');
@@ -3732,7 +4213,7 @@ begin
     // (0); ANewName says which schema it was
     J := 0;
     for I := 0 to LTables.Count - 1 do
-      if AFile.FindTable(Trim(JStrCI(JObj(LTables, I), 'name'))) <> nil then
+      if LResolver.Resolve(JStrCI(JObj(LTables, I), 'name')) <> nil then
         Inc(J);
     if J = 0 then
     begin
@@ -3748,12 +4229,13 @@ begin
       LTableName := Trim(JStrCI(LTable, 'name'));
       if LTableName = '' then
         Continue;
-      LCatalogTable := AFile.FindTable(LTableName);
+      LCatalogTable := LResolver.Resolve(LTableName);
       if LCatalogTable = nil then
       begin
         AddSkipped(ASkipped, LTableName);
         Continue;
       end;
+      AddUsedPlaceholders(LResolver, LTableName, LUsed);
       LTableName := JStr(LCatalogTable, 'name');
       LText := JStrCI(LTable, 'context');
       if Trim(LText) <> '' then
@@ -3804,7 +4286,7 @@ begin
     for I := 0 to LTables.Count - 1 do
     begin
       LTable := JObj(LTables, I);
-      LCatalogTable := AFile.FindTable(Trim(JStrCI(LTable, 'name')));
+      LCatalogTable := LResolver.Resolve(JStrCI(LTable, 'name'));
       LForeignKeys := JArrCI(LTable, 'foreignKeys');
       if (LCatalogTable = nil) or (LForeignKeys = nil) then
         Continue;
@@ -3813,12 +4295,15 @@ begin
         LItem := JObj(LForeignKeys, J);
         if LItem = nil then
           Continue;
-        LText := Trim(JStrCI(LItem, 'targetTable'));
+        LTargetTable := LResolver.Resolve(JStrCI(LItem, 'targetTable'));
+        if LTargetTable = nil then
+          Continue;
+        LText := JStr(LTargetTable, 'name');
         ArrayNames(JArrCI(LItem, 'sourceColumns'), LSource);
         ArrayNames(JArrCI(LItem, 'targetColumns'), LTarget);
         if (LSource.Count <> LTarget.Count) or
           not ColumnsExist(LCatalogTable, LSource) or
-          not ColumnsExist(AFile.FindTable(LText), LTarget) then
+          not ColumnsExist(LTargetTable, LTarget) then
           Continue;
         // A relation the file brings comes back if it was excluded
         AFile.AddRelation(JStr(LCatalogTable, 'name'), LText, LSource, LTarget,
@@ -3826,7 +4311,17 @@ begin
       end;
     end;
     Result := LSchema.Tables.Count;
+    // The values that gave some table
+    if ATemplateValues <> nil then
+    begin
+      ATemplateValues.Clear;
+      for I := 0 to LResolver.Values.Count - 1 do
+        if LUsed.IndexOf(LResolver.Values.Names[I]) >= 0 then
+          ATemplateValues.Add(LResolver.Values[I]);
+    end;
   finally
+    LUsed.Free;
+    LResolver.Free;
     LTarget.Free;
     LSource.Free;
     LOrdered.Free;
@@ -3837,20 +4332,24 @@ begin
 end;
 
 function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
-  AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+  AFileName: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings): Integer;
 begin
-  Result := ImportSchemaJson(AFile, AJson, AFileName, '', ANewName, ASkipped);
+  Result := ImportSchemaJson(AFile, AJson, AFileName, '', ANewName, ASkipped,
+    ATemplateValues);
 end;
 
 function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
-  const AFileName: string; out ANewName: string; ASkipped: TStrings): Integer;
+  const AFileName: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings): Integer;
 begin
   Result := RpImportSchemaJson(AFile, ReadUtf8File(AFileName), AFileName,
-    ANewName, ASkipped);
+    ANewName, ASkipped, ATemplateValues);
 end;
 
 function RpImportLibrarySchemaJson(AFile: TRpLocalSchemaFile; const AJson,
-  ALibraryName: string; out ANewName: string; ASkipped: TStrings): Integer;
+  ALibraryName: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings): Integer;
 var
   LRoot: TJSONValue;
   LWrapped: TJSONObject;
@@ -3868,7 +4367,7 @@ begin
       try
         LWrapped.AddPair('schemaTables', TJSONArray(LRoot.Clone));
         Result := ImportSchemaJson(AFile, LWrapped.ToJSON, '', ALibraryName,
-          ANewName, ASkipped);
+          ANewName, ASkipped, ATemplateValues);
       finally
         LWrapped.Free;
       end;
@@ -3878,7 +4377,7 @@ begin
     LRoot.Free;
   end;
   Result := ImportSchemaJson(AFile, AJson, '', ALibraryName, ANewName,
-    ASkipped);
+    ASkipped, ATemplateValues);
 end;
 
 function RpShortNameList(AList: TStrings; AMax: Integer): string;

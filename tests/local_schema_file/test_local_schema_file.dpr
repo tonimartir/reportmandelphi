@@ -24,6 +24,10 @@ program test_local_schema_file;
 {   8. The relations deleted and discarded              }
 {      ("excludedRelations"), and the change of a       }
 {      relation by hand.                                }
+{   9. The templates of the library: placeholders and   }
+{      qualifiers in the names of its tables, and the   }
+{      coverage that detects the system of a database   }
+{      (library\ next to the fixture).                  }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_local_schema_      }
 {   file.lpi (lazbuild). Run:                           }
@@ -1193,6 +1197,118 @@ begin
   end;
 end;
 
+// The items of a list joined with commas, as they are (CommaText quotes)
+function PlainJoined(AList: TStrings): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to AList.Count - 1 do
+  begin
+    if I > 0 then
+      Result := Result + ',';
+    Result := Result + AList[I];
+  end;
+end;
+
+// The templates of the library (spec L/D of 18-10-2026): the placeholders of
+// the names of its tables and their values in a catalog, what the import
+// makes of them, and the coverage that detects the system of a database. The
+// same fixture and results as the C# designer and Reportman.Server.Web
+procedure TestLibraryTemplates(const AFolder: string);
+var
+  LFile: TRpLocalSchemaFile;
+  LB1, LBC, LCronus, LName, LOther, LSAP: string;
+  LColumns, LNames, LSkipped, LValues: TStringList;
+  LCount, LMatched, LTotal: Integer;
+  LSchema: TRpLocalSubSchema;
+begin
+  LFile := TRpLocalSchemaFile.Create;
+  LColumns := TStringList.Create;
+  LNames := TStringList.Create;
+  LSkipped := TStringList.Create;
+  LValues := TStringList.Create;
+  try
+    Check(LFile.LoadFromFile(AFolder + 'dbxschemas-library.json'),
+      'templates: the catalog of the fixture is read');
+    LBC := ReadText(AFolder + 'library-bc-invoices.json');
+    LB1 := ReadText(AFolder + 'library-b1-invoices.json');
+    LSAP := ReadText(AFolder + 'library-sap-invoice.json');
+    // The companies as the catalog spells them (a source without an encoding
+    // does not write them)
+    LFile.GetTableNames(LNames);
+    LCronus := Copy(LNames[1], 1, Pos('$', LNames[1]) - 1);
+    LOther := Copy(LNames[5], 1, Pos('$', LNames[5]) - 1);
+    Check((Pos('CRONUS', LCronus) = 1) and (LOther = 'Otra Empresa'),
+      'templates: two companies in the catalog');
+
+    RpImportPlaceholders(LFile, LBC, LNames);
+    Check(PlainJoined(LNames) = 'COMPANY_NAME',
+      'templates 1: Dynamics BC has one placeholder: ' + PlainJoined(LNames));
+    RpImportPlaceholderValues(LFile, LBC, 'COMPANY_NAME', LValues);
+    Check((LValues.Count = 2) and (LValues[0] = LCronus) and (LValues[1] = LOther),
+      'templates 1: its values, the one with more tables first: ' + PlainJoined(LValues));
+
+    LValues.Clear;
+    LCount := RpImportLibrarySchemaJson(LFile, LBC, 'Invoices', LName, LSkipped,
+      LValues);
+    LSchema := LFile.Schemas[LFile.IndexOfSchema(LName)];
+    Check((LCount = 5) and (LSkipped.Count = 0) and
+      (PlainJoined(LSchema.Tables) = 'Company,' + LCronus + '$Customer,' + LCronus +
+      '$Item,' + LCronus + '$Sales Invoice Header,' + LCronus + '$Sales Invoice Line'),
+      'templates 2: without values, the first company: ' + PlainJoined(LSchema.Tables));
+    Check((LValues.Count = 1) and (LValues[0] = 'COMPANY_NAME=' + LCronus) and
+      (RpTemplateValuesText(LValues) = '{COMPANY_NAME} = ' + LCronus),
+      'templates 2: the value used: ' + RpTemplateValuesText(LValues));
+    LSchema.GetColumns(LCronus + '$Sales Invoice Line', LColumns);
+    Check(PlainJoined(LColumns) = 'Document No_,Type,No_,Quantity,Line Amount',
+      'templates 2: the columns of the schema, in the order of the catalog: ' +
+      PlainJoined(LColumns));
+
+    LValues.Text := 'COMPANY_NAME=' + LOther;
+    LCount := RpImportLibrarySchemaJson(LFile, LBC, 'Invoices', LName, LSkipped,
+      LValues);
+    LSchema := LFile.Schemas[LFile.IndexOfSchema(LName)];
+    Check((LCount = 3) and (LName = 'Invoices 2') and
+      (PlainJoined(LSchema.Tables) = 'Company,' + LOther + '$Customer,' + LOther + '$Item') and
+      (PlainJoined(LSkipped) = '[{COMPANY_NAME}$Sales Invoice Header],' +
+      '[{COMPANY_NAME}$Sales Invoice Line]') and
+      (LValues.Count = 1) and (LValues[0] = 'COMPANY_NAME=' + LOther),
+      'templates 3: the other company: ' + PlainJoined(LSchema.Tables) + ' / ' +
+      PlainJoined(LSkipped));
+
+    RpImportPlaceholders(LFile, LB1, LNames);
+    Check(LNames.Count = 0,
+      'templates 4: Business One has none (its placeholder is in a qualifier)');
+    LCount := RpImportLibrarySchemaJson(LFile, LB1, 'Invoices B1', LName,
+      LSkipped, LValues);
+    LSchema := LFile.Schemas[LFile.IndexOfSchema(LName)];
+    Check((LCount = 2) and (PlainJoined(LSchema.Tables) = 'OINV,INV1') and
+      (PlainJoined(LSkipped) = 'Empresas') and (LValues.Count = 0),
+      'templates 4: without the qualifier: ' + PlainJoined(LSchema.Tables) + ' / ' +
+      PlainJoined(LSkipped));
+
+    RpImportCoverage(LFile, LBC, LMatched, LTotal);
+    Check((LMatched = 5) and (LTotal = 5) and RpImportCoverageDetected(LMatched, LTotal),
+      Format('templates 5: Dynamics BC, %d of %d, detected', [LMatched, LTotal]));
+    RpImportCoverage(LFile, LB1, LMatched, LTotal);
+    Check((LMatched = 2) and (LTotal = 3) and RpImportCoverageDetected(LMatched, LTotal),
+      Format('templates 5: Business One, %d of %d, detected', [LMatched, LTotal]));
+    RpImportCoverage(LFile, LSAP, LMatched, LTotal);
+    Check((LMatched = 2) and (LTotal = 6) and not RpImportCoverageDetected(LMatched, LTotal),
+      Format('templates 5: SAP R3, %d of %d, not detected', [LMatched, LTotal]));
+    Check(RpImportCoverageDetected(1, 1) and not RpImportCoverageDetected(1, 2) and
+      not RpImportCoverageDetected(0, 0),
+      'templates 5: one table detects only a schema of one table');
+  finally
+    LValues.Free;
+    LSkipped.Free;
+    LNames.Free;
+    LColumns.Free;
+    LFile.Free;
+  end;
+end;
+
 var
   LFixture, LSaved: string;
 begin
@@ -1216,6 +1332,7 @@ begin
     TestExportImport(LFixture, ExtractFilePath(LSaved));
     TestOnlySubschemas(LFixture);
     TestExcludedRelations(LFixture, ExtractFilePath(LSaved));
+    TestLibraryTemplates(ExtractFilePath(LFixture) + 'library' + PathDelim);
   except
     on E: Exception do
     begin

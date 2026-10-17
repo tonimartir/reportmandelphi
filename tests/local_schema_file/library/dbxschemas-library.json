@@ -1,0 +1,338 @@
+{
+  "version": 2,
+  "alias": "LIBRARYTEST",
+  "dialect": "SQLServer",
+  "generatedUtc": "2026-10-18T00:00:00Z",
+  "tables": [
+    {
+      "name": "Company",
+      "context": "",
+      "columns": [
+        {
+          "name": "Name",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "NVARCHAR(30)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "CRONUS España S_A_$Customer",
+      "context": "",
+      "columns": [
+        {
+          "name": "No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Name",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "City",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "CRONUS España S_A_$Item",
+      "context": "",
+      "columns": [
+        {
+          "name": "No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Description",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "CRONUS España S_A_$Sales Invoice Header",
+      "context": "",
+      "columns": [
+        {
+          "name": "No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Sell-to Customer No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Posting Date",
+          "dataType": "DateTime",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "DATETIME"
+        },
+        {
+          "name": "Amount",
+          "dataType": "Decimal",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "DECIMAL(38,20)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "CRONUS España S_A_$Sales Invoice Line",
+      "context": "",
+      "columns": [
+        {
+          "name": "Document No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Line No_",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INT"
+        },
+        {
+          "name": "Type",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "INT"
+        },
+        {
+          "name": "No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Quantity",
+          "dataType": "Decimal",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "DECIMAL(38,20)"
+        },
+        {
+          "name": "Line Amount",
+          "dataType": "Decimal",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "DECIMAL(38,20)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "Otra Empresa$Customer",
+      "context": "",
+      "columns": [
+        {
+          "name": "No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Name",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "Otra Empresa$Item",
+      "context": "",
+      "columns": [
+        {
+          "name": "No_",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Description",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "OINV",
+      "context": "",
+      "columns": [
+        {
+          "name": "DocEntry",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INT"
+        },
+        {
+          "name": "DocNum",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "INT"
+        },
+        {
+          "name": "DocDate",
+          "dataType": "DateTime",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "DATETIME"
+        },
+        {
+          "name": "CardCode",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "DocTotal",
+          "dataType": "Decimal",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "NUMERIC(19,6)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "INV1",
+      "context": "",
+      "columns": [
+        {
+          "name": "DocEntry",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INT"
+        },
+        {
+          "name": "LineNum",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INT"
+        },
+        {
+          "name": "ItemCode",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        },
+        {
+          "name": "Quantity",
+          "dataType": "Decimal",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "NUMERIC(19,6)"
+        },
+        {
+          "name": "LineTotal",
+          "dataType": "Decimal",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "NUMERIC(19,6)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "KNA1",
+      "context": "",
+      "columns": [
+        {
+          "name": "MANDT",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "NVARCHAR(3)"
+        },
+        {
+          "name": "KUNNR",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "NVARCHAR(10)"
+        },
+        {
+          "name": "NAME1",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        }
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "VBRK",
+      "context": "",
+      "columns": [
+        {
+          "name": "MANDT",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "NVARCHAR(3)"
+        },
+        {
+          "name": "VBELN",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "NVARCHAR(10)"
+        },
+        {
+          "name": "KUNAG",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(50)"
+        }
+      ],
+      "foreignKeys": []
+    }
+  ],
+  "schemas": []
+}
