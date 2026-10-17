@@ -1300,6 +1300,18 @@ begin
     Check(RpImportCoverageDetected(1, 1) and not RpImportCoverageDetected(1, 2) and
       not RpImportCoverageDetected(0, 0),
       'templates 5: one table detects only a schema of one table');
+
+    // A placeholder written twice takes the same text both times (XY_ZW,
+    // first in the catalog, does not match)
+    LFile.LoadFromJson('{"version":2,"tables":[{"name":"XY_ZW","columns":[]},' +
+      '{"name":"XY_XY","columns":[]}],"schemas":[]}');
+    RpImportPlaceholderValues(LFile, '{"schemaTables":[{"name":"{P}_{P}"}]}', 'P',
+      LValues);
+    LCount := RpImportSchemaJson(LFile, '{"name":"Twice","schemaTables":' +
+      '[{"name":"{P}_{P}"}]}', 'x.json', LName, LSkipped);
+    Check((PlainJoined(LValues) = 'XY') and (LCount = 1) and
+      (PlainJoined(LFile.Schemas[LFile.IndexOfSchema(LName)].Tables) = 'XY_XY'),
+      'templates: a placeholder written twice, the same text: ' + PlainJoined(LValues));
   finally
     LValues.Free;
     LSkipped.Free;
