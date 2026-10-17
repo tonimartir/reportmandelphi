@@ -18,7 +18,9 @@ unit rpfrmaiselectionlcl;
 { Same public API as TFRpAISelectionVCL. A panel instead of a frame and the
   layout done in code (the LCL has no TGridPanel; the VCL positions most
   controls in code too). RefreshStatusInBackground runs CheckStatus in a
-  TRpAsyncWorker instead of an anonymous thread. The unused TRpAITierType
+  TRpAsyncWorker instead of an anonymous thread, and LoadUserAgents loads
+  the agents in another one that answers through a TRpAsyncMailbox of the
+  frame (detached when it is destroyed). The unused TRpAITierType
   of the VCL unit is not declared (rpreportdesignercontracts has the real
   one). }
 
@@ -63,6 +65,17 @@ type
     FLblProvider: TLabel;
     FLblMode: TLabel;
     FGaugeHintWindow: THintWindow;
+    // LoadUserAgents: the mailbox of its workers (made on the first load),
+    // the load that counts (an older answer is dropped), the choice to
+    // restore and the provider shown while the list comes
+    FAgentsMailbox: TRpAsyncMailbox;
+    FAgentsMailboxRef: IRpAsyncMailbox;
+    FAgentsVersion: Integer;
+    FAgentsTier: string;
+    FAgentsAgentAiId: Int64;
+    FAgentsShownIndex: Integer;
+    procedure HandleAgentsMessage(AMessage: TRpAsyncMessage);
+    procedure ApplyUserAgents(AAgents: TStrings; AVersion: Integer);
     procedure BuildControls;
     procedure PaintBoxGaugeMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
@@ -122,6 +135,15 @@ type
     procedure AddAgentEndpoint(AId: Int64; const ASecret, AName: string; AOnline: Boolean);
     procedure ClearAgentEndpoints;
     procedure RestoreProviderSelection(const AAITier: string; AAgentAiId: Int64);
+    // For a host that does not load the agents itself: the online agents of
+    // the signed-in user (TRpDatabaseHttp.GetUserAgents) are loaded in a
+    // worker and then AAITier / AAgentAiId is chosen (the choice of the user
+    // when it changed meanwhile). Without the arguments, what is chosen now.
+    // Without a session there are no agents: chosen at once
+    procedure LoadUserAgents; overload;
+    procedure LoadUserAgents(const AAITier: string; AAgentAiId: Int64); overload;
+    // Chooses the mode by its value (AIMode): 'Reasoning', anything else Fast
+    procedure SelectAIMode(const AAIMode: string);
     function AgentEndpointCount: Integer;
     procedure SetInferenceProgress(AActive: Boolean);
     procedure TouchProgressToken(const AProgressId: string);
@@ -151,7 +173,7 @@ type
 implementation
 
 uses
-  rpmdconsts, LazUTF8;
+  rpmdconsts, rpdatahttp, LazUTF8;
 
 const
   CAISelectionLabelHeight = 16;
@@ -171,6 +193,65 @@ type
   protected
     procedure Run; override;
   end;
+
+  // The agents of the user, from TRpAISelectionAgentsWorker to the frame
+  TRpAISelectionAgentsMessage = class(TRpAsyncMessage)
+  public
+    Agents: TStringList;
+    Version: Integer;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  TRpAISelectionAgentsWorker = class(TRpAsyncWorker)
+  public
+    Token: string;
+    InstallId: string;
+    Version: Integer;
+  protected
+    procedure Run; override;
+  end;
+
+constructor TRpAISelectionAgentsMessage.Create;
+begin
+  inherited Create;
+  Agents := TStringList.Create;
+end;
+
+destructor TRpAISelectionAgentsMessage.Destroy;
+begin
+  Agents.Free;
+  inherited Destroy;
+end;
+
+procedure TRpAISelectionAgentsWorker.Run;
+var
+  LMessage: TRpAISelectionAgentsMessage;
+  LHttp: TRpDatabaseHttp;
+begin
+  LMessage := TRpAISelectionAgentsMessage.Create;
+  try
+    try
+      LHttp := TRpDatabaseHttp.Create;
+      try
+        LHttp.Token := Token;
+        LHttp.InstallId := InstallId;
+        if not LHttp.GetUserAgents(LMessage.Agents) then
+          LMessage.Agents.Clear;
+      finally
+        LHttp.Free;
+      end;
+    except
+      LMessage.Agents.Clear;
+    end;
+    LMessage.Version := Version;
+    // The mailbox owns it from now on (and drops it when the frame is gone)
+    Post(LMessage);
+    LMessage := nil;
+  finally
+    LMessage.Free;
+  end;
+end;
 
 procedure TRpCheckStatusWorker.Run;
 begin
@@ -213,6 +294,10 @@ end;
 
 destructor TFRpAISelectionLCL.Destroy;
 begin
+  // A list of agents still coming is dropped
+  if FAgentsMailbox <> nil then
+    FAgentsMailbox.Detach;
+  FAgentsMailboxRef := nil;
   SpinnerTimer.Enabled := False;
   ClearProgressTokens;
   FProgressTokens.Free;
@@ -961,6 +1046,98 @@ begin
   else
     ComboAIProvider.ItemIndex := 0;
   ComboAIProviderChange(ComboAIProvider);
+end;
+
+procedure TFRpAISelectionLCL.LoadUserAgents;
+begin
+  LoadUserAgents(AITier, AgentAiId);
+end;
+
+procedure TFRpAISelectionLCL.LoadUserAgents(const AAITier: string;
+  AAgentAiId: Int64);
+var
+  LWorker: TRpAISelectionAgentsWorker;
+begin
+  Inc(FAgentsVersion);
+  FAgentsTier := AAITier;
+  FAgentsAgentAiId := AAgentAiId;
+  // What can be chosen now; an agent once the list is here
+  RestoreProviderSelection(AAITier, AAgentAiId);
+  FAgentsShownIndex := ComboAIProvider.ItemIndex;
+  if TRpAuthManager.Instance.Token = '' then
+  begin
+    ClearAgentEndpoints;
+    RestoreProviderSelection(AAITier, AAgentAiId);
+    Exit;
+  end;
+  if FAgentsMailbox = nil then
+  begin
+    FAgentsMailbox := TRpAsyncMailbox.Create(HandleAgentsMessage);
+    FAgentsMailboxRef := FAgentsMailbox;
+  end;
+  LWorker := TRpAISelectionAgentsWorker.Create(FAgentsMailboxRef);
+  LWorker.Token := TRpAuthManager.Instance.Token;
+  LWorker.InstallId := TRpAuthManager.Instance.InstallId;
+  LWorker.Version := FAgentsVersion;
+  LWorker.Start;
+end;
+
+procedure TFRpAISelectionLCL.HandleAgentsMessage(AMessage: TRpAsyncMessage);
+begin
+  // The mailbox frees the message
+  if AMessage is TRpAISelectionAgentsMessage then
+    ApplyUserAgents(TRpAISelectionAgentsMessage(AMessage).Agents,
+      TRpAISelectionAgentsMessage(AMessage).Version);
+end;
+
+procedure TFRpAISelectionLCL.ApplyUserAgents(AAgents: TStrings;
+  AVersion: Integer);
+var
+  I: Integer;
+  LAgentAiId: Int64;
+  LParts: TStringList;
+  LTier: string;
+begin
+  // A newer load is on its way
+  if AVersion <> FAgentsVersion then
+    Exit;
+  // The user chose another one while the list came: that one stays
+  if ComboAIProvider.ItemIndex <> FAgentsShownIndex then
+  begin
+    LTier := AITier;
+    LAgentAiId := AgentAiId;
+  end
+  else
+  begin
+    LTier := FAgentsTier;
+    LAgentAiId := FAgentsAgentAiId;
+  end;
+  ClearAgentEndpoints;
+  LParts := TStringList.Create;
+  try
+    LParts.Delimiter := '|';
+    LParts.StrictDelimiter := True;
+    // 'Name=id|secret|online': only the online agents can answer
+    for I := 0 to AAgents.Count - 1 do
+    begin
+      LParts.DelimitedText := AAgents.ValueFromIndex[I];
+      if (LParts.Count >= 3) and (LParts[2] = '1') then
+        AddAgentEndpoint(StrToInt64Def(LParts[0], 0), LParts[1],
+          AAgents.Names[I], True);
+    end;
+  finally
+    LParts.Free;
+  end;
+  RestoreProviderSelection(LTier, LAgentAiId);
+end;
+
+procedure TFRpAISelectionLCL.SelectAIMode(const AAIMode: string);
+begin
+  if SameText(AAIMode, 'Reasoning') then
+    ComboAIMode.ItemIndex := 1
+  else
+    ComboAIMode.ItemIndex := 0;
+  ComboAIModeChange(ComboAIMode);
 end;
 
 procedure TFRpAISelectionLCL.SetInferenceProgress(AActive: Boolean);

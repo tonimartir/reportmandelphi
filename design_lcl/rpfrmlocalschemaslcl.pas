@@ -35,7 +35,16 @@ unit rpfrmlocalschemaslcl;
     and allowed values in the dictionary, "Also in", a preview of 5 rows),
     Relations (the ones that travel, the suggested ones and the ones the
     database does not declare) and Validation ("Analyze with AI", only with
-    a subschema: the dictionary never goes to the AI, 5.7).
+    a subschema: the dictionary never goes to the AI, 5.7, with the AI
+    chosen there: provider, mode and credits, TFRpAISelectionLCL).
+  - Relations (spec R3-R8 of 17-10-2026): Delete works with every relation:
+    in a subschema it leaves the subschema (its excludedRelations), in all
+    the tables one by hand leaves the dictionary and one of the database is
+    excluded from every subschema; Discard leaves a suggestion out of the
+    subschema; the Delete of the suggestions deletes one by hand from the
+    dictionary. Selecting a relation by hand loads it in the controls of the
+    new relation, and "Update relation" changes it; adding a relation that
+    was excluded brings it back.
   - The counters of the plan warn, never block. Nothing is saved until Save;
     closing with changes asks.
 
@@ -52,13 +61,15 @@ interface
 uses
   SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls, CheckLst,
   ComCtrls, Grids, Dialogs, Contnrs, DB, rpjsonfpc,
-  rpreport, rpdatainfo, rplocalschemas, rpdatahttp, rpfrmchatlcl;
+  rpreport, rpdatainfo, rplocalschemas, rpdatahttp, rpfrmchatlcl,
+  rpfrmaiselectionlcl;
 
 // The local schema of the connection AAlias of the report. ASchemaName is
 // the subschema to show and, when something was saved, the one selected
 // at the end ('' = all the tables). With AAddNew it starts adding a
 // subschema (its name first; cancelling it shows nothing). AChat gives the
-// AI of "Analyze with AI" (its provider and mode; Standard without one).
+// AI first chosen for "Analyze with AI" (its provider and mode; Standard
+// and Fast without one); the Validation tab can choose another one.
 // True when the file was saved
 function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
   var ASchemaName: string; AAddNew: Boolean = False;
@@ -81,7 +92,6 @@ type
   private
     FAnalysis: IRpSchemaAnalysis;
     FAnalysisTimer: TTimer;
-    FChat: TFRpChatFrame;
     FDatabase: TRpDatabaseInfoItem;
     FDatabases: TRpDatabaseInfoList;
     FFile: TRpLocalSchemaFile;
@@ -102,6 +112,11 @@ type
     FSuggestions: TObjectList;
     FPairSource: TStringList;
     FPairTarget: TStringList;
+    // The relation by hand loaded in the controls of the new relation
+    // ("Update relation"): its source table and its foreign key, in the
+    // tables of the file (forgotten whenever the relations are listed again)
+    FEditSource: string;
+    FEditForeignKey: TJSONObject;
     // Left
     ListSchemas: TListBox;
     BAdd: TButton;
@@ -155,6 +170,8 @@ type
     BDeleteRelation: TButton;
     ListSuggestions: TListBox;
     BComplete: TButton;
+    BDiscard: TButton;
+    BDeleteSuggestion: TButton;
     ComboSource: TComboBox;
     ComboTarget: TComboBox;
     ComboSourceColumn: TComboBox;
@@ -164,7 +181,9 @@ type
     BRemovePair: TButton;
     ENewContext: TEdit;
     BAddRelation: TButton;
-    // Validation
+    BUpdateRelation: TButton;
+    // Validation: the AI that analyzes
+    FAISelection: TFRpAISelectionLCL;
     BAnalyze: TButton;
     BStop: TButton;
     LStatus: TLabel;
@@ -213,6 +232,11 @@ type
     procedure StopAnalysis;
     // "Analyze with AI" only with a subschema, and not while one runs
     procedure UpdateAnalyzeButton;
+    // Stop, and the progress of the AI in place of its choice
+    procedure ShowAnalysisRunning(ARunning: Boolean);
+    // A relation by hand goes to the controls of the new relation and
+    // "Update relation" changes it; another relation leaves them as they are
+    procedure EditRelation(ARelation: TRpLocalRelation);
     // The line at the bottom (what Export and Import did)
     procedure ShowInfo(const AText: string);
     // After an import (a file or the library): the new subschema chosen and
@@ -250,14 +274,20 @@ type
     procedure ListRelationsClick(Sender: TObject);
     procedure MemoRelationContextChange(Sender: TObject);
     procedure BDeleteRelationClick(Sender: TObject);
+    procedure ListSuggestionsClick(Sender: TObject);
     procedure BCompleteClick(Sender: TObject);
+    procedure BDiscardClick(Sender: TObject);
+    procedure BDeleteSuggestionClick(Sender: TObject);
     procedure ComboSourceChange(Sender: TObject);
     procedure ComboTargetChange(Sender: TObject);
     procedure BAddPairClick(Sender: TObject);
     procedure BRemovePairClick(Sender: TObject);
     procedure BAddRelationClick(Sender: TObject);
+    procedure BUpdateRelationClick(Sender: TObject);
     procedure BAnalyzeClick(Sender: TObject);
     procedure BStopClick(Sender: TObject);
+    procedure AISelectionStopRequest(Sender: TObject);
+    procedure AISelectionProviderChange(Sender: TObject);
     procedure AnalysisTimerTick(Sender: TObject);
     procedure BSaveClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -315,7 +345,6 @@ var
 begin
   inherited CreateNew(AOwner);
   FReport := AReport;
-  FChat := AChat;
   FFile := TRpLocalSchemaFile.Create;
   FShownColumns := TStringList.Create;
   FRelations := TObjectList.Create(True);
@@ -342,6 +371,15 @@ begin
   FAnalysisTimer.Interval := 200;
   FAnalysisTimer.OnTimer := AnalysisTimerTick;
   BuildControls;
+  // The AI that validates: first the one of the chat, when there is one;
+  // the agents of the user come in the background
+  if AChat <> nil then
+  begin
+    FAISelection.SelectAIMode(AChat.GetAIMode);
+    FAISelection.LoadUserAgents(AChat.GetAITier, AChat.GetAgentAiId);
+  end
+  else
+    FAISelection.LoadUserAgents;
 end;
 
 destructor TFRpLocalSchemasLCL.Destroy;
@@ -706,10 +744,16 @@ begin
   LContext.BorderWidth := S(4);
   NewLabel(LContext, TranslateStr(1894,
     'Description of the relation (the same in every subschema)'));
+  // Every relation: out of the subschema, or of all the tables
   BDeleteRelation := NewButton(LContext, TranslateStr(150, 'Delete'),
     BDeleteRelationClick, 100);
   BDeleteRelation.Top := S(9000);
   BDeleteRelation.Align := alBottom;
+  BDeleteRelation.Hint := TranslateStr(2024, 'In a subschema the relation ' +
+    'leaves it (the other subschemas keep it). In all the tables a relation ' +
+    'by hand is deleted and one of the database leaves every subschema. ' +
+    'Adding it again brings it back.');
+  BDeleteRelation.ShowHint := True;
   MemoRelationContext := TMemo.Create(Self);
   MemoRelationContext.Parent := LContext;
   MemoRelationContext.Align := alClient;
@@ -720,12 +764,26 @@ begin
   NewLabel(LSuggested, TranslateStr(1866, 'Suggested relations: they do ' +
     'not travel yet (a table or a column of one end is not chosen). Complete ' +
     'adds what they need.'));
-  LRow := NewPanel(LSuggested, alRight, 110);
+  LRow := NewPanel(LSuggested, alRight, 220);
   BComplete := NewButton(LRow, TranslateStr(1867, 'Complete'), BCompleteClick, 100);
   BComplete.SetBounds(S(6), S(4), S(100), S(26));
+  // Out of this subschema for good (its excludedRelations)
+  BDiscard := NewButton(LRow, TranslateStr(2020, 'Discard'), BDiscardClick, 100);
+  BDiscard.SetBounds(S(112), S(4), S(100), S(26));
+  BDiscard.Hint := TranslateStr(2021, 'Leaves the suggestion out of this ' +
+    'subschema: it is not suggested again here');
+  BDiscard.ShowHint := True;
+  // A relation by hand that does not travel here, out of the dictionary
+  BDeleteSuggestion := NewButton(LRow, TranslateStr(150, 'Delete'),
+    BDeleteSuggestionClick, 100);
+  BDeleteSuggestion.SetBounds(S(6), S(34), S(100), S(26));
+  BDeleteSuggestion.Hint := TranslateStr(2025, 'Deletes the relation by ' +
+    'hand: it leaves every subschema');
+  BDeleteSuggestion.ShowHint := True;
   ListSuggestions := TListBox.Create(Self);
   ListSuggestions.Parent := LSuggested;
   ListSuggestions.Align := alClient;
+  ListSuggestions.OnClick := ListSuggestionsClick;
   ListSuggestions.OnDblClick := BCompleteClick;
   // A relation the database does not declare
   LNew := NewPanel(LPanel, alClient, 0);
@@ -786,10 +844,18 @@ begin
   end;
   ENewContext := TEdit.Create(Self);
   ENewContext.Parent := LRow;
-  ENewContext.SetBounds(S(94), S(6), S(316), S(24));
+  ENewContext.SetBounds(S(94), S(6), S(200), S(24));
   BAddRelation := NewButton(LRow, TranslateStr(1874, 'Add relation'),
-    BAddRelationClick, 120);
-  BAddRelation.SetBounds(S(420), S(5), S(120), S(26));
+    BAddRelationClick, 130);
+  BAddRelation.SetBounds(S(300), S(5), S(130), S(26));
+  // The relation by hand selected above, loaded in these controls
+  BUpdateRelation := NewButton(LRow, TranslateStr(2022, 'Update relation'),
+    BUpdateRelationClick, 140);
+  BUpdateRelation.SetBounds(S(436), S(5), S(140), S(26));
+  BUpdateRelation.Hint := TranslateStr(2023, 'Changes the relation by hand ' +
+    'selected above: its tables and pairs of columns');
+  BUpdateRelation.ShowHint := True;
+  BUpdateRelation.Enabled := False;
   LRow := NewPanel(LPairs, alRight, 130);
   BRemovePair := NewButton(LRow, TranslateStr(1892, 'Remove'), BRemovePairClick, 120);
   BRemovePair.SetBounds(S(6), S(4), S(120), S(26));
@@ -800,13 +866,24 @@ end;
 
 procedure TFRpLocalSchemasLCL.BuildValidationTab(ATab: TTabSheet);
 var
-  LPanel, LButtons: TPanel;
+  LPanel, LButtons, LAIRow, LAIHost: TPanel;
 begin
   LPanel := NewPanel(ATab, alClient, 0);
   LPanel.BorderWidth := S(6);
   NewLabel(LPanel, TranslateStr(1877, 'The AI reads the schema as the copilot ' +
     'sends it and says what it does not understand: describe the tables and ' +
     'columns it marks.'));
+  // The AI that analyzes (provider, mode and credits, as in the chat); its
+  // progress and its Stop take its place while it works
+  FAISelection := TFRpAISelectionLCL.Create(Self);
+  LAIRow := NewPanel(LPanel, alTop, 0);
+  LAIRow.Height := FAISelection.PreferredHeight + S(6);
+  LAIHost := NewPanel(LAIRow, alLeft, 460);
+  FAISelection.Parent := LAIHost;
+  // alTop as in the chat: the selection sets its own height
+  FAISelection.Align := alTop;
+  FAISelection.OnStopRequest := AISelectionStopRequest;
+  FAISelection.OnProviderChange := AISelectionProviderChange;
   LButtons := NewPanel(LPanel, alTop, 38);
   BAnalyze := NewButton(LButtons, TranslateStr(1876, 'Analyze with AI'),
     BAnalyzeClick, 170);
@@ -850,6 +927,7 @@ begin
         // The relations point to the tables read before
         FRelations.Clear;
         FSuggestions.Clear;
+        FEditForeignKey := nil;
         FFile.SetCatalog(LTables, LDialect);
         if FFile.Alias = '' then
           FFile.Alias := UpperCase(FDatabase.Alias);
@@ -895,6 +973,13 @@ begin
   LStatus.Visible := LHasSchema;
 end;
 
+procedure TFRpLocalSchemasLCL.ShowAnalysisRunning(ARunning: Boolean);
+begin
+  BStop.Enabled := ARunning;
+  FAISelection.SetInferenceProgress(ARunning);
+  UpdateAnalyzeButton;
+end;
+
 procedure TFRpLocalSchemasLCL.Changed;
 begin
   FModified := True;
@@ -919,10 +1004,11 @@ begin
     FFile.GetTableNames(Result);
 end;
 
-// The plan of the account, not with the AI of an Agent
+// The plan of the account, not with the AI of an Agent (the one chosen in
+// Validation)
 function TFRpLocalSchemasLCL.PlanApplies: Boolean;
 begin
-  Result := (FChat = nil) or not SameText(FChat.GetAITier, 'LocalAgent');
+  Result := (FAISelection = nil) or not SameText(FAISelection.AITier, 'LocalAgent');
 end;
 
 { Filling }
@@ -1275,9 +1361,15 @@ begin
       ListSuggestions.Items.EndUpdate;
     end;
     BComplete.Enabled := FSuggestions.Count > 0;
+    BDiscard.Enabled := False;
+    BDeleteSuggestion.Enabled := False;
     MemoRelationContext.Text := '';
     MemoRelationContext.Enabled := False;
     BDeleteRelation.Enabled := False;
+    // The relation being changed may be gone: chosen again to change it
+    FEditSource := '';
+    FEditForeignKey := nil;
+    BUpdateRelation.Enabled := False;
   finally
     FUpdating := False;
   end;
@@ -2132,10 +2224,55 @@ begin
   try
     MemoRelationContext.Enabled := True;
     MemoRelationContext.Text := LRelation.Context;
-    BDeleteRelation.Enabled := LRelation.IsManual;
+    // Every relation: of the database or by hand
+    BDeleteRelation.Enabled := True;
   finally
     FUpdating := False;
   end;
+  EditRelation(LRelation);
+end;
+
+procedure TFRpLocalSchemasLCL.EditRelation(ARelation: TRpLocalRelation);
+var
+  I: Integer;
+  LSource, LTarget: TStringList;
+begin
+  // The ones of the database mirror it: only their description changes
+  if (ARelation = nil) or not ARelation.IsManual then
+  begin
+    FEditSource := '';
+    FEditForeignKey := nil;
+    BUpdateRelation.Enabled := False;
+    Exit;
+  end;
+  FEditSource := ARelation.SourceTable;
+  FEditForeignKey := ARelation.ForeignKey;
+  LSource := TStringList.Create;
+  LTarget := TStringList.Create;
+  try
+    ARelation.GetSourceColumns(LSource);
+    ARelation.GetTargetColumns(LTarget);
+    ComboSource.ItemIndex := ComboSource.Items.IndexOf(ARelation.SourceTable);
+    ComboTarget.ItemIndex := ComboTarget.Items.IndexOf(ARelation.TargetTable);
+    FFile.GetColumnNames(ComboSource.Text, ComboSourceColumn.Items);
+    FFile.GetColumnNames(ComboTarget.Text, ComboTargetColumn.Items);
+    FPairSource.Clear;
+    FPairTarget.Clear;
+    ListPairs.Items.Clear;
+    for I := 0 to LSource.Count - 1 do
+      if I < LTarget.Count then
+      begin
+        FPairSource.Add(LSource[I]);
+        FPairTarget.Add(LTarget[I]);
+        ListPairs.Items.Add(LSource[I] + CArrow + LTarget[I]);
+      end;
+    // Its description is the one above
+    ENewContext.Text := '';
+  finally
+    LTarget.Free;
+    LSource.Free;
+  end;
+  BUpdateRelation.Enabled := True;
 end;
 
 procedure TFRpLocalSchemasLCL.MemoRelationContextChange(Sender: TObject);
@@ -2151,7 +2288,48 @@ procedure TFRpLocalSchemasLCL.BDeleteRelationClick(Sender: TObject);
 begin
   if ListRelations.ItemIndex < 0 then
     Exit;
-  FFile.DeleteRelation(TRpLocalRelation(FRelations[ListRelations.ItemIndex]));
+  // No question, as the web: adding it again brings it back
+  FFile.RemoveRelation(SelectedSchema,
+    TRpLocalRelation(FRelations[ListRelations.ItemIndex]));
+  Changed;
+  FillRelations;
+  FillColumns;
+end;
+
+procedure TFRpLocalSchemasLCL.ListSuggestionsClick(Sender: TObject);
+var
+  LRelation: TRpLocalRelation;
+begin
+  if FUpdating or (ListSuggestions.ItemIndex < 0) then
+    Exit;
+  LRelation := TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]);
+  BDiscard.Enabled := SelectedSchema <> nil;
+  BDeleteSuggestion.Enabled := LRelation.IsManual;
+  EditRelation(LRelation);
+end;
+
+procedure TFRpLocalSchemasLCL.BDiscardClick(Sender: TObject);
+begin
+  if (SelectedSchema = nil) or (ListSuggestions.ItemIndex < 0) then
+    Exit;
+  FFile.ExcludeRelation(SelectedSchema,
+    TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]));
+  Changed;
+  FillRelations;
+  FillColumns;
+end;
+
+procedure TFRpLocalSchemasLCL.BDeleteSuggestionClick(Sender: TObject);
+var
+  LRelation: TRpLocalRelation;
+begin
+  if ListSuggestions.ItemIndex < 0 then
+    Exit;
+  LRelation := TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]);
+  // Discard is the one for a relation of the database
+  if not LRelation.IsManual then
+    Exit;
+  FFile.DeleteRelation(LRelation);
   Changed;
   FillRelations;
   FillColumns;
@@ -2221,8 +2399,10 @@ begin
   LRelation := TRpLocalRelation.Create;
   try
     LRelation.SourceTable := ComboSource.Text;
+    // One deleted or discarded before comes back
     LRelation.ForeignKey := FFile.AddRelation(ComboSource.Text,
-      ComboTarget.Text, FPairSource, FPairTarget, ENewContext.Text);
+      ComboTarget.Text, FPairSource, FPairTarget, ENewContext.Text,
+      SelectedSchema);
     // In a subschema it travels: completed as a suggested one
     FFile.CompleteRelation(SelectedSchema, LRelation);
   finally
@@ -2236,13 +2416,43 @@ begin
   FillRelationTables;
 end;
 
+procedure TFRpLocalSchemasLCL.BUpdateRelationClick(Sender: TObject);
+var
+  LRelation: TRpLocalRelation;
+begin
+  if FEditForeignKey = nil then
+    Exit;
+  if (ComboSource.ItemIndex < 0) or (ComboTarget.ItemIndex < 0) or
+    (FPairSource.Count = 0) then
+  begin
+    RpMessageBox(TranslateStr(1889, 'Choose the two tables and at least one ' +
+      'pair of columns.'));
+    Exit;
+  end;
+  LRelation := TRpLocalRelation.Create;
+  try
+    LRelation.SourceTable := FEditSource;
+    LRelation.ForeignKey := FEditForeignKey;
+    FFile.UpdateRelation(LRelation, ComboSource.Text, ComboTarget.Text,
+      FPairSource, FPairTarget, SelectedSchema);
+    // In a subschema it travels, as an added one
+    FFile.CompleteRelation(SelectedSchema, LRelation);
+  finally
+    LRelation.Free;
+  end;
+  Changed;
+  FillTables;
+  FillColumnTables;
+  FillRelations;
+  FillRelationTables;
+end;
+
 { Validation }
 
 procedure TFRpLocalSchemasLCL.BAnalyzeClick(Sender: TObject);
 var
   LConfig: TRpApiDatabaseConfig;
-  LTier, LMode, LSecret, LSchemaName: string;
-  LAgentAiId: Int64;
+  LSchemaName: string;
 begin
   if FAnalysis <> nil then
     Exit;
@@ -2260,18 +2470,8 @@ begin
       'Sign in to Reportman AI to analyze the schema.'));
     Exit;
   end;
-  LTier := 'Standard';
-  LMode := 'Fast';
-  LSecret := '';
-  LAgentAiId := 0;
-  if FChat <> nil then
-  begin
-    LTier := FChat.GetAITier;
-    LMode := FChat.GetAIMode;
-    LSecret := FChat.GetAgentSecret;
-    LAgentAiId := FChat.GetAgentAiId;
-  end;
-  // What the copilot would send of the subschema, as it is now on screen
+  // What the copilot would send of the subschema, as it is now on screen,
+  // to the AI chosen above
   LConfig := TRpApiDatabaseConfig.Create;
   try
     LConfig.Name := FDatabase.Alias;
@@ -2279,14 +2479,14 @@ begin
     LConfig.SchemaTablesJson := RpSubSchemaTablesJson(FFile, FDatabase.Alias,
       SelectedSchema.Name, LSchemaName);
     LConfig.SchemaName := LSchemaName;
-    FAnalysis := RpStartSchemaAnalysis(LConfig, LTier, LMode, LSecret, LAgentAiId);
+    FAnalysis := RpStartSchemaAnalysis(LConfig, FAISelection.AITier,
+      FAISelection.AIMode, FAISelection.AgentSecret, FAISelection.AgentAiId);
   finally
     LConfig.Free;
   end;
   LStatus.Caption := TranslateStr(1878,
     'Analyzing the schema... (this may take a while)');
-  BAnalyze.Enabled := False;
-  BStop.Enabled := True;
+  ShowAnalysisRunning(True);
   FAnalysisTimer.Enabled := True;
 end;
 
@@ -2303,8 +2503,21 @@ procedure TFRpLocalSchemasLCL.BStopClick(Sender: TObject);
 begin
   StopAnalysis;
   LStatus.Caption := TranslateStr(1881, 'Analysis cancelled.');
-  UpdateAnalyzeButton;
-  BStop.Enabled := False;
+  ShowAnalysisRunning(False);
+end;
+
+// The Stop of the selection while the AI works: the one of the tab
+procedure TFRpLocalSchemasLCL.AISelectionStopRequest(Sender: TObject);
+begin
+  if FAnalysis <> nil then
+    BStopClick(Sender);
+end;
+
+// With the AI of an Agent the plan does not limit the schema
+procedure TFRpLocalSchemasLCL.AISelectionProviderChange(Sender: TObject);
+begin
+  if LTablesCounter <> nil then
+    UpdateCounters;
 end;
 
 procedure TFRpLocalSchemasLCL.AnalysisTimerTick(Sender: TObject);
@@ -2323,15 +2536,17 @@ begin
   if not LState.Finished then
   begin
     if (LState.InputTokens > 0) or (LState.OutputTokens > 0) then
+    begin
       LStatus.Caption := Format(TranslateStr(1879,
         'Analyzing... Tokens: %d in, %d out'), [LState.InputTokens,
         LState.OutputTokens]);
+      FAISelection.UpdateTokens(LState.InputTokens, LState.OutputTokens, '');
+    end;
     Exit;
   end;
   FAnalysisTimer.Enabled := False;
   FAnalysis := nil;
-  UpdateAnalyzeButton;
-  BStop.Enabled := False;
+  ShowAnalysisRunning(False);
   if LState.Cancelled then
   begin
     LStatus.Caption := TranslateStr(1881, 'Analysis cancelled.');
@@ -2350,10 +2565,13 @@ begin
       LStatus.Caption := '';
       Exit;
     end;
-    // The credits of the account, as the chat refreshes them
+    // The credits of the account, as the chat refreshes them, and its gauge
     LProfile := TJSONObject(LJson).Values['userProfile'];
     if LProfile is TJSONObject then
+    begin
       TRpAuthManager.Instance.UpdateProfileFromJson(TJSONObject(LProfile));
+      FAISelection.RefreshState;
+    end;
     LMessage := JsonText(TJSONObject(LJson), 'errorMessage');
     if Trim(LMessage) <> '' then
     begin

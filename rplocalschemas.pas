@@ -33,7 +33,10 @@ unit rplocalschemas;
       { "constraintName", "targetTable", "sourceColumns", "targetColumns",
       "relationshipContext" } ] } ],
     "schemas": [ { "name": "Sales", "description": "", "tables": [...],
-      "columns": { "SALES": ["SALEID", "TOTAL"] } } ]
+      "columns": { "SALES": ["SALEID", "TOTAL"] },
+      "excludedRelations": [ { "sourceTable", "sourceColumns",
+        "targetTable", "targetColumns" } ] } ],
+    "excludedRelations": [...]
   }
 
   - "tables" is the JSON of the SchemaTable of the Hub and the Desktop, so it
@@ -58,9 +61,18 @@ unit rplocalschemas;
     whose columns still exist, and the subschemas (without the tables and
     columns that are gone). The comments of the database are the starting
     context (Firebird, PostgreSQL, SQL Server, MySQL, Oracle).
+  - "excludedRelations" (optional, still version 2, written only when it is
+    not empty) are the relations the user deleted or discarded: in a
+    subschema, the ones left out of it (the dictionary keeps them); at the
+    root, the ones of the database left out of every subschema (deleted in
+    "All the tables"). An entry is the two ends of a relation, compared
+    ignoring case, the columns in the order of the foreign key. Adding the
+    relation again takes it out of the list (of the subschema and of the
+    root); a refresh keeps every entry one of whose tables is still there.
   - The tables of a subschema sent to the AI carry the columns it chose (its
     primary key when it chose none) and the relations whose two ends
-    travel. Without a subschema, everything (an export of all the tables).
+    travel and are not excluded. Without a subschema, everything but the
+    relations excluded at the root (an export of all the tables).
   - Only a subschema goes to the AI, never the whole dictionary (5.7, F8): a
     big database does not fit, and none is known to be small.
     RpSubSchemaTablesJson refuses an empty or unknown name.
@@ -94,6 +106,8 @@ type
     // Table name to the columns it takes (version 2)
     FColumns: TJSONObject;
     FDescription: string;
+    // The relations left out of the subschema ("excludedRelations")
+    FExcluded: TJSONArray;
     // What this version does not know, written back as it is
     FExtra: TJSONObject;
     FName: string;
@@ -109,6 +123,9 @@ type
     // The columns chosen of a table; an empty list is its primary key again
     procedure SetColumns(const ATable: string; AColumns: TStrings);
     property Description: string read FDescription write FDescription;
+    // The relations left out of this subschema: objects { "sourceTable",
+    // "sourceColumns", "targetTable", "targetColumns" }
+    property ExcludedRelations: TJSONArray read FExcluded;
     property Name: string read FName write FName;
     property Tables: TStringList read FTables;
   end;
@@ -137,6 +154,9 @@ type
   private
     FAlias: string;
     FDialect: string;
+    // The relations of the database left out of every subschema (the
+    // "excludedRelations" of the root)
+    FExcluded: TJSONArray;
     // What this version does not know, written back as it is
     FExtra: TJSONObject;
     FFileName: string;
@@ -146,6 +166,9 @@ type
     FTables: TJSONArray;
     function GetSchema(Index: Integer): TRpLocalSubSchema;
     function GetSchemaCount: Integer;
+    // The entries of the exclusion lists of a relation that is gone leave
+    // every list (the root's and the subschemas')
+    procedure ForgetExcluded(const ASourceTable: string; AForeignKey: TJSONObject);
   public
     constructor Create;
     destructor Destroy; override;
@@ -219,16 +242,37 @@ type
     // out; a value that was there keeps what it had of a newer version)
     procedure SetAllowedValues(const ATable, AColumn: string;
       AValues, ALabels: TStrings);
-    // A relation (a foreign key of ASourceTable) travels: its two ends do,
-    // by table and by column (always without a subschema)
+    // A relation (a foreign key of ASourceTable) travels: it is not excluded
+    // and its two ends do, by table and by column (always without a
+    // subschema, unless the root excludes it)
     function ForeignKeyTravels(ASchema: TRpLocalSubSchema;
       const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
+    // The relation is excluded: by the root (from every subschema and from
+    // all the tables) or by the subschema
+    function RelationExcluded(ASchema: TRpLocalSubSchema;
+      const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
+    // Leaves a relation out of the subschema (its excludedRelations; the
+    // dictionary keeps it) or, without one, out of every subschema (the
+    // excludedRelations of the root). Nothing when it is excluded already
+    procedure ExcludeRelation(ASchema: TRpLocalSubSchema;
+      ARelation: TRpLocalRelation);
+    // An excluded relation comes back: its entries leave the list of the
+    // subschema and the one of the root. True when one was there
+    function IncludeRelation(ASchema: TRpLocalSubSchema;
+      const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
+    // The "Delete" of the relations of the screens: in a subschema the
+    // relation is excluded from it; in all the tables (nil) a relation by
+    // hand leaves the dictionary and one of the database is excluded from
+    // every subschema
+    procedure RemoveRelation(ASchema: TRpLocalSubSchema;
+      ARelation: TRpLocalRelation);
     // The relations of the dictionary that travel in the subschema (all of
-    // them without one), added to AList (TRpLocalRelation, owned by the list)
+    // them without one, but the ones the root excludes), added to AList
+    // (TRpLocalRelation, owned by the list)
     procedure GetRelations(ASchema: TRpLocalSubSchema; AList: TObjectList);
-    // The relations of the tables of the subschema that do not travel and
-    // whose target is in the dictionary, even when both tables are chosen:
-    // the suggestions ("Complete")
+    // The relations of the tables of the subschema that do not travel, are
+    // not excluded and whose target is in the dictionary, even when both
+    // tables are chosen: the suggestions ("Complete")
     procedure GetSuggestedRelations(ASchema: TRpLocalSubSchema;
       AList: TObjectList);
     // Makes a relation travel: the target table (with its primary key when
@@ -239,13 +283,31 @@ type
     // A relation the database does not declare, in the dictionary (an empty
     // constraintName); raises when a table or column is not there. One
     // that is there already (the same target and columns) is not added
-    // twice: it is returned, with AContext when one is given
+    // twice: it is returned, with AContext when one is given. Added in the
+    // subschema ASchema (nil: all the tables), an excluded relation with
+    // those ends comes back (IncludeRelation) instead
     function AddRelation(const ASourceTable, ATargetTable: string;
       ASourceColumns, ATargetColumns: TStrings;
-      const AContext: string): TJSONObject;
-    // Removes a relation written by hand (the ones of the database come
-    // back when it is read again)
+      const AContext: string; ASchema: TRpLocalSubSchema = nil): TJSONObject;
+    // Changes a relation written by hand: its tables and its pairs of
+    // columns (the ones of the database mirror it: only their description
+    // changes); raises as AddRelation. It keeps its description and what it
+    // had of a newer version, and the lists that excluded it exclude it with
+    // its new ends. When another relation has those ends already, this one
+    // leaves and the other one stays (with this description when it had
+    // none). As AddRelation, an excluded relation with the new ends comes
+    // back in ASchema. ARelation points to the result
+    function UpdateRelation(ARelation: TRpLocalRelation;
+      const ASourceTable, ATargetTable: string;
+      ASourceColumns, ATargetColumns: TStrings;
+      ASchema: TRpLocalSubSchema = nil): TJSONObject;
+    // Removes a relation written by hand from the dictionary, and its
+    // entries from the exclusion lists of the root and of every subschema
+    // unless the table has another relation with the same ends (the ones of
+    // the database can not be removed: they come back when it is read again)
     procedure DeleteRelation(ARelation: TRpLocalRelation);
+    // The relations of the database left out of every subschema
+    property ExcludedRelations: TJSONArray read FExcluded;
     property Alias: string read FAlias write FAlias;
     property Dialect: string read FDialect write FDialect;
     property FileName: string read FFileName;
@@ -339,7 +401,8 @@ procedure RpExportSchemaToFile(AFile: TRpLocalSchemaFile;
 // - the descriptions and allowed values written in the file go to the
 //   dictionary (shared by every subschema: the import wins);
 // - a relation of the file whose two ends are in the catalog gives its
-//   description to the one the dictionary has, or enters by hand.
+//   description to the one the dictionary has, or enters by hand; one
+//   excluded at the root comes back (AddRelation).
 // What is not in the catalog is added to ASkipped ('TABLE', 'TABLE.COLUMN').
 // Returns the tables of the new subschema; 0, and nothing is created, when
 // none of its tables is in the catalog (a schema of another database);
@@ -604,6 +667,112 @@ begin
     end;
 end;
 
+// The exclusion lists ("excludedRelations"): entries with "sourceTable",
+// "sourceColumns", "targetTable" and "targetColumns"
+
+// A new JSON array with the names of another one (empty without it)
+function NamesArray(AArray: TJSONArray): TJSONArray;
+var
+  I: Integer;
+begin
+  Result := TJSONArray.Create;
+  if AArray <> nil then
+    for I := 0 to AArray.Count - 1 do
+      if AArray.Items[I] <> nil then
+        Result.Add(AArray.Items[I].Value);
+end;
+
+// An entry of an exclusion list is the relation AForeignKey of ASourceTable:
+// the same tables and the same columns, in order, ignoring case
+function ExcludedEntryIs(AEntry: TJSONObject; const ASourceTable: string;
+  AForeignKey: TJSONObject): Boolean;
+begin
+  Result := (AEntry <> nil) and (AForeignKey <> nil) and
+    SameText(Trim(JStr(AEntry, 'sourceTable')), Trim(ASourceTable)) and
+    SameText(Trim(JStr(AEntry, 'targetTable')), Trim(JStr(AForeignKey, 'targetTable'))) and
+    SameNames(JArr(AEntry, 'sourceColumns'), JArr(AForeignKey, 'sourceColumns')) and
+    SameNames(JArr(AEntry, 'targetColumns'), JArr(AForeignKey, 'targetColumns'));
+end;
+
+function IndexOfExcluded(AList: TJSONArray; const ASourceTable: string;
+  AForeignKey: TJSONObject): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  if AList <> nil then
+    for I := 0 to AList.Count - 1 do
+      if ExcludedEntryIs(JObj(AList, I), ASourceTable, AForeignKey) then
+        Exit(I);
+end;
+
+// The entries of a relation leave a list; True when one was there
+function RemoveExcluded(AList: TJSONArray; const ASourceTable: string;
+  AForeignKey: TJSONObject): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if AList = nil then
+    Exit;
+  for I := AList.Count - 1 downto 0 do
+    if ExcludedEntryIs(JObj(AList, I), ASourceTable, AForeignKey) then
+    begin
+      AList.Remove(I).Free;
+      Result := True;
+    end;
+end;
+
+// The ends of a relation written in AEntry (what else it has stays)
+procedure SetExcludedEnds(AEntry: TJSONObject; const ASourceTable: string;
+  AForeignKey: TJSONObject);
+begin
+  SetPair(AEntry, 'sourceTable', TJSONString.Create(ASourceTable));
+  SetPair(AEntry, 'sourceColumns', NamesArray(JArr(AForeignKey, 'sourceColumns')));
+  SetPair(AEntry, 'targetTable', TJSONString.Create(JStr(AForeignKey, 'targetTable')));
+  SetPair(AEntry, 'targetColumns', NamesArray(JArr(AForeignKey, 'targetColumns')));
+end;
+
+// A relation changed its ends (AOldEnds has its old targetTable and
+// columns): the list that excluded it excludes it with the new ones
+procedure MoveExcluded(AList: TJSONArray; const AOldSource: string;
+  AOldEnds: TJSONObject; const ANewSource: string; ANewForeignKey: TJSONObject);
+var
+  LIndex: Integer;
+  LEntry: TJSONObject;
+begin
+  LIndex := IndexOfExcluded(AList, AOldSource, AOldEnds);
+  if LIndex < 0 then
+    Exit;
+  // The first entry, with what it has of a newer version
+  LEntry := TJSONObject(JObj(AList, LIndex).Clone);
+  RemoveExcluded(AList, AOldSource, AOldEnds);
+  if IndexOfExcluded(AList, ANewSource, ANewForeignKey) >= 0 then
+  begin
+    LEntry.Free;
+    Exit;
+  end;
+  SetExcludedEnds(LEntry, ANewSource, ANewForeignKey);
+  AList.AddElement(LEntry);
+end;
+
+// After reading the catalog again: the entries one of whose tables is still
+// there stay (what is not an entry stays too)
+procedure KeepExcludedOf(AList, ACatalog: TJSONArray);
+var
+  I: Integer;
+  LEntry: TJSONObject;
+begin
+  for I := AList.Count - 1 downto 0 do
+  begin
+    LEntry := JObj(AList, I);
+    if (LEntry <> nil) and
+      (FindByName(ACatalog, 'name', Trim(JStr(LEntry, 'sourceTable'))) = nil) and
+      (FindByName(ACatalog, 'name', Trim(JStr(LEntry, 'targetTable'))) = nil) then
+      AList.Remove(I).Free;
+  end;
+end;
+
 // A relation written by hand (empty constraintName) of the previous file,
 // added to the table of the catalog read again when its columns and its
 // target are still there, as the catalog spells them, unless the table has
@@ -750,6 +919,7 @@ begin
   FTables := TStringList.Create;
   FTables.CaseSensitive := False;
   FColumns := TJSONObject.Create;
+  FExcluded := TJSONArray.Create;
   FExtra := TJSONObject.Create;
 end;
 
@@ -757,6 +927,7 @@ destructor TRpLocalSubSchema.Destroy;
 begin
   FTables.Free;
   FColumns.Free;
+  FExcluded.Free;
   FExtra.Free;
   inherited Destroy;
 end;
@@ -865,6 +1036,7 @@ begin
   inherited Create;
   FSchemas := TObjectList.Create(True);
   FTables := TJSONArray.Create;
+  FExcluded := TJSONArray.Create;
   FExtra := TJSONObject.Create;
   FVersion := RP_LOCAL_SCHEMA_VERSION;
 end;
@@ -873,6 +1045,7 @@ destructor TRpLocalSchemaFile.Destroy;
 begin
   FSchemas.Free;
   FTables.Free;
+  FExcluded.Free;
   FExtra.Free;
   inherited Destroy;
 end;
@@ -882,6 +1055,8 @@ begin
   FSchemas.Clear;
   FTables.Free;
   FTables := TJSONArray.Create;
+  FExcluded.Free;
+  FExcluded := TJSONArray.Create;
   FExtra.Free;
   FExtra := TJSONObject.Create;
   FVersion := RP_LOCAL_SCHEMA_VERSION;
@@ -919,12 +1094,18 @@ begin
     FDialect := JStr(LObject, 'dialect');
     FGeneratedUtc := JStr(LObject, 'generatedUtc');
     CopyUnknown(LObject, FExtra, ['version', 'alias', 'dialect',
-      'generatedUtc', 'tables', 'schemas']);
+      'generatedUtc', 'tables', 'schemas', 'excludedRelations']);
     LArray := JArr(LObject, 'tables');
     if LArray <> nil then
     begin
       FTables.Free;
       FTables := TJSONArray(LArray.Clone);
+    end;
+    LArray := JArr(LObject, 'excludedRelations');
+    if LArray <> nil then
+    begin
+      FExcluded.Free;
+      FExcluded := TJSONArray(LArray.Clone);
     end;
     LArray := JArr(LObject, 'schemas');
     if LArray <> nil then
@@ -946,8 +1127,14 @@ begin
           LSchema.FColumns.Free;
           LSchema.FColumns := TJSONObject(JObj(LArray, I).Values['columns'].Clone);
         end;
+        LNames := JArr(JObj(LArray, I), 'excludedRelations');
+        if LNames <> nil then
+        begin
+          LSchema.FExcluded.Free;
+          LSchema.FExcluded := TJSONArray(LNames.Clone);
+        end;
         CopyUnknown(JObj(LArray, I), LSchema.FExtra, ['name', 'description',
-          'tables', 'columns']);
+          'tables', 'columns', 'excludedRelations']);
       end;
   finally
     LRoot.Free;
@@ -986,8 +1173,14 @@ begin
       LColumns := Schemas[I].ColumnsJson;
       if LColumns <> nil then
         LSchemaObject.AddPair('columns', LColumns);
+      // Only when there are some (the readers of before do not need it)
+      if Schemas[I].FExcluded.Count > 0 then
+        LSchemaObject.AddPair('excludedRelations',
+          TJSONArray(Schemas[I].FExcluded.Clone));
       CopyUnknown(Schemas[I].FExtra, LSchemaObject, []);
     end;
+    if FExcluded.Count > 0 then
+      LRoot.AddPair('excludedRelations', TJSONArray(FExcluded.Clone));
     CopyUnknown(FExtra, LRoot, []);
     Result := LRoot.Format(2);
   finally
@@ -1096,6 +1289,11 @@ begin
   end;
   for I := 0 to FSchemas.Count - 1 do
     Schemas[I].KeepColumnsOf(FTables);
+  // The relations deleted or discarded stay so while one of their tables is
+  // there (a relation that comes back with the catalog stays out)
+  KeepExcludedOf(FExcluded, FTables);
+  for I := 0 to FSchemas.Count - 1 do
+    KeepExcludedOf(Schemas[I].FExcluded, FTables);
 end;
 
 procedure TRpLocalSchemaFile.GetTableNames(AList: TStrings);
@@ -1174,7 +1372,27 @@ begin
     LIndex := IndexOfSchema(ASchemaName);
   if LIndex < 0 then
   begin
-    Result := FTables.ToJSON;
+    // All the tables, without the relations the root excludes
+    if FExcluded.Count = 0 then
+    begin
+      Result := FTables.ToJSON;
+      Exit;
+    end;
+    LArray := TJSONArray(FTables.Clone);
+    try
+      for I := 0 to LArray.Count - 1 do
+      begin
+        LForeignKeys := JArr(JObj(LArray, I), 'foreignKeys');
+        if LForeignKeys <> nil then
+          for J := LForeignKeys.Count - 1 downto 0 do
+            if RelationExcluded(nil, JStr(JObj(LArray, I), 'name'),
+              JObj(LForeignKeys, J)) then
+              LForeignKeys.Remove(J).Free;
+      end;
+      Result := LArray.ToJSON;
+    finally
+      LArray.Free;
+    end;
     Exit;
   end;
   LArray := TJSONArray.Create;
@@ -1201,8 +1419,8 @@ begin
             LKept.AddElement(TJSONValue(JObj(LColumns, J).Clone));
       SetPair(LClone, 'columns', LKept);
     end;
-    // A relation travels when its two ends do: a column the AI does not see
-    // is no use to it
+    // A relation travels when its two ends do (a column the AI does not see
+    // is no use to it) and neither the subschema nor the root excludes it
     for I := 0 to LArray.Count - 1 do
     begin
       LClone := JObj(LArray, I);
@@ -1214,6 +1432,7 @@ begin
       begin
         LItem := JObj(LForeignKeys, J);
         if (LItem <> nil) and
+          not RelationExcluded(Schemas[LIndex], JStr(LClone, 'name'), LItem) and
           EndTravels(LArray, JStr(LClone, 'name'), JArr(LItem, 'sourceColumns')) and
           EndTravels(LArray, JStr(LItem, 'targetTable'), JArr(LItem, 'targetColumns')) then
           LKept.AddElement(TJSONValue(LItem.Clone));
@@ -1420,6 +1639,8 @@ begin
   Result.Tables.Assign(LSource.Tables);
   Result.FColumns.Free;
   Result.FColumns := TJSONObject(LSource.FColumns.Clone);
+  Result.FExcluded.Free;
+  Result.FExcluded := TJSONArray(LSource.FExcluded.Clone);
   Result.FExtra.Free;
   Result.FExtra := TJSONObject(LSource.FExtra.Clone);
 end;
@@ -1560,10 +1781,79 @@ end;
 function TRpLocalSchemaFile.ForeignKeyTravels(ASchema: TRpLocalSubSchema;
   const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
 begin
-  Result := (AForeignKey <> nil) and ((ASchema = nil) or (
+  Result := (AForeignKey <> nil) and
+    not RelationExcluded(ASchema, ASourceTable, AForeignKey) and ((ASchema = nil) or (
     RelationEndTravels(Self, ASchema, ASourceTable, JArr(AForeignKey, 'sourceColumns')) and
     RelationEndTravels(Self, ASchema, JStr(AForeignKey, 'targetTable'),
     JArr(AForeignKey, 'targetColumns'))));
+end;
+
+function TRpLocalSchemaFile.RelationExcluded(ASchema: TRpLocalSubSchema;
+  const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
+begin
+  Result := (AForeignKey <> nil) and
+    ((IndexOfExcluded(FExcluded, ASourceTable, AForeignKey) >= 0) or
+    ((ASchema <> nil) and
+    (IndexOfExcluded(ASchema.FExcluded, ASourceTable, AForeignKey) >= 0)));
+end;
+
+procedure TRpLocalSchemaFile.ExcludeRelation(ASchema: TRpLocalSubSchema;
+  ARelation: TRpLocalRelation);
+var
+  LList: TJSONArray;
+  LEntry: TJSONObject;
+  LSource: string;
+begin
+  if (ARelation = nil) or (ARelation.ForeignKey = nil) then
+    Exit;
+  if ASchema <> nil then
+    LList := ASchema.FExcluded
+  else
+    LList := FExcluded;
+  // As the dictionary spells the table
+  LSource := JStr(FindTable(ARelation.SourceTable), 'name');
+  if LSource = '' then
+    LSource := ARelation.SourceTable;
+  if IndexOfExcluded(LList, LSource, ARelation.ForeignKey) >= 0 then
+    Exit;
+  LEntry := TJSONObject.Create;
+  SetExcludedEnds(LEntry, LSource, ARelation.ForeignKey);
+  LList.AddElement(LEntry);
+end;
+
+function TRpLocalSchemaFile.IncludeRelation(ASchema: TRpLocalSubSchema;
+  const ASourceTable: string; AForeignKey: TJSONObject): Boolean;
+begin
+  Result := RemoveExcluded(FExcluded, ASourceTable, AForeignKey);
+  if (ASchema <> nil) and RemoveExcluded(ASchema.FExcluded, ASourceTable,
+    AForeignKey) then
+    Result := True;
+end;
+
+procedure TRpLocalSchemaFile.ForgetExcluded(const ASourceTable: string;
+  AForeignKey: TJSONObject);
+var
+  I: Integer;
+begin
+  RemoveExcluded(FExcluded, ASourceTable, AForeignKey);
+  for I := 0 to SchemaCount - 1 do
+    RemoveExcluded(Schemas[I].FExcluded, ASourceTable, AForeignKey);
+end;
+
+procedure TRpLocalSchemaFile.RemoveRelation(ASchema: TRpLocalSubSchema;
+  ARelation: TRpLocalRelation);
+begin
+  if (ARelation = nil) or (ARelation.ForeignKey = nil) then
+    Exit;
+  // In a subschema it leaves the subschema: the dictionary keeps it for the
+  // others. In all the tables one by hand is deleted; the database would
+  // bring one of its own back with a refresh, so it is excluded everywhere
+  if ASchema <> nil then
+    ExcludeRelation(ASchema, ARelation)
+  else if ARelation.IsManual then
+    DeleteRelation(ARelation)
+  else
+    ExcludeRelation(nil, ARelation);
 end;
 
 procedure TRpLocalSchemaFile.GetRelations(ASchema: TRpLocalSubSchema;
@@ -1617,7 +1907,9 @@ begin
     for J := 0 to LForeignKeys.Count - 1 do
     begin
       LItem := JObj(LForeignKeys, J);
+      // Not the ones deleted or discarded
       if (LItem = nil) or (FindTable(JStr(LItem, 'targetTable')) = nil) or
+        RelationExcluded(ASchema, JStr(LTable, 'name'), LItem) or
         ForeignKeyTravels(ASchema, JStr(LTable, 'name'), LItem) then
         Continue;
       LRelation := TRpLocalRelation.Create;
@@ -1657,7 +1949,7 @@ end;
 
 function TRpLocalSchemaFile.AddRelation(const ASourceTable,
   ATargetTable: string; ASourceColumns, ATargetColumns: TStrings;
-  const AContext: string): TJSONObject;
+  const AContext: string; ASchema: TRpLocalSubSchema): TJSONObject;
 var
   LSourceTable, LTargetTable: TJSONObject;
   LSource, LTarget, LForeignKeys: TJSONArray;
@@ -1681,6 +1973,8 @@ begin
     begin
       if Trim(AContext) <> '' then
         SetPair(Result, 'relationshipContext', TJSONString.Create(AContext));
+      // Deleted or discarded before: it comes back
+      IncludeRelation(ASchema, JStr(LSourceTable, 'name'), Result);
       Exit;
     end;
     Result := TJSONObject.Create;
@@ -1702,22 +1996,120 @@ begin
     SetPair(LSourceTable, 'foreignKeys', LForeignKeys);
   end;
   LForeignKeys.AddElement(Result);
+  // An entry left of one with these ends (a relation of the database gone
+  // with a refresh) does not exclude the new one
+  IncludeRelation(ASchema, JStr(LSourceTable, 'name'), Result);
+end;
+
+function TRpLocalSchemaFile.UpdateRelation(ARelation: TRpLocalRelation;
+  const ASourceTable, ATargetTable: string; ASourceColumns,
+  ATargetColumns: TStrings; ASchema: TRpLocalSubSchema): TJSONObject;
+var
+  I: Integer;
+  LNewSource, LOldSource: string;
+  LOldEnds, LOther, LSourceTable, LTargetTable: TJSONObject;
+  LForeignKeys, LSource, LTarget: TJSONArray;
+begin
+  if (ARelation = nil) or not ARelation.IsManual then
+    raise Exception.Create('Only a relation written by hand can be changed');
+  LSourceTable := FindTable(ASourceTable);
+  LTargetTable := FindTable(ATargetTable);
+  if (LSourceTable = nil) or (LTargetTable = nil) then
+    raise Exception.Create('The relation needs two tables of the catalog');
+  if (ASourceColumns.Count = 0) or (ASourceColumns.Count <> ATargetColumns.Count) then
+    raise Exception.Create('The relation needs pairs of columns');
+  LOldSource := ARelation.SourceTable;
+  LNewSource := JStr(LSourceTable, 'name');
+  LSource := TJSONArray.Create;
+  LTarget := TJSONArray.Create;
+  // Its old ends, for the exclusion lists
+  LOldEnds := TJSONObject.Create;
+  try
+    if not SpellColumns(LSourceTable, ASourceColumns, LSource) or
+      not SpellColumns(LTargetTable, ATargetColumns, LTarget) then
+      raise Exception.Create('A column of the relation is not in its table');
+    SetExcludedEnds(LOldEnds, LOldSource, ARelation.ForeignKey);
+    LOther := FindRelation(LSourceTable, JStr(LTargetTable, 'name'), LSource, LTarget);
+    if (LOther <> nil) and (LOther <> ARelation.ForeignKey) then
+    begin
+      // Another relation has those ends: it stays, with this description
+      // when it has none, and this one leaves
+      if (Trim(JStr(LOther, 'relationshipContext')) = '') and
+        (Trim(ARelation.Context) <> '') then
+        SetPair(LOther, 'relationshipContext', TJSONString.Create(ARelation.Context));
+      DeleteRelation(ARelation);
+      ARelation.SourceTable := LNewSource;
+      ARelation.ForeignKey := LOther;
+    end
+    else if LOther = nil then
+    begin
+      // Another source table: the foreign key moves to it (not freed)
+      if not SameText(LOldSource, LNewSource) then
+      begin
+        LForeignKeys := JArr(FindTable(LOldSource), 'foreignKeys');
+        if LForeignKeys <> nil then
+          for I := LForeignKeys.Count - 1 downto 0 do
+            if LForeignKeys.Items[I] = ARelation.ForeignKey then
+              LForeignKeys.Remove(I);
+        LForeignKeys := JArr(LSourceTable, 'foreignKeys');
+        if LForeignKeys = nil then
+        begin
+          LForeignKeys := TJSONArray.Create;
+          SetPair(LSourceTable, 'foreignKeys', LForeignKeys);
+        end;
+        LForeignKeys.AddElement(ARelation.ForeignKey);
+      end;
+      SetPair(ARelation.ForeignKey, 'targetTable',
+        TJSONString.Create(JStr(LTargetTable, 'name')));
+      SetPair(ARelation.ForeignKey, 'sourceColumns', LSource);
+      LSource := nil;
+      SetPair(ARelation.ForeignKey, 'targetColumns', LTarget);
+      LTarget := nil;
+      ARelation.SourceTable := LNewSource;
+      // Where it was excluded it stays excluded, with its new ends
+      MoveExcluded(FExcluded, LOldSource, LOldEnds, LNewSource, ARelation.ForeignKey);
+      for I := 0 to SchemaCount - 1 do
+        MoveExcluded(Schemas[I].FExcluded, LOldSource, LOldEnds, LNewSource,
+          ARelation.ForeignKey);
+    end;
+    // The same ends: nothing changes
+    Result := ARelation.ForeignKey;
+    // As adding it: excluded with those ends, it comes back where it is edited
+    IncludeRelation(ASchema, ARelation.SourceTable, Result);
+  finally
+    LOldEnds.Free;
+    LTarget.Free;
+    LSource.Free;
+  end;
 end;
 
 procedure TRpLocalSchemaFile.DeleteRelation(ARelation: TRpLocalRelation);
 var
   I: Integer;
   LForeignKeys: TJSONArray;
+  LTable: TJSONObject;
+  LRemoved: TJSONValue;
 begin
   if (ARelation = nil) or not ARelation.IsManual then
     Exit;
-  LForeignKeys := JArr(FindTable(ARelation.SourceTable), 'foreignKeys');
+  LTable := FindTable(ARelation.SourceTable);
+  LForeignKeys := JArr(LTable, 'foreignKeys');
   if LForeignKeys = nil then
     Exit;
   for I := 0 to LForeignKeys.Count - 1 do
     if LForeignKeys.Items[I] = ARelation.ForeignKey then
     begin
-      LForeignKeys.Remove(I).Free;
+      LRemoved := LForeignKeys.Remove(I);
+      try
+        // Gone from the dictionary, gone from the lists that excluded it,
+        // unless the table has another relation with the same ends
+        if FindRelation(LTable, JStr(ARelation.ForeignKey, 'targetTable'),
+          JArr(ARelation.ForeignKey, 'sourceColumns'),
+          JArr(ARelation.ForeignKey, 'targetColumns')) = nil then
+          ForgetExcluded(ARelation.SourceTable, ARelation.ForeignKey);
+      finally
+        LRemoved.Free;
+      end;
       ARelation.ForeignKey := nil;
       Exit;
     end;
@@ -3428,8 +3820,9 @@ begin
           not ColumnsExist(LCatalogTable, LSource) or
           not ColumnsExist(AFile.FindTable(LText), LTarget) then
           Continue;
+        // A relation the file brings comes back if it was excluded
         AFile.AddRelation(JStr(LCatalogTable, 'name'), LText, LSource, LTarget,
-          JStrCI(LItem, 'relationshipContext'));
+          JStrCI(LItem, 'relationshipContext'), LSchema);
       end;
     end;
     Result := LSchema.Tables.Count;

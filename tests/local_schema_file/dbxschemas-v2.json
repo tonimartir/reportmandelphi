@@ -51,7 +51,10 @@
       "columns": { "SALES": [ "SALEID", "CUSTOMERID", "TOTAL" ] },
       "futureSchemaColor": "blue"
     },
-    { "name": "Solo ventas", "description": "", "tables": [ "SALES" ] },
+    {
+      "name": "Solo ventas", "description": "", "tables": [ "SALES" ],
+      "excludedRelations": [ { "sourceTable": "SALES", "sourceColumns": [ "CUSTOMERID" ], "targetTable": "CUSTOMERS", "targetColumns": [ "CUSTOMERID" ] } ]
+    },
     { "name": "Productos", "description": "", "tables": [ "PRODUCTS" ] }
   ],
   "futureRootSetting": [ 1, 2 ]

@@ -21,6 +21,9 @@ program test_local_schema_file;
 {   6. Export and import with the Reportman AI web.     }
 {   7. Only a subschema goes to the AI (F8): never the  }
 {      dictionary, and the import from the library.     }
+{   8. The relations deleted and discarded              }
+{      ("excludedRelations"), and the change of a       }
+{      relation by hand.                                }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_local_schema_      }
 {   file.lpi (lazbuild). Run:                           }
@@ -945,6 +948,251 @@ begin
   end;
 end;
 
+// The relations deleted and discarded (the "excludedRelations" of a
+// subschema and of the root, spec R1-R7 of 17-10-2026): read and written,
+// what travels and what is suggested, adding one again, a refresh, and the
+// change of a relation by hand
+procedure TestExcludedRelations(const AFixture, AFolder: string);
+var
+  LFile: TRpLocalSchemaFile;
+  LList, LTarget: TStringList;
+  LRelations: TObjectList;
+  LVentas, LCopy, LSolo: TRpLocalSubSchema;
+  LRelation: TRpLocalRelation;
+  LSent: TJSONValue;
+  LRoot, LEntry, LForeignKey: TJSONObject;
+  LPath: string;
+
+  function RelationCount(ASchema: TRpLocalSubSchema): Integer;
+  begin
+    LRelations.Clear;
+    LFile.GetRelations(ASchema, LRelations);
+    Result := LRelations.Count;
+  end;
+
+  function SuggestionCount(ASchema: TRpLocalSubSchema): Integer;
+  begin
+    LRelations.Clear;
+    LFile.GetSuggestedRelations(ASchema, LRelations);
+    Result := LRelations.Count;
+  end;
+
+  // The relations of a table in what a subschema sends
+  function SentForeignKeys(const ASchemaName, ATable: string): Integer;
+  begin
+    LSent := SchemaTablesOf(LFile, ASchemaName);
+    try
+      Result := ForeignKeyCount(FindByName(TJSONArray(LSent), ATable));
+    finally
+      FreeAndNil(LSent);
+    end;
+  end;
+
+  function SchemaNamed(const AName: string): TRpLocalSubSchema;
+  begin
+    Result := LFile.Schemas[LFile.IndexOfSchema(AName)];
+  end;
+
+begin
+  LFile := TRpLocalSchemaFile.Create;
+  LList := TStringList.Create;
+  LTarget := TStringList.Create;
+  LRelations := TObjectList.Create(True);
+  LRelation := TRpLocalRelation.Create;
+  try
+    LFile.LoadFromFile(AFixture);
+    LVentas := SchemaNamed('Ventas');
+    LSolo := SchemaNamed('Solo ventas');
+    // The shared fixture: Solo ventas discarded the relation to CUSTOMERS
+    Check((LSolo.ExcludedRelations.Count = 1) and (SuggestionCount(LSolo) = 0) and
+      LFile.RelationExcluded(LSolo, 'SALES', TJSONObject(TJSONArray(
+      LFile.FindTable('SALES').Values['foreignKeys']).Items[0])) and
+      not LFile.RelationExcluded(LVentas, 'SALES', TJSONObject(TJSONArray(
+      LFile.FindTable('SALES').Values['foreignKeys']).Items[0])),
+      'R1: the excludedRelations of a subschema of the fixture are read, for it only');
+    LCopy := LFile.DuplicateSchema(LFile.IndexOfSchema('Ventas'), 'Ventas 2');
+    // R3: deleted in a subschema, the relation leaves it; the dictionary
+    // and the other subschemas keep it
+    Check(RelationCount(LVentas) = 1, 'excluded: the relation of the database travels in Ventas');
+    LFile.RemoveRelation(LVentas, TRpLocalRelation(LRelations[0]));
+    Check((RelationCount(LVentas) = 0) and (LVentas.ExcludedRelations.Count = 1),
+      'R3: deleted in a subschema, a relation of the database leaves it');
+    Check((ForeignKeyCount(LFile.FindTable('SALES')) = 1) and (RelationCount(LCopy) = 1) and
+      (RelationCount(nil) = 1), 'R3: the dictionary and the other subschemas keep it');
+    // R2: it does not travel, it is not suggested
+    Check((SentForeignKeys('Ventas', 'SALES') = 0) and (SentForeignKeys('Ventas 2', 'SALES') = 1) and
+      (SentForeignKeys('', 'SALES') = 1), 'R2: an excluded relation does not go to the AI');
+    Check(SuggestionCount(LVentas) = 0, 'R2: an excluded relation is not suggested');
+    Check(not LFile.ForeignKeyTravels(LVentas, 'SALES', TJSONObject(TJSONArray(
+      LFile.FindTable('SALES').Values['foreignKeys']).Items[0])),
+      'R2: the screens show it does not travel');
+    // R1: written in that subschema only, the version stays 2
+    LPath := IncludeTrailingPathDelimiter(AFolder) + 'excluded-dbxschemas-v2.json';
+    LFile.SaveToFile(LPath);
+    LRoot := TJSONObject(TJSONObject.ParseJSONValue(ReadText(LPath)));
+    try
+      LEntry := nil;
+      if FindByName(TJSONArray(LRoot.Values['schemas']), 'Ventas').Values['excludedRelations'] is TJSONArray then
+        LEntry := TJSONObject(TJSONArray(FindByName(TJSONArray(LRoot.Values['schemas']),
+          'Ventas').Values['excludedRelations']).Items[0]);
+      Check((LEntry <> nil) and (LEntry.Values['sourceTable'].Value = 'SALES') and
+        (Names(TJSONArray(LEntry.Values['sourceColumns'])) = 'CUSTOMERID') and
+        (LEntry.Values['targetTable'].Value = 'CUSTOMERS') and
+        (Names(TJSONArray(LEntry.Values['targetColumns'])) = 'CUSTOMERID'),
+        'R1: the entry of the subschema has the two ends of the relation');
+      Check((LRoot.Values['excludedRelations'] = nil) and
+        (FindByName(TJSONArray(LRoot.Values['schemas']), 'Ventas 2').Values['excludedRelations'] = nil) and
+        (FindByName(TJSONArray(LRoot.Values['schemas']), 'Ventas').Values['futureSchemaColor'] <> nil) and
+        (LRoot.Values['version'].Value = '2'),
+        'R1: an empty list is not written, the version stays 2');
+      // At the root, spelled in another case and with what a newer version
+      // adds to an entry
+      LRoot.AddPair('excludedRelations', TJSONObject.ParseJSONValue(
+        '[{"sourceTable":"sales","sourceColumns":["customerid"],"targetTable":"customers",' +
+        '"targetColumns":["customerid"],"futureNote":1}]'));
+      LFile.LoadFromJson(LRoot.ToJSON);
+    finally
+      LRoot.Free;
+    end;
+    LVentas := SchemaNamed('Ventas');
+    LSolo := SchemaNamed('Solo ventas');
+    LCopy := SchemaNamed('Ventas 2');
+    Check((LVentas.ExcludedRelations.Count = 1) and (RelationCount(nil) = 0) and
+      (RelationCount(LCopy) = 0) and (SuggestionCount(LSolo) = 0) and
+      (SentForeignKeys('', 'SALES') = 0) and (SentForeignKeys('Ventas 2', 'SALES') = 0),
+      'R1/R2: read again; the root excludes it everywhere, whatever the case of its names');
+    LRoot := TJSONObject(TJSONObject.ParseJSONValue(LFile.ToJsonText));
+    try
+      Check((LRoot.Values['excludedRelations'] is TJSONArray) and
+        (TJSONObject(TJSONArray(LRoot.Values['excludedRelations']).Items[0]).Values['futureNote'] <> nil),
+        'R1: an entry keeps what it had of a newer version');
+    finally
+      LRoot.Free;
+    end;
+    // R5: added again in all the tables, it leaves the root list, not twice
+    LList.CommaText := 'CUSTOMERID';
+    LFile.AddRelation('SALES', 'CUSTOMERS', LList, LList, '');
+    Check((LFile.ExcludedRelations.Count = 0) and (ForeignKeyCount(LFile.FindTable('SALES')) = 1) and
+      (RelationCount(nil) = 1) and (RelationCount(LCopy) = 1) and (RelationCount(LVentas) = 0),
+      'R5: added again, it leaves the root list (the subschema that deleted it still excludes it)');
+    LFile.AddRelation('SALES', 'CUSTOMERS', LList, LList, '', LVentas);
+    Check((LVentas.ExcludedRelations.Count = 0) and (RelationCount(LVentas) = 1) and
+      (ForeignKeyCount(LFile.FindTable('SALES')) = 1),
+      'R5: added again in the subschema, it travels there again');
+    // R3: deleted in all the tables, one of the database is excluded from
+    // every subschema
+    RelationCount(nil);
+    LFile.RemoveRelation(nil, TRpLocalRelation(LRelations[0]));
+    Check((LFile.ExcludedRelations.Count = 1) and (RelationCount(nil) = 0) and
+      (RelationCount(LVentas) = 0) and (ForeignKeyCount(LFile.FindTable('SALES')) = 1),
+      'R3: deleted in all the tables, a relation of the database leaves every subschema');
+    LFile.AddRelation('SALES', 'CUSTOMERS', LList, LList, '', LVentas);
+    Check((LFile.ExcludedRelations.Count = 0) and (RelationCount(LCopy) = 1),
+      'R5: added again in a subschema, it leaves the root list too');
+    // A relation by hand: excluded from a subschema, deleted in all the tables
+    LRelation.SourceTable := 'CUSTOMERS';
+    LRelation.ForeignKey := LFile.AddRelation('CUSTOMERS', 'SALES', LList, LList,
+      'Their sales', LVentas);
+    Check(RelationCount(LVentas) = 2, 'a relation by hand travels in Ventas');
+    LFile.RemoveRelation(LVentas, LRelation);
+    Check((RelationCount(LVentas) = 1) and (LVentas.ExcludedRelations.Count = 1) and
+      (ForeignKeyCount(LFile.FindTable('CUSTOMERS')) = 1) and (RelationCount(LCopy) = 2),
+      'R3: a relation by hand deleted in a subschema stays in the dictionary');
+    LFile.RemoveRelation(nil, LRelation);
+    Check((ForeignKeyCount(LFile.FindTable('CUSTOMERS')) = 0) and
+      (LVentas.ExcludedRelations.Count = 0) and (LRelation.ForeignKey = nil),
+      'R3: deleted in all the tables, a relation by hand leaves the dictionary and the lists');
+    // R4: a discarded suggestion is not suggested again in its subschema
+    LCopy := LFile.AddSchema('Compras');
+    LFile.AddSchemaTable(LCopy, 'SALES');
+    Check(SuggestionCount(LCopy) = 1, 'Compras: the relation to CUSTOMERS is a suggestion');
+    LFile.ExcludeRelation(LCopy, TRpLocalRelation(LRelations[0]));
+    Check((SuggestionCount(LCopy) = 0) and (LCopy.ExcludedRelations.Count = 1) and
+      (RelationCount(LVentas) = 1),
+      'R4: a discarded suggestion leaves the suggestions of its subschema only');
+    // R6: a refresh keeps the entries one of whose tables is still there
+    LFile.ExcludedRelations.AddElement(TJSONObject.ParseJSONValue(
+      '{"sourceTable":"PRODUCTS","sourceColumns":["PRODUCTID"],"targetTable":"GONE","targetColumns":["ID"]}'));
+    LFile.ExcludedRelations.AddElement(TJSONObject.ParseJSONValue(
+      '{"sourceTable":"SALES","sourceColumns":["SALEID"],"targetTable":"PRODUCTS","targetColumns":["PRODUCTID"]}'));
+    LFile.SetCatalog(TJSONArray(TJSONObject.ParseJSONValue(FreshCatalog)), 'Firebird5');
+    Check((LFile.ExcludedRelations.Count = 1) and
+      (TJSONObject(LFile.ExcludedRelations.Items[0]).Values['sourceTable'].Value = 'SALES') and
+      (LSolo.ExcludedRelations.Count = 1) and (SuggestionCount(LSolo) = 0) and
+      (LCopy.ExcludedRelations.Count = 1) and (SuggestionCount(LCopy) = 0),
+      'R6: a refresh keeps the entries of a table that is still there');
+
+    // R7: a relation by hand changes its tables and its columns
+    LFile.LoadFromFile(AFixture);
+    LSolo := SchemaNamed('Solo ventas');
+    LList.CommaText := 'SALEID';
+    LTarget.CommaText := 'PRODUCTID';
+    LRelation.SourceTable := 'SALES';
+    LRelation.ForeignKey := LFile.AddRelation('SALES', 'PRODUCTS', LList, LTarget, 'By hand');
+    LFile.ExcludeRelation(LSolo, LRelation);
+    LList.CommaText := 'TOTAL';
+    LTarget.CommaText := 'customerid';
+    LForeignKey := LFile.UpdateRelation(LRelation, 'sales', 'customers', LList, LTarget);
+    Check((LForeignKey = LRelation.ForeignKey) and
+      (LForeignKey.Values['targetTable'].Value = 'CUSTOMERS') and
+      (Names(TJSONArray(LForeignKey.Values['sourceColumns'])) = 'TOTAL') and
+      (Names(TJSONArray(LForeignKey.Values['targetColumns'])) = 'CUSTOMERID') and
+      (LForeignKey.Values['relationshipContext'].Value = 'By hand') and
+      (ForeignKeyCount(LFile.FindTable('SALES')) = 2),
+      'R7: a relation by hand takes another target and other columns, as the catalog spells them');
+    // (Solo ventas also excludes the relation of the database: the fixture)
+    Check(LFile.RelationExcluded(LSolo, 'SALES', LForeignKey) and
+      (LSolo.ExcludedRelations.Count = 2),
+      'R7: the subschema that excluded it excludes it with its new ends');
+    LList.CommaText := 'CUSTOMERID';
+    LTarget.CommaText := 'SALEID';
+    LFile.UpdateRelation(LRelation, 'CUSTOMERS', 'SALES', LList, LTarget, LSolo);
+    Check((ForeignKeyCount(LFile.FindTable('SALES')) = 1) and
+      (ForeignKeyCount(LFile.FindTable('CUSTOMERS')) = 1) and
+      (LRelation.SourceTable = 'CUSTOMERS') and (LSolo.ExcludedRelations.Count = 1),
+      'R7: another source table: it moves there, and comes back where it is changed');
+    LTarget.CommaText := 'CUSTOMERID';
+    LForeignKey := LFile.UpdateRelation(LRelation, 'SALES', 'CUSTOMERS', LList, LTarget);
+    Check((ForeignKeyCount(LFile.FindTable('CUSTOMERS')) = 0) and
+      (ForeignKeyCount(LFile.FindTable('SALES')) = 1) and (LRelation.ForeignKey = LForeignKey) and
+      (LForeignKey.Values['constraintName'].Value = 'FK_SALES_CUSTOMER') and
+      (LForeignKey.Values['relationshipContext'].Value = 'Who bought'),
+      'R7: with the ends of another relation, that one stays and this one leaves');
+    try
+      LFile.UpdateRelation(LRelation, 'SALES', 'PRODUCTS', LList, LList);
+      Check(False, 'R7: a relation of the database does not change');
+    except
+      on E: Exception do
+        Check(ForeignKeyCount(LFile.FindTable('SALES')) = 1,
+          'R7: a relation of the database does not change');
+    end;
+    // A relation by hand deleted while its table has another one with the
+    // same ends (a file written by hand): those ends stay excluded
+    LFile.LoadFromJson('{"version":2,"tables":[' +
+      '{"name":"SALES","columns":[{"name":"SALEID","isPrimaryKey":true}],"foreignKeys":[' +
+      '{"constraintName":"","targetTable":"PRODUCTS","sourceColumns":["SALEID"],"targetColumns":["PRODUCTID"]},' +
+      '{"constraintName":"","targetTable":"PRODUCTS","sourceColumns":["SALEID"],"targetColumns":["PRODUCTID"]}]},' +
+      '{"name":"PRODUCTS","columns":[{"name":"PRODUCTID","isPrimaryKey":true}],"foreignKeys":[]}],' +
+      '"schemas":[],"excludedRelations":[{"sourceTable":"SALES","sourceColumns":["SALEID"],' +
+      '"targetTable":"PRODUCTS","targetColumns":["PRODUCTID"]}]}');
+    LRelation.SourceTable := 'SALES';
+    LRelation.ForeignKey := TJSONObject(TJSONArray(LFile.FindTable('SALES').Values['foreignKeys']).Items[0]);
+    LFile.DeleteRelation(LRelation);
+    Check((ForeignKeyCount(LFile.FindTable('SALES')) = 1) and (LFile.ExcludedRelations.Count = 1),
+      'R3: a relation by hand deleted while another one has its ends: they stay excluded');
+    LRelation.ForeignKey := TJSONObject(TJSONArray(LFile.FindTable('SALES').Values['foreignKeys']).Items[0]);
+    LFile.DeleteRelation(LRelation);
+    Check((ForeignKeyCount(LFile.FindTable('SALES')) = 0) and (LFile.ExcludedRelations.Count = 0),
+      'R3: the last one with those ends deleted: its entries leave the lists');
+  finally
+    LRelation.Free;
+    LRelations.Free;
+    LTarget.Free;
+    LList.Free;
+    LFile.Free;
+  end;
+end;
+
 var
   LFixture, LSaved: string;
 begin
@@ -967,6 +1215,7 @@ begin
     TestAnalyzeRequest(LFixture);
     TestExportImport(LFixture, ExtractFilePath(LSaved));
     TestOnlySubschemas(LFixture);
+    TestExcludedRelations(LFixture, ExtractFilePath(LSaved));
   except
     on E: Exception do
     begin
