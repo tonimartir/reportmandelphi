@@ -497,6 +497,10 @@ class Report:
     def dataset(self, alias, sql, datasource=''):
         self.datasets.append((alias, sql, datasource))
 
+    # The local subschema of samples/dbxschemas/SAMPLES.json the datasets are
+    # made with (SCHEMANAME): the copilot starts on it
+    schema = 'Sales'
+
     def param(self, *args, **kw):
         self.params.append(Param(*args, **kw))
 
@@ -598,6 +602,8 @@ class Report:
             out.s('NAME', 'TRpDataInfoItem%d' % n)
             out.s('DATABASEALIAS', CONNECTION)
             out.w('SQL', sql)
+            if self.schema:
+                out.w('SCHEMANAME', self.schema)
             out.s('DATASOURCE', datasource)
             for tag in ('MYBASEFILENAME', 'MYBASEFIELDS', 'MYBASEINDEXFIELDS',
                         'MYBASEMASTERFIELDS', 'BDEINDEXFIELDS', 'BDEINDEXNAME', 'BDETABLE'):
@@ -855,6 +861,7 @@ def sales_by_category():
 
 def product_catalog():
     rep = Report('Product catalogue', 'Products by category with EAN-13 barcodes and stock alerts')
+    rep.schema = 'Catalog'
     rep.dataset('CAT', 'SELECT C.NAME AS CATEGORY, C.DESCRIPTION AS CATEGORY_DESCRIPTION, '
                        'P.SKU, P.EAN13, P.NAME, P.UNIT, P.UNIT_PRICE, P.UNITS_IN_STOCK, '
                        'P.REORDER_LEVEL '
@@ -970,6 +977,7 @@ def fishes():
     # The parameters of the classic sample, before the connection ones
     rep.params[0:0] = [Param('TITLE1', PARAM_STRING, 'Fishes, species', 'Title 1'),
                        Param('TITLE2', PARAM_STRING, 'Descriptions and images', 'Title 2')]
+    rep.schema = 'Fishes'
     rep.dataset('FISH', 'SELECT SPECIES_NO, CATEGORY, COMMON_NAME, SPECIES_NAME, LENGTH_CM, '
                         'LENGTH_IN, NOTES, GRAPHIC FROM FISHES ORDER BY CATEGORY, COMMON_NAME')
     sub = rep.subreport('FISH')
@@ -1035,6 +1043,7 @@ ALIGN_BOTTOM = 1
 
 def international():
     rep = Report('International text', 'The same message in nine languages and eight scripts')
+    rep.schema = 'Greetings'
     rep.dataset('G', 'SELECT LANGUAGE, NATIVE_NAME, SCRIPT, DIRECTION, GREETING, PARAGRAPH '
                      'FROM GREETINGS ORDER BY GREETING_ID')
     sub = rep.subreport('G')

@@ -33,7 +33,7 @@ uses
   {$ENDIF}
   rmdcmdline,
   SysUtils, Classes, IniFiles, Interfaces, Forms, Controls, Dialogs,
-  rpmdconsts, rpdatainfo, rpmdfmainlcl;
+  rpmdconsts, rpdatainfo, rpsamplesutil, rpmdfmainlcl;
 
 {$R *.res}
 
@@ -301,6 +301,9 @@ begin
     Application.OnException := ExceptionLogger.AppException;
     Application.CreateForm(TFRpMainFLCL, MainForm);
     LoadPreferences(MainForm);
+    // The local schema of the sample reports for the copilot, on a computer
+    // that does not have it yet (rpsamplesutil)
+    RpInstallSamplesSchema(RpInstalledSamplesFolder);
     if FileArg <> '' then
       OpenFromCommandLine(MainForm, FileArg)
     else

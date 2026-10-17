@@ -1,0 +1,726 @@
+{
+  "version": 2,
+  "alias": "SAMPLES",
+  "dialect": "SQLite",
+  "generatedUtc": "2026-10-17T10:05:33Z",
+  "tables": [
+    {
+      "name": "CATEGORIES",
+      "context": "",
+      "columns": [
+        {
+          "name": "CATEGORY_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "NAME",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(40)"
+        },
+        {
+          "name": "DESCRIPTION",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(80)"
+        }
+      ],
+      "foreignKeys": [
+      ]
+    },
+    {
+      "name": "CUSTOMERS",
+      "context": "",
+      "columns": [
+        {
+          "name": "CUSTOMER_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "CODE",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(8)",
+          "context": "Customer code printed on the documents, for example 'C0001'."
+        },
+        {
+          "name": "COMPANY_NAME",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(60)"
+        },
+        {
+          "name": "CONTACT_NAME",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(60)"
+        },
+        {
+          "name": "ADDRESS",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(60)"
+        },
+        {
+          "name": "POSTAL_CODE",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(10)"
+        },
+        {
+          "name": "CITY",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(40)"
+        },
+        {
+          "name": "COUNTRY",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(40)",
+          "context": "Country name in English."
+        },
+        {
+          "name": "PHONE",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(20)"
+        },
+        {
+          "name": "EMAIL",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(60)"
+        },
+        {
+          "name": "VAT_RATE",
+          "dataType": "Numeric",
+          "isPrimaryKey": false,
+          "detectedType": "REAL",
+          "context": "VAT percentage charged to the customer: 21 means 21 %. It is 0 for customers outside the European Union."
+        },
+        {
+          "name": "CUSTOMER_SINCE",
+          "dataType": "Date",
+          "isPrimaryKey": false,
+          "detectedType": "DATE",
+          "context": "Date of the first order. ISO text 'YYYY-MM-DD'."
+        }
+      ],
+      "foreignKeys": [
+      ]
+    },
+    {
+      "name": "EMPLOYEES",
+      "columns": [
+        {
+          "name": "EMPLOYEE_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "FIRST_NAME",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(30)"
+        },
+        {
+          "name": "LAST_NAME",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(30)"
+        },
+        {
+          "name": "TITLE",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(40)"
+        },
+        {
+          "name": "HIRE_DATE",
+          "dataType": "Date",
+          "isPrimaryKey": false,
+          "detectedType": "DATE",
+          "context": "ISO text 'YYYY-MM-DD'."
+        },
+        {
+          "name": "REGION",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(30)",
+          "context": "Sales region the employee covers.",
+          "allowedValues": [
+            {
+              "value": "Iberia",
+              "label": "Spain and Portugal"
+            },
+            {
+              "value": "Central Europe",
+              "label": "France, Germany, the Netherlands, Belgium and Switzerland"
+            },
+            {
+              "value": "Italy",
+              "label": "Italy"
+            },
+            {
+              "value": "Export",
+              "label": "United Kingdom, United States, Mexico and Argentina"
+            }
+          ]
+        }
+      ],
+      "foreignKeys": [
+      ],
+      "context": "The sales staff. The orders of a customer are taken by an employee of the region of its country."
+    },
+    {
+      "name": "FISHES",
+      "columns": [
+        {
+          "name": "SPECIES_NO",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "CATEGORY",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(15)"
+        },
+        {
+          "name": "COMMON_NAME",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(30)"
+        },
+        {
+          "name": "SPECIES_NAME",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(40)",
+          "context": "Scientific (Latin) name of the species."
+        },
+        {
+          "name": "LENGTH_CM",
+          "dataType": "Numeric",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "REAL"
+        },
+        {
+          "name": "LENGTH_IN",
+          "dataType": "Numeric",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "REAL"
+        },
+        {
+          "name": "NOTES",
+          "dataType": "TextLong",
+          "isPrimaryKey": false,
+          "detectedType": "TEXT",
+          "context": "Long description of the species: habitat, behaviour, whether it is edible."
+        },
+        {
+          "name": "GRAPHIC",
+          "dataType": "TextLong",
+          "isPrimaryKey": false,
+          "detectedType": "BLOB",
+          "context": "Picture of the fish (JPEG). Not for queries."
+        }
+      ],
+      "foreignKeys": [
+      ],
+      "context": "Fish species of the classic Report Manager sample (the biolife table); not related to the sales tables."
+    },
+    {
+      "name": "GREETINGS",
+      "columns": [
+        {
+          "name": "GREETING_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "LANGUAGE",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "NVARCHAR(20)"
+        },
+        {
+          "name": "NATIVE_NAME",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "NVARCHAR(30)",
+          "context": "Name of the language written in the language itself."
+        },
+        {
+          "name": "SCRIPT",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "NVARCHAR(20)"
+        },
+        {
+          "name": "DIRECTION",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "NVARCHAR(3)",
+          "context": "Direction of the script.",
+          "allowedValues": [
+            {
+              "value": "LTR",
+              "label": "Written from left to right"
+            },
+            {
+              "value": "RTL",
+              "label": "Written from right to left (Arabic, Hebrew)"
+            }
+          ]
+        },
+        {
+          "name": "GREETING",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "NVARCHAR(80)"
+        },
+        {
+          "name": "PARAGRAPH",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "NVARCHAR(400)",
+          "context": "A paragraph about the olive oil of the company, in the same language."
+        }
+      ],
+      "foreignKeys": [
+      ],
+      "context": "The same thank-you message in nine languages, for the international text sample; not related to the sales tables."
+    },
+    {
+      "name": "ORDER_LINES",
+      "columns": [
+        {
+          "name": "ORDER_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "LINE_NO",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "PRODUCT_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "QUANTITY",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "UNIT_PRICE",
+          "dataType": "Numeric",
+          "isPrimaryKey": false,
+          "detectedType": "REAL",
+          "context": "Price of one unit in this order, in euros, without VAT."
+        },
+        {
+          "name": "DISCOUNT",
+          "dataType": "Numeric",
+          "isPrimaryKey": false,
+          "detectedType": "REAL",
+          "context": "Discount percentage of the line.",
+          "allowedValues": [
+            {
+              "value": "0",
+              "label": "No discount"
+            },
+            {
+              "value": "5",
+              "label": "5 % volume discount, only on lines of 12 units or more"
+            },
+            {
+              "value": "10",
+              "label": "10 % volume discount, only on lines of 12 units or more"
+            }
+          ]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "constraintName": "FK_ORDER_LINES_0",
+          "targetTable": "PRODUCTS",
+          "sourceColumns": [
+            "PRODUCT_ID"
+          ],
+          "targetColumns": [
+            "PRODUCT_ID"
+          ],
+          "relationshipContext": ""
+        },
+        {
+          "constraintName": "FK_ORDER_LINES_1",
+          "targetTable": "ORDERS",
+          "sourceColumns": [
+            "ORDER_ID"
+          ],
+          "targetColumns": [
+            "ORDER_ID"
+          ],
+          "relationshipContext": ""
+        }
+      ],
+      "context": "The products of each order. The amount of a line is QUANTITY * UNIT_PRICE * (1 - DISCOUNT / 100.0)."
+    },
+    {
+      "name": "ORDERS",
+      "columns": [
+        {
+          "name": "ORDER_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "ORDER_NUMBER",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(12)",
+          "context": "Order and invoice number, 'YYYY/NNNNN', for example '2024/00001'."
+        },
+        {
+          "name": "CUSTOMER_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "EMPLOYEE_ID",
+          "dataType": "Integer",
+          "isPrimaryKey": false,
+          "detectedType": "INTEGER",
+          "context": "Sales representative who took the order."
+        },
+        {
+          "name": "ORDER_DATE",
+          "dataType": "Date",
+          "isPrimaryKey": false,
+          "detectedType": "DATE",
+          "context": "ISO text 'YYYY-MM-DD'."
+        },
+        {
+          "name": "SHIP_DATE",
+          "dataType": "Date",
+          "isPrimaryKey": false,
+          "detectedType": "DATE",
+          "context": "NULL while the order is pending. ISO text 'YYYY-MM-DD'."
+        },
+        {
+          "name": "STATUS",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(12)",
+          "context": "Shipping state of the order.",
+          "allowedValues": [
+            {
+              "value": "Shipped",
+              "label": "Shipped: SHIP_DATE has the date"
+            },
+            {
+              "value": "Pending",
+              "label": "Not shipped yet: SHIP_DATE is NULL"
+            }
+          ]
+        },
+        {
+          "name": "VAT_RATE",
+          "dataType": "Numeric",
+          "isPrimaryKey": false,
+          "detectedType": "REAL",
+          "context": "VAT percentage of the order (21 means 21 %), copied from the customer."
+        }
+      ],
+      "foreignKeys": [
+        {
+          "constraintName": "FK_ORDERS_0",
+          "targetTable": "EMPLOYEES",
+          "sourceColumns": [
+            "EMPLOYEE_ID"
+          ],
+          "targetColumns": [
+            "EMPLOYEE_ID"
+          ],
+          "relationshipContext": "The sales representative who took the order."
+        },
+        {
+          "constraintName": "FK_ORDERS_1",
+          "targetTable": "CUSTOMERS",
+          "sourceColumns": [
+            "CUSTOMER_ID"
+          ],
+          "targetColumns": [
+            "CUSTOMER_ID"
+          ],
+          "relationshipContext": ""
+        }
+      ],
+      "context": "One row per sales order (invoice). The amounts are not stored here: the net amount of an order is the sum of the amounts of its ORDER_LINES, its VAT is net amount * VAT_RATE / 100.0 and its total is net amount + VAT."
+    },
+    {
+      "name": "PRODUCTS",
+      "context": "",
+      "columns": [
+        {
+          "name": "PRODUCT_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": true,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "SKU",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(12)"
+        },
+        {
+          "name": "EAN13",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(13)",
+          "context": "Barcode of the product, 13 digits stored as text."
+        },
+        {
+          "name": "NAME",
+          "dataType": "String",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(60)"
+        },
+        {
+          "name": "CATEGORY_ID",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "UNIT",
+          "dataType": "String",
+          "isPrimaryKey": false,
+          "detectedType": "VARCHAR(20)",
+          "context": "Sales unit, for example '500 ml bottle' or '1 kg wheel'."
+        },
+        {
+          "name": "UNIT_PRICE",
+          "dataType": "Numeric",
+          "isPrimaryKey": false,
+          "detectedType": "REAL",
+          "context": "Current list price of one unit, in euros, without VAT."
+        },
+        {
+          "name": "UNITS_IN_STOCK",
+          "dataType": "Integer",
+          "context": "",
+          "isPrimaryKey": false,
+          "detectedType": "INTEGER"
+        },
+        {
+          "name": "REORDER_LEVEL",
+          "dataType": "Integer",
+          "isPrimaryKey": false,
+          "detectedType": "INTEGER",
+          "context": "Minimum stock: the product must be reordered when UNITS_IN_STOCK is below this level."
+        }
+      ],
+      "foreignKeys": [
+        {
+          "constraintName": "FK_PRODUCTS_0",
+          "targetTable": "CATEGORIES",
+          "sourceColumns": [
+            "CATEGORY_ID"
+          ],
+          "targetColumns": [
+            "CATEGORY_ID"
+          ],
+          "relationshipContext": ""
+        }
+      ]
+    }
+  ],
+  "schemas": [
+    {
+      "name": "Sales",
+      "description": "Orders and their lines, customers, products and categories, and the sales staff.",
+      "tables": [
+        "CATEGORIES",
+        "CUSTOMERS",
+        "EMPLOYEES",
+        "ORDER_LINES",
+        "ORDERS",
+        "PRODUCTS"
+      ],
+      "columns": {
+        "CATEGORIES": [
+          "CATEGORY_ID",
+          "NAME",
+          "DESCRIPTION"
+        ],
+        "CUSTOMERS": [
+          "CUSTOMER_ID",
+          "CODE",
+          "COMPANY_NAME",
+          "CONTACT_NAME",
+          "ADDRESS",
+          "POSTAL_CODE",
+          "CITY",
+          "COUNTRY",
+          "PHONE",
+          "EMAIL",
+          "VAT_RATE",
+          "CUSTOMER_SINCE"
+        ],
+        "EMPLOYEES": [
+          "EMPLOYEE_ID",
+          "FIRST_NAME",
+          "LAST_NAME",
+          "TITLE",
+          "HIRE_DATE",
+          "REGION"
+        ],
+        "ORDER_LINES": [
+          "ORDER_ID",
+          "LINE_NO",
+          "PRODUCT_ID",
+          "QUANTITY",
+          "UNIT_PRICE",
+          "DISCOUNT"
+        ],
+        "ORDERS": [
+          "ORDER_ID",
+          "ORDER_NUMBER",
+          "CUSTOMER_ID",
+          "EMPLOYEE_ID",
+          "ORDER_DATE",
+          "SHIP_DATE",
+          "STATUS",
+          "VAT_RATE"
+        ],
+        "PRODUCTS": [
+          "PRODUCT_ID",
+          "SKU",
+          "EAN13",
+          "NAME",
+          "CATEGORY_ID",
+          "UNIT",
+          "UNIT_PRICE",
+          "UNITS_IN_STOCK",
+          "REORDER_LEVEL"
+        ]
+      }
+    },
+    {
+      "name": "Catalog",
+      "description": "Products with their prices, barcodes and stock, by category.",
+      "tables": [
+        "CATEGORIES",
+        "PRODUCTS"
+      ],
+      "columns": {
+        "CATEGORIES": [
+          "CATEGORY_ID",
+          "NAME",
+          "DESCRIPTION"
+        ],
+        "PRODUCTS": [
+          "PRODUCT_ID",
+          "SKU",
+          "EAN13",
+          "NAME",
+          "CATEGORY_ID",
+          "UNIT",
+          "UNIT_PRICE",
+          "UNITS_IN_STOCK",
+          "REORDER_LEVEL"
+        ]
+      }
+    },
+    {
+      "name": "Fishes",
+      "description": "The classic fishes sample, without the pictures.",
+      "tables": [
+        "FISHES"
+      ],
+      "columns": {
+        "FISHES": [
+          "SPECIES_NO",
+          "CATEGORY",
+          "COMMON_NAME",
+          "SPECIES_NAME",
+          "LENGTH_CM",
+          "LENGTH_IN",
+          "NOTES"
+        ]
+      }
+    },
+    {
+      "name": "Greetings",
+      "description": "The international text sample.",
+      "tables": [
+        "GREETINGS"
+      ],
+      "columns": {
+        "GREETINGS": [
+          "GREETING_ID",
+          "LANGUAGE",
+          "NATIVE_NAME",
+          "SCRIPT",
+          "DIRECTION",
+          "GREETING",
+          "PARAGRAPH"
+        ]
+      }
+    }
+  ]
+}

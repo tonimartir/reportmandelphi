@@ -32,19 +32,23 @@ unit rpsamplesutil;
 
   The installed folder may be read only (Program Files, /opt, an application
   bundle that a change would break), so a sample is opened from a working
-  copy in the documents of the user: <Documents>/Report Manager/Samples. }
+  copy in the documents of the user: <Documents>/Report Manager/Samples.
+
+  dbxschemas/SAMPLES.json is the local schema of the connection of the
+  samples for the AI copilot, made with the local schema editor: it goes to
+  the dbxschemas folder next to the connections file of the computer
+  (RpInstallSamplesSchema), not to the working copy. }
 
 interface
 
 {$I rpconf.inc}
 
 uses
-  Classes, SysUtils, IniFiles
+  Classes, SysUtils, IniFiles, rpdatainfo
 {$IFDEF MSWINDOWS}
   , Windows, rpmdshfolder
 {$ENDIF}
 {$IFDEF FPC}
-  , rpdatainfo
   {$IFDEF DARWIN}
   , rpdarwinlibs
   {$ENDIF}
@@ -53,6 +57,10 @@ uses
 
 const
   RP_SAMPLES_INDEX = 'samples.ini';
+  // The connection alias of the sample reports and the folder of its local
+  // schema (dbxschemas/<ALIAS>.json, as next to the connections file)
+  RP_SAMPLES_ALIAS = 'SAMPLES';
+  RP_SAMPLES_SCHEMAS = 'dbxschemas';
 
 type
   // A sample of the index, with its texts in the language of the user
@@ -77,6 +85,13 @@ function RpSamplesWorkingFolder: string;
 // installed ones are newer. A report already there is never replaced: the
 // user may have changed it.
 procedure RpUpdateSamplesWorkingCopy(const AInstalled, AWorking: string);
+// The local schema of the samples (dbxschemas/SAMPLES.json of the installed
+// samples) into the dbxschemas folder next to the connections file of this
+// computer, where the copilot and the local schema editor look for it, when
+// it is not there yet: a new installation asks the copilot for a report on
+// the samples at once. An existing file is never replaced (the user may have
+// changed it). The file installed, or '' when nothing was copied.
+function RpInstallSamplesSchema(const AInstalled: string): string;
 // The samples of the index of AFolder, in its order (AList owns them)
 procedure RpLoadSamples(const AFolder: string; AList: TList);
 procedure RpFreeSamples(AList: TList);
@@ -235,7 +250,12 @@ begin
       source := ASource + search.Name;
       target := ATarget + search.Name;
       if (search.Attr and faDirectory) <> 0 then
-        UpdateFolder(IncludeTrailingPathDelimiter(source), IncludeTrailingPathDelimiter(target))
+      begin
+        // The local schema goes next to the connections file
+        // (RpInstallSamplesSchema), not to the documents
+        if not SameText(search.Name, RP_SAMPLES_SCHEMAS) then
+          UpdateFolder(IncludeTrailingPathDelimiter(source), IncludeTrailingPathDelimiter(target));
+      end
       else
       begin
         docopy := not FileExists(target);
@@ -253,6 +273,41 @@ end;
 procedure RpUpdateSamplesWorkingCopy(const AInstalled, AWorking: string);
 begin
   UpdateFolder(IncludeTrailingPathDelimiter(AInstalled), IncludeTrailingPathDelimiter(AWorking));
+end;
+
+function RpInstallSamplesSchema(const AInstalled: string): string;
+var
+  LAdmin: TRpConnAdmin;
+  LSource, LTarget: string;
+begin
+  Result := '';
+  if AInstalled = '' then
+    Exit;
+  LSource := IncludeTrailingPathDelimiter(AInstalled) + RP_SAMPLES_SCHEMAS +
+    PathDelim + RP_SAMPLES_ALIAS + '.json';
+  if not FileExists(LSource) then
+    Exit;
+  try
+    // The folder RpLocalSchemaFileName uses: that of the connections file
+    LAdmin := TRpConnAdmin.Create;
+    try
+      LTarget := ExtractFilePath(ExpandFileName(LAdmin.configfilename));
+    finally
+      LAdmin.Free;
+    end;
+    LTarget := IncludeTrailingPathDelimiter(LTarget + RP_SAMPLES_SCHEMAS) +
+      RP_SAMPLES_ALIAS + '.json';
+    if FileExists(LTarget) then
+      Exit;
+    ForceDirectories(ExtractFilePath(LTarget));
+    CopyFileTo(LSource, LTarget);
+    if FileExists(LTarget) then
+      Result := LTarget;
+  except
+    // A folder that can not be written: the copilot asks for a subschema,
+    // as without the file
+    Result := '';
+  end;
 end;
 
 function RpSamplesLanguage: string;

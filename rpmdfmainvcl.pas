@@ -528,7 +528,7 @@ procedure ExecuteReportDotNet(report:TRpReport;preview:boolean;Version:integer);
 implementation
 
 uses rpmdfdatasetsvcl, rpchatdialogvcl, System.Contnrs, rplocalschemas,
-  rpfrmlocalschemasvcl, rpfrmwelcomevcl;
+  rpfrmlocalschemasvcl, rpfrmwelcomevcl, rpsamplesutil;
 
 {$R *.dfm}
 
@@ -2896,6 +2896,10 @@ begin
  Application.OnIdle:=oldappidle;
 
  WindowState:=wsMaximized;
+ // The local schema of the sample reports for the copilot, on a computer
+ // that does not have it yet (rpsamplesutil)
+ if browsecommandline then
+  RpInstallSamplesSchema(RpInstalledSamplesFolder);
  // The designer itself (not inside the IDE) without a report to open: the
  // welcome window with the sample reports, unless the user hid it
  if browsecommandline and (Length(filename)=0) then
