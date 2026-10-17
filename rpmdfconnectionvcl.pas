@@ -80,6 +80,7 @@ type
     LDotNetDriver: TLabel;
     ImageCollection1: TImageCollection;
     VirtualImageList1: TVirtualImageList;
+    BSchemas: TToolButton;
     procedure GDriverClick(Sender: TObject);
     procedure LConnectionsClick(Sender: TObject);
     procedure BNewClick(Sender: TObject);
@@ -94,6 +95,7 @@ type
     procedure CheckLoginPromptClick(Sender: TObject);
     procedure EConnectionStringChange(Sender: TObject);
     procedure FrameResize(Sender: TObject);
+    procedure BSchemasClick(Sender: TObject);
   private
     { Private declarations }
     conadmin:TRpCOnnAdmin;
@@ -108,7 +110,15 @@ type
     function ResolveAvailableConnectionDriver(const AConnectionName: string;
      ADefaultDriver: TRpDbDriver): TRpDbDriver;
     function FindDatabaseInfoItem:TRpDatabaseInfoItem;
+    function GetReportFolder:string;
+    procedure SetReportFolder(const AValue:string);
   private
+    // The schemas of the connection (the gear of the toolbar, as in the
+    // copilot): its local schema, for a direct connection, and the schemas
+    // of the cloud
+    PopSchemas: TPopupMenu;
+    MLocalSchemas: TMenuItem;
+    MCloudSchemas: TMenuItem;
     // Connection wizard: "Add connection" above the toolbar, the same button
     // in the middle while there are no connections, and "Configure with the
     // wizard" for a Reportman AI Agent connection not configured here
@@ -121,6 +131,8 @@ type
     LWizardHint: TLabel;
     LAgentProblem: TLabel;
     BWizardConfigure: TButton;
+    procedure MLocalSchemasClick(Sender: TObject);
+    procedure MCloudSchemasClick(Sender: TObject);
     procedure BuildWizardControls;
     procedure PEmptyResize(Sender: TObject);
     procedure LayoutAgentProblem;
@@ -137,13 +149,21 @@ type
     procedure SetBlockChangesSource(AReport:TRpReport);
     property Databaseinfo:TRpDatabaseInfoList read FDatabaseinfo
      write SetDatabaseInfo;
+    // The folder of the report: the copy the frame edits has none, and a
+    // relative SQLite database (the samples) is looked for there
+    property ReportFolder:string read GetReportFolder write SetReportFolder;
     property Params:TRpParamList read FParams write
      SetParams;
   end;
 
 implementation
 
-uses rpxmlstream, rpbasereport, rpmdfnewreportwizardvcl;
+uses System.Types, rpxmlstream, rpbasereport, rpmdfnewreportwizardvcl, rplocalschemas,
+  rpfrmlocalschemasvcl, rpauthmanager;
+
+const
+  // The schemas of the cloud (the same page as the gear of the copilot)
+  CCloudSchemasUrl = 'https://app.reportman.es/database-config';
 
 {$R *.dfm}
 
@@ -161,6 +181,16 @@ begin
  CheckLoadDriverParams.Caption:=TranslateStr(146,CheckLoadDriverParams.Caption);
  BTest.Caption:=TranslateStr(753,BTest.Caption);
  BBuild.Caption:=TranslateStr(168,BBuild.Caption);
+ BSchemas.Hint:=TranslateStr(1496,'Configure DB Schemas');
+ PopSchemas:=TPopupMenu.Create(Self);
+ MLocalSchemas:=TMenuItem.Create(PopSchemas);
+ MLocalSchemas.Caption:=TranslateStr(1840,'Local schemas...');
+ MLocalSchemas.OnClick:=MLocalSchemasClick;
+ PopSchemas.Items.Add(MLocalSchemas);
+ MCloudSchemas:=TMenuItem.Create(PopSchemas);
+ MCloudSchemas.Caption:=TranslateStr(1841,'Cloud schemas...');
+ MCloudSchemas.OnClick:=MCloudSchemasClick;
+ PopSchemas.Items.Add(MCloudSchemas);
 
  GAvailable.Caption:=TranslateStr(1098,GAvailable.Caption);
  LConnectionString.Caption:=TranslateStr(1099,LConnectionString.Caption);
@@ -197,6 +227,45 @@ end;
 procedure TFRpConnectionVCL.SetParams(Value:TRpParamList);
 begin
  FParams.Assign(Value);
+end;
+
+function TFRpConnectionVCL.GetReportFolder:string;
+begin
+ Result:=report.ReportFolder;
+end;
+
+procedure TFRpConnectionVCL.SetReportFolder(const AValue:string);
+begin
+ report.ReportFolder:=AValue;
+end;
+
+procedure TFRpConnectionVCL.BSchemasClick(Sender: TObject);
+var
+ LPoint:TPoint;
+begin
+ // The local schema only for a connection that runs SQL on this computer
+ MLocalSchemas.Enabled:=RpIsLocalSqlDatabase(FindDatabaseInfoItem);
+ LPoint:=BSchemas.ClientToScreen(Point(0,BSchemas.Height));
+ PopSchemas.Popup(LPoint.X,LPoint.Y);
+end;
+
+procedure TFRpConnectionVCL.MLocalSchemasClick(Sender: TObject);
+var
+ LItem:TRpDatabaseInfoItem;
+ LSchemaName:string;
+begin
+ LItem:=FindDatabaseInfoItem;
+ if not RpIsLocalSqlDatabase(LItem) then
+  exit;
+ LSchemaName:='';
+ // On the connections being edited: the copy of the report the frame
+ // keeps, with its parameters (DBPARAM_*) and its folder
+ RpShowLocalSchemasDialog(report,LItem.Alias,LSchemaName,False,nil);
+end;
+
+procedure TFRpConnectionVCL.MCloudSchemasClick(Sender: TObject);
+begin
+ TRpAuthManager.Instance.OpenUrl(CCloudSchemasUrl);
 end;
 
 procedure TFRpConnectionVCL.SetBlockChangesSource(AReport:TRpReport);

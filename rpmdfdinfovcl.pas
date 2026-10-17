@@ -280,6 +280,7 @@ begin
  begin
   fdatasets.SetBlockChangesSource(nil);
   try
+   fdatasets.SetReportFolder(freport.ReportFolder);
    fdatasets.Datainfo:=freport.DataInfo;
    fdatasets.Databaseinfo:=freport.DatabaseInfo;
    fdatasets.Params:=freport.Params;
@@ -320,6 +321,7 @@ begin
  end;
    fconnections.SetBlockChangesSource(nil);
    try
+    fconnections.ReportFolder:=report.ReportFolder;
     fconnections.Databaseinfo:=report.DatabaseInfo;
     fconnections.Params:=report.Params;
    finally

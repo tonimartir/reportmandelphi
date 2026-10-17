@@ -206,6 +206,10 @@ type
     constructor Create(AOwner:TComponent);override;
     destructor Destroy; override;
     procedure SetBlockChangesSource(AReport:TRpReport);
+    // The folder of the report: the copy the frame edits has none, and a
+    // relative SQLite database (the samples) is looked for there ("Show
+    // data", the local schemas of the chat)
+    procedure SetReportFolder(const AValue:string);
     procedure FillDatasets;
     property Datainfo:TRpDataInfoList read GetDatainfo
      write SetDataInfo;
@@ -297,6 +301,11 @@ end;
 procedure TFRpDatasetsVCL.SetParams(Value:TRpParamList);
 begin
  report.params.assign(value);
+end;
+
+procedure TFRpDatasetsVCL.SetReportFolder(const AValue:string);
+begin
+ Report.ReportFolder:=AValue;
 end;
 
 procedure TFRpDatasetsVCL.SetBlockChangesSource(AReport:TRpReport);

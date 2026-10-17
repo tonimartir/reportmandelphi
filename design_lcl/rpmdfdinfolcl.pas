@@ -18,7 +18,7 @@ uses
   StdCtrls, ExtCtrls, ComCtrls, Buttons, Variants, DB,
   rpreport, rpdatainfo, rpparams, rpmdconsts, rptypes, rpbasereport, rpxmlstream,
   rpfrmmonacoeditorlcl, rpmdimageslcl, rpmdundocuelcl, rpmdfparamslcl,
-  rpgraphutilslcl, rpaithreadslcl, rpfrmchatlcl;
+  rpgraphutilslcl, rpaithreadslcl, rpfrmchatlcl, rpchatmodernstylelcl;
 
 type
   // "Show data": ADataset is the open dataset (nil and AError on failure)
@@ -223,6 +223,9 @@ type
     procedure LDatasetsClick(Sender: TObject);
     procedure BNewConnClick(Sender: TObject);
     procedure BDelConnClick(Sender: TObject);
+    procedure BSchemasClick(Sender: TObject);
+    procedure MLocalSchemasClick(Sender: TObject);
+    procedure MCloudSchemasClick(Sender: TObject);
     procedure BBrowseFileClick(Sender: TObject);
     procedure BNewDSClick(Sender: TObject);
     procedure BtnUpDSClick(Sender: TObject);
@@ -273,6 +276,13 @@ type
     BNewConn: TToolButton;
     SepConn: TToolButton;
     BDelConn: TToolButton;
+    // The schemas of the connection, as the gear of the copilot: its local
+    // schema (a direct connection) and the schemas of the cloud
+    SepSchemas: TToolButton;
+    BSchemas: TRpChatIconButton;
+    PopSchemas: TPopupMenu;
+    MLocalSchemas: TMenuItem;
+    MCloudSchemas: TMenuItem;
 
     ToolBarDS: TToolBar;
     BNewDS: TToolButton;
@@ -1136,6 +1146,29 @@ begin
   BDelConn.Hint := TranslateStr(1105, 'Deletes the selected connection');
   BDelConn.OnClick := BDelConnClick;
 
+  SepSchemas := TToolButton.Create(ToolBarConn);
+  SepSchemas.Parent := ToolBarConn;
+  SepSchemas.Style := tbsSeparator;
+  SepSchemas.Width := Scale96ToScreen(8);
+
+  BSchemas := TRpChatIconButton.Create(ToolBarConn);
+  BSchemas.Parent := ToolBarConn;
+  BSchemas.Kind := rpikCog;
+  BSchemas.Width := Scale96ToScreen(26);
+  BSchemas.Height := Scale96ToScreen(26);
+  BSchemas.Hint := TranslateStr(1496, 'Configure DB Schemas');
+  BSchemas.ShowHint := True;
+  BSchemas.OnClick := BSchemasClick;
+  PopSchemas := TPopupMenu.Create(Self);
+  MLocalSchemas := TMenuItem.Create(PopSchemas);
+  MLocalSchemas.Caption := TranslateStr(1840, 'Local schemas...');
+  MLocalSchemas.OnClick := MLocalSchemasClick;
+  PopSchemas.Items.Add(MLocalSchemas);
+  MCloudSchemas := TMenuItem.Create(PopSchemas);
+  MCloudSchemas.Caption := TranslateStr(1841, 'Cloud schemas...');
+  MCloudSchemas.OnClick := MCloudSchemasClick;
+  PopSchemas.Items.Add(MCloudSchemas);
+
   BuildDriverControls;
 
   PConnClient := TPanel.Create(TabConnections);
@@ -1699,6 +1732,9 @@ begin
     FWork.DatabaseInfo.Assign(FReport.DatabaseInfo);
     FWork.DataInfo.Assign(FReport.DataInfo);
     FWork.Params.Assign(FReport.Params);
+    // A relative SQLite database (the samples) is looked for in the folder
+    // of the report: "Show data" and the local schemas work on this copy
+    FWork.ReportFolder := FReport.ReportFolder;
   end;
 
   RefreshConnList;
@@ -2864,6 +2900,48 @@ begin
     EConnAlias.SetFocus;
     EConnAlias.SelectAll;
   end;
+end;
+
+procedure TFRpDInfoLCL.BSchemasClick(Sender: TObject);
+var
+  item: TRpDatabaseInfoItem;
+  pt: TPoint;
+begin
+  // The alias and the driver being edited apply first
+  SaveActiveConn;
+  item := nil;
+  if (FActiveConnIndex >= 0) and (FActiveConnIndex < FWork.DatabaseInfo.Count) then
+    item := FWork.DatabaseInfo[FActiveConnIndex];
+  // The local schema only for a connection that runs SQL on this computer
+  MLocalSchemas.Enabled := RpIsLocalSqlDatabase(item);
+  pt := BSchemas.ClientToScreen(Point(0, BSchemas.Height));
+  PopSchemas.PopUp(pt.X, pt.Y);
+end;
+
+procedure TFRpDInfoLCL.MLocalSchemasClick(Sender: TObject);
+var
+  item: TRpDatabaseInfoItem;
+  schemaName: string;
+begin
+  SaveActiveConn;
+  if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
+    Exit;
+  item := FWork.DatabaseInfo[FActiveConnIndex];
+  if not RpIsLocalSqlDatabase(item) then
+    Exit;
+  schemaName := '';
+  // On the working copy: the connections being edited, with the parameters
+  // (DBPARAM_*) and the folder of the report
+  RpShowLocalSchemasDialog(FWork, item.Alias, schemaName, False, FChat);
+  // The chat of the datasets lists the subschemas saved
+  if FChat <> nil then
+    UpdateChatLocalSchemas(DatabaseInfoOf(ActiveDataInfo), True);
+end;
+
+procedure TFRpDInfoLCL.MCloudSchemasClick(Sender: TObject);
+begin
+  // The schemas of the cloud (the same page as the gear of the copilot)
+  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
 end;
 
 procedure TFRpDInfoLCL.BDelConnClick(Sender: TObject);
