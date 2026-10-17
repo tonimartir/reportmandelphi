@@ -241,6 +241,7 @@ type
     procedure BAddAllClick(Sender: TObject);
     procedure BClearColumnsClick(Sender: TObject);
     procedure MemoColumnContextChange(Sender: TObject);
+    procedure GridValuesFit(Sender: TObject);
     procedure GridValuesSetEditText(Sender: TObject; ACol, ARow: Integer;
       const Value: string);
     procedure BAddValueClick(Sender: TObject);
@@ -671,6 +672,7 @@ begin
   GridValues.Cells[0, 0] := TranslateStr(1896, 'Value');
   GridValues.Cells[1, 0] := TranslateStr(1897, 'Label');
   GridValues.OnSetEditText := GridValuesSetEditText;
+  LValues.OnResize := GridValuesFit;
   LPreview := NewPanel(LDetails, alTop, 34);
   BPreview := NewButton(LPreview, TranslateStr(1865, 'Show 5 rows'),
     BPreviewClick, 150);
@@ -997,6 +999,17 @@ procedure TFRpLocalSchemasLCL.FillTables;
 var
   I: Integer;
   LNames, LChosen: TStringList;
+
+  function SelectIn(AList: TListBox): Boolean;
+  var
+    LIndex: Integer;
+  begin
+    LIndex := AList.Items.IndexOf(FTablesTable);
+    Result := (FTablesTable <> '') and (LIndex >= 0);
+    if Result then
+      AList.Selected[LIndex] := True;
+  end;
+
 begin
   LNames := TStringList.Create;
   LChosen := SchemaTables;
@@ -1028,6 +1041,12 @@ begin
     LChosen.Free;
     LNames.Free;
   end;
+  // The table described below is selected in the list it is in, and
+  // forgotten when it is in neither: a new subschema showed the
+  // description of the table chosen before with no table selected, and
+  // typing there changed that table
+  if not SelectIn(ListChosen) and not SelectIn(ListAvailable) then
+    FTablesTable := '';
   FillTableContext;
 end;
 
@@ -1986,15 +2005,37 @@ procedure TFRpLocalSchemasLCL.GridValuesSetEditText(Sender: TObject; ACol,
 begin
   if FUpdating then
     Exit;
-  GridValues.Cells[ACol, ARow] := Value;
+  // The grid already has the text in the cell: assigning it again reloaded
+  // the editor with its text selected, so every key replaced the text
+  // typed before it and only the last character of a value was kept
   SaveAllowedValues;
+end;
+
+// The two columns fill the grid: wider than it, editing the label scrolled
+// the value out of sight
+procedure TFRpLocalSchemasLCL.GridValuesFit(Sender: TObject);
+var
+  LWidth: Integer;
+begin
+  LWidth := GridValues.ClientWidth - 2 * GridValues.GridLineWidth;
+  if LWidth < S(120) then
+    Exit;
+  GridValues.ColWidths[0] := LWidth * 35 div 100;
+  GridValues.ColWidths[1] := LWidth - GridValues.ColWidths[0];
 end;
 
 procedure TFRpLocalSchemasLCL.BAddValueClick(Sender: TObject);
 begin
-  GridValues.RowCount := GridValues.RowCount + 1;
-  GridValues.Cells[0, GridValues.RowCount - 1] := '';
-  GridValues.Cells[1, GridValues.RowCount - 1] := '';
+  // The last row is the one for a new value: "+" goes to it while it is
+  // empty (it added a second empty row under the first one) and adds
+  // another only once it has something
+  if (Trim(GridValues.Cells[0, GridValues.RowCount - 1]) <> '') or
+    (Trim(GridValues.Cells[1, GridValues.RowCount - 1]) <> '') then
+  begin
+    GridValues.RowCount := GridValues.RowCount + 1;
+    GridValues.Cells[0, GridValues.RowCount - 1] := '';
+    GridValues.Cells[1, GridValues.RowCount - 1] := '';
+  end;
   GridValues.Row := GridValues.RowCount - 1;
   GridValues.Col := 0;
   GridValues.SetFocus;

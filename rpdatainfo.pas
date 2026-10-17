@@ -421,6 +421,8 @@ type
    function Add(alias:string):TRpDatabaseInfoItem;
    function IndexOf(Value:string):integer;
    function ItemByName(AName:string):TRpDatabaseInfoItem;
+   // The report of the connections (nil in a list of its own)
+   property Report:TComponent read FReport;
    function GetReportStream(ConnectionName:String;ReportName:WideString;paramlist:TRpParamList):TStream;
    procedure SaveReportStream(ConnectionName:String;ReportName:WideString;astream:TStream;paramlist:TRpParamList);
    procedure SaveToFile(ainifile:String);

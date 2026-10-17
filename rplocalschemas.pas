@@ -361,7 +361,7 @@ function RpShortNameList(AList: TStrings; AMax: Integer): string;
 implementation
 
 uses
-  rpmdconsts;
+  rpmdconsts, rpbasereport;
 
 type
   TRpCatalogFamily = (rcfGeneric, rcfFirebird, rcfPostgreSQL, rcfMySQL,
@@ -1941,7 +1941,16 @@ begin
     SafeFileName(ADatabase.Alias) + '.json';
 end;
 
-procedure GetDatabaseParams(ADatabase: TRpDatabaseInfoItem; AParams: TStrings);
+// The parameters the connection opens with: those of the connections file
+// (LoadParams), and over them the ones the report gives it,
+// DBPARAM_<name> and <ALIAS>_DBPARAM_<name>, as TRpDatabaseInfoItem.Connect
+// applies them. A connection that lives in the report (LoadParams False:
+// the sample reports, DBPARAM_DRIVERID=SQLite) has only these.
+procedure GetDatabaseParams(ADatabase: TRpDatabaseInfoItem; AParams: TStrings;
+  AReportParams: TRpParamList = nil);
+var
+  I: Integer;
+  LName, LPrefix: string;
 begin
   AParams.Clear;
   if ADatabase.LoadParams then
@@ -1951,6 +1960,21 @@ begin
     except
       AParams.Clear;
     end;
+  end;
+  if (AReportParams = nil) and (ADatabase.Collection is TRpDatabaseInfoList) and
+    (TRpDatabaseInfoList(ADatabase.Collection).Report is TRpBaseReport) then
+    AReportParams := TRpBaseReport(TRpDatabaseInfoList(ADatabase.Collection).Report).Params;
+  if AReportParams = nil then
+    Exit;
+  LPrefix := ADatabase.Alias + '_DBPARAM_';
+  for I := 0 to AReportParams.Count - 1 do
+  begin
+    LName := AReportParams.Items[I].Name;
+    if Copy(LName, 1, 8) = 'DBPARAM_' then
+      AParams.Values[Copy(LName, 9, Length(LName))] := AReportParams.Items[I].AsString
+    else if Copy(LName, 1, Length(LPrefix)) = LPrefix then
+      AParams.Values[Copy(LName, Length(LPrefix) + 1, Length(LName))] :=
+        AReportParams.Items[I].AsString;
   end;
 end;
 
@@ -1972,7 +1996,8 @@ begin
   Result := Pos(LowerCase(APart), LowerCase(AText)) > 0;
 end;
 
-function FamilyOf(ADatabase: TRpDatabaseInfoItem): TRpCatalogFamily;
+function FamilyOf(ADatabase: TRpDatabaseInfoItem;
+  AReportParams: TRpParamList = nil): TRpCatalogFamily;
 var
   LParams: TStringList;
   LText: string;
@@ -1982,7 +2007,7 @@ begin
     Exit;
   LParams := TStringList.Create;
   try
-    GetDatabaseParams(ADatabase, LParams);
+    GetDatabaseParams(ADatabase, LParams, AReportParams);
     case ADatabase.Driver of
       rpdataibx, rpdataibo:
         Result := rcfFirebird;
@@ -2099,6 +2124,8 @@ type
     procedure ReadFirebird;
     procedure ReadInformationSchema;
     procedure ReadSQLite;
+    function OpenSQLitePragma(const APragma, AQuotedTable, AColumns,
+      AOrder: string): TDataSet;
     procedure ReadOracle;
     procedure ReadGeneric;
     procedure ReadComments(const ATableSql, AColumnSql: string);
@@ -2206,7 +2233,10 @@ begin
     Result := 'TimeStamp'
   else if (Pos('bool', LType) > 0) or (LType = 'bit') then
     Result := 'Boolean'
-  else if (Pos('text', LType) > 0) or (Pos('clob', LType) > 0) then
+  // A BLOB too, as the .NET reader (DatabaseCatalogReader.LooseType): the
+  // same file read again by the other engine kept changing its type
+  else if (Pos('text', LType) > 0) or (Pos('clob', LType) > 0) or
+    (Pos('blob', LType) > 0) then
     Result := 'TextLong'
   else
     Result := 'String';
@@ -2623,27 +2653,30 @@ begin
   begin
     LTable := TRpCatTable(FCatalog.List.Objects[I]);
     LQuoted := '''' + StringReplace(LTable.Name, '''', '''''', [rfReplaceAll]) + '''';
-    LData := Open('SELECT name, type, pk FROM pragma_table_info(' + LQuoted + ')');
+    // cid, name, type, notnull, dflt_value, pk
+    LData := OpenSQLitePragma('table_info', LQuoted,
+      'cid, name, type, "notnull", dflt_value, pk', 'cid');
     try
       while not LData.Eof do
       begin
-        LColumn := LTable.AddColumn(FieldText(LData, 0));
-        LColumn.DetectedType := UpperCase(FieldText(LData, 1));
-        LColumn.DataType := CloudTypeOfSqlType(FieldText(LData, 1), -1);
-        LColumn.IsPrimaryKey := FieldInt(LData, 2) > 0;
+        LColumn := LTable.AddColumn(FieldText(LData, 1));
+        LColumn.DetectedType := UpperCase(FieldText(LData, 2));
+        LColumn.DataType := CloudTypeOfSqlType(FieldText(LData, 2), -1);
+        LColumn.IsPrimaryKey := FieldInt(LData, 5) > 0;
         LData.Next;
       end;
     finally
       LData.Free;
     end;
     try
-      LData := Open('SELECT id, "table", "from", "to" FROM pragma_foreign_key_list(' +
-        LQuoted + ') ORDER BY id, seq');
+      // id, seq, table, from, to
+      LData := OpenSQLitePragma('foreign_key_list', LQuoted,
+        'id, seq, "table", "from", "to"', 'id, seq');
       try
         while not LData.Eof do
         begin
           AddForeignKey(LTable.Name, 'FK_' + LTable.Name + '_' + FieldText(LData, 0),
-            FieldText(LData, 1), FieldText(LData, 2), FieldText(LData, 3));
+            FieldText(LData, 2), FieldText(LData, 3), FieldText(LData, 4));
           LData.Next;
         end;
       finally
@@ -2651,6 +2684,22 @@ begin
       end;
     except
     end;
+  end;
+end;
+
+// A PRAGMA of a table as rows. The statement first: the table-valued
+// functions (pragma_table_info(...)) need SQLite 3.16, and the SQLite of
+// FireDAC answered them with a syntax error, so the catalog of the sample
+// database came out empty. The function form, with the columns in the order
+// of the statement, for a driver that does not open a PRAGMA as a query.
+function TRpCatalogReader.OpenSQLitePragma(const APragma, AQuotedTable,
+  AColumns, AOrder: string): TDataSet;
+begin
+  try
+    Result := Open('PRAGMA ' + APragma + '(' + AQuotedTable + ')');
+  except
+    Result := Open('SELECT ' + AColumns + ' FROM pragma_' + APragma + '(' +
+      AQuotedTable + ') ORDER BY ' + AOrder);
   end;
 end;
 
@@ -2800,7 +2849,7 @@ end;
 
 function TRpCatalogReader.Read(out ADialect: string): TJSONArray;
 begin
-  FFamily := FamilyOf(FDatabase);
+  FFamily := FamilyOf(FDatabase, FParams);
   ADialect := DialectOfFamily(FFamily);
   FDatabase.Connect(FParams);
   try
@@ -2887,8 +2936,16 @@ end;
 function RpCopyDatabaseInfo(ADatabase: TRpDatabaseInfoItem): TRpDatabaseInfoList;
 var
   LItem: TRpDatabaseInfoItem;
+  LReport: TComponent;
 begin
-  Result := TRpDatabaseInfoList.Create(nil);
+  // In the list of the same report: the copy opens what the connection opens
+  // (a relative SQLite database next to the report, the ADO connection
+  // string of the report); without it, samples.db of the sample reports was
+  // looked for in the current folder and SQLite created an empty one there
+  LReport := nil;
+  if ADatabase.Collection is TRpDatabaseInfoList then
+    LReport := TRpDatabaseInfoList(ADatabase.Collection).Report;
+  Result := TRpDatabaseInfoList.Create(LReport);
   try
     LItem := Result.Add(ADatabase.Alias);
     LItem.Assign(ADatabase);
