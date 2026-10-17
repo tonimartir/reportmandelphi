@@ -72,6 +72,8 @@ type
     FContentChanges: Integer;
     FSchemaTablesLoaded: Integer;
     FWebMessages: TStringList;
+    FSchemaChanges: Integer;
+    FLocalConfigCalls: Integer;
     procedure Pump(AMs: Cardinal);
     procedure WaitUntil(ACondition: TCondition; ATimeoutMs: Cardinal; const AWhat: string);
     function NewForm(AWidth, AHeight: Integer): TForm;
@@ -84,9 +86,13 @@ type
     procedure EditorContentChanged(Sender: TObject);
     procedure EditorSchemaTablesLoaded(Sender: TObject);
     procedure EditorWebMessage(Sender: TObject; const AMessage: string);
+    procedure EditorSchemaChanged(Sender: TObject);
+    function EditorLocalSchemaConfig(Sender: TObject;
+      const AAlias, AName: string): string;
     // Tests
     procedure TestEngine;
     procedure TestMonacoBridge;
+    procedure TestMonacoLocalSchemas;
     procedure TestFallbackEditor;
     procedure TestFallbackAISuggestion;
     procedure TestDataDialog;
@@ -96,6 +102,18 @@ type
     destructor Destroy; override;
     procedure Run;
   end;
+
+// The item of a schema list by its name: the list puts its icon before it
+// (and, where the red dot can not be drawn, "(not connected)" after it)
+function SchemaItemIndex(ACombo: TComboBox; const AName: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to ACombo.Items.Count - 1 do
+    if Pos(AName, ACombo.Items[I]) > 0 then
+      Exit(I);
+  Result := -1;
+end;
 
 { Fake Hub }
 
@@ -650,7 +668,7 @@ var
   end;
   function SchemasLoaded: Boolean;
   begin
-    Result := LEditor.ComboSchema.Items.Count > 1;
+    Result := LEditor.SchemaList.CloudLoaded;
   end;
   function Answered1: Boolean;
   begin
@@ -691,7 +709,7 @@ begin
     LEditor.SetHubContext(77, 5, 'sql-key');
     LEditor.RuntimeDb := 'ADO_Net';
     WaitUntil(SchemasLoaded, 10000, 'schemas of the API key and the account loaded');
-    CheckEquals('Sales / Main', LEditor.ComboSchema.Text, 'schema of the dataset selected');
+    CheckContains('Sales / Main', LEditor.ComboSchema.Text, 'schema of the dataset selected');
     CheckEquals(5, LEditor.HubSchemaId, 'hub schema');
     WaitUntil(TablesLoaded, 10000, 'tables of the schema loaded');
     CheckEquals(2, LEditor.SqlSchema.TableCount, 'two tables');
@@ -793,13 +811,114 @@ begin
     CheckContains('setEditorTheme("vs-dark")', LastScript('setEditorTheme'), 'theme to the page');
 
     // A schema chosen in the combo of the editor
-    LEditor.ComboSchema.ItemIndex := LEditor.ComboSchema.Items.IndexOf('Sales / Archive');
+    LEditor.ComboSchema.ItemIndex := SchemaItemIndex(LEditor.ComboSchema, 'Sales / Archive');
     Check(LEditor.ComboSchema.ItemIndex > 0, 'second schema listed (API key)');
     LEditor.ComboSchema.OnChange(LEditor.ComboSchema);
     CheckEquals(8, LEditor.HubSchemaId, 'schema of the combo');
     CheckEquals(8, LEditor.LoadedSchemaTablesId, 'its tables from the cache');
     CheckEquals('OLD_ORDERS', LEditor.SqlSchema.Table(0).Name, 'tables of the other schema');
   finally
+    LEditor.Free;
+  end;
+  Check(RpAsyncWaitIdle(10000), 'workers finished');
+end;
+
+procedure TAISqlTests.EditorSchemaChanged(Sender: TObject);
+begin
+  Inc(FSchemaChanges);
+end;
+
+function TAISqlTests.EditorLocalSchemaConfig(Sender: TObject;
+  const AAlias, AName: string): string;
+begin
+  // As RpResolveLocalSchemaConfig writes it (TRpApiDatabaseConfig)
+  Inc(FLocalConfigCalls);
+  Result := '{"name":"' + AAlias + '","dialect":"SQLite","schemaTables":[' +
+    '{"name":"PRODUCTS","context":"","columns":[' +
+    '{"name":"PRODUCT_ID","dataType":"Integer","isPrimaryKey":true},' +
+    '{"name":"NAME","dataType":"String"}],"foreignKeys":[]}],' +
+    '"schemaName":"' + AName + '","hubDatabaseId":0,"hubSchemaId":0}';
+end;
+
+procedure TAISqlTests.TestMonacoLocalSchemas;
+var
+  LEditor: TFRpMonacoEditorLCL;
+  LNames: TStringList;
+
+  function SchemasLoaded: Boolean;
+  begin
+    Result := LEditor.SchemaList.CloudLoaded;
+  end;
+  function Answered: Boolean;
+  begin
+    Result := LastScript('"loc_1"') <> '';
+  end;
+
+begin
+  Section('SQL editor: the subschemas of a direct connection');
+  FScripts.Clear;
+  FSchemaChanges := 0;
+  FLocalConfigCalls := 0;
+  TRpAuthManager.Instance.AIEnabled := True;
+  LEditor := TFRpMonacoEditorLCL.Create(nil);
+  LNames := TStringList.Create;
+  try
+    LEditor.OnScript := EditorScript;
+    LEditor.OnSchemaChanged := EditorSchemaChanged;
+    LEditor.OnLocalSchemaConfig := EditorLocalSchemaConfig;
+    LEditor.DebounceTimer.Interval := 30;
+    // As the dataset dialog sets a direct connection: no Hub context, its
+    // subschemas and the one of the dataset
+    LEditor.SetHubContext(0, 0, '');
+    LNames.Add('Sales');
+    LNames.Add('Catalog');
+    LEditor.SetLocalSchemas('SAMPLES', LNames, nil);
+    LEditor.SelectLocalSchema('Catalog');
+    WaitUntil(SchemasLoaded, 10000, 'cloud schemas loaded too');
+    CheckEquals('SAMPLES', LEditor.GetLocalSchemaAlias, 'the direct connection');
+    CheckEquals('Catalog', LEditor.GetLocalSchemaName,
+      'the subschema of the dataset, also after the cloud list arrived');
+    CheckContains('Catalog', LEditor.ComboSchema.Text, 'shown in the list');
+    Check(SchemaItemIndex(LEditor.ComboSchema, 'Sales / Main') > 0,
+      'the cloud schemas listed after the subschemas');
+    CheckEquals(0, LEditor.HubSchemaId, 'no Hub schema with a subschema');
+    CheckEquals(0, FSchemaChanges, 'a choice of the host is not one of the user');
+    // Its tables for the completion, from its config
+    CheckEquals(1, LEditor.SqlSchema.TableCount, 'tables of the subschema');
+    CheckEquals('PRODUCTS', LEditor.SqlSchema.Table(0).Name, 'its table');
+
+    // The AI completion sends the subschema inline, not the Hub ids
+    FLocalConfigCalls := 0;
+    LEditor.ProcessWebMessage('00:');
+    FHubHandler.SuggestCalls := 0;
+    LEditor.ProcessWebMessage('02:loc_1:7' + #10 + 'SELECT ');
+    WaitUntil(Answered, 10000, 'AI completion with the subschema answered');
+    CheckEquals(1, FHubHandler.SuggestCalls, 'one SuggestSqlCodeStream request');
+    CheckContains('"schemaTables"', FHubHandler.LastSuggestBody, 'the subschema inline');
+    CheckContains('"PRODUCTS"', FHubHandler.LastSuggestBody, 'with its tables');
+    CheckContains('"schemaName":"Catalog"', FHubHandler.LastSuggestBody, 'and its name');
+    Check(Pos('"apiKey"', FHubHandler.LastSuggestBody) = 0, 'no API key of a Hub schema');
+    CheckEquals(0, FLocalConfigCalls, 'the config of the subschema kept, not read again');
+
+    // Chosen by the user in the list: the host is told
+    // The first item with the name: the subschema (the cloud ones go after)
+    LEditor.ComboSchema.ItemIndex := SchemaItemIndex(LEditor.ComboSchema, ' Sales');
+    Check(LEditor.ComboSchema.ItemIndex > 0, 'the other subschema listed');
+    LEditor.ComboSchema.OnChange(LEditor.ComboSchema);
+    CheckEquals('Sales', LEditor.GetLocalSchemaName, 'the subschema chosen');
+    CheckEquals(1, FSchemaChanges, 'the choice of the user goes to the host');
+
+    // A direct connection without subschemas: no AI request, empty answer
+    LEditor.SetLocalSchemas('SAMPLES', nil, nil);
+    CheckEquals('', LEditor.GetLocalSchemaName, 'no subschema');
+    FHubHandler.SuggestCalls := 0;
+    LEditor.ProcessWebMessage('02:loc_2:8' + #10 + 'SELECT X');
+    Pump(400);
+    CheckEquals(0, FHubHandler.SuggestCalls, 'no request without a subschema');
+    CheckContains('{"inlineItems":[],"completionItems":[]}', LastScript('"loc_2"'),
+      'the page gets an empty answer');
+  finally
+    LNames.Free;
     LEditor.Free;
   end;
   Check(RpAsyncWaitIdle(10000), 'workers finished');
@@ -1121,7 +1240,7 @@ var
   function ChatReady: Boolean;
   begin
     Result := LDlg.Chat.HasSchemaItems and (not LDlg.Chat.LoadingSchemas) and
-      (LDlg.MonacoEditor.ComboSchema.Items.Count > 1) and
+      LDlg.MonacoEditor.SchemaList.CloudLoaded and
       (LDlg.MonacoEditor.LoadedSchemaTablesId = 5);
   end;
   function Suggested: Boolean;
@@ -1293,7 +1412,7 @@ begin
     LDlg.MonacoEditor.PageControl.ActivePage := LDlg.MonacoEditor.TabSQL;
 
     // Schema chosen in the editor: kept in the dataset, the chat follows
-    I := LDlg.MonacoEditor.ComboSchema.Items.IndexOf('Sales / Archive');
+    I := SchemaItemIndex(LDlg.MonacoEditor.ComboSchema, 'Sales / Archive');
     Check(I > 0, 'second schema of the connection listed');
     LDlg.MonacoEditor.ComboSchema.ItemIndex := I;
     LDlg.MonacoEditor.ComboSchema.OnChange(LDlg.MonacoEditor.ComboSchema);
@@ -1537,6 +1656,7 @@ begin
         'login with the email code (fake Hub)');
       Pump(50);
       TestMonacoBridge;
+      TestMonacoLocalSchemas;
       TestFallbackEditor;
       TestFallbackAISuggestion;
       TestDataDialog;

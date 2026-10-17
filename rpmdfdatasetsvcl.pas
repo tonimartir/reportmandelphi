@@ -157,6 +157,8 @@ type
     FSyncingSchemaContext: Boolean;
     // The direct connection whose local schemas the chat lists ('' = none)
     FChatLocalAlias: string;
+    // The direct connection whose local schemas the SQL editor lists
+    FMonacoLocalAlias: string;
     Report:TRpReport;
     procedure AssertCanModify(const AReason:string);
     procedure EnsureAdvancedEditors;
@@ -173,6 +175,12 @@ type
       const AAlias, ASchemaName: string; AAddNew: Boolean);
     procedure UpdateChatLocalSchemas(ADatabaseInfo: TRpDatabaseInfoItem;
       AForce: Boolean);
+    procedure UpdateMonacoLocalSchemas(ADatabaseInfo: TRpDatabaseInfoItem;
+      AForce: Boolean);
+    procedure MonacoConfigureLocalSchemas(Sender: TObject;
+      const AAlias, AName: string; AAddNew: Boolean);
+    function MonacoLocalSchemaConfig(Sender: TObject;
+      const AAlias, AName: string): string;
     function DatabaseInfoOf(ADataInfo: TRpDataInfoItem): TRpDatabaseInfoItem;
     function ChatInlineConfigJson(const AAlias, ASchemaName: string): string;
     procedure ChatSendPrompt(Sender: TObject; const APrompt,
@@ -391,6 +399,8 @@ begin
     FMonaco.OnInferenceLog := MonacoInferenceLog;
     FMonaco.OnAuditSql := MonacoAuditSql;
     FMonaco.OnStopRequest := MonacoStopRequest;
+    FMonaco.OnConfigureLocalSchemas := MonacoConfigureLocalSchemas;
+    FMonaco.OnLocalSchemaConfig := MonacoLocalSchemaConfig;
   end;
 
   if FChat = nil then
@@ -481,7 +491,18 @@ begin
 
   if FMonaco <> nil then
   begin
-    FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+    // A direct connection lists its subschemas, with the one of the dataset
+    // while it is in the file (else its first one), and never takes a Hub
+    // schema of another database; else the Hub schema of the dataset
+    UpdateMonacoLocalSchemas(LDatabaseInfo, False);
+    if RpIsLocalSqlDatabase(LDatabaseInfo) then
+    begin
+      FMonaco.SetHubContext(0, 0, '');
+      FMonaco.SelectLocalSchema(RpExistingLocalSubSchema(LDatabaseInfo,
+        LDataInfo.SchemaName));
+    end
+    else
+      FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
     FMonaco.RuntimeDb := LRuntimeDb;
     if ASyncSqlFromDataInfo then
     begin
@@ -524,6 +545,79 @@ begin
     Result := Report.DatabaseInfo.Items[LIndex];
 end;
 
+// The local subschemas of the connection of the dataset in the SQL editor;
+// none for the other connections
+procedure TFRpDatasetsVCL.UpdateMonacoLocalSchemas(
+  ADatabaseInfo: TRpDatabaseInfoItem; AForce: Boolean);
+var
+  LAlias: string;
+  LEntries, LSizes, LNames, LNameSizes: TStringList;
+  I: Integer;
+begin
+  if FMonaco = nil then
+    Exit;
+  LAlias := '';
+  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+    LAlias := ADatabaseInfo.Alias;
+  if (not AForce) and SameText(LAlias, FMonacoLocalAlias) then
+    Exit;
+  FMonacoLocalAlias := LAlias;
+  LEntries := TStringList.Create;
+  LSizes := TStringList.Create;
+  LNames := TStringList.Create;
+  LNameSizes := TStringList.Create;
+  try
+    if LAlias <> '' then
+      RpListLocalSchemaEntries(ADatabaseInfo, LEntries, LSizes);
+    // 'ALIAS=<subschema>' lines; all the tables never go to the AI
+    for I := 0 to LEntries.Count - 1 do
+      if Trim(LEntries.ValueFromIndex[I]) <> '' then
+      begin
+        LNames.Add(LEntries.ValueFromIndex[I]);
+        if I < LSizes.Count then
+          LNameSizes.Add(LSizes[I])
+        else
+          LNameSizes.Add('');
+      end;
+    FMonaco.SetLocalSchemas(LAlias, LNames, LNameSizes);
+  finally
+    LNameSizes.Free;
+    LNames.Free;
+    LSizes.Free;
+    LEntries.Free;
+  end;
+end;
+
+// "Local schemas..." and "New local schema..." of the SQL editor: the subschema
+// saved is the one of the dataset, in the editor and in the chat
+procedure TFRpDatasetsVCL.MonacoConfigureLocalSchemas(Sender: TObject;
+  const AAlias, AName: string; AAddNew: Boolean);
+var
+  LSchemaName: string;
+  LSaved: Boolean;
+begin
+  LSchemaName := AName;
+  LSaved := False;
+  try
+    LSaved := RpShowLocalSchemasDialog(Report, AAlias, LSchemaName, AAddNew,
+      FChat);
+  finally
+    UpdateMonacoLocalSchemas(DatabaseInfoOf(FindDataInfoItem), True);
+    UpdateChatLocalSchemas(DatabaseInfoOf(FindDataInfoItem), True);
+  end;
+  if LSaved and (LSchemaName <> '') then
+  begin
+    FMonaco.SelectLocalSchema(LSchemaName);
+    MonacoSchemaChange(FMonaco);
+  end;
+end;
+
+function TFRpDatasetsVCL.MonacoLocalSchemaConfig(Sender: TObject;
+  const AAlias, AName: string): string;
+begin
+  Result := ChatInlineConfigJson(AAlias, AName);
+end;
+
 // The local schemas of the connection of the dataset in the chat; none for
 // the other connections
 procedure TFRpDatasetsVCL.UpdateChatLocalSchemas(
@@ -564,11 +658,16 @@ begin
       FChat);
   finally
     UpdateChatLocalSchemas(DatabaseInfoOf(FindDataInfoItem), True);
+    UpdateMonacoLocalSchemas(DatabaseInfoOf(FindDataInfoItem), True);
   end;
   // The subschema saved (a new one: the one added); the chat gives it to
-  // the dataset (ChatSchemaChange)
+  // the dataset (ChatSchemaChange), the SQL editor follows
   if LSaved then
+  begin
     FChat.SelectLocalSchema(AAlias, LSchemaName);
+    if (FMonaco <> nil) and (LSchemaName <> '') then
+      FMonaco.SelectLocalSchema(LSchemaName);
+  end;
 end;
 
 // The config of NL to SQL with the schema of a direct connection inline
@@ -620,7 +719,10 @@ begin
     TabBDEType.TabVisible := False;
     PControl.ActivePage := TabSQL;
     if FMonaco <> nil then
+    begin
+      UpdateMonacoLocalSchemas(nil, False);
       FMonaco.SetHubContext(0, 0);
+    end;
     if FChat <> nil then
     begin
       UpdateChatLocalSchemas(nil, False);
@@ -972,9 +1074,36 @@ begin
 end;
 
 procedure TFRpDatasetsVCL.MonacoSchemaChange(Sender: TObject);
+var
+  LDataInfo: TRpDataInfoItem;
+  LDatabaseInfo: TRpDatabaseInfoItem;
+  LSchemaName: string;
 begin
  if FSyncingSchemaContext or (FMonaco = nil) then
   Exit;
+ // A direct connection keeps the subschema chosen, as with the chat, and
+ // never takes a Hub schema: a cloud schema chosen there is for this session
+ LDataInfo := FindDataInfoItem;
+ LDatabaseInfo := DatabaseInfoOf(LDataInfo);
+ if RpIsLocalSqlDatabase(LDatabaseInfo) then
+ begin
+  LSchemaName := FMonaco.GetLocalSchemaName;
+  if (LDataInfo = nil) or (LSchemaName = '') then
+   Exit;
+  if LDataInfo.SchemaName <> LSchemaName then
+   LDataInfo.SchemaName := LSchemaName;
+  if (FChat <> nil) and not (SameText(FChat.GetLocalSchemaAlias,
+    LDatabaseInfo.Alias) and SameText(FChat.GetLocalSchemaName, LSchemaName)) then
+  begin
+   FSyncingSchemaContext := True;
+   try
+    FChat.SelectLocalSchema(LDatabaseInfo.Alias, LSchemaName);
+   finally
+    FSyncingSchemaContext := False;
+   end;
+  end;
+  Exit;
+ end;
  SyncActiveSchemaContext(FMonaco.HubDatabaseId, FMonaco.HubSchemaId,
    FMonaco.GetSchemaApiKey);
 end;
@@ -998,6 +1127,12 @@ begin
       SameText(FChat.GetLocalSchemaAlias, LDatabaseInfo.Alias) and
       (LDataInfo.SchemaName <> FChat.GetLocalSchemaName) then
       LDataInfo.SchemaName := FChat.GetLocalSchemaName;
+    // The SQL editor with the same subschema
+    if (FMonaco <> nil) and
+      SameText(FChat.GetLocalSchemaAlias, LDatabaseInfo.Alias) and
+      (FChat.GetLocalSchemaName <> '') and
+      not SameText(FMonaco.GetLocalSchemaName, FChat.GetLocalSchemaName) then
+      FMonaco.SelectLocalSchema(FChat.GetLocalSchemaName);
     Exit;
   end;
   // The chat also calls this after loading its list; an empty list (not
@@ -1376,6 +1511,8 @@ var
   LSql: string;
   LHubDatabaseId: Int64;
   LHubSchemaId: Int64;
+  LApiKey: string;
+  LInlineConfigJson: string;
   LAITier: string;
   LAIMode: string;
   LAgentSecret: string;
@@ -1405,6 +1542,25 @@ begin
 
   LHubDatabaseId := FMonaco.HubDatabaseId;
   LHubSchemaId := FMonaco.HubSchemaId;
+  LApiKey := FMonaco.GetSchemaApiKey;
+  // A subschema of a direct connection goes inline, as the chat sends it
+  LInlineConfigJson := '';
+  if FMonaco.GetLocalSchemaName <> '' then
+  begin
+    try
+      LInlineConfigJson := FMonaco.LocalSchemaConfigJson;
+    except
+      on E: Exception do
+      begin
+        FMonaco.ActivateAuditTab;
+        FMonaco.AppendLog(E.Message);
+        Exit;
+      end;
+    end;
+    LHubDatabaseId := 0;
+    LHubSchemaId := 0;
+    LApiKey := '';
+  end;
   LAITier := FMonaco.AITier;
   LAIMode := FMonaco.AIMode;
   LAgentSecret := FMonaco.AgentSecret;
@@ -1452,6 +1608,8 @@ begin
           LHttp.InstallId := TRpAuthManager.Instance.InstallId;
           LHttp.HubDatabaseId := LHubDatabaseId;
           LHttp.HubSchemaId := LHubSchemaId;
+          LHttp.ApiKey := LApiKey;
+          LHttp.InlineConfigJson := LInlineConfigJson;
           LHttp.RuntimeDb := LRuntimeDb;
           LHttp.AITier := LAITier;
           LHttp.AgentSecret := LAgentSecret;

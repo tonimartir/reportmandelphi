@@ -134,6 +134,8 @@ type
     FConnected: Boolean;
     FInlineConfigJson: string;
     procedure SetConnected(Value: Boolean);
+    // The config of a request: the inline one (InlineConfigJson) or the Hub ids
+    function RequestConfig: TJSONObject;
   public
     // The Hub databases of api/agent/databases, one line per schema (the
     // same line once): RpHubDatabaseLine
@@ -150,8 +152,9 @@ type
     property AgentSecret: string read FAgentSecret write FAgentSecret;
     property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
     // A database that is not in the Hub: the JSON of the config of
-    // TranslateToSql with its schema inline (TRpApiDatabaseConfig, see
-    // RpResolveLocalSchemaConfig) instead of the Hub ids
+    // TranslateToSql, SuggestSql and ExplainSql with its schema inline
+    // (TRpApiDatabaseConfig, see RpResolveLocalSchemaConfig) instead of the
+    // Hub ids
     property InlineConfigJson: string read FInlineConfigJson write FInlineConfigJson;
     property Connected: Boolean read FConnected write SetConnected;
     function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string;
@@ -983,12 +986,34 @@ begin
     LRequestBody.Free;
   end;
 end;
+function TRpDatabaseHttp.RequestConfig: TJSONObject;
+var
+  LConfigValue: TJSONValue;
+begin
+  Result := nil;
+  if Trim(FInlineConfigJson) <> '' then
+  begin
+    LConfigValue := TJSONObject.ParseJSONValue(FInlineConfigJson);
+    if LConfigValue is TJSONObject then
+      Result := TJSONObject(LConfigValue)
+    else
+      LConfigValue.Free;
+  end;
+  if Result = nil then
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
+    if FHubSchemaId <> 0 then
+      Result.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
+  end;
+end;
+
 function TRpDatabaseHttp.SuggestSql(const ASql: string;
   ACursorPosition: Integer; AMode: string; Sender: TObject;
   AOnProgress: TRpExpressionStreamProgressEvent;
   ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
 var
-  LRequest, LConfig: TJSONObject;
+  LRequest: TJSONObject;
 {$IFNDEF FIREDAC}
   LResponseStream: TStringStream;
   LResponseJson: TJSONObject;
@@ -1009,11 +1034,7 @@ begin
     AddOptionalRuntime(LRequest, FRuntimeDb);
     
     // Config sub-object
-    LConfig := TJSONObject.Create;
-    LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
-    if FHubSchemaId <> 0 then
-      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
-    LRequest.AddPair('config', LConfig);
+    LRequest.AddPair('config', RequestConfig);
 
 {$IFDEF FIREDAC}
     Result := StreamJsonRequest(Self, 'NlToSql/SuggestSqlCodeStream', LRequest,
@@ -1043,8 +1064,7 @@ function TRpDatabaseHttp.TranslateToSql(const AUserPrompt, ASqlToRefine,
   AOnProgress: TRpExpressionStreamProgressEvent;
   ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
 var
-  LRequest, LConfig: TJSONObject;
-  LConfigValue: TJSONValue;
+  LRequest: TJSONObject;
   LQueries: TJSONArray;
 {$IFNDEF FIREDAC}
   LResponseStream: TStringStream;
@@ -1070,23 +1090,7 @@ begin
       LRequest.AddPair('apiKey', FApiKey);
     AddOptionalRuntime(LRequest, FRuntimeDb);
 
-    LConfig := nil;
-    if Trim(FInlineConfigJson) <> '' then
-    begin
-      LConfigValue := TJSONObject.ParseJSONValue(FInlineConfigJson);
-      if LConfigValue is TJSONObject then
-        LConfig := TJSONObject(LConfigValue)
-      else
-        LConfigValue.Free;
-    end;
-    if LConfig = nil then
-    begin
-      LConfig := TJSONObject.Create;
-      LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
-      if FHubSchemaId <> 0 then
-        LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
-    end;
-    LRequest.AddPair('config', LConfig);
+    LRequest.AddPair('config', RequestConfig);
 
 {$IFDEF FIREDAC}
     Result := StreamJsonRequest(Self, 'NlToSql/TranslateToSQLStream', LRequest,
@@ -1116,7 +1120,7 @@ function TRpDatabaseHttp.ExplainSql(const ASql: string; const AMode,
   AOnProgress: TRpExpressionStreamProgressEvent;
   ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
 var
-  LRequest, LConfig: TJSONObject;
+  LRequest: TJSONObject;
 {$IFNDEF FIREDAC}
   LResponseStream: TStringStream;
   LResponseJson: TJSONObject;
@@ -1141,11 +1145,7 @@ begin
       LRequest.AddPair('apiKey', FApiKey);
     AddOptionalRuntime(LRequest, FRuntimeDb);
 
-    LConfig := TJSONObject.Create;
-    LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(FHubDatabaseId));
-    if FHubSchemaId <> 0 then
-      LConfig.AddPair('hubSchemaId', TJSONNumber.Create(FHubSchemaId));
-    LRequest.AddPair('config', LConfig);
+    LRequest.AddPair('config', RequestConfig);
 
 {$IFDEF FIREDAC}
     Result := StreamJsonRequest(Self, 'NlToSql/ExplainSQLStream', LRequest,

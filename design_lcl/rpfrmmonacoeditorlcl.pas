@@ -60,7 +60,7 @@ uses
   Buttons, LCLType, Generics.Collections,
   SynEdit, SynEditTypes, SynEditKeyCmds, SynHighlighterSQL, SynCompletion,
   rpjsonfpc, rpauthmanager, rpdatahttp, rpaithreadslcl, rpchatmodernstylelcl,
-  rpfrmaiselectionlcl, rplclwebview, rpmdshfolder
+  rpfrmaiselectionlcl, rpfrmaischemaselectorlcl, rplclwebview, rpmdshfolder
   {$IFDEF MSWINDOWS}
   , Windows
   {$ENDIF}
@@ -75,6 +75,11 @@ type
   TInferenceLogEvent = procedure(Sender: TObject; const ASource,
     AText: string; AAppendLineBreak: Boolean) of object;
   TRpEditorScriptEvent = procedure(Sender: TObject; const AScript: string) of object;
+  // The config of the AI (TRpApiDatabaseConfig JSON) with the subschema AName
+  // of the direct connection AAlias inline: the host reads its local schema
+  // file (RpResolveLocalSchemaConfig)
+  TRpLocalSchemaConfigEvent = function(Sender: TObject;
+    const AAlias, AName: string): string of object;
 
   TRpSqlCompletionKind = (rsckColumn, rsckTable, rsckKeyword);
 
@@ -135,6 +140,10 @@ type
     // Header (VCL GridTopHeader): schema, schema configuration, AI, model
     FPTop: TPanel;
     FComboSchema: TComboBox;
+    // The list of the combo: the subschemas of the direct connection of the
+    // dataset, the cloud schemas and the two actions, with the menu of the
+    // gear (the selector of the new report wizard)
+    FSchemaList: TRpSchemaListController;
     FPSchemaConfigHost: TPanel;
     FSchemaConfigButton: TRpChatIconButton;
     FAIButton: TSpeedButton;
@@ -177,7 +186,16 @@ type
     FHubSchemaId: Int64;
     FSchemaApiKey: string;
     FRuntimeDb: string;
-    FLoadingSchemas: Boolean;
+    // A change of the list made by the host (SetHubContext, SetLocalSchemas,
+    // SelectLocalSchema) or by a load: not a choice of the user
+    FUpdatingSchemaList: Boolean;
+    // The config of the AI with the subschema chosen inline, and its key
+    FLocalSchemaConfigKey: string;
+    FLocalSchemaConfigJson: string;
+    // The tables of FSqlSchema are the ones of this subschema ('' = Hub)
+    FLoadedLocalSchemaKey: string;
+    FOnLocalSchemaConfig: TRpLocalSchemaConfigEvent;
+    FOnConfigureLocalSchemas: TRpConfigureLocalSchemasEvent;
     FAuthUIUpdateVersion: Integer;
     FAuthListenerRegistered: Boolean;
     FAuthToken: string;
@@ -244,9 +262,12 @@ type
     procedure AISelectionStopRequest(Sender: TObject);
     procedure SchemaConfigClick(Sender: TObject);
     procedure BAuditSQLClick(Sender: TObject);
-    procedure ComboSchemaChange(Sender: TObject);
-    procedure ClearSchemaItems;
-    procedure SelectCurrentSchema;
+    procedure SchemaListChanged(Sender: TObject);
+    procedure SchemaListConfigureLocalSchemas(Sender: TObject;
+      const AAlias, AName: string; AAddNew: Boolean);
+    procedure SyncSchemaFromList;
+    function LocalSchemaKey: string;
+    procedure LoadLocalSchemaTables;
     procedure ApplyUserSchemas(AList: TStrings);
     procedure ApplyUserAgents(AList: TStrings; const ASelectedTier: string;
       ASelectedAgentAiId: Int64);
@@ -307,6 +328,19 @@ type
     procedure SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;
       const ASchemaApiKey: string = '');
     procedure SetSchema(const ASchema: string);
+    // The subschemas of the direct connection of the dataset (AAlias '' =
+    // none; ASizes '<tables>,<widest>' per name or nil), listed before the
+    // cloud schemas
+    procedure SetLocalSchemas(const AAlias: string; ANames, ASizes: TStrings);
+    // Chooses one of them ('' = its first one)
+    procedure SelectLocalSchema(const AName: string);
+    // The direct connection of the subschemas and the subschema chosen ('' =
+    // a cloud schema or none)
+    function GetLocalSchemaAlias: string;
+    function GetLocalSchemaName: string;
+    // The config of the AI with the subschema chosen inline ('' = none);
+    // OnLocalSchemaConfig builds it, kept until the list changes
+    function LocalSchemaConfigJson: string;
     procedure ClearLog;
     procedure AppendLog(const AText: string);
     procedure ActivateAuditTab;
@@ -352,6 +386,14 @@ type
     property SqlSchema: TRpSqlSchema read FSqlSchema;
     property LoadedSchemaTablesId: Int64 read FLoadedSchemaTablesId;
     property ComboSchema: TComboBox read FComboSchema;
+    property SchemaList: TRpSchemaListController read FSchemaList;
+    property OnLocalSchemaConfig: TRpLocalSchemaConfigEvent
+      read FOnLocalSchemaConfig write FOnLocalSchemaConfig;
+    // "Local schemas..." of the gear and "New local schema...": the host
+    // opens the local schema utility of the connection, then gives the list
+    // again (SetLocalSchemas) and chooses the subschema saved
+    property OnConfigureLocalSchemas: TRpConfigureLocalSchemasEvent
+      read FOnConfigureLocalSchemas write FOnConfigureLocalSchemas;
     property AISelection: TFRpAISelectionLCL read FAISelection;
     property AIButton: TSpeedButton read FAIButton;
     property SchemaConfigButton: TRpChatIconButton read FSchemaConfigButton;
@@ -472,14 +514,6 @@ const
     'AVG', 'MIN', 'MAX', 'COALESCE', 'CAST');
 
 type
-  TRpMonacoSchemaItem = class(TObject)
-  public
-    ApiKey: string;
-    HubDatabaseId: Int64;
-    HubSchemaId: Int64;
-    constructor Create(AHubDatabaseId, AHubSchemaId: Int64; const AApiKey: string);
-  end;
-
   // Schemas and agents (VCL TMonacoAuthRefreshPayload)
   TRpMonacoAuthPayload = class(TRpAsyncMessage)
   public
@@ -542,6 +576,8 @@ type
     InstallId: string;
     HubDatabaseId: Int64;
     HubSchemaId: Int64;
+    // A subschema of a direct connection: its config inline (not the Hub ids)
+    InlineConfigJson: string;
     RuntimeDb: string;
     AITier: string;
     AIMode: string;
@@ -1274,17 +1310,6 @@ begin
   end;
 end;
 
-{ TRpMonacoSchemaItem }
-
-constructor TRpMonacoSchemaItem.Create(AHubDatabaseId, AHubSchemaId: Int64;
-  const AApiKey: string);
-begin
-  inherited Create;
-  ApiKey := Trim(AApiKey);
-  HubDatabaseId := AHubDatabaseId;
-  HubSchemaId := AHubSchemaId;
-end;
-
 { Payloads and workers }
 
 constructor TRpMonacoAuthPayload.Create;
@@ -1460,6 +1485,7 @@ begin
     LHttp.InstallId := InstallId;
     LHttp.HubDatabaseId := HubDatabaseId;
     LHttp.HubSchemaId := HubSchemaId;
+    LHttp.InlineConfigJson := InlineConfigJson;
     LHttp.RuntimeDb := RuntimeDb;
     LHttp.AITier := AITier;
     LHttp.AgentSecret := AgentSecret;
@@ -1684,7 +1710,6 @@ begin
     FFallbackEditor.UnregisterBeforeKeyDownHandler(FallbackBeforeKeyDown);
     FFallbackEditor.UnRegisterStatusChangedHandler(FallbackStatusChanged);
   end;
-  ClearSchemaItems;
   inherited Destroy;
   FSchemaCache.Free;
   FSqlSchema.Free;
@@ -1714,10 +1739,14 @@ begin
   // and AutoSize only sets the height (Cocoa gives the combo a preferred
   // width, that AutoSize would set back on every Resize)
   FComboSchema.Anchors := [akLeft, akTop, akRight];
-  FComboSchema.Style := csDropDownList;
-  FComboSchema.OnChange := ComboSchemaChange;
   FComboSchema.Hint := TranslateStr(1528, 'Schema');
   FComboSchema.ShowHint := True;
+  // Owner drawn by the list (the red dot of an Agent not connected); the
+  // first item, none, without text as before
+  FSchemaList := TRpSchemaListController.Create(Self, FComboSchema);
+  FSchemaList.NoSchemaCaption := '';
+  FSchemaList.OnSchemaChanged := SchemaListChanged;
+  FSchemaList.OnConfigureLocalSchemas := SchemaListConfigureLocalSchemas;
 
   FPSchemaConfigHost := NewPanel(FPTop, alNone);
   FSchemaConfigButton := TRpChatIconButton.Create(Self);
@@ -2570,65 +2599,72 @@ end;
 
 procedure TFRpMonacoEditorLCL.SchemaConfigClick(Sender: TObject);
 begin
-  TRpAuthManager.Instance.OpenUrl('https://app.reportman.es/database-config');
+  // The local schemas of the connection, the schemas in the cloud, refresh
+  FSchemaList.PopupConfigMenu(FSchemaConfigButton);
 end;
 
 { Schemas }
 
-procedure TFRpMonacoEditorLCL.ClearSchemaItems;
-var
-  I: Integer;
+procedure TFRpMonacoEditorLCL.SchemaListConfigureLocalSchemas(Sender: TObject;
+  const AAlias, AName: string; AAddNew: Boolean);
 begin
-  if FComboSchema = nil then
+  if Assigned(FOnConfigureLocalSchemas) then
+    FOnConfigureLocalSchemas(Self, AAlias, AName, AAddNew);
+end;
+
+// The schema the AI uses: the subschema or the cloud schema chosen; with none
+// the Hub database of the connection; while the cloud list loads, the cloud
+// schema of the context
+procedure TFRpMonacoEditorLCL.SyncSchemaFromList;
+begin
+  if FSchemaList.GetLocalSchemaName <> '' then
+  begin
+    FHubDatabaseId := 0;
+    FHubSchemaId := 0;
+    FSchemaApiKey := '';
+  end
+  else if FSchemaList.HasSchema then
+  begin
+    FHubDatabaseId := FSchemaList.GetHubDatabaseId;
+    FHubSchemaId := FSchemaList.GetHubSchemaId;
+    FSchemaApiKey := FSchemaList.GetSchemaApiKey;
+  end
+  else
+  begin
+    FHubDatabaseId := FSchemaList.GetHubDatabaseId;
+    if FHubDatabaseId = 0 then
+      FHubDatabaseId := FBaseHubDatabaseId;
+    FHubSchemaId := FSchemaList.GetHubSchemaId;
+    FSchemaApiKey := FSchemaList.GetSchemaApiKey;
+    if FSchemaApiKey = '' then
+      FSchemaApiKey := FBaseApiKey;
+  end;
+  if FSchemaList.HasSchema then
+    FSchema := FComboSchema.Text
+  else
+    FSchema := '';
+end;
+
+procedure TFRpMonacoEditorLCL.SchemaListChanged(Sender: TObject);
+begin
+  SyncSchemaFromList;
+  UpdateSchemaTables;
+  // Only a choice of the user goes to the host (the dataset keeps it)
+  if FUpdatingSchemaList or FSchemaList.ChangeFromLoad then
     Exit;
-  for I := 0 to FComboSchema.Items.Count - 1 do
-    FComboSchema.Items.Objects[I].Free;
-  FComboSchema.Clear;
+  if Assigned(FOnSchemaChanged) then
+    FOnSchemaChanged(Self);
 end;
 
 procedure TFRpMonacoEditorLCL.ApplyUserSchemas(AList: TStrings);
-var
-  I: Integer;
-  LParts: TStringList;
-  LHubDatabaseId, LSchemaId: Int64;
-  LApiKey: string;
 begin
-  if FLoadingSchemas then
-    Exit;
-  FLoadingSchemas := True;
-  FComboSchema.Items.BeginUpdate;
-  LParts := TStringList.Create;
+  FUpdatingSchemaList := True;
   try
-    LParts.Delimiter := '|';
-    LParts.StrictDelimiter := True;
-    ClearSchemaItems;
-    FComboSchema.Items.Add('');
-    for I := 0 to AList.Count - 1 do
-    begin
-      LParts.DelimitedText := AList.ValueFromIndex[I];
-      if LParts.Count >= 2 then
-      begin
-        LHubDatabaseId := StrToInt64Def(LParts[0], 0);
-        LSchemaId := StrToInt64Def(LParts[1], 0);
-      end
-      else
-      begin
-        LHubDatabaseId := 0;
-        LSchemaId := 0;
-      end;
-      if LParts.Count >= 3 then
-        LApiKey := LParts[2]
-      else
-        LApiKey := '';
-      FComboSchema.Items.AddObject(AList.Names[I],
-        TRpMonacoSchemaItem.Create(LHubDatabaseId, LSchemaId, LApiKey));
-    end;
-    SelectCurrentSchema;
+    FSchemaList.SetCloudSchemas(AList, nil);
   finally
-    LParts.Free;
-    FComboSchema.Items.EndUpdate;
-    FLoadingSchemas := False;
+    FUpdatingSchemaList := False;
   end;
+  SyncSchemaFromList;
 end;
 
 procedure TFRpMonacoEditorLCL.ApplyUserAgents(AList: TStrings;
@@ -2658,12 +2694,23 @@ end;
 
 procedure TFRpMonacoEditorLCL.SetSchema(const ASchema: string);
 var
-  LIndex: Integer;
+  I: Integer;
 begin
-  FSchema := ASchema;
-  LIndex := FComboSchema.Items.IndexOf(ASchema);
-  if LIndex >= 0 then
-    FComboSchema.ItemIndex := LIndex;
+  // By its text, with or without the icon of the list
+  for I := 0 to FComboSchema.Items.Count - 1 do
+    if (FComboSchema.Items[I] = ASchema) or ((ASchema <> '') and
+      (Copy(FComboSchema.Items[I], Length(FComboSchema.Items[I]) -
+      Length(ASchema) + 1, MaxInt) = ASchema)) then
+    begin
+      FComboSchema.ItemIndex := I;
+      FUpdatingSchemaList := True;
+      try
+        FComboSchema.OnChange(FComboSchema);
+      finally
+        FUpdatingSchemaList := False;
+      end;
+      Exit;
+    end;
 end;
 
 procedure TFRpMonacoEditorLCL.SetHubContext(AHubDatabaseId, AHubSchemaId: Int64;
@@ -2673,164 +2720,101 @@ var
   LNeedsSchemaReload: Boolean;
 begin
   LBaseApiKey := Trim(ASchemaApiKey);
-  LNeedsSchemaReload := (FBaseHubDatabaseId <> AHubDatabaseId) or
-    (FBaseApiKey <> LBaseApiKey);
+  // The cloud list has the schemas visible with the API key of the
+  // connection: another key, another list
+  LNeedsSchemaReload := FBaseApiKey <> LBaseApiKey;
   FBaseHubDatabaseId := AHubDatabaseId;
   FBaseApiKey := LBaseApiKey;
-  FHubDatabaseId := AHubDatabaseId;
-  FHubSchemaId := AHubSchemaId;
-  FSchemaApiKey := LBaseApiKey;
-  if LNeedsSchemaReload and TRpAuthManager.Instance.IsLoggedIn then
-  begin
-    ClearSchemaItems;
+  FUpdatingSchemaList := True;
+  try
+    FSchemaList.SetPreferredConnection(AHubDatabaseId, LBaseApiKey);
+    if LNeedsSchemaReload and FSchemaList.CloudLoaded then
+      FSchemaList.ClearCloudSchemas;
+    FSchemaList.SetHubContext(AHubDatabaseId, AHubSchemaId, LBaseApiKey);
+  finally
+    FUpdatingSchemaList := False;
+  end;
+  SyncSchemaFromList;
+  if (not FSchemaList.CloudLoaded) and TRpAuthManager.Instance.IsLoggedIn then
     UpdateAuthUI;
-  end
-  else if (FComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
-    UpdateAuthUI
-  else
-    SelectCurrentSchema;
   UpdateSchemaTables;
 end;
 
 procedure TFRpMonacoEditorLCL.SetHubDatabaseId(const Value: Int64);
 begin
-  FBaseHubDatabaseId := Value;
-  if FHubDatabaseId = Value then
-  begin
-    if FComboSchema.Items.Count > 0 then
-      SelectCurrentSchema;
-    Exit;
-  end;
-  FHubDatabaseId := Value;
-  if (FComboSchema.Items.Count = 0) and TRpAuthManager.Instance.IsLoggedIn then
-    UpdateAuthUI;
-  if FComboSchema.Items.Count > 0 then
-    SelectCurrentSchema;
+  SetHubContext(Value, 0, FBaseApiKey);
 end;
 
 procedure TFRpMonacoEditorLCL.SetHubSchemaId(const Value: Int64);
 begin
-  if FHubSchemaId = Value then
-  begin
-    SelectCurrentSchema;
-    Exit;
+  SetHubContext(FBaseHubDatabaseId, Value, FBaseApiKey);
+end;
+
+procedure TFRpMonacoEditorLCL.SetLocalSchemas(const AAlias: string;
+  ANames, ASizes: TStrings);
+begin
+  // The file may have changed: its config and tables are read again
+  FLocalSchemaConfigKey := '';
+  FLocalSchemaConfigJson := '';
+  FLoadedLocalSchemaKey := '';
+  FUpdatingSchemaList := True;
+  try
+    FSchemaList.SetLocalSchemas(AAlias, ANames, ASizes);
+  finally
+    FUpdatingSchemaList := False;
   end;
-  FHubSchemaId := Value;
-  if FHubSchemaId = 0 then
-  begin
-    FHubDatabaseId := FBaseHubDatabaseId;
-    FSchemaApiKey := FBaseApiKey;
-  end;
-  SelectCurrentSchema;
+  SyncSchemaFromList;
   UpdateSchemaTables;
 end;
 
-procedure TFRpMonacoEditorLCL.SelectCurrentSchema;
-var
-  I: Integer;
-  LItem: TRpMonacoSchemaItem;
-  LFound: Boolean;
+procedure TFRpMonacoEditorLCL.SelectLocalSchema(const AName: string);
 begin
-  if FComboSchema.Items.Count = 0 then
-    Exit;
-  FComboSchema.ItemIndex := 0;
-  FSchema := '';
-  LFound := False;
-
-  if FHubSchemaId <> 0 then
-    for I := 1 to FComboSchema.Items.Count - 1 do
-    begin
-      LItem := TRpMonacoSchemaItem(FComboSchema.Items.Objects[I]);
-      if (LItem <> nil) and (LItem.HubSchemaId = FHubSchemaId) then
-      begin
-        FComboSchema.ItemIndex := I;
-        FSchema := FComboSchema.Items[I];
-        FHubDatabaseId := LItem.HubDatabaseId;
-        FSchemaApiKey := LItem.ApiKey;
-        LFound := True;
-        Break;
-      end;
-    end;
-
-  if (not LFound) and (FBaseHubDatabaseId <> 0) then
-    for I := 1 to FComboSchema.Items.Count - 1 do
-    begin
-      LItem := TRpMonacoSchemaItem(FComboSchema.Items.Objects[I]);
-      if (LItem <> nil) and (LItem.HubDatabaseId = FBaseHubDatabaseId) then
-      begin
-        FComboSchema.ItemIndex := I;
-        FSchema := FComboSchema.Items[I];
-        FHubDatabaseId := LItem.HubDatabaseId;
-        FHubSchemaId := LItem.HubSchemaId;
-        FSchemaApiKey := LItem.ApiKey;
-        LFound := True;
-        Break;
-      end;
-    end;
-
-  if (not LFound) and (FComboSchema.Items.Count > 1) then
-  begin
-    FComboSchema.ItemIndex := 1;
-    LItem := TRpMonacoSchemaItem(FComboSchema.Items.Objects[1]);
-    FSchema := FComboSchema.Items[1];
-    if LItem <> nil then
-    begin
-      FHubDatabaseId := LItem.HubDatabaseId;
-      FHubSchemaId := LItem.HubSchemaId;
-      FSchemaApiKey := LItem.ApiKey;
-    end;
-    LFound := True;
+  FUpdatingSchemaList := True;
+  try
+    FSchemaList.SelectLocalSchema(AName);
+  finally
+    FUpdatingSchemaList := False;
   end;
-
-  if not LFound then
-  begin
-    FSchema := '';
-    FHubDatabaseId := FBaseHubDatabaseId;
-    FHubSchemaId := 0;
-    FSchemaApiKey := FBaseApiKey;
-  end;
-  UpdateSchemaTables;
 end;
 
-procedure TFRpMonacoEditorLCL.ComboSchemaChange(Sender: TObject);
-var
-  LItem: TRpMonacoSchemaItem;
+function TFRpMonacoEditorLCL.GetLocalSchemaAlias: string;
 begin
-  if FLoadingSchemas then
+  Result := FSchemaList.LocalAlias;
+end;
+
+function TFRpMonacoEditorLCL.GetLocalSchemaName: string;
+begin
+  Result := FSchemaList.GetLocalSchemaName;
+end;
+
+function TFRpMonacoEditorLCL.LocalSchemaKey: string;
+begin
+  Result := '';
+  if FSchemaList.GetLocalSchemaName <> '' then
+    Result := UpperCase(FSchemaList.LocalAlias) + #1 +
+      FSchemaList.GetLocalSchemaName;
+end;
+
+function TFRpMonacoEditorLCL.LocalSchemaConfigJson: string;
+var
+  LKey: string;
+begin
+  Result := '';
+  LKey := LocalSchemaKey;
+  if (LKey = '') or not Assigned(FOnLocalSchemaConfig) then
     Exit;
-  if FComboSchema.ItemIndex > 0 then
+  if LKey <> FLocalSchemaConfigKey then
   begin
-    LItem := TRpMonacoSchemaItem(FComboSchema.Items.Objects[FComboSchema.ItemIndex]);
-    FSchema := FComboSchema.Items[FComboSchema.ItemIndex];
-    if LItem <> nil then
-    begin
-      FHubDatabaseId := LItem.HubDatabaseId;
-      FHubSchemaId := LItem.HubSchemaId;
-      FSchemaApiKey := LItem.ApiKey;
-    end;
-  end
-  else
-  begin
-    FSchema := '';
-    FHubDatabaseId := FBaseHubDatabaseId;
-    FHubSchemaId := 0;
-    FSchemaApiKey := FBaseApiKey;
+    FLocalSchemaConfigKey := '';
+    FLocalSchemaConfigJson := FOnLocalSchemaConfig(Self, FSchemaList.LocalAlias,
+      FSchemaList.GetLocalSchemaName);
+    FLocalSchemaConfigKey := LKey;
   end;
-  UpdateSchemaTables;
-  if Assigned(FOnSchemaChanged) then
-    FOnSchemaChanged(Self);
+  Result := FLocalSchemaConfigJson;
 end;
 
 function TFRpMonacoEditorLCL.GetSchemaApiKey: string;
-var
-  LItem: TRpMonacoSchemaItem;
 begin
-  if FComboSchema.ItemIndex > 0 then
-  begin
-    LItem := TRpMonacoSchemaItem(FComboSchema.Items.Objects[FComboSchema.ItemIndex]);
-    if LItem <> nil then
-      Exit(LItem.ApiKey);
-  end;
   Result := FSchemaApiKey;
 end;
 
@@ -2844,14 +2828,19 @@ begin
   LAIEnabled := TRpAuthManager.Instance.AIEnabled;
 
   FAIButton.Down := LAIEnabled;
-  FComboSchema.Enabled := LLoggedIn;
   if not LLoggedIn then
   begin
-    ClearSchemaItems;
-    FSchema := '';
-    FHubDatabaseId := 0;
-    FHubSchemaId := 0;
-    FSchemaApiKey := '';
+    // The cloud schemas go; the subschemas of the connection stay
+    if FSchemaList.CloudLoaded then
+    begin
+      FUpdatingSchemaList := True;
+      try
+        FSchemaList.ClearCloudSchemas;
+      finally
+        FUpdatingSchemaList := False;
+      end;
+    end;
+    SyncSchemaFromList;
     FAISelection.ClearAgentEndpoints;
     FAISelection.Visible := LAIEnabled;
     if not FAISelection.Visible then
@@ -2862,10 +2851,7 @@ begin
     Exit;
   end;
 
-  if FComboSchema.Items.Count > 0 then
-    SelectCurrentSchema;
-
-  LNeedsSchemas := FComboSchema.Items.Count = 0;
+  LNeedsSchemas := not FSchemaList.CloudLoaded;
   LNeedsAgents := FAISelection.AgentEndpointCount = 0;
 
   FAISelection.Visible := LAIEnabled;
@@ -3016,6 +3002,7 @@ end;
 procedure TFRpMonacoEditorLCL.StartPendingInference;
 var
   LWorker: TRpMonacoSuggestWorker;
+  LInlineConfigJson: string;
 begin
   if FInferenceRunning then
     Exit;
@@ -3023,6 +3010,29 @@ begin
     Exit;
   if FPendingRequestId = '' then
     Exit;
+  // A subschema of the direct connection goes inline; a direct connection
+  // without one is not in the Hub: no AI completion
+  LInlineConfigJson := '';
+  if GetLocalSchemaName <> '' then
+  begin
+    try
+      LInlineConfigJson := LocalSchemaConfigJson;
+    except
+      on E: Exception do
+        EmitInferenceLog('Autocomplete', E.Message, True);
+    end;
+    if LInlineConfigJson = '' then
+    begin
+      SendAICompletions('[]', '[]', FPendingRequestId);
+      Exit;
+    end;
+  end
+  else if (GetLocalSchemaAlias <> '') and (FHubDatabaseId = 0) and
+    (FHubSchemaId = 0) then
+  begin
+    SendAICompletions('[]', '[]', FPendingRequestId);
+    Exit;
+  end;
 
   FLastAutoCompleteSql := FPendingSql;
   FActiveInferenceRequestId := FPendingRequestId;
@@ -3043,6 +3053,7 @@ begin
   LWorker.InstallId := TRpAuthManager.Instance.InstallId;
   LWorker.HubDatabaseId := FHubDatabaseId;
   LWorker.HubSchemaId := FHubSchemaId;
+  LWorker.InlineConfigJson := LInlineConfigJson;
   LWorker.RuntimeDb := FRuntimeDb;
   LWorker.AITier := FAISelection.AITier;
   LWorker.AIMode := FAISelection.AIMode;
@@ -3210,10 +3221,29 @@ procedure TFRpMonacoEditorLCL.UpdateSchemaTables;
 var
   LCached: TRpSqlSchema;
   LWorker: TRpMonacoSchemaTablesWorker;
-  LApiKey: string;
+  LApiKey, LKey: string;
 begin
   if FSqlSchema = nil then
     Exit;
+  // A subschema of the direct connection: its tables, from the file
+  LKey := LocalSchemaKey;
+  if LKey <> '' then
+  begin
+    if LKey = FLoadedLocalSchemaKey then
+      Exit;
+    FLoadedLocalSchemaKey := LKey;
+    FLoadedSchemaTablesId := 0;
+    FSchemaTablesRequestedId := 0;
+    LoadLocalSchemaTables;
+    ApplySchemaTables;
+    Exit;
+  end;
+  if FLoadedLocalSchemaKey <> '' then
+  begin
+    // Back to a Hub schema (or none)
+    FLoadedLocalSchemaKey := '';
+    FLoadedSchemaTablesId := -1;
+  end;
   if FHubSchemaId = FLoadedSchemaTablesId then
     Exit;
   if FHubSchemaId = 0 then
@@ -3248,10 +3278,44 @@ begin
   LWorker.Start;
 end;
 
+// The tables and columns the subschema chosen sends to the AI (its inline
+// config), the ones the completion offers
+procedure TFRpMonacoEditorLCL.LoadLocalSchemaTables;
+var
+  LJson, LTables: TJSONValue;
+  LText: string;
+begin
+  FSqlSchema.Clear;
+  FSqlSchema.HubSchemaId := 0;
+  try
+    LText := LocalSchemaConfigJson;
+  except
+    on E: Exception do
+    begin
+      LogStatus('Local schema: ' + E.Message);
+      Exit;
+    end;
+  end;
+  if LText = '' then
+    Exit;
+  LJson := TJSONObject.ParseJSONValue(LText);
+  try
+    if LJson is TJSONObject then
+    begin
+      LTables := TJSONObject(LJson).GetValue('schemaTables');
+      if LTables is TJSONArray then
+        FSqlSchema.LoadFromJson(TJSONArray(LTables));
+    end;
+  finally
+    LJson.Free;
+  end;
+end;
+
 procedure TFRpMonacoEditorLCL.ReloadSchemaTables;
 begin
   FSchemaCache.Clear;
   FLoadedSchemaTablesId := -1;
+  FLoadedLocalSchemaKey := '';
   FSchemaTablesRequestedId := 0;
   UpdateSchemaTables;
 end;
