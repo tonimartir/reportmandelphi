@@ -78,7 +78,8 @@ function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
 implementation
 
 uses
-  rpmdconsts, rpauthmanager, rpreportdesignercontracts, rpwebmarkdownlcl, rpgraphutilslcl;
+  DateUtils, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
+  rpwebmarkdownlcl, rpgraphutilslcl;
 
 const
   CKey = ' '#$F0#$9F#$94#$91;
@@ -103,6 +104,8 @@ type
     FAvailable: TStringList;
     FChosen: TStringList;
     FColumnTables: TStringList;
+    // The thread that reads the database for the screen (spec P)
+    FWorker: TRpReadWorker;
     FStackTop: Integer;
     // The table of the Tables tab whose description is shown, the table and
     // the column of the Columns tab
@@ -216,7 +219,13 @@ type
     procedure BuildColumnsTab(ATab: TTabSheet);
     procedure BuildRelationsTab(ATab: TTabSheet);
     procedure BuildValidationTab(ATab: TTabSheet);
-    procedure LoadFile(ARefresh: Boolean);
+    // False when the user cancelled the read of the catalog
+    function LoadFile(ARefresh: Boolean): Boolean;
+    // A read of the database in the thread of the screen, with the window of
+    // its progress after 300 ms (spec P). True when it ended (ATask has its
+    // result or its error; the caller frees it); False when the user
+    // cancelled it (the task is not the caller's any more)
+    function RunRead(ATask: TRpReadTask; const ATitle: string): Boolean;
     function SelectedSchema: TRpLocalSubSchema;
     function SchemaTables: TStringList;
     function PlanApplies: Boolean;
@@ -344,6 +353,151 @@ begin
     Result := Result + ' - ' + string(TranslateStr(1875, 'by hand'));
 end;
 
+{ The progress of a read }
+
+type
+  // The window of a read of the database: what is read, an indeterminate
+  // bar, the phase with its seconds and the rows, and Cancel, always there.
+  // A read that does not stop (a blocking open of a driver) is given up
+  // half a second after Cancel: the window closes anyway
+  TFRpReadProgressLCL = class(TForm)
+  private
+    FTask: TRpReadTask;
+    FWorker: TRpReadWorker;
+    FCancelAt: TDateTime;
+    FCancelRequested: Boolean;
+    FGivenUp: Boolean;
+    LStatus: TLabel;
+    FTimer: TTimer;
+    function S(AValue: Integer): Integer;
+    procedure ShowStatus;
+    procedure TimerTick(Sender: TObject);
+    procedure CancelClick(Sender: TObject);
+  public
+    constructor CreateFor(AOwner: TComponent; ATask: TRpReadTask;
+      AWorker: TRpReadWorker; const ATitle: string);
+    property CancelRequested: Boolean read FCancelRequested;
+    property GivenUp: Boolean read FGivenUp;
+  end;
+
+function TFRpReadProgressLCL.S(AValue: Integer): Integer;
+begin
+  Result := (AValue * Screen.PixelsPerInch) div 96;
+end;
+
+constructor TFRpReadProgressLCL.CreateFor(AOwner: TComponent;
+  ATask: TRpReadTask; AWorker: TRpReadWorker; const ATitle: string);
+var
+  LBar: TProgressBar;
+  LBottom, LBody: TPanel;
+  LButton: TButton;
+  LTitle: TLabel;
+begin
+  inherited CreateNew(AOwner);
+  FTask := ATask;
+  FWorker := AWorker;
+  Caption := ATitle;
+  Position := poScreenCenter;
+  BorderStyle := bsDialog;
+  BorderIcons := [];
+  ClientWidth := S(420);
+  ClientHeight := S(130);
+  LBottom := TPanel.Create(Self);
+  LBottom.Parent := Self;
+  LBottom.BevelOuter := bvNone;
+  LBottom.Caption := '';
+  LBottom.Align := alBottom;
+  LBottom.Height := S(42);
+  LButton := TButton.Create(Self);
+  LButton.Parent := LBottom;
+  LButton.Caption := TranslateStr(94, 'Cancel');
+  LButton.Cancel := True;
+  LButton.OnClick := CancelClick;
+  LButton.SetBounds(S(420) - S(106), S(8), S(96), S(26));
+  LBody := TPanel.Create(Self);
+  LBody.Parent := Self;
+  LBody.BevelOuter := bvNone;
+  LBody.Caption := '';
+  LBody.Align := alClient;
+  LBody.BorderWidth := S(10);
+  LTitle := TLabel.Create(Self);
+  LTitle.Parent := LBody;
+  LTitle.Align := alTop;
+  LTitle.Caption := ATitle;
+  LTitle.Font.Style := [fsBold];
+  LBar := TProgressBar.Create(Self);
+  LBar.Parent := LBody;
+  LBar.Top := S(1000);
+  LBar.Align := alTop;
+  LBar.Height := S(18);
+  LBar.Style := pbstMarquee;
+  LStatus := TLabel.Create(Self);
+  LStatus.Parent := LBody;
+  LStatus.Top := S(2000);
+  LStatus.Align := alTop;
+  FTimer := TTimer.Create(Self);
+  FTimer.Interval := 250;
+  FTimer.OnTimer := TimerTick;
+  ShowStatus;
+end;
+
+procedure TFRpReadProgressLCL.ShowStatus;
+var
+  LSeconds: string;
+begin
+  if FCancelRequested then
+  begin
+    LStatus.Caption := TranslateStr(2042, 'Cancelling...');
+    Exit;
+  end;
+  LSeconds := IntToStr(FTask.Progress.Seconds);
+  case FTask.Progress.Phase of
+    rrpConnecting:
+      LStatus.Caption := Format(string(TranslateStr(2037, 'Connecting (%s s)')),
+        [LSeconds]);
+    rrpExecuting:
+      LStatus.Caption := Format(string(TranslateStr(2038, 'Executing (%s s)')),
+        [LSeconds]);
+  else
+    LStatus.Caption := Format(string(TranslateStr(2039, 'Fetching %s rows (%s s)')),
+      [FormatFloat('#,##0', FTask.Progress.Rows), LSeconds]);
+  end;
+end;
+
+procedure TFRpReadProgressLCL.TimerTick(Sender: TObject);
+begin
+  if FTask.Done then
+  begin
+    FTimer.Enabled := False;
+    ModalResult := mrOk;
+    Exit;
+  end;
+  // Cancelled and still busy (connecting or in a query of a driver that
+  // does not stop): given up, it ends on its own
+  if FCancelRequested and (MilliSecondsBetween(Now, FCancelAt) >= 500) then
+  begin
+    FTimer.Enabled := False;
+    FGivenUp := FWorker.Abandon(FTask);
+    ModalResult := mrCancel;
+    Exit;
+  end;
+  ShowStatus;
+end;
+
+procedure TFRpReadProgressLCL.CancelClick(Sender: TObject);
+begin
+  if not FCancelRequested then
+  begin
+    FCancelRequested := True;
+    FCancelAt := Now;
+    FTask.Progress.Cancel;
+    ShowStatus;
+  end
+  else
+    // A second Cancel does not wait
+    FCancelAt := IncMilliSecond(Now, -500);
+end;
+
 { TFRpLocalSchemasLCL }
 
 function TFRpLocalSchemasLCL.S(AValue: Integer): Integer;
@@ -412,6 +566,9 @@ begin
   FChosen.Free;
   FAvailable.Free;
   FFile.Free;
+  // It ends after its read, if any, and frees itself with its connection
+  if FWorker <> nil then
+    FWorker.Retire;
   if FDatabase <> nil then
   begin
     try
@@ -951,51 +1108,106 @@ end;
 
 { The file }
 
-procedure TFRpLocalSchemasLCL.LoadFile(ARefresh: Boolean);
+function TFRpLocalSchemasLCL.LoadFile(ARefresh: Boolean): Boolean;
+var
+  LExists: Boolean;
+  LLoaded: TRpLocalSchemaFile;
+  LTask: TRpCatalogReadTask;
+begin
+  Result := True;
+  if not ARefresh then
+  begin
+    LLoaded := TRpLocalSchemaFile.Create;
+    try
+      LExists := LLoaded.LoadFromFile(FFileName);
+    except
+      LLoaded.Free;
+      raise;
+    end;
+    FFile.Free;
+    FFile := LLoaded;
+    if FFile.Alias = '' then
+      FFile.Alias := UpperCase(FDatabase.Alias);
+    if FFile.Dialect = '' then
+      FFile.Dialect := RpLocalDatabaseDialect(FDatabase);
+    // Read from the database (and saved) the first time
+    if LExists then
+      Exit;
+  end;
+  // A large catalog reads again the columns of the tables in use
+  LTask := TRpCatalogReadTask.Create(FReport.Params);
+  RpLocalSchemaKeepList(FFile, LTask.Keep);
+  if not RunRead(LTask, Format(string(TranslateStr(2040,
+    'Reading the catalog of %s')), [FDatabase.Alias])) then
+    Exit(False);
+  try
+    if LTask.Failed then
+      raise Exception.Create(LTask.ErrorText);
+    if ARefresh then
+    begin
+      // In memory, with what is being edited: Save writes it. The relations
+      // pointed to the tables read before
+      FRelations.Clear;
+      FSuggestions.Clear;
+      FEditForeignKey := nil;
+    end;
+    FFile.SetCatalog(LTask.Tables, LTask.Dialect);
+    // The file owns them now
+    LTask.Tables := nil;
+    if FFile.Alias = '' then
+      FFile.Alias := UpperCase(FDatabase.Alias);
+    if not ARefresh then
+      FFile.SaveToFile(FFileName);
+  finally
+    LTask.Free;
+  end;
+end;
+
+function TFRpLocalSchemasLCL.RunRead(ATask: TRpReadTask;
+  const ATitle: string): Boolean;
 var
   LCursor: TCursor;
-  LDialect: string;
-  LKeep: TStringList;
-  LLoaded: TRpLocalSchemaFile;
-  LTables: TJSONArray;
+  LForm: TFRpReadProgressLCL;
+  LStart: TDateTime;
+  LCancelled: Boolean;
 begin
+  if FWorker = nil then
+    FWorker := TRpReadWorker.Create(FDatabase);
+  FWorker.Post(ATask);
+  // A fast read shows no window
   LCursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   try
-    try
-      if ARefresh then
-      begin
-        // In memory, with what is being edited: Save writes it. A large
-        // catalog reads again the columns of the tables in use
-        LKeep := TStringList.Create;
-        try
-          RpLocalSchemaKeepList(FFile, LKeep);
-          LTables := RpReadLocalSchemaCatalog(FDatabase, FReport.Params,
-            LDialect, LKeep);
-        finally
-          LKeep.Free;
-        end;
-        // The relations point to the tables read before
-        FRelations.Clear;
-        FSuggestions.Clear;
-        FEditForeignKey := nil;
-        FFile.SetCatalog(LTables, LDialect);
-        if FFile.Alias = '' then
-          FFile.Alias := UpperCase(FDatabase.Alias);
-      end
-      else
-      begin
-        // Generated (and saved) the first time
-        LLoaded := RpLoadLocalSchema(FDatabase, FReport.Params, True, False);
-        FFile.Free;
-        FFile := LLoaded;
-      end;
-    finally
-      FDatabase.DisConnect;
-    end;
+    LStart := Now;
+    while not ATask.Done and (MilliSecondsBetween(Now, LStart) < 300) do
+      Sleep(10);
   finally
     Screen.Cursor := LCursor;
   end;
+  LCancelled := False;
+  if not ATask.Done then
+  begin
+    LForm := TFRpReadProgressLCL.CreateFor(Self, ATask, FWorker, ATitle);
+    try
+      LForm.ShowModal;
+      LCancelled := LForm.CancelRequested;
+      if LForm.GivenUp then
+      begin
+        // The worker frees the task when it ends, and then itself: the
+        // next read takes a new one
+        FWorker.Retire;
+        FWorker := nil;
+        Exit(False);
+      end;
+    finally
+      LForm.Free;
+    end;
+  end;
+  // Cancelled (stopped between rows, or read anyway after Cancel): as if
+  // it had not been read
+  Result := not (LCancelled or ATask.Cancelled);
+  if not Result then
+    ATask.Free;
 end;
 
 procedure TFRpLocalSchemasLCL.SaveFile;
@@ -2326,7 +2538,8 @@ begin
   LSelected := '';
   if SelectedSchema <> nil then
     LSelected := SelectedSchema.Name;
-  LoadFile(True);
+  if not LoadFile(True) then
+    Exit;
   FModified := True;
   FillSchemas(LSelected);
 end;
@@ -2447,8 +2660,7 @@ end;
 
 function TFRpLocalSchemasLCL.EnsureColumns(ANames: TStrings): Boolean;
 var
-  LCursor: TCursor;
-  LTables: TJSONArray;
+  LTask: TRpColumnsReadTask;
   LUnread: TStringList;
 begin
   Result := True;
@@ -2457,38 +2669,26 @@ begin
     FFile.GetUnreadTables(ANames, LUnread);
     if LUnread.Count = 0 then
       Exit;
-    ShowInfo(Format(string(TranslateStr(2033, 'Reading the columns of %s...')),
-      [RpShortNameList(LUnread, 5)]));
-    StatusInfo.Update;
-    LCursor := Screen.Cursor;
-    Screen.Cursor := crHourGlass;
+    LTask := TRpColumnsReadTask.Create(FReport.Params);
+    LTask.Names.Assign(LUnread);
+    // A cancel leaves the tables unread, and says nothing
+    if not RunRead(LTask, Format(string(TranslateStr(2033,
+      'Reading the columns of %s...')), [RpShortNameList(LUnread, 5)])) then
+      Exit(False);
     try
-      try
-        LTables := RpReadLocalSchemaColumns(FDatabase, FReport.Params, LUnread);
-        try
-          FFile.MergeColumns(LTables);
-        finally
-          LTables.Free;
-        end;
-        // What was read is not a change of the person: it is saved with the
-        // next one, and read again otherwise
-        ShowInfo('');
-      except
-        on E: Exception do
-        begin
-          Result := False;
-          Screen.Cursor := LCursor;
-          ShowInfo('');
-          RpMessageBox(Format(string(TranslateStr(2036, 'The columns of %s ' +
-            'could not be read: %s')), [RpShortNameList(LUnread, 5),
-            E.Message]), '', [smbOK], smsCritical);
-        end;
+      if LTask.Failed then
+      begin
+        Result := False;
+        RpMessageBox(Format(string(TranslateStr(2036, 'The columns of %s ' +
+          'could not be read: %s')), [RpShortNameList(LUnread, 5),
+          LTask.ErrorText]), '', [smbOK], smsCritical);
+        Exit;
       end;
+      // What was read is not a change of the person: it is saved with the
+      // next one, and read again otherwise
+      FFile.MergeColumns(LTask.Tables);
     finally
-      // The connection stays open while the screen is: opening a database
-      // with a large catalog can take seconds (SQLite reads its whole
-      // schema), and the next table would pay them again
-      Screen.Cursor := LCursor;
+      LTask.Free;
     end;
   finally
     LUnread.Free;
@@ -2698,50 +2898,40 @@ end;
 
 procedure TFRpLocalSchemasLCL.BPreviewClick(Sender: TObject);
 var
-  I, LRow: Integer;
-  LCursor: TCursor;
-  LData: TDataSet;
+  I, J: Integer;
+  LRow: TStringList;
+  LTask: TRpRowsReadTask;
 begin
   if FColumnsTable = '' then
     Exit;
   ClearPreview;
-  LCursor := Screen.Cursor;
-  Screen.Cursor := crHourGlass;
+  LTask := TRpRowsReadTask.Create(FReport.Params);
+  LTask.Sql := RpLocalSchemaPreviewSql(FFile.Dialect, FColumnsTable, CPreviewRows);
+  LTask.MaxRows := CPreviewRows;
+  if not RunRead(LTask, Format(string(TranslateStr(2041,
+    'Reading the first rows of %s')), [FColumnsTable])) then
+    Exit;
   try
-    try
-      LData := FDatabase.OpenDatasetFromSQL(RpLocalSchemaPreviewSql(
-        FFile.Dialect, FColumnsTable, CPreviewRows), nil, False, FReport.Params);
-      try
-        if LData.FieldCount > 0 then
-          GridPreview.ColCount := LData.FieldCount;
-        for I := 0 to LData.FieldCount - 1 do
-        begin
-          GridPreview.Cells[I, 0] := LData.Fields[I].FieldName;
-          GridPreview.ColWidths[I] := S(110);
-        end;
-        LRow := 0;
-        while (not LData.Eof) and (LRow < CPreviewRows) do
-        begin
-          Inc(LRow);
-          GridPreview.RowCount := LRow + 1;
-          for I := 0 to LData.FieldCount - 1 do
-            if LData.Fields[I].IsBlob and not (LData.Fields[I].DataType in
-              [ftMemo, ftWideMemo, ftFmtMemo]) then
-              GridPreview.Cells[I, LRow] := '(BLOB)'
-            else
-              GridPreview.Cells[I, LRow] := LData.Fields[I].DisplayText;
-          LData.Next;
-        end;
-        if GridPreview.RowCount > 1 then
-          GridPreview.FixedRows := 1;
-      finally
-        LData.Free;
-      end;
-    finally
-      FDatabase.DisConnect;
+    if LTask.Failed then
+      raise Exception.Create(LTask.ErrorText);
+    if LTask.Header.Count > 0 then
+      GridPreview.ColCount := LTask.Header.Count;
+    for I := 0 to LTask.Header.Count - 1 do
+    begin
+      GridPreview.Cells[I, 0] := LTask.Header[I];
+      GridPreview.ColWidths[I] := S(110);
     end;
+    for J := 0 to LTask.Rows.Count - 1 do
+    begin
+      LRow := TStringList(LTask.Rows[J]);
+      GridPreview.RowCount := J + 2;
+      for I := 0 to LRow.Count - 1 do
+        GridPreview.Cells[I, J + 1] := LRow[I];
+    end;
+    if GridPreview.RowCount > 1 then
+      GridPreview.FixedRows := 1;
   finally
-    Screen.Cursor := LCursor;
+    LTask.Free;
   end;
 end;
 
@@ -3163,7 +3353,9 @@ begin
   Result := False;
   LForm := TFRpLocalSchemasLCL.CreateFor(Application, AReport, AAlias, AChat);
   try
-    LForm.LoadFile(False);
+    // A read of the catalog cancelled: nothing to show
+    if not LForm.LoadFile(False) then
+      Exit;
     LForm.FillSchemas(ASchemaName);
     if AAddNew and not LForm.AddNewSchema then
       Exit;

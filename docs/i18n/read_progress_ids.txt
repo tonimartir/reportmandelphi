@@ -1,0 +1,6 @@
+2037	Connecting (%s s)	Conectando (%s s)	Connectant (%s s)	Připojování (%s s)	Verbindung wird hergestellt (%s s)	Connexion (%s s)	Connessione (%s s)	Jungiamasi (%s s)	Conectando (%s s)
+2038	Executing (%s s)	Ejecutando (%s s)	Executant (%s s)	Provádění (%s s)	Wird ausgeführt (%s s)	Exécution (%s s)	Esecuzione (%s s)	Vykdoma (%s s)	Executando (%s s)
+2039	Fetching %s rows (%s s)	Obteniendo %s filas (%s s)	Obtenint %s files (%s s)	Načítání %s řádků (%s s)	%s Zeilen werden abgerufen (%s s)	Récupération de %s lignes (%s s)	Recupero di %s righe (%s s)	Gaunama %s eilučių (%s s)	Obtendo %s linhas (%s s)
+2040	Reading the catalog of %s	Leyendo el catálogo de %s	Llegint el catàleg de %s	Načítání katalogu %s	Katalog von %s wird gelesen	Lecture du catalogue de %s	Lettura del catalogo di %s	Skaitomas %s katalogas	Lendo o catálogo de %s
+2041	Reading the first rows of %s	Leyendo las primeras filas de %s	Llegint les primeres files de %s	Načítání prvních řádků %s	Die ersten Zeilen von %s werden gelesen	Lecture des premières lignes de %s	Lettura delle prime righe di %s	Skaitomos pirmosios %s eilutės	Lendo as primeiras linhas de %s
+2042	Cancelling...	Cancelando...	Cancel·lant...	Rušení...	Wird abgebrochen...	Annulation...	Annullamento...	Atšaukiama...	Cancelando...

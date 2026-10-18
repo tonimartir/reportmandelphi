@@ -90,9 +90,10 @@ interface
 
 uses
 {$IFDEF FPC}
-  SysUtils, Classes, Contnrs, DB, Variants, DateUtils, rpjsonfpc,
+  SysUtils, Classes, Contnrs, DB, Variants, DateUtils, SyncObjs, rpjsonfpc,
 {$ELSE}
   SysUtils, Classes, Contnrs, DB, Variants, System.JSON, System.DateUtils,
+  System.SyncObjs,
 {$ENDIF}
   rpparams, rpdatainfo;
 
@@ -355,14 +356,125 @@ function RpLocalDatabaseDialect(ADatabase: TRpDatabaseInfoItem): string;
 // have "columnsRead": false
 function RpReadLocalSchemaCatalog(ADatabase: TRpDatabaseInfoItem;
   AParams: TRpParamList; out ADialect: string;
-  AColumnsOf: TStrings = nil): TJSONArray;
+  AColumnsOf: TStrings = nil; AProgress: TObject = nil): TJSONArray;
+{ The reads of the database of the local schema screens (spec P of
+  18-10-2026): off the main thread, with their progress and a cancel that
+  is always possible }
+
+type
+  TRpReadPhase = (rrpConnecting, rrpExecuting, rrpFetching);
+
+  // What a read is doing (another thread writes it, the window of the
+  // progress reads it) and whether the user cancelled it
+  TRpReadProgress = class(TObject)
+  private
+    FPhase: TRpReadPhase;
+    FRows: Integer;
+    FCancelled: Boolean;
+    FStart: TDateTime;
+  public
+    constructor Create;
+    procedure SetPhase(APhase: TRpReadPhase);
+    procedure AddRow;
+    procedure Cancel;
+    // EAbort once cancelled: the loops of rows call it
+    procedure Check;
+    // Since the read started
+    function Seconds: Integer;
+    property Phase: TRpReadPhase read FPhase;
+    property Rows: Integer read FRows;
+    property Cancelled: Boolean read FCancelled;
+  end;
+
+  // A read that TRpReadWorker runs: Run reads with Database, the copy of
+  // the connection of the worker, and leaves its result in the fields of
+  // the class. Its creator frees it once Done, unless it gave it up
+  // (Abandoned: the worker frees it then)
+  TRpReadTask = class(TObject)
+  public
+    Progress: TRpReadProgress;
+    // A copy of the parameters of the report (the read may outlive it)
+    Params: TRpParamList;
+    Database: TRpDatabaseInfoItem;
+    Done: Boolean;
+    Abandoned: Boolean;
+    Cancelled: Boolean;
+    Failed: Boolean;
+    ErrorText: string;
+    constructor Create(AParams: TRpParamList);
+    destructor Destroy; override;
+    procedure Run; virtual; abstract;
+  end;
+
+  // The catalog (RpReadLocalSchemaCatalog), with the tables of Keep read in
+  // a large one
+  TRpCatalogReadTask = class(TRpReadTask)
+  public
+    Keep: TStringList;
+    Tables: TJSONArray;
+    Dialect: string;
+    constructor Create(AParams: TRpParamList);
+    destructor Destroy; override;
+    procedure Run; override;
+  end;
+
+  // The columns of some tables (RpReadLocalSchemaColumns)
+  TRpColumnsReadTask = class(TRpReadTask)
+  public
+    Names: TStringList;
+    Tables: TJSONArray;
+    constructor Create(AParams: TRpParamList);
+    destructor Destroy; override;
+    procedure Run; override;
+  end;
+
+  // The first MaxRows rows of a query, as text: Header has the names of
+  // the fields, Rows a TStringList per row
+  TRpRowsReadTask = class(TRpReadTask)
+  public
+    Sql: string;
+    MaxRows: Integer;
+    Header: TStringList;
+    Rows: TObjectList;
+    constructor Create(AParams: TRpParamList);
+    destructor Destroy; override;
+    procedure Run; override;
+  end;
+
+  // The thread that reads for a screen, one task at a time, with its own
+  // copy of the connection (made in the thread the first time, kept open
+  // for the next reads). A screen that gives up a task whose driver does
+  // not stop (a blocking open) retires its worker, which ends and frees
+  // itself after it, and takes a new one
+  TRpReadWorker = class(TThread)
+  private
+    FLock: TCriticalSection;
+    FWake: TEvent;
+    FTask: TRpReadTask;
+    FRetired: Boolean;
+    FSource: TRpDatabaseInfoItem;
+    FDatabases: TRpDatabaseInfoList;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(ASource: TRpDatabaseInfoItem);
+    destructor Destroy; override;
+    // Reads ATask (the worker is idle)
+    procedure Post(ATask: TRpReadTask);
+    // Gives up a task not done yet: the worker frees it when it ends. False
+    // when it ended already (the caller frees it)
+    function Abandon(ATask: TRpReadTask): Boolean;
+    // Ends after its task, if any, and frees itself
+    procedure Retire;
+  end;
+
 // The tables whose columns a large catalog reads again: the ones of every
 // subschema and the ones read already
 procedure RpLocalSchemaKeepList(AFile: TRpLocalSchemaFile; AList: TStrings);
 // The columns, primary keys and relations of some tables of the catalog
 // (the ones it does not have are left out)
 function RpReadLocalSchemaColumns(ADatabase: TRpDatabaseInfoItem;
-  AParams: TRpParamList; ATables: TStrings): TJSONArray;
+  AParams: TRpParamList; ATables: TStrings; AProgress: TObject = nil): TJSONArray;
 // The schema file of the connection: read; generated from the catalog
 // (and saved) when it does not exist and AGenerate, or always with
 // ARefresh. nil when it does not exist and is not generated
@@ -514,6 +626,11 @@ function RpShortNameList(AList: TStrings; AMax: Integer): string;
 implementation
 
 uses
+{$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
+  Winapi.ActiveX,
+{$ENDIF}
+{$ENDIF}
   rpmdconsts, rpbasereport;
 
 type
@@ -2744,7 +2861,10 @@ type
     FParams: TRpParamList;
     // ' IN (...)' of the tables whose columns are read now ('': all)
     FIn: string;
+    FProgress: TRpReadProgress;
     function Open(const ASql: string): TDataSet;
+    // Next of a dataset of the catalog: a row more, and the cancel checked
+    procedure NextRow(AData: TDataSet);
     function FieldText(AData: TDataSet; AIndex: Integer): string;
     function FieldInt(AData: TDataSet; AIndex: Integer): Integer;
     function InFilter(const AColumn: string; AWhere: Boolean = False): string;
@@ -2794,7 +2914,32 @@ end;
 
 function TRpCatalogReader.Open(const ASql: string): TDataSet;
 begin
+  if FProgress <> nil then
+  begin
+    FProgress.Check;
+    FProgress.SetPhase(rrpExecuting);
+  end;
   Result := FDatabase.OpenDatasetFromSQL(ASql, nil, False, FParams);
+  if FProgress <> nil then
+  begin
+    FProgress.SetPhase(rrpFetching);
+    try
+      FProgress.Check;
+    except
+      Result.Free;
+      raise;
+    end;
+  end;
+end;
+
+procedure TRpCatalogReader.NextRow(AData: TDataSet);
+begin
+  AData.Next;
+  if FProgress <> nil then
+  begin
+    FProgress.AddRow;
+    FProgress.Check;
+  end;
 end;
 
 function TRpCatalogReader.FieldText(AData: TDataSet; AIndex: Integer): string;
@@ -3042,7 +3187,7 @@ begin
     begin
       if FieldText(LData, 0) <> '' then
         FCatalog.Add(FieldText(LData, 0)).Context := FieldText(LData, 1);
-      LData.Next;
+      NextRow(LData);
     end;
   finally
     FCatalog.EndAdding;
@@ -3081,7 +3226,7 @@ begin
         LColumn.DetectedType := LDetected;
         LColumn.Context := FieldText(LData, 8);
       end;
-      LData.Next;
+      NextRow(LData);
     end;
   finally
     LData.Free;
@@ -3096,7 +3241,7 @@ begin
       while not LData.Eof do
       begin
         SetPrimaryKey(FieldText(LData, 0), FieldText(LData, 1));
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3121,7 +3266,7 @@ begin
       begin
         AddForeignKey(FieldText(LData, 1), FieldText(LData, 0),
           FieldText(LData, 3), FieldText(LData, 2), FieldText(LData, 4));
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3145,7 +3290,7 @@ begin
         LTable := FCatalog.Find(FieldText(LData, 0));
         if (LTable <> nil) and (LTable.Context = '') then
           LTable.Context := FieldText(LData, 1);
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3174,7 +3319,7 @@ begin
           if (LColumn <> nil) and (LColumn.Context = '') then
             LColumn.Context := FieldText(LData, 2);
         end;
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3213,7 +3358,7 @@ begin
     begin
       if FieldText(LData, 0) <> '' then
         FCatalog.Add(FieldText(LData, 0)).Context := FieldText(LData, 1);
-      LData.Next;
+      NextRow(LData);
     end;
   finally
     FCatalog.EndAdding;
@@ -3264,7 +3409,7 @@ begin
           FieldInt(LData, 4), FieldInt(LData, 5));
         LColumn.Context := FieldText(LData, 6);
       end;
-      LData.Next;
+      NextRow(LData);
     end;
   finally
     LData.Free;
@@ -3279,7 +3424,7 @@ begin
       while not LData.Eof do
       begin
         SetPrimaryKey(FieldText(LData, 0), FieldText(LData, 1));
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3302,7 +3447,7 @@ begin
       begin
         AddForeignKey(FieldText(LData, 1), FieldText(LData, 0),
           FieldText(LData, 3), FieldText(LData, 2), FieldText(LData, 4));
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3339,7 +3484,7 @@ begin
     begin
       if FieldText(LData, 0) <> '' then
         FCatalog.Add(FieldText(LData, 0));
-      LData.Next;
+      NextRow(LData);
     end;
   finally
     FCatalog.EndAdding;
@@ -3379,7 +3524,7 @@ begin
         LColumn.DetectedType := UpperCase(FieldText(LData, 2));
         LColumn.DataType := CloudTypeOfSqlType(FieldText(LData, 2), -1);
         LColumn.IsPrimaryKey := FieldInt(LData, 5) > 0;
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3393,7 +3538,7 @@ begin
         begin
           AddForeignKey(LTable.Name, 'FK_' + LTable.Name + '_' + FieldText(LData, 0),
             FieldText(LData, 2), FieldText(LData, 3), FieldText(LData, 4));
-          LData.Next;
+          NextRow(LData);
         end;
       finally
         LData.Free;
@@ -3431,7 +3576,7 @@ begin
     begin
       if FieldText(LData, 0) <> '' then
         FCatalog.Add(FieldText(LData, 0));
-      LData.Next;
+      NextRow(LData);
     end;
   finally
     FCatalog.EndAdding;
@@ -3464,7 +3609,7 @@ begin
           LColumn.DetectedType := SqlTypeText(FieldText(LData, 2), 0,
             FieldInt(LData, 4), FieldInt(LData, 5));
       end;
-      LData.Next;
+      NextRow(LData);
     end;
   finally
     LData.Free;
@@ -3477,7 +3622,7 @@ begin
       while not LData.Eof do
       begin
         SetPrimaryKey(FieldText(LData, 0), FieldText(LData, 1));
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3498,7 +3643,7 @@ begin
       begin
         AddForeignKey(FieldText(LData, 1), FieldText(LData, 0),
           FieldText(LData, 3), FieldText(LData, 2), FieldText(LData, 4));
-        LData.Next;
+        NextRow(LData);
       end;
     finally
       LData.Free;
@@ -3685,6 +3830,11 @@ procedure TRpCatalogReader.Connect(out ADialect: string);
 begin
   FFamily := FamilyOf(FDatabase, FParams);
   ADialect := DialectOfFamily(FFamily);
+  if FProgress <> nil then
+  begin
+    FProgress.Check;
+    FProgress.SetPhase(rrpConnecting);
+  end;
   FDatabase.Connect(FParams);
   if FFamily = rcfFirebird then
     ADialect := FirebirdDialect;
@@ -3704,8 +3854,8 @@ begin
       ReadColumns(LNames);
     except
       // A catalog that can not be read (permissions, an older server): the
-      // tables the driver lists
-      if FFamily = rcfGeneric then
+      // tables the driver lists. A cancel is a cancel
+      if (FFamily = rcfGeneric) or (ExceptObject is EAbort) then
         raise;
       FCatalog.List.Clear;
       FFamily := rcfGeneric;
@@ -3735,7 +3885,7 @@ begin
     try
       ReadColumns(LNames);
     except
-      if FFamily = rcfGeneric then
+      if (FFamily = rcfGeneric) or (ExceptObject is EAbort) then
         raise;
       for I := 0 to FCatalog.List.Count - 1 do
       begin
@@ -3753,7 +3903,7 @@ end;
 
 function RpReadLocalSchemaCatalog(ADatabase: TRpDatabaseInfoItem;
   AParams: TRpParamList; out ADialect: string;
-  AColumnsOf: TStrings): TJSONArray;
+  AColumnsOf: TStrings; AProgress: TObject): TJSONArray;
 var
   LReader: TRpCatalogReader;
 begin
@@ -3763,6 +3913,8 @@ begin
     raise Exception.Create('The connection ' + ADatabase.Alias +
       ' does not run SQL on this computer');
   LReader := TRpCatalogReader.Create(ADatabase, AParams);
+  if AProgress is TRpReadProgress then
+    LReader.FProgress := TRpReadProgress(AProgress);
   try
     Result := LReader.Read(ADialect, AColumnsOf);
   finally
@@ -3771,7 +3923,7 @@ begin
 end;
 
 function RpReadLocalSchemaColumns(ADatabase: TRpDatabaseInfoItem;
-  AParams: TRpParamList; ATables: TStrings): TJSONArray;
+  AParams: TRpParamList; ATables: TStrings; AProgress: TObject): TJSONArray;
 var
   LReader: TRpCatalogReader;
 begin
@@ -3781,10 +3933,270 @@ begin
     raise Exception.Create('The connection ' + ADatabase.Alias +
       ' does not run SQL on this computer');
   LReader := TRpCatalogReader.Create(ADatabase, AParams);
+  if AProgress is TRpReadProgress then
+    LReader.FProgress := TRpReadProgress(AProgress);
   try
     Result := LReader.ReadColumnsOf(ATables);
   finally
     LReader.Free;
+  end;
+end;
+
+{ TRpReadProgress }
+
+constructor TRpReadProgress.Create;
+begin
+  inherited Create;
+  FStart := Now;
+end;
+
+procedure TRpReadProgress.SetPhase(APhase: TRpReadPhase);
+begin
+  FPhase := APhase;
+end;
+
+procedure TRpReadProgress.AddRow;
+begin
+  Inc(FRows);
+end;
+
+procedure TRpReadProgress.Cancel;
+begin
+  FCancelled := True;
+end;
+
+procedure TRpReadProgress.Check;
+begin
+  if FCancelled then
+    Abort;
+end;
+
+function TRpReadProgress.Seconds: Integer;
+begin
+  Result := SecondsBetween(Now, FStart);
+end;
+
+{ TRpReadTask }
+
+constructor TRpReadTask.Create(AParams: TRpParamList);
+begin
+  inherited Create;
+  Progress := TRpReadProgress.Create;
+  Params := TRpParamList.Create(nil);
+  if AParams <> nil then
+    Params.Assign(AParams);
+end;
+
+destructor TRpReadTask.Destroy;
+begin
+  Params.Free;
+  Progress.Free;
+  inherited Destroy;
+end;
+
+constructor TRpCatalogReadTask.Create(AParams: TRpParamList);
+begin
+  inherited Create(AParams);
+  Keep := TStringList.Create;
+end;
+
+destructor TRpCatalogReadTask.Destroy;
+begin
+  Tables.Free;
+  Keep.Free;
+  inherited Destroy;
+end;
+
+procedure TRpCatalogReadTask.Run;
+begin
+  Tables := RpReadLocalSchemaCatalog(Database, Params, Dialect, Keep, Progress);
+end;
+
+constructor TRpColumnsReadTask.Create(AParams: TRpParamList);
+begin
+  inherited Create(AParams);
+  Names := TStringList.Create;
+end;
+
+destructor TRpColumnsReadTask.Destroy;
+begin
+  Tables.Free;
+  Names.Free;
+  inherited Destroy;
+end;
+
+procedure TRpColumnsReadTask.Run;
+begin
+  Tables := RpReadLocalSchemaColumns(Database, Params, Names, Progress);
+end;
+
+constructor TRpRowsReadTask.Create(AParams: TRpParamList);
+begin
+  inherited Create(AParams);
+  Header := TStringList.Create;
+  Rows := TObjectList.Create(True);
+end;
+
+destructor TRpRowsReadTask.Destroy;
+begin
+  Rows.Free;
+  Header.Free;
+  inherited Destroy;
+end;
+
+procedure TRpRowsReadTask.Run;
+var
+  I: Integer;
+  LData: TDataSet;
+  LRow: TStringList;
+begin
+  Progress.SetPhase(rrpConnecting);
+  Database.Connect(Params);
+  Progress.Check;
+  Progress.SetPhase(rrpExecuting);
+  LData := Database.OpenDatasetFromSQL(Sql, nil, False, Params);
+  try
+    Progress.SetPhase(rrpFetching);
+    for I := 0 to LData.FieldCount - 1 do
+      Header.Add(LData.Fields[I].FieldName);
+    while (not LData.Eof) and (Rows.Count < MaxRows) do
+    begin
+      Progress.Check;
+      LRow := TStringList.Create;
+      Rows.Add(LRow);
+      for I := 0 to LData.FieldCount - 1 do
+        if LData.Fields[I].IsBlob and not (LData.Fields[I].DataType in
+          [ftMemo, ftWideMemo, ftFmtMemo]) then
+          LRow.Add('(BLOB)')
+        else
+          LRow.Add(LData.Fields[I].DisplayText);
+      Progress.AddRow;
+      LData.Next;
+    end;
+  finally
+    LData.Free;
+  end;
+end;
+
+{ TRpReadWorker }
+
+constructor TRpReadWorker.Create(ASource: TRpDatabaseInfoItem);
+begin
+  FLock := TCriticalSection.Create;
+  // Auto reset: one wake per task
+  FWake := TEvent.Create(nil, False, False, '');
+  FSource := ASource;
+  inherited Create(False);
+end;
+
+destructor TRpReadWorker.Destroy;
+begin
+  FWake.Free;
+  FLock.Free;
+  inherited Destroy;
+end;
+
+procedure TRpReadWorker.Post(ATask: TRpReadTask);
+begin
+  FLock.Enter;
+  try
+    FTask := ATask;
+  finally
+    FLock.Leave;
+  end;
+  FWake.SetEvent;
+end;
+
+function TRpReadWorker.Abandon(ATask: TRpReadTask): Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := not ATask.Done;
+    if Result then
+      ATask.Abandoned := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpReadWorker.Retire;
+begin
+  FLock.Enter;
+  try
+    FRetired := True;
+    FreeOnTerminate := True;
+  finally
+    FLock.Leave;
+  end;
+  FWake.SetEvent;
+end;
+
+procedure TRpReadWorker.Execute;
+var
+  LRetired: Boolean;
+  LTask: TRpReadTask;
+begin
+{$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
+  // ADO is COM: its objects are made and used here
+  CoInitializeEx(nil, COINIT_APARTMENTTHREADED);
+{$ENDIF}
+{$ENDIF}
+  try
+    repeat
+      FWake.WaitFor(INFINITE);
+      FLock.Enter;
+      try
+        LTask := FTask;
+        LRetired := FRetired;
+      finally
+        FLock.Leave;
+      end;
+      if LTask <> nil then
+      begin
+        try
+          // A task without a connection (a test) reads nothing of one
+          if (FDatabases = nil) and (FSource <> nil) then
+            FDatabases := RpCopyDatabaseInfo(FSource);
+          if FDatabases <> nil then
+            LTask.Database := FDatabases.Items[0];
+          LTask.Run;
+        except
+          on E: EAbort do
+            LTask.Cancelled := True;
+          on E: Exception do
+          begin
+            LTask.Failed := True;
+            LTask.ErrorText := E.Message;
+          end;
+        end;
+        FLock.Enter;
+        try
+          FTask := nil;
+          LTask.Done := True;
+          if LTask.Abandoned then
+            LTask.Free;
+          LRetired := FRetired;
+        finally
+          FLock.Leave;
+        end;
+      end;
+    until LRetired or Terminated;
+  finally
+    if FDatabases <> nil then
+    begin
+      try
+        FDatabases.Items[0].DisConnect;
+      except
+        // Its last connection, closed as it can
+      end;
+      FDatabases.Free;
+    end;
+{$IFDEF MSWINDOWS}
+{$IFNDEF FPC}
+    CoUninitialize;
+{$ENDIF}
+{$ENDIF}
   end;
 end;
 

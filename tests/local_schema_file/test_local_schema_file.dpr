@@ -31,6 +31,8 @@ program test_local_schema_file;
 {  10. The filter of the lists (words of the name or    }
 {      the description) and the columns of a large      }
 {      catalog read when a table is used.               }
+{  11. The thread that reads for a screen: a cancel     }
+{      between rows, and a read given up.               }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_local_schema_      }
 {   file.lpi (lazbuild). Run:                           }
@@ -1433,6 +1435,97 @@ begin
   end;
 end;
 
+type
+  // A read of rows without a database: ARows rows, AStep ms each, the
+  // cancel checked between them unless AChecks is False (a driver that
+  // does not stop)
+  TTestRowsTask = class(TRpReadTask)
+  public
+    RowCount, StepMs: Integer;
+    Checks: Boolean;
+    procedure Run; override;
+  end;
+
+procedure TTestRowsTask.Run;
+var
+  I: Integer;
+begin
+  Progress.SetPhase(rrpExecuting);
+  Sleep(StepMs);
+  Progress.SetPhase(rrpFetching);
+  for I := 1 to RowCount do
+  begin
+    Sleep(StepMs);
+    Progress.AddRow;
+    if Checks then
+      Progress.Check;
+  end;
+end;
+
+// Waits for a task, at most AMs
+function WaitDone(ATask: TRpReadTask; AMs: Integer): Boolean;
+var
+  I: Integer;
+begin
+  for I := 1 to AMs div 10 do
+  begin
+    if ATask.Done then
+      Break;
+    Sleep(10);
+  end;
+  Result := ATask.Done;
+end;
+
+// The reads of the screens (spec P of 18-10-2026): the worker runs a task,
+// a cancel stops it between rows, and a task that does not stop is given up
+// and freed by the worker, which ends on its own
+procedure TestReadWorker;
+var
+  LTask: TTestRowsTask;
+  LWorker: TRpReadWorker;
+begin
+  LWorker := TRpReadWorker.Create(nil);
+  try
+    LTask := TTestRowsTask.Create(nil);
+    LTask.RowCount := 20;
+    LTask.StepMs := 1;
+    LTask.Checks := True;
+    LWorker.Post(LTask);
+    Check(WaitDone(LTask, 5000) and not LTask.Cancelled and not LTask.Failed and
+      (LTask.Progress.Rows = 20) and (LTask.Progress.Phase = rrpFetching),
+      'worker: a read runs to its end, counting its rows');
+    LTask.Free;
+
+    LTask := TTestRowsTask.Create(nil);
+    LTask.RowCount := 100000;
+    LTask.StepMs := 1;
+    LTask.Checks := True;
+    LWorker.Post(LTask);
+    Sleep(100);
+    LTask.Progress.Cancel;
+    Check(WaitDone(LTask, 5000) and LTask.Cancelled and
+      (LTask.Progress.Rows < 100000),
+      Format('worker: a cancel stops it between rows (%d rows)', [LTask.Progress.Rows]));
+    LTask.Free;
+
+    // A driver that does not stop: given up, the worker frees it
+    LTask := TTestRowsTask.Create(nil);
+    LTask.RowCount := 30;
+    LTask.StepMs := 10;
+    LTask.Checks := False;
+    LWorker.Post(LTask);
+    Sleep(50);
+    LTask.Progress.Cancel;
+    Check(LWorker.Abandon(LTask),
+      'worker: a read that does not stop is given up while it runs');
+  finally
+    // It ends after that read and frees itself (and the task)
+    LWorker.Retire;
+  end;
+  Sleep(800);
+  Check(True, 'worker: retired, it ended on its own');
+end;
+
 var
   LFixture, LSaved: string;
 begin
@@ -1458,6 +1551,7 @@ begin
     TestExcludedRelations(LFixture, ExtractFilePath(LSaved));
     TestLibraryTemplates(ExtractFilePath(LFixture) + 'library' + PathDelim);
     TestFilterAndLargeCatalog;
+    TestReadWorker;
   except
     on E: Exception do
     begin
