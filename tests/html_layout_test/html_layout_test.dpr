@@ -15,6 +15,9 @@ program html_layout_test;
      once the item has been printed. When the section was measured before
      that, the width was 0, the text never fitted, the section took the rest
      of the page, and what followed it went to the next one.
+  3. Measuring an HTML text does not leak: the FreeType layout lost its line
+     objects, their lists, the bidi runs and the dictionaries of a font data
+     on every measure (fixed the same night).
 
   Delphi (Windows: DirectWrite) and FPC (Linux: FreeType; macOS: Core Text).
   Exit code 0 when every check passes. }
@@ -107,6 +110,66 @@ begin
   finally
     LDriver.Free;
   end;
+end;
+
+// The memory the program holds now, in bytes
+function HeapUsed: Int64;
+{$IFDEF FPC}
+begin
+  Result := GetFPCHeapStatus.CurrHeapUsed;
+end;
+{$ELSE}
+var
+  LState: TMemoryManagerState;
+  I: Integer;
+begin
+  GetMemoryManagerState(LState);
+  Result := Int64(LState.TotalAllocatedMediumBlockSize) + Int64(LState.TotalAllocatedLargeBlockSize);
+  for I := Low(LState.SmallBlockTypeStates) to High(LState.SmallBlockTypeStates) do
+    Result := Result + Int64(LState.SmallBlockTypeStates[I].UseableBlockSize) *
+      Int64(LState.SmallBlockTypeStates[I].AllocatedBlockCount);
+end;
+{$ENDIF}
+
+// Measuring an HTML text many times holds no more memory than measuring it
+// once: styles, a font change, paragraphs, a blank line and lines broken by
+// the width (BreakChunks), as wide and as narrow
+procedure TestNoLeak;
+const
+  Html = '<p><b>Paragraph</b> one, <i>some words in italics</i> and <font face="Courier New">' +
+    'a change of font</font> that goes on until the line breaks.</p><br><p>Paragraph two ' +
+    'after a blank line, long enough to be broken in several lines too.</p>';
+  Rounds = 300;
+var
+  LDriver: TRpPDFDriver;
+  LExtent: TPoint;
+  I: Integer;
+  LBefore, LAfter: Int64;
+
+  procedure MeasureBoth;
+  begin
+    LExtent := Point(BoxWidth, 100000);
+    LDriver.TextExtentLineInfo(TextObject(Html), LExtent);
+    LExtent := Point(2500, 100000);
+    LDriver.TextExtentLineInfo(TextObject(Html), LExtent);
+  end;
+
+begin
+  WriteLn('-- Measuring an HTML text does not leak');
+  LDriver := TRpPDFDriver.Create;
+  try
+    // The caches of the fonts fill on the first measures
+    for I := 1 to 20 do
+      MeasureBoth;
+    LBefore := HeapUsed;
+    for I := 1 to Rounds do
+      MeasureBoth;
+    LAfter := HeapUsed;
+  finally
+    LDriver.Free;
+  end;
+  Check(LAfter - LBefore < 64 * 1024, Format('%d measures hold no more memory', [2 * Rounds]),
+    Format('%d bytes more (%d per measure)', [LAfter - LBefore, (LAfter - LBefore) div (2 * Rounds)]));
 end;
 
 procedure TestBlankLines;
@@ -277,6 +340,7 @@ begin
   try
     TestBlankLines;
     TestMultiPageExtent;
+    TestNoLeak;
   except
     on E: Exception do
     begin

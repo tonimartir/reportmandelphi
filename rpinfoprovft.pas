@@ -1102,11 +1102,16 @@ begin
       for lineSubText in lineSubTexts do
       begin
         line := Copy(PlainText, lineSubText.Position, lineSubText.Length);
+        // What is created for the paragraph is freed at its end (18-10-2026): its
+        // lines (TLineGlyphs), the bidi runs, the chunks of a broken run and the
+        // visual order of each line leaked on every measure
         possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
         calculatedLines := TList<TLineGlyphs>.Create;
-
-        Bidi := TICUBidi.Create;
         logicalRuns := nil;
+        visualRuns := nil;
+        currentChunk := nil;
+        try
+        Bidi := TICUBidi.Create;
         try
           if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
             raise Exception.Create('Bidi error');
@@ -1379,6 +1384,7 @@ begin
                  else
                    chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
 
+                 try
                  for j:=0 to chunks.Count-1 do
                  begin
                    chunk:=chunks[j];
@@ -1406,6 +1412,9 @@ begin
                      currentChunk:=TLineGlyphs.Create(textOffset);
                    end;
                  end;
+                 finally
+                   chunks.Free;
+                 end;
                end;
              end;
              SegStartAbs := SegEndAbs;
@@ -1420,7 +1429,6 @@ begin
           calculatedLines.Add(currentChunk);
 
         Bidi := TICUBidi.Create;
-        visualRuns := nil;
         try
           if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then raise Exception.Create('VisualRuns error');
           visualRuns := Bidi.GetVisualRuns(line);
@@ -1438,6 +1446,7 @@ begin
           minCluster:=calculatedline.MinClusterText;
           maxCluster:=calculatedline.MaxClusterText;
           visualGlyphs:=TList<TGlyphPos>.Create;
+          try
           for vRun in visualRuns do
           begin
            if vRun.Direction = UBIDI_RTL then
@@ -1624,9 +1633,21 @@ begin
           if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
           rectTop := rectTop + currentLineSpacing;
           Inc(lineIdx);
+          finally
+            visualGlyphs.Free;
+          end;
         end;
-        calculatedLines.Free;
-        possibleBreaksCharIdx.Free;
+        finally
+          // The last chunk is the list's when it became a line
+          if (currentChunk <> nil) and (calculatedLines.IndexOf(currentChunk) < 0) then
+            currentChunk.Free;
+          for calculatedLine in calculatedLines do
+            calculatedLine.Free;
+          calculatedLines.Free;
+          logicalRuns.Free;
+          visualRuns.Free;
+          possibleBreaksCharIdx.Free;
+        end;
       end;
     finally
       TempFont.Free;

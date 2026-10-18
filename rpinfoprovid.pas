@@ -294,8 +294,13 @@ begin
 end;
 
 destructor TLineGlyphs.Destroy;
+var
+  lst: TList<Integer>;
 begin
   Glyphs.free;
+  // The lists of the map are its own (AddGlyph creates them)
+  for lst in ClusterMap.Values do
+    lst.Free;
   ClusterMap.Free;
   inherited;
 end;
@@ -352,6 +357,11 @@ destructor TRpTTFontData.Destroy;
 var
  i:integer;
 begin
+ // Created by the constructor and never freed: the HTML layout of the FreeType
+ // provider creates a font data per family on every measure (18-10-2026)
+ glyphs.Free;
+ widths.Free;
+ glyphsInfo.Free;
  glyphText.Free;
  CIDClaim.Free;
  CIDExtra.Free;

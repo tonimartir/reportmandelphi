@@ -1170,12 +1170,16 @@ begin
     for lineSubText in lineSubTexts do
     begin
       line := Copy(PlainText, lineSubText.Position, lineSubText.Length);
+      // What is created for the paragraph is freed at its end, as in
+      // TRpFTInfoProvider.TextExtentHtml (18-10-2026)
       possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
 
       calculatedLines := TList<TLineGlyphs>.Create;
-
-      Bidi := TICUBidi.Create;
       logicalRuns := nil;
+      visualRuns := nil;
+      currentChunk := nil;
+      try
+      Bidi := TICUBidi.Create;
       try
         // $FF (UBIDI_DEFAULT_RTL) only in a right-to-left object: elsewhere a line with no
         // letter of its own direction (a row of emoji) would come out backwards. Same rule as
@@ -1258,6 +1262,7 @@ begin
                 chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
               else
                 chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
+              try
               for j:=0 to chunks.Count-1 do
               begin
                 chunk:=chunks[j];
@@ -1287,19 +1292,23 @@ begin
                   currentChunk:=TLineGlyphs.Create(textOffset);
                 end;
               end;
+              finally
+                chunks.Free;
+              end;
             end;
           end;
           SegStartAbs := SegEndAbs;
         end;
       end;
-      if (currentChunk.Glyphs.Count>0) then
+      // An empty paragraph is a line too ("a<br><br>b" is three lines), as
+      // DirectWrite and TRpFTInfoProvider.TextExtentHtml (18-10-2026)
+      if (currentChunk.Glyphs.Count>0) or (calculatedLines.Count=0) then
       begin
         calculatedLines.Add(currentChunk);
       end;
 
       // Visual ordering
       Bidi := TICUBidi.Create;
-      visualRuns := nil;
       try
         if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
           raise Exception.Create('VisualRuns error');
@@ -1314,6 +1323,7 @@ begin
         var maxCluster:=calculatedline.MaxClusterText;
 
         visualGlyphs:=TList<TGlyphPos>.Create;
+        try
         for vRun in visualRuns do
         begin
          if vRun.Direction = UBIDI_RTL then
@@ -1345,10 +1355,20 @@ begin
         end;
         LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
 
-        LineInfo.Position := minCluster;
-        LineInfo.Size := maxCluster - minCluster + 1;
+        if Length(LineInfo.Glyphs) > 0 then
+        begin
+          LineInfo.Position := minCluster;
+          LineInfo.Size := maxCluster - minCluster + 1;
+          LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
+        end
+        else
+        begin
+          // An empty line: no cluster, the start of its paragraph
+          LineInfo.Position := lineSubText.Position;
+          LineInfo.Size := 0;
+          LineInfo.Text := '';
+        end;
         LineInfo.TopPos := Round(posY);
-        LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
 
         LineInfo.Width := 0;
         for k := 0 to High(LineInfo.Glyphs) do
@@ -1363,10 +1383,22 @@ begin
 
         if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
         posY := posY + linespacing;
+        finally
+          visualGlyphs.Free;
+        end;
       end;
 
-      calculatedLines.Free;
-      possibleBreaksCharIdx.Free;
+      finally
+        // The last chunk is the list's when it became a line
+        if (currentChunk <> nil) and (calculatedLines.IndexOf(currentChunk) < 0) then
+          currentChunk.Free;
+        for calculatedLine in calculatedLines do
+          calculatedLine.Free;
+        calculatedLines.Free;
+        logicalRuns.Free;
+        visualRuns.Free;
+        possibleBreaksCharIdx.Free;
+      end;
     end;
 
     if Length(Result) > 0 then
