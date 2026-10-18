@@ -1411,7 +1411,13 @@ begin
              SegStartAbs := SegEndAbs;
           end;
         end;
-        if (currentChunk.Glyphs.Count>0) then calculatedLines.Add(currentChunk);
+        // AN EMPTY PARAGRAPH IS A LINE TOO (18-10-2026, as the C# port): "a<br><br>b"
+        // leaves a blank line between them, as DirectWrite does with the same text
+        // (rpinfoprovgdi). Without it the empty line had no TRpLineInfo and no height,
+        // and the paragraphs of an HTML text printed one against the other. The line
+        // without glyphs below takes the height of the base font.
+        if (currentChunk.Glyphs.Count>0) or (calculatedLines.Count=0) then
+          calculatedLines.Add(currentChunk);
 
         Bidi := TICUBidi.Create;
         visualRuns := nil;

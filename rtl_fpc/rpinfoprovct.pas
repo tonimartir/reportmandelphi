@@ -1364,8 +1364,21 @@ begin
           Break;
         if paraLen = 0 then
         begin
-          // A blank paragraph keeps the height of a line of the base font
-          rectTop := rectTop + Round(adata.Height / 1000.0 * FontSize * 20.0);
+          // A blank paragraph is a line of the base font, without glyphs. It
+          // kept its height but had no TRpLineInfo (18-10-2026), and what adds
+          // up the lines, the split of a multipage HTML text
+          // (TrySplitHtmlForMultipage), missed it and let the text overflow
+          lineInfo := Default(TRpLineInfo);
+          lineInfo.Position := paraStart + 1;
+          lineBaseline := (adata.Ascent + Max(0, adata.Leading)) / 1000.0 * FontSize * 20.0;
+          lineHeight := adata.Height / 1000.0 * FontSize * 20.0;
+          lineInfo.TopPos := Round(rectTop) + Round(lineBaseline);
+          lineInfo.Height := Round(lineHeight);
+          lineInfo.LineHeight := Round(lineHeight);
+          lineInfo.lastline := False;
+          SetLength(Result, Length(Result) + 1);
+          Result[High(Result)] := lineInfo;
+          rectTop := rectTop + Round(lineHeight);
         end
         else
         begin

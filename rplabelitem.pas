@@ -1224,8 +1224,15 @@ begin
  if (Length(TextObj.Text)=0) or (MaxExtent.Y<=0) then
   exit;
 
+ // Measure at the width the caller asks for: DoPrint passes PrintWidth,
+ // GetExtension the item width. PrintWidth alone is only valid once the item
+ // has been printed: when a section is measured before that, it is 0 (or the
+ // width of the previous record), every character becomes a line, the text
+ // never fits, and an AutoExpand section takes the rest of the page, pushing
+ // what follows onto the next one (18-10-2026, as the C# port)
  MeasureExtent:=MaxExtent;
- MeasureExtent.X:=PrintWidth;
+ if MeasureExtent.X<=0 then
+  MeasureExtent.X:=PrintWidth;
  Lines:=adriver.TextExtentLineInfo(TextObj,MeasureExtent);
  if Length(Lines)=0 then
  begin
