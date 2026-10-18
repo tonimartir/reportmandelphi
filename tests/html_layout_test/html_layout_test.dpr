@@ -31,7 +31,7 @@ uses
 {$IFDEF UNIX}
   cwstring,
 {$ENDIF}
-  SysUtils, Classes, Types,
+  SysUtils, Classes, Types, DateUtils,
   rptypes, rpmetafile, rpreport, rpsubreport, rpsection, rplabelitem,
   rppdfdriver;
 
@@ -145,6 +145,8 @@ var
   LExtent: TPoint;
   I: Integer;
   LBefore, LAfter: Int64;
+  LStart: TDateTime;
+  LMs: Int64;
 
   procedure MeasureBoth;
   begin
@@ -162,12 +164,15 @@ begin
     for I := 1 to 20 do
       MeasureBoth;
     LBefore := HeapUsed;
+    LStart := Now;
     for I := 1 to Rounds do
       MeasureBoth;
+    LMs := MilliSecondsBetween(Now, LStart);
     LAfter := HeapUsed;
   finally
     LDriver.Free;
   end;
+  WriteLn(Format('   (info) %d measures in %d ms (%.2f ms each)', [2 * Rounds, LMs, LMs / (2 * Rounds)]));
   Check(LAfter - LBefore < 64 * 1024, Format('%d measures hold no more memory', [2 * Rounds]),
     Format('%d bytes more (%d per measure)', [LAfter - LBefore, (LAfter - LBefore) div (2 * Rounds)]));
 end;

@@ -46,6 +46,13 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
 
 type
 
+ // The line metrics of a face for the HTML layout (TextExtentHtml), in the
+ // units of the font data (1000 per em): hhea, or the OS/2 table when the font
+ // has one, as DirectWrite measures
+ TRpFaceLineMetrics=record
+  Ascent,Descent,Leading,Height:integer;
+ end;
+
  TRpLogFont=class(TObject)
   fixedpitch:boolean;
   postcriptname:string;
@@ -79,6 +86,9 @@ type
   LoadedFace:boolean;
   CustomImplementation:TObject;
   data: TRpTTFontData;
+  // The metrics of TextExtentHtml, read from the file once (FaceLineMetrics)
+  LineMetricsRead:boolean;
+  LineMetrics:TRpFaceLineMetrics;
   constructor Create;
   destructor Destroy;override;
   procedure OpenFont;
@@ -968,6 +978,76 @@ begin
     RightToLeft);
 end;
 
+// The line metrics of a face, read from its file once and kept in its
+// TRpLogFont, which every provider and thread share (18-10-2026). TextExtentHtml
+// read the whole font file for its OS/2 table once per family on every measure,
+// into a font data of more than a megabyte. The file is read outside the lock:
+// two threads may read it at the same time, and both get the same metrics.
+function FaceLineMetrics(AFont: TRpLogFont): TRpFaceLineMetrics;
+var
+  fontStream: TMemoryStream;
+  os2: TOS2Metrics;
+  cf: Double;
+  dwA, dwD, dwG: Integer;
+begin
+  critSection.Enter;
+  try
+    if AFont.LineMetricsRead then
+    begin
+      Result := AFont.LineMetrics;
+      Exit;
+    end;
+  finally
+    critSection.Leave;
+  end;
+  // Start with hhea-based metrics from the face
+  Result.Ascent := AFont.ascent;
+  Result.Descent := AFont.descent;
+  Result.Leading := AFont.leading;
+  if AFont.height > 0 then
+    Result.Height := AFont.height
+  else
+    Result.Height := AFont.ascent - AFont.descent + AFont.leading;
+  // Override with OS/2 table (matching C# FontInfoFt / DirectWrite)
+  if FileExists(AFont.filename) then
+  begin
+    fontStream := TMemoryStream.Create;
+    try
+      fontStream.LoadFromFile(AFont.filename);
+      ReadOS2Metrics(fontStream, os2);
+      if os2.Found then
+      begin
+        cf := AFont.convfactor;
+        if os2.UseTypoMetrics then
+        begin
+          dwA := os2.sTypoAscender;
+          dwD := -os2.sTypoDescender;
+          dwG := os2.sTypoLineGap;
+          Result.Ascent := Round(cf * dwA);
+          Result.Descent := -Round(cf * dwD);
+          Result.Height := Round(cf * (dwA + dwD + dwG));
+          Result.Leading := Result.Height - Result.Ascent + Result.Descent;
+        end
+        else
+        begin
+          Result.Ascent := Round(cf * os2.usWinAscent);
+          Result.Descent := -Round(cf * os2.usWinDescent);
+          Result.Leading := Result.Height - Result.Ascent + Result.Descent;
+        end;
+      end;
+    finally
+      fontStream.Free;
+    end;
+  end;
+  critSection.Enter;
+  try
+    AFont.LineMetrics := Result;
+    AFont.LineMetricsRead := True;
+  finally
+    critSection.Leave;
+  end;
+end;
+
 function TRpFTInfoProvider.TextExtentHtml(
   const Text: WideString;
   var Rect: TRect;
@@ -1027,19 +1107,15 @@ var
   maxCluster: Integer;
   lst: TList<Integer>;
   // Per-line spacing (matching C# FontInfoFt / GDI DirectWrite)
-  fontDataCache: TDictionary<string, TRpTTFontData>;
+  fontDataCache: TDictionary<string, TRpFaceLineMetrics>;
   fontCacheKey: string;
-  cachedData: TRpTTFontData;
+  cachedData: TRpFaceLineMetrics;
   maxBaselineTwips, maxLineHeight: double;
   gFontSize, gAscentTwips, gHeightTwips, gBaselineTwips: double;
   currentLineSpacing, lineBaseline: integer;
   lw: double;
 {$IFDEF FPC}
   textOffset: Integer;
-  fontStream: TMemoryStream;
-  os2: TOS2Metrics;
-  cf: Double;
-  dwA, dwD, dwG: SmallInt;
   doFallback: Boolean;
   acumuladas: TList<TGlyphPos>;
   tramos: TTramoArray;
@@ -1094,10 +1170,14 @@ begin
       TempFont.Color := pdfFont.Color;
       TempFont.WFontName := pdfFont.WFontName;
       TempFont.LFontName := pdfFont.LFontName;
-      fontDataCache := TDictionary<string, TRpTTFontData>.Create;
-      // Cache the base font data
+      fontDataCache := TDictionary<string, TRpFaceLineMetrics>.Create;
+      // The metrics of the base font, from its font data
       fontCacheKey := UpperCase(pdfFont.WFontName);
-      fontDataCache.AddOrSetValue(fontCacheKey, adata);
+      cachedData.Ascent := adata.Ascent;
+      cachedData.Descent := adata.Descent;
+      cachedData.Leading := adata.Leading;
+      cachedData.Height := adata.Height;
+      fontDataCache.AddOrSetValue(fontCacheKey, cachedData);
 
       for lineSubText in lineSubTexts do
       begin
@@ -1167,69 +1247,11 @@ begin
                // verdad otra fuente o el mismo fichero con otro nombre.
                fuenteDelTramo := currentfont;
 
-               // Cache font data for per-line spacing calculation (key by family name only)
+               // The line metrics of the family for the spacing of each line (key by
+               // family name only): those of the first face of it the text uses
                fontCacheKey := UpperCase(TempFont.WFontName);
                if not fontDataCache.ContainsKey(fontCacheKey) then
-               begin
-                 cachedData := TRpTTFontData.Create;
-                 // Start with hhea-based metrics from currentfont
-                 cachedData.Ascent := currentfont.ascent;
-                 cachedData.Descent := currentfont.descent;
-                 cachedData.Leading := currentfont.leading;
-                 if currentfont.height > 0 then
-                   cachedData.Height := currentfont.height
-                 else
-                   cachedData.Height := currentfont.ascent - currentfont.descent + currentfont.leading;
-                 // Override with OS/2 table (matching C# FontInfoFt / DirectWrite)
-                 if FileExists(currentfont.filename) then
-                 begin
-{$IFDEF FPC}
-                    fontStream := TMemoryStream.Create;
-{$ELSE}
-                    var fontStream := TMemoryStream.Create;
-{$ENDIF}
-                   try
-                     fontStream.LoadFromFile(currentfont.filename);
-{$IFNDEF FPC}
-                      var os2: TOS2Metrics;
-{$ENDIF}
-                     ReadOS2Metrics(fontStream, os2);
-                     if os2.Found then
-                     begin
-{$IFDEF FPC}
-                        cf := currentfont.convfactor;
-{$ELSE}
-                        var cf := currentfont.convfactor;
-{$ENDIF}
-                       if os2.UseTypoMetrics then
-                       begin
-{$IFDEF FPC}
-                          dwA := os2.sTypoAscender;
-                          dwD := -os2.sTypoDescender;
-                          dwG := os2.sTypoLineGap;
-{$ELSE}
-                          var dwA := os2.sTypoAscender;
-                          var dwD := -os2.sTypoDescender;
-                          var dwG := os2.sTypoLineGap;
-{$ENDIF}
-                         cachedData.Ascent := Round(cf * dwA);
-                         cachedData.Descent := -Round(cf * dwD);
-                         cachedData.Height := Round(cf * (dwA + dwD + dwG));
-                         cachedData.Leading := cachedData.Height - cachedData.Ascent + cachedData.Descent;
-                       end
-                       else
-                       begin
-                         cachedData.Ascent := Round(cf * os2.usWinAscent);
-                         cachedData.Descent := -Round(cf * os2.usWinDescent);
-                         cachedData.Leading := cachedData.Height - cachedData.Ascent + cachedData.Descent;
-                       end;
-                     end;
-                   finally
-                     fontStream.Free;
-                   end;
-                 end;
-                 fontDataCache.Add(fontCacheKey, cachedData);
-               end;
+                 fontDataCache.Add(fontCacheKey, FaceLineMetrics(currentfont));
 
                if logicalRun.Direction = UBIDI_RTL then
                  direction := RP_UBIDI_RTL
@@ -1651,16 +1673,7 @@ begin
       end;
     finally
       TempFont.Free;
-      // Free cached font data objects (except adata which is not owned)
-      if Assigned(fontDataCache) then
-      begin
-        for cachedData in fontDataCache.Values do
-        begin
-          if cachedData <> adata then
-            cachedData.Free;
-        end;
-        fontDataCache.Free;
-      end;
+      fontDataCache.Free;
     end;
     if Length(Result) > 0 then Result[High(Result)].lastline := True;
   finally
