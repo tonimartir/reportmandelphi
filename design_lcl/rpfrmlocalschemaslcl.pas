@@ -100,6 +100,9 @@ type
     FUpdating: Boolean;
     FModified: Boolean;
     FSaved: Boolean;
+    FAvailable: TStringList;
+    FChosen: TStringList;
+    FColumnTables: TStringList;
     FStackTop: Integer;
     // The table of the Tables tab whose description is shown, the table and
     // the column of the Columns tab
@@ -141,7 +144,13 @@ type
     BRefresh: TButton;
     // Tables
     EFilterAvailable: TEdit;
+    // Their items are FAvailable, FChosen and FColumnTables, the first
+    // 2.000 painted (no widgetset of the LCL implements lbVirtual): the
+    // labels under them say there are more, and the filter finds them
     ListAvailable: TListBox;
+    LAvailableMore: TLabel;
+    LChosenMore: TLabel;
+    LColumnTablesMore: TLabel;
     EFilterChosen: TEdit;
     ListChosen: TListBox;
     BAddTable: TButton;
@@ -149,6 +158,7 @@ type
     LTableContext: TLabel;
     MemoTableContext: TMemo;
     // Columns
+    EFilterColumnTables: TEdit;
     ListColumnTables: TListBox;
     EFilterColumns: TEdit;
     CheckColumns: TCheckListBox;
@@ -259,6 +269,15 @@ type
     procedure ListTablesClick(Sender: TObject);
     procedure MemoTableContextChange(Sender: TObject);
     procedure ListColumnTablesClick(Sender: TObject);
+    procedure FilterColumnTablesChange(Sender: TObject);
+    function NewMoreLabel(AParent: TWinControl): TLabel;
+    // A list shows the names of ANames: the first 2.000, and its label says
+    // when there are more
+    procedure ShowList(AList: TListBox; ANames: TStrings);
+    // The columns of the tables a large catalog did not read, read now;
+    // False when some could not be read (it is said)
+    function EnsureColumns(ANames: TStrings): Boolean;
+    function EnsureTableColumns(const ATable: string): Boolean;
     procedure FilterColumnsChange(Sender: TObject);
     procedure CheckColumnsClickCheck(Sender: TObject);
     procedure CheckColumnsClick(Sender: TObject);
@@ -305,12 +324,6 @@ begin
     Result := Result + ' / ' + IntToStr(AMax);
 end;
 
-function MatchesFilter(const AText, AFilter: string): Boolean;
-begin
-  Result := (Trim(AFilter) = '') or
-    (Pos(LowerCase(Trim(AFilter)), LowerCase(AText)) > 0);
-end;
-
 function JsonText(AObject: TJSONObject; const AName: string): string;
 var
   LValue: TJSONValue;
@@ -347,6 +360,9 @@ begin
   FReport := AReport;
   FFile := TRpLocalSchemaFile.Create;
   FShownColumns := TStringList.Create;
+  FAvailable := TStringList.Create;
+  FChosen := TStringList.Create;
+  FColumnTables := TStringList.Create;
   FRelations := TObjectList.Create(True);
   FSuggestions := TObjectList.Create(True);
   FPairSource := TStringList.Create;
@@ -392,7 +408,18 @@ begin
   FPairSource.Free;
   FPairTarget.Free;
   FShownColumns.Free;
+  FColumnTables.Free;
+  FChosen.Free;
+  FAvailable.Free;
   FFile.Free;
+  if FDatabase <> nil then
+  begin
+    try
+      FDatabase.DisConnect;
+    except
+      // Closing, a connection that fails to close is no news
+    end;
+  end;
   FDatabases.Free;
   inherited Destroy;
 end;
@@ -618,10 +645,14 @@ begin
   NewLabel(LAvailable, TranslateStr(1857, 'Available tables'));
   EFilterAvailable := NewEdit(LAvailable, FilterTablesChange);
   EFilterAvailable.TextHint := TranslateStr(1859, 'Filter');
+  EFilterAvailable.Hint := TranslateStr(2035, 'Words of the name or the ' +
+    'description, in any order');
+  EFilterAvailable.ShowHint := True;
   ListAvailable := TListBox.Create(Self);
   ListAvailable.Parent := LAvailable;
   ListAvailable.Align := alClient;
   ListAvailable.MultiSelect := True;
+  LAvailableMore := NewMoreLabel(LAvailable);
   ListAvailable.OnClick := ListTablesClick;
   ListAvailable.OnDblClick := BAddTableClick;
   LArrows := NewPanel(LPanel, alLeft, 110);
@@ -634,10 +665,13 @@ begin
   NewLabel(LChosen, TranslateStr(1858, 'Tables of the subschema'));
   EFilterChosen := NewEdit(LChosen, FilterTablesChange);
   EFilterChosen.TextHint := TranslateStr(1859, 'Filter');
+  EFilterChosen.Hint := EFilterAvailable.Hint;
+  EFilterChosen.ShowHint := True;
   ListChosen := TListBox.Create(Self);
   ListChosen.Parent := LChosen;
   ListChosen.Align := alClient;
   ListChosen.MultiSelect := True;
+  LChosenMore := NewMoreLabel(LChosen);
   ListChosen.OnClick := ListTablesClick;
   ListChosen.OnDblClick := BRemoveTableClick;
 end;
@@ -652,9 +686,15 @@ begin
   // The tables
   LTables := NewPanel(LPanel, alLeft, 170);
   NewLabel(LTables, TranslateStr(1848, 'Tables'));
+  EFilterColumnTables := NewEdit(LTables, FilterColumnTablesChange);
+  EFilterColumnTables.TextHint := TranslateStr(1859, 'Filter');
+  EFilterColumnTables.Hint := TranslateStr(2035, 'Words of the name or the ' +
+    'description, in any order');
+  EFilterColumnTables.ShowHint := True;
   ListColumnTables := TListBox.Create(Self);
   ListColumnTables.Parent := LTables;
   ListColumnTables.Align := alClient;
+  LColumnTablesMore := NewMoreLabel(LTables);
   ListColumnTables.OnClick := ListColumnTablesClick;
   // The columns of the table
   LColumns := NewPanel(LPanel, alLeft, 250);
@@ -662,6 +702,8 @@ begin
   NewLabel(LColumns, TranslateStr(1849, 'Columns'));
   EFilterColumns := NewEdit(LColumns, FilterColumnsChange);
   EFilterColumns.TextHint := TranslateStr(1859, 'Filter');
+  EFilterColumns.Hint := EFilterAvailable.Hint;
+  EFilterColumns.ShowHint := True;
   LButtons := NewPanel(LColumns, alBottom, 34);
   BAddAll := NewButton(LButtons, TranslateStr(1861, 'Add all'), BAddAllClick, 110);
   BAddAll.SetBounds(0, S(6), S(110), S(26));
@@ -913,6 +955,7 @@ procedure TFRpLocalSchemasLCL.LoadFile(ARefresh: Boolean);
 var
   LCursor: TCursor;
   LDialect: string;
+  LKeep: TStringList;
   LLoaded: TRpLocalSchemaFile;
   LTables: TJSONArray;
 begin
@@ -922,8 +965,16 @@ begin
     try
       if ARefresh then
       begin
-        // In memory, with what is being edited: Save writes it
-        LTables := RpReadLocalSchemaCatalog(FDatabase, FReport.Params, LDialect);
+        // In memory, with what is being edited: Save writes it. A large
+        // catalog reads again the columns of the tables in use
+        LKeep := TStringList.Create;
+        try
+          RpLocalSchemaKeepList(FFile, LKeep);
+          LTables := RpReadLocalSchemaCatalog(FDatabase, FReport.Params,
+            LDialect, LKeep);
+        finally
+          LKeep.Free;
+        end;
         // The relations point to the tables read before
         FRelations.Clear;
         FSuggestions.Clear;
@@ -1079,59 +1130,78 @@ begin
     TranslateStr(1854, 'Read from the database') + ': ' + FFile.GeneratedUtc + sLineBreak +
     TranslateStr(1855, 'Tables in the catalog') + ': ' + IntToStr(FFile.TableCount) + sLineBreak +
     TranslateStr(1856, 'Schema file') + ': ' + FFileName;
+  if FFile.UnreadTableCount > 0 then
+    LConnection.Caption := LConnection.Caption + sLineBreak + sLineBreak +
+      Format(string(TranslateStr(2032, 'Large catalog: %s tables. The columns ' +
+      'of a table are read when it is used.')), [IntToStr(FFile.TableCount)]);
 end;
 
 procedure TFRpLocalSchemasLCL.FillTables;
 var
   I: Integer;
-  LNames, LChosen: TStringList;
+  LChosen, LWords: TStringList;
+  LName: string;
+  LTable: TJSONObject;
 
-  function SelectIn(AList: TListBox): Boolean;
+  function SelectIn(AList: TListBox; ANames: TStrings): Boolean;
   var
     LIndex: Integer;
   begin
-    LIndex := AList.Items.IndexOf(FTablesTable);
+    LIndex := ANames.IndexOf(FTablesTable);
     Result := (FTablesTable <> '') and (LIndex >= 0);
-    if Result then
+    if Result and (LIndex < AList.Count) then
       AList.Selected[LIndex] := True;
   end;
 
+  // Every word of the filter in the name or in the description
+  function Matches(const AName: string; ATable: TJSONObject): Boolean;
+  begin
+    Result := (LWords.Count = 0) or RpWordsMatch(LWords, RpFoldText(AName),
+      RpFoldText(JsonText(ATable, 'context')));
+  end;
+
 begin
-  LNames := TStringList.Create;
   LChosen := SchemaTables;
+  LWords := TStringList.Create;
   FUpdating := True;
   try
-    FFile.GetTableNames(LNames);
-    ListAvailable.Items.BeginUpdate;
-    try
-      ListAvailable.Items.Clear;
-      if SelectedSchema <> nil then
-        for I := 0 to LNames.Count - 1 do
-          if (LChosen.IndexOf(LNames[I]) < 0) and
-            MatchesFilter(LNames[I], EFilterAvailable.Text) then
-            ListAvailable.Items.Add(LNames[I]);
-    finally
-      ListAvailable.Items.EndUpdate;
+    // All the tables, walked once: the ones not chosen that match
+    FAvailable.Clear;
+    if SelectedSchema <> nil then
+    begin
+      LChosen.Sorted := True;
+      RpFilterWords(EFilterAvailable.Text, LWords);
+      for I := 0 to FFile.Tables.Count - 1 do
+      begin
+        if not (FFile.Tables.Items[I] is TJSONObject) then
+          Continue;
+        LTable := TJSONObject(FFile.Tables.Items[I]);
+        LName := JsonText(LTable, 'name');
+        if (LName <> '') and (LChosen.IndexOf(LName) < 0) and
+          Matches(LName, LTable) then
+          FAvailable.Add(LName);
+      end;
+      LChosen.Free;
+      LChosen := SchemaTables;
     end;
-    ListChosen.Items.BeginUpdate;
-    try
-      ListChosen.Items.Clear;
-      for I := 0 to LChosen.Count - 1 do
-        if MatchesFilter(LChosen[I], EFilterChosen.Text) then
-          ListChosen.Items.Add(LChosen[I]);
-    finally
-      ListChosen.Items.EndUpdate;
-    end;
+    RpFilterWords(EFilterChosen.Text, LWords);
+    FChosen.Clear;
+    for I := 0 to LChosen.Count - 1 do
+      if Matches(LChosen[I], FFile.FindTable(LChosen[I])) then
+        FChosen.Add(LChosen[I]);
+    ShowList(ListAvailable, FAvailable);
+    ShowList(ListChosen, FChosen);
   finally
     FUpdating := False;
+    LWords.Free;
     LChosen.Free;
-    LNames.Free;
   end;
   // The table described below is selected in the list it is in, and
   // forgotten when it is in neither: a new subschema showed the
   // description of the table chosen before with no table selected, and
   // typing there changed that table
-  if not SelectIn(ListChosen) and not SelectIn(ListAvailable) then
+  if not SelectIn(ListChosen, FChosen) and
+    not SelectIn(ListAvailable, FAvailable) then
     FTablesTable := '';
   FillTableContext;
 end;
@@ -1159,24 +1229,43 @@ end;
 
 procedure TFRpLocalSchemasLCL.FillColumnTables;
 var
-  LTables: TStringList;
+  I: Integer;
+  LTables, LWords: TStringList;
 begin
   LTables := SchemaTables;
+  LWords := TStringList.Create;
   FUpdating := True;
   try
-    ListColumnTables.Items.Assign(LTables);
+    // The words of the filter in the name or the description
+    RpFilterWords(EFilterColumnTables.Text, LWords);
+    if LWords.Count > 0 then
+      for I := LTables.Count - 1 downto 0 do
+        if not RpWordsMatch(LWords, RpFoldText(LTables[I]),
+          RpFoldText(JsonText(FFile.FindTable(LTables[I]), 'context'))) then
+          LTables.Delete(I);
+    FColumnTables.Assign(LTables);
+    ShowList(ListColumnTables, FColumnTables);
     if LTables.IndexOf(FColumnsTable) < 0 then
     begin
-      if LTables.Count > 0 then
-        FColumnsTable := LTables[0]
-      else
-        FColumnsTable := '';
+      // The first table read: in a large catalog opening the screen reads
+      // nothing (a table is read when it is chosen)
+      FColumnsTable := '';
+      for I := 0 to LTables.Count - 1 do
+        if FFile.ColumnsRead(LTables[I]) then
+        begin
+          FColumnsTable := LTables[I];
+          Break;
+        end;
       FColumn := '';
       ClearPreview;
     end;
-    ListColumnTables.ItemIndex := LTables.IndexOf(FColumnsTable);
+    I := LTables.IndexOf(FColumnsTable);
+    if I >= ListColumnTables.Count then
+      I := -1;
+    ListColumnTables.ItemIndex := I;
   finally
     FUpdating := False;
+    LWords.Free;
     LTables.Free;
   end;
   FillColumns;
@@ -1220,19 +1309,26 @@ end;
 procedure TFRpLocalSchemasLCL.FillColumns;
 var
   I, LIndex: Integer;
-  LNames: TStringList;
+  LNames, LWords: TStringList;
 begin
+  // A table of a large catalog shows its columns once read
+  if (FColumnsTable <> '') and not FFile.ColumnsRead(FColumnsTable) then
+    EnsureTableColumns(FColumnsTable);
   LNames := TStringList.Create;
+  LWords := TStringList.Create;
   FUpdating := True;
   try
     FFile.GetColumnNames(FColumnsTable, LNames);
+    RpFilterWords(EFilterColumns.Text, LWords);
     FShownColumns.Clear;
     CheckColumns.Items.BeginUpdate;
     try
       CheckColumns.Items.Clear;
       for I := 0 to LNames.Count - 1 do
       begin
-        if not MatchesFilter(LNames[I], EFilterColumns.Text) then
+        if (LWords.Count > 0) and not RpWordsMatch(LWords,
+          RpFoldText(LNames[I]), RpFoldText(JsonText(FFile.FindColumn(
+          FColumnsTable, LNames[I]), 'context'))) then
           Continue;
         LIndex := CheckColumns.Items.Add(ColumnCaption(LNames[I]));
         FShownColumns.Add(LNames[I]);
@@ -1247,6 +1343,7 @@ begin
     CheckColumns.ItemIndex := FShownColumns.IndexOf(FColumn);
   finally
     FUpdating := False;
+    LWords.Free;
     LNames.Free;
   end;
   FillColumnDetails;
@@ -1377,15 +1474,26 @@ end;
 
 procedure TFRpLocalSchemasLCL.FillRelationTables;
 var
+  I: Integer;
   LTables: TStringList;
 begin
   // From a table of the subschema to any table of the dictionary (Add
-  // relation brings the target, as Complete does)
+  // relation brings the target, as Complete does). In a large catalog, the
+  // tables read (100.000 items in a combo take seconds and can not be
+  // used): a table is read when it is added or chosen in Columns
   LTables := SchemaTables;
   try
+    if FFile.UnreadTableCount > 0 then
+      for I := LTables.Count - 1 downto 0 do
+        if not FFile.ColumnsRead(LTables[I]) then
+          LTables.Delete(I);
     LTables.Sort;
     ComboSource.Items.Assign(LTables);
     FFile.GetTableNames(LTables);
+    if FFile.UnreadTableCount > 0 then
+      for I := LTables.Count - 1 downto 0 do
+        if not FFile.ColumnsRead(LTables[I]) then
+          LTables.Delete(I);
     LTables.Sort;
     ComboTarget.Items.Assign(LTables);
     ComboSourceColumn.Items.Clear;
@@ -1690,6 +1798,10 @@ begin
       Exit;
     LJson := RpReadSchemaFile(LDialog.FileName);
     if not ChooseTemplateValues(Self, FFile, LJson, LValues) then
+      Exit;
+    // A large catalog reads the columns of the tables it uses first
+    RpImportTableNames(FFile, LJson, LValues, LSkipped);
+    if not EnsureColumns(LSkipped) then
       Exit;
     LCount := RpImportSchemaJson(FFile, LJson, LDialog.FileName, LName,
       LSkipped, LValues);
@@ -2171,6 +2283,10 @@ begin
     // catalog has several
     if not ChooseTemplateValues(Self, FFile, LFullSchema, LValues) then
       Exit;
+    // A large catalog reads the columns of the tables it uses first
+    RpImportTableNames(FFile, LFullSchema, LValues, LSkipped);
+    if not EnsureColumns(LSkipped) then
+      Exit;
     // The import of a file (F7), named after the schema of the library
     LCount := RpImportLibrarySchemaJson(FFile, LFullSchema, LSchemaName, LName,
       LSkipped, LValues);
@@ -2226,12 +2342,22 @@ end;
 procedure TFRpLocalSchemasLCL.BAddTableClick(Sender: TObject);
 var
   I: Integer;
+  LAdded: TStringList;
 begin
   if SelectedSchema = nil then
     Exit;
-  for I := 0 to ListAvailable.Items.Count - 1 do
-    if ListAvailable.Selected[I] then
-      FFile.AddSchemaTable(SelectedSchema, ListAvailable.Items[I]);
+  LAdded := TStringList.Create;
+  try
+    for I := 0 to ListAvailable.Count - 1 do
+      if ListAvailable.Selected[I] then
+        LAdded.Add(FAvailable[I]);
+    // A table of a large catalog comes in with its columns
+    EnsureColumns(LAdded);
+    for I := 0 to LAdded.Count - 1 do
+      FFile.AddSchemaTable(SelectedSchema, LAdded[I]);
+  finally
+    LAdded.Free;
+  end;
   Changed;
   FillTables;
   FillColumnTables;
@@ -2245,9 +2371,9 @@ var
 begin
   if SelectedSchema = nil then
     Exit;
-  for I := 0 to ListChosen.Items.Count - 1 do
+  for I := ListChosen.Count - 1 downto 0 do
     if ListChosen.Selected[I] then
-      FFile.RemoveSchemaTable(SelectedSchema, ListChosen.Items[I]);
+      FFile.RemoveSchemaTable(SelectedSchema, FChosen[I]);
   Changed;
   FillTables;
   FillColumnTables;
@@ -2264,8 +2390,122 @@ begin
   LList := TListBox(Sender);
   if LList.ItemIndex < 0 then
     Exit;
-  FTablesTable := LList.Items[LList.ItemIndex];
+  if LList = ListChosen then
+    FTablesTable := FChosen[LList.ItemIndex]
+  else
+    FTablesTable := FAvailable[LList.ItemIndex];
   FillTableContext;
+end;
+
+function TFRpLocalSchemasLCL.NewMoreLabel(AParent: TWinControl): TLabel;
+begin
+  Result := TLabel.Create(Self);
+  Result.Parent := AParent;
+  Result.Align := alBottom;
+  Result.WordWrap := True;
+  Result.Font.Color := clGrayText;
+  Result.Visible := False;
+end;
+
+procedure TFRpLocalSchemasLCL.ShowList(AList: TListBox; ANames: TStrings);
+const
+  CMaxShown = 2000;
+var
+  I: Integer;
+  LMore: TLabel;
+begin
+  AList.Items.BeginUpdate;
+  try
+    AList.Items.Clear;
+    for I := 0 to ANames.Count - 1 do
+    begin
+      if I >= CMaxShown then
+        Break;
+      AList.Items.Add(ANames[I]);
+    end;
+  finally
+    AList.Items.EndUpdate;
+  end;
+  if AList = ListAvailable then
+    LMore := LAvailableMore
+  else if AList = ListChosen then
+    LMore := LChosenMore
+  else
+    LMore := LColumnTablesMore;
+  if ANames.Count > CMaxShown then
+    LMore.Caption := Format(string(TranslateStr(2034, 'Showing %s of %s: ' +
+      'type in the filter to find the others.')), [IntToStr(CMaxShown),
+      IntToStr(ANames.Count)]);
+  LMore.Visible := ANames.Count > CMaxShown;
+end;
+
+procedure TFRpLocalSchemasLCL.FilterColumnTablesChange(Sender: TObject);
+begin
+  if not FUpdating then
+    FillColumnTables;
+end;
+
+function TFRpLocalSchemasLCL.EnsureColumns(ANames: TStrings): Boolean;
+var
+  LCursor: TCursor;
+  LTables: TJSONArray;
+  LUnread: TStringList;
+begin
+  Result := True;
+  LUnread := TStringList.Create;
+  try
+    FFile.GetUnreadTables(ANames, LUnread);
+    if LUnread.Count = 0 then
+      Exit;
+    ShowInfo(Format(string(TranslateStr(2033, 'Reading the columns of %s...')),
+      [RpShortNameList(LUnread, 5)]));
+    StatusInfo.Update;
+    LCursor := Screen.Cursor;
+    Screen.Cursor := crHourGlass;
+    try
+      try
+        LTables := RpReadLocalSchemaColumns(FDatabase, FReport.Params, LUnread);
+        try
+          FFile.MergeColumns(LTables);
+        finally
+          LTables.Free;
+        end;
+        // What was read is not a change of the person: it is saved with the
+        // next one, and read again otherwise
+        ShowInfo('');
+      except
+        on E: Exception do
+        begin
+          Result := False;
+          Screen.Cursor := LCursor;
+          ShowInfo('');
+          RpMessageBox(Format(string(TranslateStr(2036, 'The columns of %s ' +
+            'could not be read: %s')), [RpShortNameList(LUnread, 5),
+            E.Message]), '', [smbOK], smsCritical);
+        end;
+      end;
+    finally
+      // The connection stays open while the screen is: opening a database
+      // with a large catalog can take seconds (SQLite reads its whole
+      // schema), and the next table would pay them again
+      Screen.Cursor := LCursor;
+    end;
+  finally
+    LUnread.Free;
+  end;
+end;
+
+function TFRpLocalSchemasLCL.EnsureTableColumns(const ATable: string): Boolean;
+var
+  LNames: TStringList;
+begin
+  LNames := TStringList.Create;
+  try
+    LNames.Add(ATable);
+    Result := EnsureColumns(LNames);
+  finally
+    LNames.Free;
+  end;
 end;
 
 procedure TFRpLocalSchemasLCL.MemoTableContextChange(Sender: TObject);
@@ -2282,7 +2522,7 @@ procedure TFRpLocalSchemasLCL.ListColumnTablesClick(Sender: TObject);
 begin
   if FUpdating or (ListColumnTables.ItemIndex < 0) then
     Exit;
-  FColumnsTable := ListColumnTables.Items[ListColumnTables.ItemIndex];
+  FColumnsTable := FColumnTables[ListColumnTables.ItemIndex];
   FColumn := '';
   ClearPreview;
   FillColumns;
@@ -2633,6 +2873,10 @@ procedure TFRpLocalSchemasLCL.BCompleteClick(Sender: TObject);
 begin
   if (SelectedSchema = nil) or (ListSuggestions.ItemIndex < 0) then
     Exit;
+  // The table it brings, with its columns
+  if not EnsureTableColumns(TRpLocalRelation(
+    FSuggestions[ListSuggestions.ItemIndex]).TargetTable) then
+    Exit;
   FFile.CompleteRelation(SelectedSchema,
     TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]));
   Changed;
@@ -2644,6 +2888,7 @@ end;
 
 procedure TFRpLocalSchemasLCL.ComboSourceChange(Sender: TObject);
 begin
+  EnsureTableColumns(ComboSource.Text);
   FFile.GetColumnNames(ComboSource.Text, ComboSourceColumn.Items);
   FPairSource.Clear;
   FPairTarget.Clear;
@@ -2652,6 +2897,7 @@ end;
 
 procedure TFRpLocalSchemasLCL.ComboTargetChange(Sender: TObject);
 begin
+  EnsureTableColumns(ComboTarget.Text);
   FFile.GetColumnNames(ComboTarget.Text, ComboTargetColumn.Items);
   FPairSource.Clear;
   FPairTarget.Clear;

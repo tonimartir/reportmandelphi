@@ -28,6 +28,9 @@ program test_local_schema_file;
 {      qualifiers in the names of its tables, and the   }
 {      coverage that detects the system of a database   }
 {      (library\ next to the fixture).                  }
+{  10. The filter of the lists (words of the name or    }
+{      the description) and the columns of a large      }
+{      catalog read when a table is used.               }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_local_schema_      }
 {   file.lpi (lazbuild). Run:                           }
@@ -1321,6 +1324,115 @@ begin
   end;
 end;
 
+// A text with accents, written with its code points (a source without an
+// encoding can not hold them): UTF-8 bytes in FPC, UTF-16 in Delphi
+function U(const ACodes: array of Integer): string;
+var
+  I: Integer;
+  LText: UnicodeString;
+begin
+  LText := '';
+  for I := Low(ACodes) to High(ACodes) do
+    LText := LText + WideChar(ACodes[I]);
+{$IFDEF FPC}
+  Result := UTF8Encode(LText);
+{$ELSE}
+  Result := LText;
+{$ENDIF}
+end;
+
+function ValueText(AObject: TJSONObject; const AName: string): string;
+begin
+  Result := '';
+  if (AObject <> nil) and (AObject.Values[AName] <> nil) then
+    Result := AObject.Values[AName].Value;
+end;
+
+// The filter of the lists (spec F of 18-10-2026) and the large catalog (spec
+// C): the shared cases of the C# designer and Reportman.Server.Web
+procedure TestFilterAndLargeCatalog;
+var
+  LCategoria, LEspana: string;
+  LFile: TRpLocalSchemaFile;
+  LCatalog: TJSONArray;
+  LNames, LUnread: TStringList;
+  LTable: TJSONObject;
+begin
+  // "Categoria" and "Espana" with their accents (U+00ED, U+00F1)
+  LCategoria := 'Categor' + U([$00ED]) + 'a de producto';
+  LEspana := 'CRONUS Espa' + U([$00F1]) + 'a S_A_$Item';
+  Check(RpFilterMatches('cliente activo', 'CUSTOMERS', 'Clientes activos y bloqueados') and
+    not RpFilterMatches('cliente borrado', 'CUSTOMERS', 'Clientes activos y bloqueados') and
+    RpFilterMatches('cust ACTIV', 'CUSTOMERS', 'Clientes activos y bloqueados') and
+    RpFilterMatches('', 'CUSTOMERS', 'Clientes activos y bloqueados') and
+    RpFilterMatches('   ', 'CUSTOMERS', 'Clientes activos y bloqueados'),
+    'filter: every word in the name or the description, in any order');
+  Check(RpFilterMatches('categoria', 'PRODUCTS', LCategoria) and
+    RpFilterMatches('CATEGOR' + U([$00CD]) + 'A', 'PRODUCTS', LCategoria) and
+    RpFilterMatches('espana item', LEspana, '') and
+    RpFilterMatches('ESPA' + U([$00D1]) + 'A', LEspana, ''),
+    'filter: without case or accents');
+  Check(not RpFilterMatches('cabecera pedido', 'VBAK', 'Documento de ventas: datos de cabecera') and
+    RpFilterMatches('ventas cabecera', 'VBAK', 'Documento de ventas: datos de cabecera') and
+    not RpFilterMatches('kna1 cliente', 'KNA1', ''),
+    'filter: a word that is in no field leaves the item out');
+
+  // The columns read later go to the tables not read, and only to them
+  LFile := TRpLocalSchemaFile.Create;
+  LNames := TStringList.Create;
+  LUnread := TStringList.Create;
+  try
+    LFile.LoadFromJson('{"version":2,"tables":[' +
+      '{"name":"A","context":"Tabla A","columns":[],"foreignKeys":[],"columnsRead":false},' +
+      '{"name":"B","context":"","columns":[{"name":"X","dataType":"String","context":"dicho"}],' +
+      '"foreignKeys":[]}],"schemas":[]}');
+    LNames.CommaText := 'a,B,GONE';
+    LFile.GetUnreadTables(LNames, LUnread);
+    Check((LFile.UnreadTableCount = 1) and not LFile.ColumnsRead('A') and
+      LFile.ColumnsRead('B') and (PlainJoined(LUnread) = 'A'),
+      'large catalog: A is not read, B is: ' + PlainJoined(LUnread));
+    LCatalog := TJSONArray(TJSONObject.ParseJSONValue('[' +
+      '{"name":"A","context":"","columns":[{"name":"ID","dataType":"Integer","context":"",' +
+      '"isPrimaryKey":true},{"name":"NAME","dataType":"String","context":""}],' +
+      '"foreignKeys":[{"constraintName":"FK_A_B","targetTable":"B","sourceColumns":["ID"],' +
+      '"targetColumns":["X"],"relationshipContext":""}]},' +
+      '{"name":"B","context":"","columns":[{"name":"Y","dataType":"String","context":""}],' +
+      '"foreignKeys":[]}]'));
+    try
+      LFile.MergeColumns(LCatalog);
+    finally
+      LCatalog.Free;
+    end;
+    LTable := LFile.FindTable('A');
+    LFile.GetColumnNames('A', LNames);
+    Check(LFile.ColumnsRead('A') and (LFile.UnreadTableCount = 0) and
+      (PlainJoined(LNames) = 'ID,NAME') and (ValueText(LTable, 'context') = 'Tabla A') and
+      (ForeignKeyCount(LTable) = 1) and (LTable.Values['columnsRead'] = nil),
+      'large catalog: the columns of A, its key and its relation, its description kept');
+    LFile.GetPrimaryKey('A', LNames);
+    LFile.GetColumnNames('B', LUnread);
+    Check((PlainJoined(LNames) = 'ID') and (PlainJoined(LUnread) = 'X') and
+      (ValueText(LFile.FindColumn('B', 'X'), 'context') = 'dicho'),
+      'large catalog: B, read already, is not touched');
+    // Read again: the marks are the catalog's of now, the descriptions stay
+    LFile.LoadFromJson('{"version":2,"tables":[' +
+      '{"name":"A","context":"Tabla A","columns":[],"foreignKeys":[],"columnsRead":false},' +
+      '{"name":"B","context":"Tabla B","columns":[],"foreignKeys":[]}],"schemas":[]}');
+    LCatalog := TJSONArray(TJSONObject.ParseJSONValue('[' +
+      '{"name":"A","context":"","columns":[{"name":"ID","dataType":"Integer","context":""}],"foreignKeys":[]},' +
+      '{"name":"B","context":"","columns":[],"foreignKeys":[],"columnsRead":false}]'));
+    LFile.SetCatalog(LCatalog, 'SQLite');
+    Check(LFile.ColumnsRead('A') and not LFile.ColumnsRead('B') and
+      (ValueText(LFile.FindTable('B'), 'context') = 'Tabla B') and
+      (ValueText(LFile.FindTable('A'), 'context') = 'Tabla A'),
+      'large catalog: the marks are the ones of the catalog read now');
+  finally
+    LUnread.Free;
+    LNames.Free;
+    LFile.Free;
+  end;
+end;
+
 var
   LFixture, LSaved: string;
 begin
@@ -1345,6 +1457,7 @@ begin
     TestOnlySubschemas(LFixture);
     TestExcludedRelations(LFixture, ExtractFilePath(LSaved));
     TestLibraryTemplates(ExtractFilePath(LFixture) + 'library' + PathDelim);
+    TestFilterAndLargeCatalog;
   except
     on E: Exception do
     begin

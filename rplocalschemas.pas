@@ -164,8 +164,13 @@ type
     FGeneratedUtc: string;
     FSchemas: TObjectList;
     FTables: TJSONArray;
+    // The tables by name (sorted, case insensitive), made when a table is
+    // looked for: a catalog of 100.000 tables looked up one by one was
+    // quadratic
+    FIndex: TStringList;
     function GetSchema(Index: Integer): TRpLocalSubSchema;
     function GetSchemaCount: Integer;
+    procedure TablesChanged;
     // The entries of the exclusion lists of a relation that is gone leave
     // every list (the root's and the subschemas')
     procedure ForgetExcluded(const ASourceTable: string; AForeignKey: TJSONObject);
@@ -184,6 +189,23 @@ type
     procedure SetCatalog(ATables: TJSONArray; const ADialect: string);
     procedure GetTableNames(AList: TStrings);
     function TableCount: Integer;
+
+    { A large catalog (more than RpLargeCatalogLimit tables): the columns of
+      a table are read when it is used. A table not read yet has
+      "columnsRead": false, and no columns or relations }
+    // False for a table whose columns were not read (and for one that is
+    // not there)
+    function ColumnsRead(const ATable: string): Boolean;
+    // The tables whose columns were not read
+    function UnreadTableCount: Integer;
+    // The tables of ANames whose columns were not read, as the file spells
+    // them
+    procedure GetUnreadTables(ANames, AUnread: TStrings);
+    // The columns, primary key and relations read for some tables
+    // (RpReadLocalSchemaColumns) go to the tables of the file that did not
+    // have them, which keep their description; a table read already is not
+    // touched
+    procedure MergeColumns(ATables: TJSONArray);
     function IndexOfSchema(const AName: string): Integer;
     function AddSchema(const AName: string): TRpLocalSubSchema;
     procedure DeleteSchema(AIndex: Integer);
@@ -327,9 +349,20 @@ function RpLocalSchemaFileName(ADatabase: TRpDatabaseInfoItem): string;
 // PostgreSQL...; Default when unknown), from its parameters only
 function RpLocalDatabaseDialect(ADatabase: TRpDatabaseInfoItem): string;
 // The tables, columns, primary keys and foreign keys of the catalog of the
-// connection, in the format of the file (connects the connection)
+// connection, in the format of the file (connects the connection).
+// With more than RpLargeCatalogLimit tables only their names (and their
+// comments) are read, and the columns of the tables of AColumnsOf: the rest
+// have "columnsRead": false
 function RpReadLocalSchemaCatalog(ADatabase: TRpDatabaseInfoItem;
-  AParams: TRpParamList; out ADialect: string): TJSONArray;
+  AParams: TRpParamList; out ADialect: string;
+  AColumnsOf: TStrings = nil): TJSONArray;
+// The tables whose columns a large catalog reads again: the ones of every
+// subschema and the ones read already
+procedure RpLocalSchemaKeepList(AFile: TRpLocalSchemaFile; AList: TStrings);
+// The columns, primary keys and relations of some tables of the catalog
+// (the ones it does not have are left out)
+function RpReadLocalSchemaColumns(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; ATables: TStrings): TJSONArray;
 // The schema file of the connection: read; generated from the catalog
 // (and saved) when it does not exist and AGenerate, or always with
 // ARefresh. nil when it does not exist and is not generated
@@ -451,6 +484,30 @@ function RpImportCoverageDetected(AMatched, ATotal: Integer): Boolean;
 function RpTemplateValuesText(AValues: TStrings): string;
 // The text of a file to import (UTF-8, with a BOM or without one)
 function RpReadSchemaFile(const AFileName: string): string;
+// The tables of the catalog an import would use (its tables and the
+// targets of its relations, with the template values of ATemplateValues and
+// the first value of the catalog for the others), as the catalog spells
+// them: their columns are read before importing a large catalog
+procedure RpImportTableNames(AFile: TRpLocalSchemaFile; const AJson: string;
+  ATemplateValues, ANames: TStrings);
+
+{ The filter of the lists of tables and columns: words of the name or of the
+  description, in any order, without case or accents }
+
+// A text as the filter compares it: lower case, and the accented latin
+// letters (U+00C0-U+017F) as their base letter
+function RpFoldText(const AText: string): string;
+// The words of a filter, folded (none: everything matches)
+procedure RpFilterWords(const AFilter: string; AWords: TStrings);
+// Every word is in the name or in the description (both folded already)
+function RpWordsMatch(AWords: TStrings; const AFoldedName,
+  AFoldedContext: string): Boolean;
+// The two at once, for a single item
+function RpFilterMatches(const AFilter, AName, AContext: string): Boolean;
+
+var
+  // More tables than this make a large catalog
+  RpLargeCatalogLimit: Integer = 5000;
 // 'A, B, C, ...': the first AMax names of a list, an ellipsis for the rest
 function RpShortNameList(AList: TStrings; AMax: Integer): string;
 
@@ -488,6 +545,8 @@ type
     Context: string;
     Columns: TObjectList;
     ForeignKeys: TObjectList;
+    // False in a large catalog for a table whose columns were not read
+    ColumnsRead: Boolean;
     constructor Create;
     destructor Destroy; override;
     function FindColumn(const AName: string): TRpCatColumn;
@@ -503,7 +562,15 @@ type
     destructor Destroy; override;
     function Find(const AName: string): TRpCatTable;
     function Add(const AName: string): TRpCatTable;
-    function ToJsonArray: TJSONArray;
+    // The names of the tables of a catalog come in the order of the
+    // database, not the one of the list: between these two they are only
+    // added (no Find) and sorted once at the end. Inserted one by one in
+    // their place, the 100.000 of a large catalog took seconds
+    procedure BeginAdding;
+    procedure EndAdding;
+    // AOnlyWithColumns: without the tables that have no columns (the ones
+    // asked for that the database does not have)
+    function ToJsonArray(AOnlyWithColumns: Boolean = False): TJSONArray;
     property List: TStringList read FList;
   end;
 
@@ -565,6 +632,15 @@ begin
   LOld := AObject.RemovePair(AName);
   LOld.Free;
   AObject.AddPair(AName, AValue);
+end;
+
+// A copy of an array, or an empty one
+function CloneOrEmpty(AArray: TJSONArray): TJSONArray;
+begin
+  if AArray = nil then
+    Result := TJSONArray.Create
+  else
+    Result := TJSONArray(AArray.Clone);
 end;
 
 // The properties of the old object the new one does not have (the ones
@@ -1076,6 +1152,7 @@ end;
 
 destructor TRpLocalSchemaFile.Destroy;
 begin
+  FIndex.Free;
   FSchemas.Free;
   FTables.Free;
   FExcluded.Free;
@@ -1083,9 +1160,15 @@ begin
   inherited Destroy;
 end;
 
+procedure TRpLocalSchemaFile.TablesChanged;
+begin
+  FreeAndNil(FIndex);
+end;
+
 procedure TRpLocalSchemaFile.Clear;
 begin
   FSchemas.Clear;
+  TablesChanged;
   FTables.Free;
   FTables := TJSONArray.Create;
   FExcluded.Free;
@@ -1131,6 +1214,7 @@ begin
     LArray := JArr(LObject, 'tables');
     if LArray <> nil then
     begin
+      TablesChanged;
       FTables.Free;
       FTables := TJSONArray(LArray.Clone);
     end;
@@ -1250,10 +1334,9 @@ end;
 procedure TRpLocalSchemaFile.SetCatalog(ATables: TJSONArray;
   const ADialect: string);
 var
-  I, J, K: Integer;
+  I, J: Integer;
   LNewTable, LOldTable, LNewItem, LOldItem: TJSONObject;
   LNewItems, LOldItems: TJSONArray;
-  LNames: TStringList;
 begin
   if ATables = nil then
     ATables := TJSONArray.Create;
@@ -1261,10 +1344,14 @@ begin
     for I := 0 to ATables.Count - 1 do
     begin
       LNewTable := JObj(ATables, I);
-      LOldTable := FindByName(FTables, 'name', JStr(LNewTable, 'name'));
-      if (LNewTable = nil) or (LOldTable = nil) then
+      if LNewTable = nil then
         Continue;
-      KeepWritten(LOldTable, LNewTable, 'context', ['name', 'columns', 'foreignKeys']);
+      LOldTable := FindTable(JStr(LNewTable, 'name'));
+      if LOldTable = nil then
+        Continue;
+      // Read or not, as the catalog was read now
+      KeepWritten(LOldTable, LNewTable, 'context', ['name', 'columns',
+        'foreignKeys', 'columnsRead']);
       LNewItems := JArr(LNewTable, 'columns');
       LOldItems := JArr(LOldTable, 'columns');
       if LNewItems <> nil then
@@ -1299,27 +1386,22 @@ begin
     ATables.Free;
     raise;
   end;
+  TablesChanged;
   FTables.Free;
   FTables := ATables;
   if ADialect <> '' then
     FDialect := ADialect;
   FGeneratedUtc := NowUtcIso;
   // The subschemas keep the tables that still exist, as the catalog names them
-  LNames := TStringList.Create;
-  try
-    GetTableNames(LNames);
-    for I := 0 to FSchemas.Count - 1 do
-      for J := Schemas[I].Tables.Count - 1 downto 0 do
-      begin
-        K := LNames.IndexOf(Schemas[I].Tables[J]);
-        if K < 0 then
-          Schemas[I].Tables.Delete(J)
-        else
-          Schemas[I].Tables[J] := LNames[K];
-      end;
-  finally
-    LNames.Free;
-  end;
+  for I := 0 to FSchemas.Count - 1 do
+    for J := Schemas[I].Tables.Count - 1 downto 0 do
+    begin
+      LNewTable := FindTable(Schemas[I].Tables[J]);
+      if LNewTable = nil then
+        Schemas[I].Tables.Delete(J)
+      else
+        Schemas[I].Tables[J] := JStr(LNewTable, 'name');
+    end;
   for I := 0 to FSchemas.Count - 1 do
     Schemas[I].KeepColumnsOf(FTables);
   // The relations deleted or discarded stay so while one of their tables is
@@ -1517,8 +1599,102 @@ end;
 { The dictionary and the subschemas }
 
 function TRpLocalSchemaFile.FindTable(const AName: string): TJSONObject;
+var
+  I: Integer;
+  LTable: TJSONObject;
 begin
-  Result := FindByName(FTables, 'name', AName);
+  Result := nil;
+  if FIndex = nil then
+  begin
+    FIndex := TStringList.Create;
+    FIndex.CaseSensitive := False;
+    for I := 0 to FTables.Count - 1 do
+    begin
+      LTable := JObj(FTables, I);
+      if (LTable <> nil) and (JStr(LTable, 'name') <> '') then
+        FIndex.AddObject(JStr(LTable, 'name'), LTable);
+    end;
+    // The first of two with the same name, as FindByName found it
+    FIndex.Sorted := True;
+  end;
+  I := FIndex.IndexOf(AName);
+  if I >= 0 then
+  begin
+    // A sorted list with two equal names may give the second: the first
+    // one in the file
+    while (I > 0) and SameText(FIndex[I - 1], AName) do
+      Dec(I);
+    Result := TJSONObject(FIndex.Objects[I]);
+    if not SameText(JStr(Result, 'name'), AName) then
+      Result := FindByName(FTables, 'name', AName);
+  end;
+end;
+
+function TRpLocalSchemaFile.ColumnsRead(const ATable: string): Boolean;
+var
+  LTable: TJSONObject;
+  LValue: TJSONValue;
+begin
+  LTable := FindTable(ATable);
+  Result := LTable <> nil;
+  if not Result then
+    Exit;
+  LValue := LTable.Values['columnsRead'];
+  Result := not ((LValue <> nil) and SameText(LValue.Value, 'false'));
+end;
+
+function TRpLocalSchemaFile.UnreadTableCount: Integer;
+var
+  I: Integer;
+  LValue: TJSONValue;
+begin
+  Result := 0;
+  for I := 0 to FTables.Count - 1 do
+    if JObj(FTables, I) <> nil then
+    begin
+      LValue := JObj(FTables, I).Values['columnsRead'];
+      if (LValue <> nil) and SameText(LValue.Value, 'false') then
+        Inc(Result);
+    end;
+end;
+
+procedure TRpLocalSchemaFile.GetUnreadTables(ANames, AUnread: TStrings);
+var
+  I: Integer;
+  LName: string;
+begin
+  AUnread.Clear;
+  for I := 0 to ANames.Count - 1 do
+    if (FindTable(ANames[I]) <> nil) and not ColumnsRead(ANames[I]) then
+    begin
+      LName := JStr(FindTable(ANames[I]), 'name');
+      if AUnread.IndexOf(LName) < 0 then
+        AUnread.Add(LName);
+    end;
+end;
+
+procedure TRpLocalSchemaFile.MergeColumns(ATables: TJSONArray);
+var
+  I: Integer;
+  LRead, LTable: TJSONObject;
+begin
+  if ATables = nil then
+    Exit;
+  for I := 0 to ATables.Count - 1 do
+  begin
+    LRead := JObj(ATables, I);
+    if LRead = nil then
+      Continue;
+    LTable := FindTable(JStr(LRead, 'name'));
+    if (LTable = nil) or ColumnsRead(JStr(LTable, 'name')) then
+      Continue;
+    // Its description stays; a table not read has no relations by hand
+    SetPair(LTable, 'columns', CloneOrEmpty(JArr(LRead, 'columns')));
+    SetPair(LTable, 'foreignKeys', CloneOrEmpty(JArr(LRead, 'foreignKeys')));
+    LTable.RemovePair('columnsRead').Free;
+    if (Trim(JStr(LTable, 'context')) = '') and (Trim(JStr(LRead, 'context')) <> '') then
+      SetPair(LTable, 'context', TJSONString.Create(JStr(LRead, 'context')));
+  end;
 end;
 
 function TRpLocalSchemaFile.FindColumn(const ATable,
@@ -2227,6 +2403,7 @@ begin
   inherited Create;
   Columns := TObjectList.Create(True);
   ForeignKeys := TObjectList.Create(True);
+  ColumnsRead := True;
 end;
 
 destructor TRpCatTable.Destroy;
@@ -2284,15 +2461,34 @@ end;
 
 function TRpCatalog.Add(const AName: string): TRpCatTable;
 begin
-  Result := Find(AName);
-  if Result <> nil then
-    Exit;
+  if FList.Sorted then
+  begin
+    Result := Find(AName);
+    if Result <> nil then
+      Exit;
+  end;
   Result := TRpCatTable.Create;
   Result.Name := AName;
   FList.AddObject(AName, Result);
 end;
 
-function TRpCatalog.ToJsonArray: TJSONArray;
+procedure TRpCatalog.BeginAdding;
+begin
+  FList.Sorted := False;
+end;
+
+procedure TRpCatalog.EndAdding;
+var
+  I: Integer;
+begin
+  FList.Sorted := True;
+  // A name twice (a table and a view of the same name): the first one
+  for I := FList.Count - 1 downto 1 do
+    if AnsiCompareText(FList[I], FList[I - 1]) = 0 then
+      FList.Delete(I);
+end;
+
+function TRpCatalog.ToJsonArray(AOnlyWithColumns: Boolean): TJSONArray;
 var
   I, J, K: Integer;
   LColumn: TRpCatColumn;
@@ -2305,10 +2501,14 @@ begin
   for I := 0 to FList.Count - 1 do
   begin
     LTable := TRpCatTable(FList.Objects[I]);
+    if AOnlyWithColumns and (LTable.Columns.Count = 0) then
+      Continue;
     LTableObject := TJSONObject.Create;
     Result.AddElement(LTableObject);
     LTableObject.AddPair('name', LTable.Name);
     LTableObject.AddPair('context', LTable.Context);
+    if not LTable.ColumnsRead then
+      LTableObject.AddPair('columnsRead', TJSONBool.Create(False));
     LColumns := TJSONArray.Create;
     LTableObject.AddPair('columns', LColumns);
     for J := 0 to LTable.Columns.Count - 1 do
@@ -2533,31 +2733,48 @@ end;
 { Catalog reading }
 
 type
+  // The catalog of a connection: the names of its tables first, then the
+  // columns, keys and comments of all of them or (a large catalog, or the
+  // columns asked for) of some, with queries filtered by those tables
   TRpCatalogReader = class(TObject)
   private
     FCatalog: TRpCatalog;
     FDatabase: TRpDatabaseInfoItem;
     FFamily: TRpCatalogFamily;
     FParams: TRpParamList;
+    // ' IN (...)' of the tables whose columns are read now ('': all)
+    FIn: string;
     function Open(const ASql: string): TDataSet;
     function FieldText(AData: TDataSet; AIndex: Integer): string;
     function FieldInt(AData: TDataSet; AIndex: Integer): Integer;
+    function InFilter(const AColumn: string; AWhere: Boolean = False): string;
     procedure AddForeignKey(const ATable, AConstraint, ATarget, ASource,
       ATargetColumn: string);
     procedure SetPrimaryKey(const ATable, AColumn: string);
     function FirebirdDialect: string;
-    procedure ReadFirebird;
-    procedure ReadInformationSchema;
-    procedure ReadSQLite;
+    procedure ReadFirebirdTables;
+    procedure ReadFirebirdColumns;
+    procedure ReadInformationSchemaTables;
+    procedure ReadInformationSchemaColumns;
+    procedure ReadSQLiteTables;
+    procedure ReadSQLiteColumns(ANames: TStrings);
     function OpenSQLitePragma(const APragma, AQuotedTable, AColumns,
       AOrder: string): TDataSet;
-    procedure ReadOracle;
-    procedure ReadGeneric;
-    procedure ReadComments(const ATableSql, AColumnSql: string);
+    procedure ReadOracleTables;
+    procedure ReadOracleColumns;
+    procedure ReadGenericTables;
+    procedure ReadGenericColumns(ANames: TStrings);
+    procedure ReadTableComments(const ASql: string);
+    procedure ReadColumnComments(const ASql: string);
+    procedure ReadTables;
+    procedure ReadColumns(ANames: TStrings);
+    function ColumnsToRead(AColumnsOf: TStrings): TStringList;
+    procedure Connect(out ADialect: string);
   public
     constructor Create(ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList);
     destructor Destroy; override;
-    function Read(out ADialect: string): TJSONArray;
+    function Read(out ADialect: string; AColumnsOf: TStrings): TJSONArray;
+    function ReadColumnsOf(ATables: TStrings): TJSONArray;
   end;
 
 constructor TRpCatalogReader.Create(ADatabase: TRpDatabaseInfoItem;
@@ -2590,6 +2807,21 @@ end;
 function TRpCatalogReader.FieldInt(AData: TDataSet; AIndex: Integer): Integer;
 begin
   Result := StrToIntDef(FieldText(AData, AIndex), 0);
+end;
+
+// ' AND <column> IN (...)' (' WHERE ...' with AWhere) when only some tables
+// are read; nothing when all are
+function TRpCatalogReader.InFilter(const AColumn: string;
+  AWhere: Boolean): string;
+begin
+  Result := '';
+  if FIn = '' then
+    Exit;
+  if AWhere then
+    Result := ' WHERE '
+  else
+    Result := ' AND ';
+  Result := Result + AColumn + FIn;
 end;
 
 procedure TRpCatalogReader.SetPrimaryKey(const ATable, AColumn: string);
@@ -2797,16 +3029,14 @@ begin
       IntToStr(ALength) + ')';
 end;
 
-procedure TRpCatalogReader.ReadFirebird;
+procedure TRpCatalogReader.ReadFirebirdTables;
 var
-  LColumn: TRpCatColumn;
-  LCloudType, LDetected: string;
   LData: TDataSet;
-  LTable: TRpCatTable;
 begin
   LData := Open('SELECT TRIM(R.RDB$RELATION_NAME), R.RDB$DESCRIPTION ' +
     'FROM RDB$RELATIONS R WHERE COALESCE(R.RDB$SYSTEM_FLAG, 0) = 0 ' +
     'ORDER BY R.RDB$RELATION_NAME');
+  FCatalog.BeginAdding;
   try
     while not LData.Eof do
     begin
@@ -2815,8 +3045,18 @@ begin
       LData.Next;
     end;
   finally
+    FCatalog.EndAdding;
     LData.Free;
   end;
+end;
+
+procedure TRpCatalogReader.ReadFirebirdColumns;
+var
+  LColumn: TRpCatColumn;
+  LCloudType, LDetected: string;
+  LData: TDataSet;
+  LTable: TRpCatTable;
+begin
   LData := Open('SELECT TRIM(RF.RDB$RELATION_NAME), TRIM(RF.RDB$FIELD_NAME), ' +
     'F.RDB$FIELD_TYPE, F.RDB$FIELD_SUB_TYPE, F.RDB$FIELD_LENGTH, ' +
     'F.RDB$FIELD_PRECISION, F.RDB$FIELD_SCALE, F.RDB$CHARACTER_LENGTH, ' +
@@ -2824,7 +3064,8 @@ begin
     'FROM RDB$RELATION_FIELDS RF ' +
     'JOIN RDB$RELATIONS R ON R.RDB$RELATION_NAME = RF.RDB$RELATION_NAME ' +
     'JOIN RDB$FIELDS F ON F.RDB$FIELD_NAME = RF.RDB$FIELD_SOURCE ' +
-    'WHERE COALESCE(R.RDB$SYSTEM_FLAG, 0) = 0 ' +
+    'WHERE COALESCE(R.RDB$SYSTEM_FLAG, 0) = 0' +
+    InFilter('TRIM(RF.RDB$RELATION_NAME)') + ' ' +
     'ORDER BY RF.RDB$RELATION_NAME, RF.RDB$FIELD_POSITION');
   try
     while not LData.Eof do
@@ -2849,7 +3090,8 @@ begin
     LData := Open('SELECT TRIM(RC.RDB$RELATION_NAME), TRIM(S.RDB$FIELD_NAME) ' +
       'FROM RDB$RELATION_CONSTRAINTS RC ' +
       'JOIN RDB$INDEX_SEGMENTS S ON S.RDB$INDEX_NAME = RC.RDB$INDEX_NAME ' +
-      'WHERE RC.RDB$CONSTRAINT_TYPE = ''PRIMARY KEY''');
+      'WHERE RC.RDB$CONSTRAINT_TYPE = ''PRIMARY KEY''' +
+      InFilter('TRIM(RC.RDB$RELATION_NAME)'));
     try
       while not LData.Eof do
       begin
@@ -2871,7 +3113,8 @@ begin
       'JOIN RDB$INDEX_SEGMENTS S ON S.RDB$INDEX_NAME = RC.RDB$INDEX_NAME ' +
       'JOIN RDB$INDEX_SEGMENTS S2 ON S2.RDB$INDEX_NAME = RC2.RDB$INDEX_NAME ' +
       'AND S2.RDB$FIELD_POSITION = S.RDB$FIELD_POSITION ' +
-      'WHERE RC.RDB$CONSTRAINT_TYPE = ''FOREIGN KEY'' ' +
+      'WHERE RC.RDB$CONSTRAINT_TYPE = ''FOREIGN KEY''' +
+      InFilter('TRIM(RC.RDB$RELATION_NAME)') + ' ' +
       'ORDER BY RC.RDB$RELATION_NAME, RC.RDB$CONSTRAINT_NAME, S.RDB$FIELD_POSITION');
     try
       while not LData.Eof do
@@ -2887,16 +3130,15 @@ begin
   end;
 end;
 
-// The comments of the tables and columns that have no context yet (the
-// starting description); a catalog that can not be read leaves them empty
-procedure TRpCatalogReader.ReadComments(const ATableSql, AColumnSql: string);
+// The comments of the tables that have no context yet (the starting
+// description); a catalog that can not be read leaves them empty
+procedure TRpCatalogReader.ReadTableComments(const ASql: string);
 var
-  LColumn: TRpCatColumn;
   LData: TDataSet;
   LTable: TRpCatTable;
 begin
   try
-    LData := Open(ATableSql);
+    LData := Open(ASql);
     try
       while not LData.Eof do
       begin
@@ -2911,8 +3153,17 @@ begin
   except
     // Without permission to read the comments the schema goes without them
   end;
+end;
+
+// The same with the columns read
+procedure TRpCatalogReader.ReadColumnComments(const ASql: string);
+var
+  LColumn: TRpCatColumn;
+  LData: TDataSet;
+  LTable: TRpCatTable;
+begin
   try
-    LData := Open(AColumnSql);
+    LData := Open(ASql);
     try
       while not LData.Eof do
       begin
@@ -2932,27 +3183,31 @@ begin
   end;
 end;
 
-procedure TRpCatalogReader.ReadInformationSchema;
+function InformationSchemaFilter(AFamily: TRpCatalogFamily): string;
+begin
+  case AFamily of
+    rcfMySQL:
+      Result := 'TABLE_SCHEMA = DATABASE()';
+    rcfSQLServer:
+      Result := 'TABLE_SCHEMA NOT IN (''sys'', ''INFORMATION_SCHEMA'')';
+  else
+    Result := 'TABLE_SCHEMA NOT IN (''pg_catalog'', ''information_schema'')';
+  end;
+end;
+
+procedure TRpCatalogReader.ReadInformationSchemaTables;
 var
-  LColumn: TRpCatColumn;
   LData: TDataSet;
   LFilter: string;
-  LTable: TRpCatTable;
 begin
-  case FFamily of
-    rcfMySQL:
-      LFilter := 'TABLE_SCHEMA = DATABASE()';
-    rcfSQLServer:
-      LFilter := 'TABLE_SCHEMA NOT IN (''sys'', ''INFORMATION_SCHEMA'')';
-  else
-    LFilter := 'TABLE_SCHEMA NOT IN (''pg_catalog'', ''information_schema'')';
-  end;
+  LFilter := InformationSchemaFilter(FFamily);
   if FFamily = rcfMySQL then
     LData := Open('SELECT TABLE_NAME, TABLE_COMMENT FROM INFORMATION_SCHEMA.TABLES ' +
       'WHERE ' + LFilter + ' ORDER BY TABLE_NAME')
   else
     LData := Open('SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES ' +
       'WHERE ' + LFilter + ' ORDER BY TABLE_NAME');
+  FCatalog.BeginAdding;
   try
     while not LData.Eof do
     begin
@@ -2961,17 +3216,41 @@ begin
       LData.Next;
     end;
   finally
+    FCatalog.EndAdding;
     LData.Free;
   end;
+  // MySQL gave its comments with the tables
+  case FFamily of
+    rcfPostgreSQL:
+      ReadTableComments('SELECT c.relname, obj_description(c.oid, ''pg_class'') ' +
+        'FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
+        'WHERE c.relkind IN (''r'', ''v'', ''m'', ''p'', ''f'') ' +
+        'AND n.nspname NOT IN (''pg_catalog'', ''information_schema'') ' +
+        'AND obj_description(c.oid, ''pg_class'') IS NOT NULL');
+    rcfSQLServer:
+      ReadTableComments('SELECT o.name, CAST(ep.value AS nvarchar(4000)) ' +
+        'FROM sys.extended_properties ep JOIN sys.objects o ON o.object_id = ep.major_id ' +
+        'WHERE ep.class = 1 AND ep.minor_id = 0 AND ep.name = ''MS_Description''');
+  end;
+end;
+
+procedure TRpCatalogReader.ReadInformationSchemaColumns;
+var
+  LColumn: TRpCatColumn;
+  LData: TDataSet;
+  LFilter: string;
+  LTable: TRpCatTable;
+begin
+  LFilter := InformationSchemaFilter(FFamily);
   if FFamily = rcfMySQL then
     LData := Open('SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ' +
       'CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, COLUMN_COMMENT ' +
-      'FROM INFORMATION_SCHEMA.COLUMNS WHERE ' + LFilter +
+      'FROM INFORMATION_SCHEMA.COLUMNS WHERE ' + LFilter + InFilter('TABLE_NAME') +
       ' ORDER BY TABLE_NAME, ORDINAL_POSITION')
   else
     LData := Open('SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ' +
       'CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE ' +
-      'FROM INFORMATION_SCHEMA.COLUMNS WHERE ' + LFilter +
+      'FROM INFORMATION_SCHEMA.COLUMNS WHERE ' + LFilter + InFilter('TABLE_NAME') +
       ' ORDER BY TABLE_NAME, ORDINAL_POSITION');
   try
     while not LData.Eof do
@@ -2995,7 +3274,7 @@ begin
       'FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc ' +
       'JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME ' +
       'AND kcu.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA AND kcu.TABLE_NAME = tc.TABLE_NAME ' +
-      'WHERE tc.CONSTRAINT_TYPE = ''PRIMARY KEY''');
+      'WHERE tc.CONSTRAINT_TYPE = ''PRIMARY KEY''' + InFilter('kcu.TABLE_NAME'));
     try
       while not LData.Eof do
       begin
@@ -3015,7 +3294,8 @@ begin
       'AND kcu.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA ' +
       'JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu2 ON kcu2.CONSTRAINT_NAME = rc.UNIQUE_CONSTRAINT_NAME ' +
       'AND kcu2.CONSTRAINT_SCHEMA = rc.UNIQUE_CONSTRAINT_SCHEMA ' +
-      'AND kcu2.ORDINAL_POSITION = kcu.ORDINAL_POSITION ' +
+      'AND kcu2.ORDINAL_POSITION = kcu.ORDINAL_POSITION' +
+      InFilter('kcu.TABLE_NAME', True) + ' ' +
       'ORDER BY kcu.TABLE_NAME, rc.CONSTRAINT_NAME, kcu.ORDINAL_POSITION');
     try
       while not LData.Eof do
@@ -3029,41 +3309,31 @@ begin
     end;
   except
   end;
-  // MySQL gave its comments with the tables and columns
+  // MySQL gave its comments with the columns
   case FFamily of
     rcfPostgreSQL:
-      ReadComments('SELECT c.relname, obj_description(c.oid, ''pg_class'') ' +
-        'FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
-        'WHERE c.relkind IN (''r'', ''v'', ''m'', ''p'', ''f'') ' +
-        'AND n.nspname NOT IN (''pg_catalog'', ''information_schema'') ' +
-        'AND obj_description(c.oid, ''pg_class'') IS NOT NULL',
-        'SELECT c.relname, a.attname, col_description(c.oid, a.attnum) ' +
+      ReadColumnComments('SELECT c.relname, a.attname, col_description(c.oid, a.attnum) ' +
         'FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
         'JOIN pg_attribute a ON a.attrelid = c.oid ' +
         'WHERE a.attnum > 0 AND NOT a.attisdropped ' +
         'AND n.nspname NOT IN (''pg_catalog'', ''information_schema'') ' +
-        'AND col_description(c.oid, a.attnum) IS NOT NULL');
+        'AND col_description(c.oid, a.attnum) IS NOT NULL' + InFilter('c.relname'));
     rcfSQLServer:
-      ReadComments('SELECT o.name, CAST(ep.value AS nvarchar(4000)) ' +
-        'FROM sys.extended_properties ep JOIN sys.objects o ON o.object_id = ep.major_id ' +
-        'WHERE ep.class = 1 AND ep.minor_id = 0 AND ep.name = ''MS_Description''',
-        'SELECT o.name, c.name, CAST(ep.value AS nvarchar(4000)) ' +
+      ReadColumnComments('SELECT o.name, c.name, CAST(ep.value AS nvarchar(4000)) ' +
         'FROM sys.extended_properties ep JOIN sys.objects o ON o.object_id = ep.major_id ' +
         'JOIN sys.columns c ON c.object_id = ep.major_id AND c.column_id = ep.minor_id ' +
-        'WHERE ep.class = 1 AND ep.minor_id > 0 AND ep.name = ''MS_Description''');
+        'WHERE ep.class = 1 AND ep.minor_id > 0 AND ep.name = ''MS_Description''' +
+        InFilter('o.name'));
   end;
 end;
 
-procedure TRpCatalogReader.ReadSQLite;
+procedure TRpCatalogReader.ReadSQLiteTables;
 var
-  I: Integer;
-  LColumn: TRpCatColumn;
   LData: TDataSet;
-  LQuoted: string;
-  LTable: TRpCatTable;
 begin
   LData := Open('SELECT name FROM sqlite_master WHERE type IN (''table'', ''view'') ' +
     'AND name NOT LIKE ''sqlite_%'' ORDER BY name');
+  FCatalog.BeginAdding;
   try
     while not LData.Eof do
     begin
@@ -3072,11 +3342,32 @@ begin
       LData.Next;
     end;
   finally
+    FCatalog.EndAdding;
     LData.Free;
   end;
-  for I := 0 to FCatalog.List.Count - 1 do
+end;
+
+// Table by table (all the tables when ANames is nil)
+procedure TRpCatalogReader.ReadSQLiteColumns(ANames: TStrings);
+var
+  I, LCount: Integer;
+  LColumn: TRpCatColumn;
+  LData: TDataSet;
+  LQuoted: string;
+  LTable: TRpCatTable;
+begin
+  if ANames = nil then
+    LCount := FCatalog.List.Count
+  else
+    LCount := ANames.Count;
+  for I := 0 to LCount - 1 do
   begin
-    LTable := TRpCatTable(FCatalog.List.Objects[I]);
+    if ANames = nil then
+      LTable := TRpCatTable(FCatalog.List.Objects[I])
+    else
+      LTable := FCatalog.Find(ANames[I]);
+    if LTable = nil then
+      Continue;
     LQuoted := '''' + StringReplace(LTable.Name, '''', '''''', [rfReplaceAll]) + '''';
     // cid, name, type, notnull, dflt_value, pk
     LData := OpenSQLitePragma('table_info', LQuoted,
@@ -3128,14 +3419,13 @@ begin
   end;
 end;
 
-procedure TRpCatalogReader.ReadOracle;
+procedure TRpCatalogReader.ReadOracleTables;
 var
-  LColumn: TRpCatColumn;
   LData: TDataSet;
-  LTable: TRpCatTable;
 begin
   LData := Open('SELECT TABLE_NAME FROM USER_TABLES UNION ' +
     'SELECT VIEW_NAME FROM USER_VIEWS ORDER BY 1');
+  FCatalog.BeginAdding;
   try
     while not LData.Eof do
     begin
@@ -3144,11 +3434,22 @@ begin
       LData.Next;
     end;
   finally
+    FCatalog.EndAdding;
     LData.Free;
   end;
+  ReadTableComments('SELECT TABLE_NAME, COMMENTS FROM USER_TAB_COMMENTS ' +
+    'WHERE COMMENTS IS NOT NULL');
+end;
+
+procedure TRpCatalogReader.ReadOracleColumns;
+var
+  LColumn: TRpCatColumn;
+  LData: TDataSet;
+  LTable: TRpCatTable;
+begin
   LData := Open('SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, DATA_LENGTH, ' +
-    'DATA_PRECISION, DATA_SCALE FROM USER_TAB_COLUMNS ' +
-    'ORDER BY TABLE_NAME, COLUMN_ID');
+    'DATA_PRECISION, DATA_SCALE FROM USER_TAB_COLUMNS' +
+    InFilter('TABLE_NAME', True) + ' ORDER BY TABLE_NAME, COLUMN_ID');
   try
     while not LData.Eof do
     begin
@@ -3171,7 +3472,7 @@ begin
   try
     LData := Open('SELECT CC.TABLE_NAME, CC.COLUMN_NAME FROM USER_CONSTRAINTS C ' +
       'JOIN USER_CONS_COLUMNS CC ON CC.CONSTRAINT_NAME = C.CONSTRAINT_NAME ' +
-      'WHERE C.CONSTRAINT_TYPE = ''P''');
+      'WHERE C.CONSTRAINT_TYPE = ''P''' + InFilter('CC.TABLE_NAME'));
     try
       while not LData.Eof do
       begin
@@ -3190,7 +3491,8 @@ begin
       'JOIN USER_CONSTRAINTS RC ON RC.CONSTRAINT_NAME = C.R_CONSTRAINT_NAME ' +
       'JOIN USER_CONS_COLUMNS RCC ON RCC.CONSTRAINT_NAME = RC.CONSTRAINT_NAME ' +
       'AND RCC.POSITION = CC.POSITION ' +
-      'WHERE C.CONSTRAINT_TYPE = ''R'' ORDER BY 2, 1, CC.POSITION');
+      'WHERE C.CONSTRAINT_TYPE = ''R''' + InFilter('CC.TABLE_NAME') +
+      ' ORDER BY 2, 1, CC.POSITION');
     try
       while not LData.Eof do
       begin
@@ -3203,10 +3505,8 @@ begin
     end;
   except
   end;
-  ReadComments('SELECT TABLE_NAME, COMMENTS FROM USER_TAB_COMMENTS ' +
-    'WHERE COMMENTS IS NOT NULL',
-    'SELECT TABLE_NAME, COLUMN_NAME, COMMENTS FROM USER_COL_COMMENTS ' +
-    'WHERE COMMENTS IS NOT NULL');
+  ReadColumnComments('SELECT TABLE_NAME, COLUMN_NAME, COMMENTS FROM USER_COL_COMMENTS ' +
+    'WHERE COMMENTS IS NOT NULL' + InFilter('TABLE_NAME'));
 end;
 
 // The cloud's type of a field of a dataset
@@ -3233,27 +3533,46 @@ begin
   end;
 end;
 
-procedure TRpCatalogReader.ReadGeneric;
+procedure TRpCatalogReader.ReadGenericTables;
 var
-  I, J: Integer;
-  LColumn: TRpCatColumn;
-  LData: TDataSet;
+  I: Integer;
   LNames: TStringList;
-  LTable: TRpCatTable;
 begin
-  // The tables the driver lists, the columns of a query without rows
+  // The tables the driver lists
   LNames := TStringList.Create;
+  FCatalog.BeginAdding;
   try
     FDatabase.GetTableNames(LNames, FParams);
     for I := 0 to LNames.Count - 1 do
       if Trim(LNames[I]) <> '' then
         FCatalog.Add(Trim(LNames[I]));
   finally
+    FCatalog.EndAdding;
     LNames.Free;
   end;
-  for I := 0 to FCatalog.List.Count - 1 do
+end;
+
+// The columns of a query without rows, table by table (all the tables when
+// ANames is nil)
+procedure TRpCatalogReader.ReadGenericColumns(ANames: TStrings);
+var
+  I, J, LCount: Integer;
+  LColumn: TRpCatColumn;
+  LData: TDataSet;
+  LTable: TRpCatTable;
+begin
+  if ANames = nil then
+    LCount := FCatalog.List.Count
+  else
+    LCount := ANames.Count;
+  for I := 0 to LCount - 1 do
   begin
-    LTable := TRpCatTable(FCatalog.List.Objects[I]);
+    if ANames = nil then
+      LTable := TRpCatTable(FCatalog.List.Objects[I])
+    else
+      LTable := FCatalog.Find(ANames[I]);
+    if LTable = nil then
+      Continue;
     try
       LData := Open('SELECT * FROM ' + LTable.Name + ' WHERE 1 = 0');
       try
@@ -3272,40 +3591,169 @@ begin
   end;
 end;
 
-function TRpCatalogReader.Read(out ADialect: string): TJSONArray;
+procedure TRpCatalogReader.ReadTables;
+begin
+  case FFamily of
+    rcfFirebird:
+      ReadFirebirdTables;
+    rcfPostgreSQL, rcfMySQL, rcfSQLServer:
+      ReadInformationSchemaTables;
+    rcfSQLite:
+      ReadSQLiteTables;
+    rcfOracle:
+      ReadOracleTables;
+  else
+    ReadGenericTables;
+  end;
+end;
+
+// The columns, keys and comments of the tables of ANames (catalog names),
+// or of every table when it is nil; the queries of a catalog go by batches
+// of names
+procedure TRpCatalogReader.ReadColumns(ANames: TStrings);
+const
+  CBatch = 200;
+var
+  I, LFirst: Integer;
+begin
+  case FFamily of
+    rcfSQLite:
+      ReadSQLiteColumns(ANames);
+    rcfFirebird, rcfPostgreSQL, rcfMySQL, rcfSQLServer, rcfOracle:
+      begin
+        LFirst := 0;
+        repeat
+          FIn := '';
+          if ANames <> nil then
+          begin
+            if LFirst >= ANames.Count then
+              Break;
+            for I := LFirst to ANames.Count - 1 do
+            begin
+              if I >= LFirst + CBatch then
+                Break;
+              if FIn <> '' then
+                FIn := FIn + ', ';
+              FIn := FIn + QuotedStr(ANames[I]);
+            end;
+            FIn := ' IN (' + FIn + ')';
+            Inc(LFirst, CBatch);
+          end;
+          case FFamily of
+            rcfFirebird:
+              ReadFirebirdColumns;
+            rcfOracle:
+              ReadOracleColumns;
+          else
+            ReadInformationSchemaColumns;
+          end;
+        until ANames = nil;
+        FIn := '';
+      end;
+  else
+    ReadGenericColumns(ANames);
+  end;
+end;
+
+// nil (every table) for a normal catalog; with more than
+// RpLargeCatalogLimit tables, the tables of AColumnsOf as the catalog spells
+// them, and the rest marked as not read
+function TRpCatalogReader.ColumnsToRead(AColumnsOf: TStrings): TStringList;
+var
+  I: Integer;
+  LTable: TRpCatTable;
+begin
+  Result := nil;
+  if FCatalog.List.Count <= RpLargeCatalogLimit then
+    Exit;
+  Result := TStringList.Create;
+  for I := 0 to FCatalog.List.Count - 1 do
+    TRpCatTable(FCatalog.List.Objects[I]).ColumnsRead := False;
+  if AColumnsOf <> nil then
+    for I := 0 to AColumnsOf.Count - 1 do
+    begin
+      LTable := FCatalog.Find(AColumnsOf[I]);
+      if (LTable <> nil) and not LTable.ColumnsRead then
+      begin
+        LTable.ColumnsRead := True;
+        Result.Add(LTable.Name);
+      end;
+    end;
+end;
+
+procedure TRpCatalogReader.Connect(out ADialect: string);
 begin
   FFamily := FamilyOf(FDatabase, FParams);
   ADialect := DialectOfFamily(FFamily);
   FDatabase.Connect(FParams);
+  if FFamily = rcfFirebird then
+    ADialect := FirebirdDialect;
+end;
+
+function TRpCatalogReader.Read(out ADialect: string;
+  AColumnsOf: TStrings): TJSONArray;
+var
+  LNames: TStringList;
+begin
+  Connect(ADialect);
+  LNames := nil;
   try
-    case FFamily of
-      rcfFirebird:
-        begin
-          ADialect := FirebirdDialect;
-          ReadFirebird;
-        end;
-      rcfPostgreSQL, rcfMySQL, rcfSQLServer:
-        ReadInformationSchema;
-      rcfSQLite:
-        ReadSQLite;
-      rcfOracle:
-        ReadOracle;
-    else
-      ReadGeneric;
+    try
+      ReadTables;
+      LNames := ColumnsToRead(AColumnsOf);
+      ReadColumns(LNames);
+    except
+      // A catalog that can not be read (permissions, an older server): the
+      // tables the driver lists
+      if FFamily = rcfGeneric then
+        raise;
+      FCatalog.List.Clear;
+      FFamily := rcfGeneric;
+      FreeAndNil(LNames);
+      ReadTables;
+      LNames := ColumnsToRead(AColumnsOf);
+      ReadColumns(LNames);
     end;
-  except
-    // A catalog that can not be read (permissions, an older server): the
-    // tables the driver lists
-    if FFamily = rcfGeneric then
-      raise;
-    FCatalog.List.Clear;
-    ReadGeneric;
+    Result := FCatalog.ToJsonArray;
+  finally
+    LNames.Free;
   end;
-  Result := FCatalog.ToJsonArray;
+end;
+
+function TRpCatalogReader.ReadColumnsOf(ATables: TStrings): TJSONArray;
+var
+  I: Integer;
+  LDialect: string;
+  LNames: TStringList;
+begin
+  Connect(LDialect);
+  LNames := TStringList.Create;
+  try
+    for I := 0 to ATables.Count - 1 do
+      if (Trim(ATables[I]) <> '') and (FCatalog.Find(Trim(ATables[I])) = nil) then
+        LNames.Add(FCatalog.Add(Trim(ATables[I])).Name);
+    try
+      ReadColumns(LNames);
+    except
+      if FFamily = rcfGeneric then
+        raise;
+      for I := 0 to FCatalog.List.Count - 1 do
+      begin
+        TRpCatTable(FCatalog.List.Objects[I]).Columns.Clear;
+        TRpCatTable(FCatalog.List.Objects[I]).ForeignKeys.Clear;
+      end;
+      FFamily := rcfGeneric;
+      ReadColumns(LNames);
+    end;
+    Result := FCatalog.ToJsonArray(True);
+  finally
+    LNames.Free;
+  end;
 end;
 
 function RpReadLocalSchemaCatalog(ADatabase: TRpDatabaseInfoItem;
-  AParams: TRpParamList; out ADialect: string): TJSONArray;
+  AParams: TRpParamList; out ADialect: string;
+  AColumnsOf: TStrings): TJSONArray;
 var
   LReader: TRpCatalogReader;
 begin
@@ -3316,9 +3764,47 @@ begin
       ' does not run SQL on this computer');
   LReader := TRpCatalogReader.Create(ADatabase, AParams);
   try
-    Result := LReader.Read(ADialect);
+    Result := LReader.Read(ADialect, AColumnsOf);
   finally
     LReader.Free;
+  end;
+end;
+
+function RpReadLocalSchemaColumns(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; ATables: TStrings): TJSONArray;
+var
+  LReader: TRpCatalogReader;
+begin
+  if ADatabase = nil then
+    raise Exception.Create('No connection');
+  if not RpIsLocalSqlDatabase(ADatabase) then
+    raise Exception.Create('The connection ' + ADatabase.Alias +
+      ' does not run SQL on this computer');
+  LReader := TRpCatalogReader.Create(ADatabase, AParams);
+  try
+    Result := LReader.ReadColumnsOf(ATables);
+  finally
+    LReader.Free;
+  end;
+end;
+
+procedure RpLocalSchemaKeepList(AFile: TRpLocalSchemaFile; AList: TStrings);
+var
+  I: Integer;
+  LTable: TJSONObject;
+  LValue: TJSONValue;
+begin
+  AList.Clear;
+  for I := 0 to AFile.SchemaCount - 1 do
+    AList.AddStrings(AFile.Schemas[I].Tables);
+  for I := 0 to AFile.Tables.Count - 1 do
+  begin
+    LTable := JObj(AFile.Tables, I);
+    if LTable = nil then
+      Continue;
+    LValue := LTable.Values['columnsRead'];
+    if not ((LValue <> nil) and SameText(LValue.Value, 'false')) then
+      AList.Add(JStr(LTable, 'name'));
   end;
 end;
 
@@ -3327,6 +3813,7 @@ function RpLoadLocalSchema(ADatabase: TRpDatabaseInfoItem;
 var
   LDialect, LFileName: string;
   LExists: Boolean;
+  LKeep: TStringList;
   LTables: TJSONArray;
 begin
   Result := nil;
@@ -3343,7 +3830,16 @@ begin
     end;
     if ARefresh or not LExists then
     begin
-      LTables := RpReadLocalSchemaCatalog(ADatabase, AParams, LDialect);
+      // In a large catalog the columns of the tables of the subschemas and
+      // of the ones read before are read again; the others, when they are
+      // used
+      LKeep := TStringList.Create;
+      try
+        RpLocalSchemaKeepList(Result, LKeep);
+        LTables := RpReadLocalSchemaCatalog(ADatabase, AParams, LDialect, LKeep);
+      finally
+        LKeep.Free;
+      end;
       Result.Alias := UpperCase(ADatabase.Alias);
       Result.SetCatalog(LTables, LDialect);
       Result.SaveToFile(LFileName);
@@ -4160,6 +4656,137 @@ end;
 function RpReadSchemaFile(const AFileName: string): string;
 begin
   Result := ReadUtf8File(AFileName);
+end;
+
+procedure RpImportTableNames(AFile: TRpLocalSchemaFile; const AJson: string;
+  ATemplateValues, ANames: TStrings);
+var
+  I, J: Integer;
+  LForeignKeys: TJSONArray;
+  LResolver: TRpImportResolver;
+  LRoot: TJSONValue;
+  LTables: TJSONArray;
+  LTable: TJSONObject;
+
+  procedure AddTable(const AName: string);
+  var
+    LFound: TJSONObject;
+  begin
+    LFound := LResolver.Resolve(AName);
+    if (LFound <> nil) and (ANames.IndexOf(JStr(LFound, 'name')) < 0) then
+      ANames.Add(JStr(LFound, 'name'));
+  end;
+
+begin
+  ANames.Clear;
+  try
+    LRoot := TJSONObject.ParseJSONValue(AJson);
+  except
+    LRoot := nil;
+  end;
+  LResolver := TRpImportResolver.Create(AFile);
+  try
+    LTables := ImportTables(LRoot);
+    if LTables = nil then
+      Exit;
+    ImportTemplateValues(LResolver, LTables, ATemplateValues);
+    for I := 0 to LTables.Count - 1 do
+    begin
+      LTable := JObj(LTables, I);
+      if LTable = nil then
+        Continue;
+      AddTable(JStrCI(LTable, 'name'));
+      LForeignKeys := JArrCI(LTable, 'foreignKeys');
+      if LForeignKeys <> nil then
+        for J := 0 to LForeignKeys.Count - 1 do
+          if JObj(LForeignKeys, J) <> nil then
+            AddTable(JStrCI(JObj(LForeignKeys, J), 'targetTable'));
+    end;
+  finally
+    LResolver.Free;
+    LRoot.Free;
+  end;
+end;
+
+{ The filter }
+
+const
+  // U+00C0-U+017F: the base letter of each accented latin letter (its NFD
+  // decomposition), '_' for the ones that stay as they are
+  CFoldLatin: string =
+    'aaaaaa_ceeeeiiii_nooooo__uuuuy__aaaaaa_ceeeeiiii' +
+    '_nooooo__uuuuy_yaaaaaaccccccccdd__eeeeeeeeeegggg' +
+    'gggghh__iiiiiiiii___jjkk_llllll____nnnnnn___oooo' +
+    'oo__rrrrrrsssssssstttt__uuuuuuuuuuuuwwyyyzzzzzz_';
+
+function RpFoldText(const AText: string): string;
+var
+  I: Integer;
+  LCode: Integer;
+  LText: UnicodeString;
+begin
+{$IFDEF FPC}
+  LText := WideLowerCase(UTF8Decode(AText));
+{$ELSE}
+  LText := AnsiLowerCase(AText);
+{$ENDIF}
+  for I := 1 to Length(LText) do
+  begin
+    LCode := Ord(LText[I]);
+    if (LCode >= $C0) and (LCode <= $17F) and
+      (CFoldLatin[LCode - $C0 + 1] <> '_') then
+      LText[I] := WideChar(CFoldLatin[LCode - $C0 + 1])
+    else if (LCode >= Ord('A')) and (LCode <= Ord('Z')) then
+      LText[I] := WideChar(LCode + 32);
+  end;
+{$IFDEF FPC}
+  Result := UTF8Encode(LText);
+{$ELSE}
+  Result := LText;
+{$ENDIF}
+end;
+
+procedure RpFilterWords(const AFilter: string; AWords: TStrings);
+var
+  I, LStart: Integer;
+  LText: string;
+begin
+  AWords.Clear;
+  LText := RpFoldText(AFilter) + ' ';
+  LStart := 1;
+  for I := 1 to Length(LText) do
+    if CharInSet(LText[I], [' ', #9, #10, #13]) then
+    begin
+      if I > LStart then
+        AWords.Add(Copy(LText, LStart, I - LStart));
+      LStart := I + 1;
+    end;
+end;
+
+function RpWordsMatch(AWords: TStrings; const AFoldedName,
+  AFoldedContext: string): Boolean;
+var
+  I: Integer;
+begin
+  for I := 0 to AWords.Count - 1 do
+    if (Pos(AWords[I], AFoldedName) = 0) and
+      (Pos(AWords[I], AFoldedContext) = 0) then
+      Exit(False);
+  Result := True;
+end;
+
+function RpFilterMatches(const AFilter, AName, AContext: string): Boolean;
+var
+  LWords: TStringList;
+begin
+  LWords := TStringList.Create;
+  try
+    RpFilterWords(AFilter, LWords);
+    Result := (LWords.Count = 0) or
+      RpWordsMatch(LWords, RpFoldText(AName), RpFoldText(AContext));
+  finally
+    LWords.Free;
+  end;
 end;
 
 // The import of RpImportSchemaJson; AForcedName names the new subschema
