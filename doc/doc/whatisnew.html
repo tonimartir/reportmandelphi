@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Release notes and version history - Report Manager Docs</title>
-<meta name="description" content="Version 4.0.21 release notes: Sign in with Apple in the designers and a notarized macOS designer, plus version history.">
+<meta name="description" content="Version 4.0.22 release notes: sample reports on SQLite with a welcome window, and local schemas for the AI copilot, plus version history.">
 <link rel="canonical" href="https://reportman.es/doc/whatisnew.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -229,6 +229,40 @@
 <h1>Release notes and version history</h1>
 <h2>Release notes</h2>
     <h3><b>What is new</b></h3>
+
+    <p>Version 4.0.22 (October 2026)</p>
+    <ul>
+      <li><b>Sample reports and a welcome window</b> in the Windows (Delphi and .NET),
+        Linux and macOS designers: nine sample reports &mdash; invoices, a letter with
+        HTML text, address labels, a product catalogue with EAN-13 barcodes, sales with
+        charts, text in nine languages and eight scripts&hellip; &mdash; that read a
+        small SQLite database installed with them, so they can be previewed right away.
+        The welcome window shows them at startup and from <i>Help &rarr; Sample
+        reports&hellip;</i>, and opens a copy in the documents folder, where they can be
+        changed and saved. A SQLite database given with a relative path is looked for
+        next to the report.</li>
+      <li><b>Local schemas for the AI copilot</b> &mdash; describe the tables, columns,
+        relations and allowed values of a database in a file on your computer, read
+        from the catalog of the connection (SQLite included); only the descriptions go
+        to the AI, never the data. Open them from the gear of each connection in the
+        data configuration and choose them, with the cloud schemas, in the SQL editor
+        of the datasets.
+        <ul>
+          <li>Import from the <b>schema library</b>: ready-made schemas of ERP systems
+            (Odoo, SAP Business One, SAP R/3, Business Central and Dynamics 365 Finance
+            and Operations), with the system detected from the tables of your database
+            and the company name of the table names filled in.</li>
+          <li><b>Large databases</b>: a filter of words finds the tables with all of them
+            in the name or the description, and the columns of a catalog of thousands of
+            tables are read when a table is used. Every read of the database shows its
+            progress and can be cancelled.</li>
+          <li><b>Export all and Import all</b> move the schemas of a connection to
+            another installation; when the connection already has schemas, the import
+            merges them or replaces them.</li>
+          <li>Every relation can be deleted, also those read from the database, and
+            the validation of a schema by the AI lets you choose the AI that does it.</li>
+        </ul></li>
+    </ul>
 
     <p>Version 4.0.21 (October 2026)</p>
     <ul>
