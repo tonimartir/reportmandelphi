@@ -33,7 +33,16 @@ unit rpfrmlocalschemasvcl;
     and allowed values in the dictionary, "Also in", a preview of 5 rows),
     Relations (the ones that travel, the suggested ones and the ones the
     database does not declare) and Validation ("Analyze with AI", only with
-    a subschema: the dictionary never goes to the AI, 5.7).
+    a subschema: the dictionary never goes to the AI, 5.7, with the AI
+    chosen there: provider, mode and credits, TFRpAISelectionVCL).
+  - Relations (spec R3-R8 of 17-10-2026): Delete works with every relation:
+    in a subschema it leaves the subschema (its excludedRelations), in all
+    the tables one by hand leaves the dictionary and one of the database is
+    excluded from every subschema; Discard leaves a suggestion out of the
+    subschema; the Delete of the suggestions deletes one by hand from the
+    dictionary. Selecting a relation by hand loads it in the controls of the
+    new relation, and "Update relation" changes it; adding a relation that
+    was excluded brings it back.
   - The counters of the plan warn, never block. Nothing is saved until Save;
     closing with changes asks.
 
@@ -50,13 +59,15 @@ interface
 uses
   SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls, CheckLst,
   ComCtrls, Grids, Dialogs, Contnrs, System.UITypes, System.JSON, DB,
-  rpreport, rpdatainfo, rplocalschemas, rpdatahttp, rpfrmchatvcl;
+  rpreport, rpdatainfo, rplocalschemas, rpdatahttp, rpfrmchatvcl,
+  rpfrmaiselectionvcl;
 
 // The local schema of the connection AAlias of the report. ASchemaName is
 // the subschema to show and, when something was saved, the one selected
 // at the end ('' = all the tables). With AAddNew it starts adding a
 // subschema (its name first; cancelling it shows nothing). AChat gives the
-// AI of "Analyze with AI" (its provider and mode; Standard without one).
+// AI first chosen for "Analyze with AI" (its provider and mode; Standard
+// and Fast without one); the Validation tab can choose another one.
 // True when the file was saved
 function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
   var ASchemaName: string; AAddNew: Boolean = False;
@@ -65,7 +76,8 @@ function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
 implementation
 
 uses
-  rpmdconsts, rpauthmanager, rpreportdesignercontracts, rpwebmarkdownvcl, rpgraphutilsvcl;
+  DateUtils, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
+  rpwebmarkdownvcl, rpgraphutilsvcl;
 
 const
   CKey = ' '#$D83D#$DD11;
@@ -79,7 +91,6 @@ type
   private
     FAnalysis: IRpSchemaAnalysis;
     FAnalysisTimer: TTimer;
-    FChat: TFRpChatFrame;
     FDatabase: TRpDatabaseInfoItem;
     FDatabases: TRpDatabaseInfoList;
     FFile: TRpLocalSchemaFile;
@@ -88,6 +99,11 @@ type
     FUpdating: Boolean;
     FModified: Boolean;
     FSaved: Boolean;
+    FAvailable: TStringList;
+    FChosen: TStringList;
+    FColumnTables: TStringList;
+    // The thread that reads the database for the screen (spec P)
+    FWorker: TRpReadWorker;
     FStackTop: Integer;
     // The table of the Tables tab whose description is shown, the table and
     // the column of the Columns tab
@@ -100,6 +116,11 @@ type
     FSuggestions: TObjectList;
     FPairSource: TStringList;
     FPairTarget: TStringList;
+    // The relation by hand loaded in the controls of the new relation
+    // ("Update relation"): its source table and its foreign key, in the
+    // tables of the file (forgotten whenever the relations are listed again)
+    FEditSource: string;
+    FEditForeignKey: TJSONObject;
     // Left
     ListSchemas: TListBox;
     BAdd: TButton;
@@ -108,6 +129,8 @@ type
     BDelete: TButton;
     BExport: TButton;
     BImport: TButton;
+    BExportAll: TButton;
+    BImportAll: TButton;
     BLibrary: TButton;
     MemoDescription: TMemo;
     // Bottom
@@ -124,6 +147,8 @@ type
     BRefresh: TButton;
     // Tables
     EFilterAvailable: TEdit;
+    // Virtual lists (lbVirtual): their items are FAvailable, FChosen and
+    // FColumnTables, so a catalog of 100.000 tables scrolls at once
     ListAvailable: TListBox;
     EFilterChosen: TEdit;
     ListChosen: TListBox;
@@ -132,6 +157,7 @@ type
     LTableContext: TLabel;
     MemoTableContext: TMemo;
     // Columns
+    EFilterColumnTables: TEdit;
     ListColumnTables: TListBox;
     EFilterColumns: TEdit;
     CheckColumns: TCheckListBox;
@@ -153,6 +179,8 @@ type
     BDeleteRelation: TButton;
     ListSuggestions: TListBox;
     BComplete: TButton;
+    BDiscard: TButton;
+    BDeleteSuggestion: TButton;
     ComboSource: TComboBox;
     ComboTarget: TComboBox;
     ComboSourceColumn: TComboBox;
@@ -162,7 +190,9 @@ type
     BRemovePair: TButton;
     ENewContext: TEdit;
     BAddRelation: TButton;
-    // Validation
+    BUpdateRelation: TButton;
+    // Validation: the AI that analyzes
+    FAISelection: TFRpAISelectionVCL;
     BAnalyze: TButton;
     BStop: TButton;
     LStatus: TLabel;
@@ -185,7 +215,13 @@ type
     procedure BuildColumnsTab(ATab: TTabSheet);
     procedure BuildRelationsTab(ATab: TTabSheet);
     procedure BuildValidationTab(ATab: TTabSheet);
-    procedure LoadFile(ARefresh: Boolean);
+    // False when the user cancelled the read of the catalog
+    function LoadFile(ARefresh: Boolean): Boolean;
+    // A read of the database in the thread of the screen, with the window of
+    // its progress after 300 ms (spec P). True when it ended (ATask has its
+    // result or its error; the caller frees it); False when the user
+    // cancelled it (the task is not the caller's any more)
+    function RunRead(ATask: TRpReadTask; const ATitle: string): Boolean;
     function SelectedSchema: TRpLocalSubSchema;
     function SchemaTables: TStringList;
     function PlanApplies: Boolean;
@@ -211,12 +247,17 @@ type
     procedure StopAnalysis;
     // "Analyze with AI" only with a subschema, and not while one runs
     procedure UpdateAnalyzeButton;
+    // Stop, and the progress of the AI in place of its choice
+    procedure ShowAnalysisRunning(ARunning: Boolean);
+    // A relation by hand goes to the controls of the new relation and
+    // "Update relation" changes it; another relation leaves them as they are
+    procedure EditRelation(ARelation: TRpLocalRelation);
     // The line at the bottom (what Export and Import did)
     procedure ShowInfo(const AText: string);
     // After an import (a file or the library): the new subschema chosen and
-    // not saved, and what was not imported
+    // not saved, what was not imported and the values of the templates
     procedure ImportDone(ACount: Integer; const AName: string;
-      ASkipped: TStrings);
+      ASkipped, AValues: TStrings);
     procedure ListSchemasClick(Sender: TObject);
     procedure BAddClick(Sender: TObject);
     procedure BDuplicateClick(Sender: TObject);
@@ -224,6 +265,8 @@ type
     procedure BDeleteClick(Sender: TObject);
     procedure BExportClick(Sender: TObject);
     procedure BImportClick(Sender: TObject);
+    procedure BExportAllClick(Sender: TObject);
+    procedure BImportAllClick(Sender: TObject);
     procedure BLibraryClick(Sender: TObject);
     procedure MemoDescriptionChange(Sender: TObject);
     procedure BRefreshClick(Sender: TObject);
@@ -233,12 +276,26 @@ type
     procedure ListTablesClick(Sender: TObject);
     procedure MemoTableContextChange(Sender: TObject);
     procedure ListColumnTablesClick(Sender: TObject);
+    procedure ListAvailableData(Control: TWinControl; Index: Integer;
+      var Data: string);
+    procedure ListChosenData(Control: TWinControl; Index: Integer;
+      var Data: string);
+    procedure ListColumnTablesData(Control: TWinControl; Index: Integer;
+      var Data: string);
+    procedure FilterColumnTablesChange(Sender: TObject);
+    // A list shows the names of ANames (a virtual list: as many as they are)
+    procedure ShowList(AList: TListBox; ANames: TStrings);
+    // The columns of the tables a large catalog did not read, read now;
+    // False when some could not be read (it is said)
+    function EnsureColumns(ANames: TStrings): Boolean;
+    function EnsureTableColumns(const ATable: string): Boolean;
     procedure FilterColumnsChange(Sender: TObject);
     procedure CheckColumnsClickCheck(Sender: TObject);
     procedure CheckColumnsClick(Sender: TObject);
     procedure BAddAllClick(Sender: TObject);
     procedure BClearColumnsClick(Sender: TObject);
     procedure MemoColumnContextChange(Sender: TObject);
+    procedure GridValuesFit(Sender: TObject);
     procedure GridValuesSetEditText(Sender: TObject; ACol, ARow: Integer;
       const Value: string);
     procedure BAddValueClick(Sender: TObject);
@@ -247,14 +304,20 @@ type
     procedure ListRelationsClick(Sender: TObject);
     procedure MemoRelationContextChange(Sender: TObject);
     procedure BDeleteRelationClick(Sender: TObject);
+    procedure ListSuggestionsClick(Sender: TObject);
     procedure BCompleteClick(Sender: TObject);
+    procedure BDiscardClick(Sender: TObject);
+    procedure BDeleteSuggestionClick(Sender: TObject);
     procedure ComboSourceChange(Sender: TObject);
     procedure ComboTargetChange(Sender: TObject);
     procedure BAddPairClick(Sender: TObject);
     procedure BRemovePairClick(Sender: TObject);
     procedure BAddRelationClick(Sender: TObject);
+    procedure BUpdateRelationClick(Sender: TObject);
     procedure BAnalyzeClick(Sender: TObject);
     procedure BStopClick(Sender: TObject);
+    procedure AISelectionStopRequest(Sender: TObject);
+    procedure AISelectionProviderChange(Sender: TObject);
     procedure AnalysisTimerTick(Sender: TObject);
     procedure BSaveClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -270,12 +333,6 @@ begin
   Result := IntToStr(AValue);
   if AMax > 0 then
     Result := Result + ' / ' + IntToStr(AMax);
-end;
-
-function MatchesFilter(const AText, AFilter: string): Boolean;
-begin
-  Result := (Trim(AFilter) = '') or
-    (Pos(LowerCase(Trim(AFilter)), LowerCase(AText)) > 0);
 end;
 
 function JsonText(AObject: TJSONObject; const AName: string): string;
@@ -298,6 +355,151 @@ begin
     Result := Result + ' - ' + string(TranslateStr(1875, 'by hand'));
 end;
 
+{ The progress of a read }
+
+type
+  // The window of a read of the database: what is read, an indeterminate
+  // bar, the phase with its seconds and the rows, and Cancel, always there.
+  // A read that does not stop (a blocking open of a driver) is given up
+  // half a second after Cancel: the window closes anyway
+  TFRpReadProgressVCL = class(TForm)
+  private
+    FTask: TRpReadTask;
+    FWorker: TRpReadWorker;
+    FCancelAt: TDateTime;
+    FCancelRequested: Boolean;
+    FGivenUp: Boolean;
+    LStatus: TLabel;
+    FTimer: TTimer;
+    function S(AValue: Integer): Integer;
+    procedure ShowStatus;
+    procedure TimerTick(Sender: TObject);
+    procedure CancelClick(Sender: TObject);
+  public
+    constructor CreateFor(AOwner: TComponent; ATask: TRpReadTask;
+      AWorker: TRpReadWorker; const ATitle: string);
+    property CancelRequested: Boolean read FCancelRequested;
+    property GivenUp: Boolean read FGivenUp;
+  end;
+
+function TFRpReadProgressVCL.S(AValue: Integer): Integer;
+begin
+  Result := (AValue * Screen.PixelsPerInch) div 96;
+end;
+
+constructor TFRpReadProgressVCL.CreateFor(AOwner: TComponent;
+  ATask: TRpReadTask; AWorker: TRpReadWorker; const ATitle: string);
+var
+  LBar: TProgressBar;
+  LBottom, LBody: TPanel;
+  LButton: TButton;
+  LTitle: TLabel;
+begin
+  inherited CreateNew(AOwner);
+  FTask := ATask;
+  FWorker := AWorker;
+  Caption := ATitle;
+  Position := poScreenCenter;
+  BorderStyle := bsDialog;
+  BorderIcons := [];
+  ClientWidth := S(420);
+  ClientHeight := S(130);
+  LBottom := TPanel.Create(Self);
+  LBottom.Parent := Self;
+  LBottom.BevelOuter := bvNone;
+  LBottom.Caption := '';
+  LBottom.Align := alBottom;
+  LBottom.Height := S(42);
+  LButton := TButton.Create(Self);
+  LButton.Parent := LBottom;
+  LButton.Caption := TranslateStr(94, 'Cancel');
+  LButton.Cancel := True;
+  LButton.OnClick := CancelClick;
+  LButton.SetBounds(S(420) - S(106), S(8), S(96), S(26));
+  LBody := TPanel.Create(Self);
+  LBody.Parent := Self;
+  LBody.BevelOuter := bvNone;
+  LBody.Caption := '';
+  LBody.Align := alClient;
+  LBody.BorderWidth := S(10);
+  LTitle := TLabel.Create(Self);
+  LTitle.Parent := LBody;
+  LTitle.Align := alTop;
+  LTitle.Caption := ATitle;
+  LTitle.Font.Style := [fsBold];
+  LBar := TProgressBar.Create(Self);
+  LBar.Parent := LBody;
+  LBar.Top := S(1000);
+  LBar.Align := alTop;
+  LBar.Height := S(18);
+  LBar.Style := pbstMarquee;
+  LStatus := TLabel.Create(Self);
+  LStatus.Parent := LBody;
+  LStatus.Top := S(2000);
+  LStatus.Align := alTop;
+  FTimer := TTimer.Create(Self);
+  FTimer.Interval := 250;
+  FTimer.OnTimer := TimerTick;
+  ShowStatus;
+end;
+
+procedure TFRpReadProgressVCL.ShowStatus;
+var
+  LSeconds: string;
+begin
+  if FCancelRequested then
+  begin
+    LStatus.Caption := TranslateStr(2042, 'Cancelling...');
+    Exit;
+  end;
+  LSeconds := IntToStr(FTask.Progress.Seconds);
+  case FTask.Progress.Phase of
+    rrpConnecting:
+      LStatus.Caption := Format(string(TranslateStr(2037, 'Connecting (%s s)')),
+        [LSeconds]);
+    rrpExecuting:
+      LStatus.Caption := Format(string(TranslateStr(2038, 'Executing (%s s)')),
+        [LSeconds]);
+  else
+    LStatus.Caption := Format(string(TranslateStr(2039, 'Fetching %s rows (%s s)')),
+      [FormatFloat('#,##0', FTask.Progress.Rows), LSeconds]);
+  end;
+end;
+
+procedure TFRpReadProgressVCL.TimerTick(Sender: TObject);
+begin
+  if FTask.Done then
+  begin
+    FTimer.Enabled := False;
+    ModalResult := mrOk;
+    Exit;
+  end;
+  // Cancelled and still busy (connecting or in a query of a driver that
+  // does not stop): given up, it ends on its own
+  if FCancelRequested and (MilliSecondsBetween(Now, FCancelAt) >= 500) then
+  begin
+    FTimer.Enabled := False;
+    FGivenUp := FWorker.Abandon(FTask);
+    ModalResult := mrCancel;
+    Exit;
+  end;
+  ShowStatus;
+end;
+
+procedure TFRpReadProgressVCL.CancelClick(Sender: TObject);
+begin
+  if not FCancelRequested then
+  begin
+    FCancelRequested := True;
+    FCancelAt := Now;
+    FTask.Progress.Cancel;
+    ShowStatus;
+  end
+  else
+    // A second Cancel does not wait
+    FCancelAt := IncMilliSecond(Now, -500);
+end;
+
 { TFRpLocalSchemasVCL }
 
 function TFRpLocalSchemasVCL.S(AValue: Integer): Integer;
@@ -312,9 +514,11 @@ var
 begin
   inherited CreateNew(AOwner);
   FReport := AReport;
-  FChat := AChat;
   FFile := TRpLocalSchemaFile.Create;
   FShownColumns := TStringList.Create;
+  FAvailable := TStringList.Create;
+  FChosen := TStringList.Create;
+  FColumnTables := TStringList.Create;
   FRelations := TObjectList.Create(True);
   FSuggestions := TObjectList.Create(True);
   FPairSource := TStringList.Create;
@@ -339,6 +543,15 @@ begin
   FAnalysisTimer.Interval := 200;
   FAnalysisTimer.OnTimer := AnalysisTimerTick;
   BuildControls;
+  // The AI that validates: first the one of the chat, when there is one;
+  // the agents of the user come in the background
+  if AChat <> nil then
+  begin
+    FAISelection.SelectAIMode(AChat.GetAIMode);
+    FAISelection.LoadUserAgents(AChat.GetAITier, AChat.GetAgentAiId);
+  end
+  else
+    FAISelection.LoadUserAgents;
 end;
 
 destructor TFRpLocalSchemasVCL.Destroy;
@@ -351,7 +564,21 @@ begin
   FPairSource.Free;
   FPairTarget.Free;
   FShownColumns.Free;
+  FColumnTables.Free;
+  FChosen.Free;
+  FAvailable.Free;
   FFile.Free;
+  // It ends after its read, if any, and frees itself with its connection
+  if FWorker <> nil then
+    FWorker.Retire;
+  if FDatabase <> nil then
+  begin
+    try
+      FDatabase.DisConnect;
+    except
+      // Closing, a connection that fails to close is no news
+    end;
+  end;
   FDatabases.Free;
   inherited Destroy;
 end;
@@ -475,7 +702,7 @@ begin
   LLeft := NewPanel(Self, alLeft, 230);
   LLeft.BorderWidth := S(6);
   NewLabel(LLeft, TranslateStr(1846, 'Subschemas'));
-  LLeftBottom := NewPanel(LLeft, alBottom, 222);
+  LLeftBottom := NewPanel(LLeft, alBottom, 252);
   NewLabel(LLeftBottom, TranslateStr(197, 'Description'));
   MemoDescription := NewMemo(LLeftBottom, 70, MemoDescriptionChange);
   LButtons := NewPanel(LLeftBottom, alClient, 0);
@@ -502,10 +729,24 @@ begin
   BImport.Hint := string(TranslateStr(1934, 'Creates a subschema from a ' +
     'schema exported by the Reportman AI web or by another local schema'));
   BImport.ShowHint := True;
+  // The whole file of the connection, to another installation (spec X)
+  BExportAll := NewButton(LButtons, string(TranslateStr(2043, 'Export all...')),
+    BExportAllClick, 104);
+  BExportAll.SetBounds(0, S(94), S(104), S(26));
+  BExportAll.Hint := string(TranslateStr(2045, 'Saves every subschema, ' +
+    'description and relation of the connection to a file, to bring them to ' +
+    'another installation'));
+  BExportAll.ShowHint := True;
+  BImportAll := NewButton(LButtons, string(TranslateStr(2044, 'Import all...')),
+    BImportAllClick, 104);
+  BImportAll.SetBounds(S(110), S(94), S(104), S(26));
+  BImportAll.Hint := string(TranslateStr(2046, 'Brings the subschemas, ' +
+    'descriptions and relations of a file saved with Export all'));
+  BImportAll.ShowHint := True;
   // The same import with a schema of the library of Reportman AI
   BLibrary := NewButton(LButtons, string(TranslateStr(1986,
     'From the library...')), BLibraryClick, 214);
-  BLibrary.SetBounds(0, S(94), S(214), S(26));
+  BLibrary.SetBounds(0, S(124), S(214), S(26));
   BLibrary.Hint := string(TranslateStr(1987, 'Creates a subschema from a ' +
     'schema of the Reportman AI library'));
   BLibrary.ShowHint := True;
@@ -577,10 +818,15 @@ begin
   NewLabel(LAvailable, TranslateStr(1857, 'Available tables'));
   EFilterAvailable := NewEdit(LAvailable, FilterTablesChange);
   EFilterAvailable.TextHint := TranslateStr(1859, 'Filter');
+  EFilterAvailable.Hint := TranslateStr(2035, 'Words of the name or the ' +
+    'description, in any order');
+  EFilterAvailable.ShowHint := True;
   ListAvailable := TListBox.Create(Self);
   ListAvailable.Parent := LAvailable;
   ListAvailable.Align := alClient;
   ListAvailable.MultiSelect := True;
+  ListAvailable.Style := lbVirtual;
+  ListAvailable.OnData := ListAvailableData;
   ListAvailable.OnClick := ListTablesClick;
   ListAvailable.OnDblClick := BAddTableClick;
   LArrows := NewPanel(LPanel, alLeft, 110);
@@ -593,10 +839,14 @@ begin
   NewLabel(LChosen, TranslateStr(1858, 'Tables of the subschema'));
   EFilterChosen := NewEdit(LChosen, FilterTablesChange);
   EFilterChosen.TextHint := TranslateStr(1859, 'Filter');
+  EFilterChosen.Hint := EFilterAvailable.Hint;
+  EFilterChosen.ShowHint := True;
   ListChosen := TListBox.Create(Self);
   ListChosen.Parent := LChosen;
   ListChosen.Align := alClient;
   ListChosen.MultiSelect := True;
+  ListChosen.Style := lbVirtual;
+  ListChosen.OnData := ListChosenData;
   ListChosen.OnClick := ListTablesClick;
   ListChosen.OnDblClick := BRemoveTableClick;
 end;
@@ -611,9 +861,16 @@ begin
   // The tables
   LTables := NewPanel(LPanel, alLeft, 170);
   NewLabel(LTables, TranslateStr(1848, 'Tables'));
+  EFilterColumnTables := NewEdit(LTables, FilterColumnTablesChange);
+  EFilterColumnTables.TextHint := TranslateStr(1859, 'Filter');
+  EFilterColumnTables.Hint := TranslateStr(2035, 'Words of the name or the ' +
+    'description, in any order');
+  EFilterColumnTables.ShowHint := True;
   ListColumnTables := TListBox.Create(Self);
   ListColumnTables.Parent := LTables;
   ListColumnTables.Align := alClient;
+  ListColumnTables.Style := lbVirtual;
+  ListColumnTables.OnData := ListColumnTablesData;
   ListColumnTables.OnClick := ListColumnTablesClick;
   // The columns of the table
   LColumns := NewPanel(LPanel, alLeft, 250);
@@ -621,6 +878,8 @@ begin
   NewLabel(LColumns, TranslateStr(1849, 'Columns'));
   EFilterColumns := NewEdit(LColumns, FilterColumnsChange);
   EFilterColumns.TextHint := TranslateStr(1859, 'Filter');
+  EFilterColumns.Hint := EFilterAvailable.Hint;
+  EFilterColumns.ShowHint := True;
   LButtons := NewPanel(LColumns, alBottom, 34);
   BAddAll := NewButton(LButtons, TranslateStr(1861, 'Add all'), BAddAllClick, 110);
   BAddAll.SetBounds(0, S(6), S(110), S(26));
@@ -669,6 +928,7 @@ begin
   GridValues.Cells[0, 0] := TranslateStr(1896, 'Value');
   GridValues.Cells[1, 0] := TranslateStr(1897, 'Label');
   GridValues.OnSetEditText := GridValuesSetEditText;
+  LValues.OnResize := GridValuesFit;
   LPreview := NewPanel(LDetails, alTop, 34);
   BPreview := NewButton(LPreview, TranslateStr(1865, 'Show 5 rows'),
     BPreviewClick, 150);
@@ -708,10 +968,16 @@ begin
     AutoSize := False;
     Height := S(48);
   end;
+  // Every relation: out of the subschema, or of all the tables
   BDeleteRelation := NewButton(LContext, TranslateStr(150, 'Delete'),
     BDeleteRelationClick, 100);
   BDeleteRelation.Top := S(9000);
   BDeleteRelation.Align := alBottom;
+  BDeleteRelation.Hint := TranslateStr(2024, 'In a subschema the relation ' +
+    'leaves it (the other subschemas keep it). In all the tables a relation ' +
+    'by hand is deleted and one of the database leaves every subschema. ' +
+    'Adding it again brings it back.');
+  BDeleteRelation.ShowHint := True;
   MemoRelationContext := TMemo.Create(Self);
   MemoRelationContext.Parent := LContext;
   MemoRelationContext.Align := alClient;
@@ -722,12 +988,26 @@ begin
   NewLabel(LSuggested, TranslateStr(1866, 'Suggested relations: they do ' +
     'not travel yet (a table or a column of one end is not chosen). Complete ' +
     'adds what they need.'));
-  LRow := NewPanel(LSuggested, alRight, 110);
+  LRow := NewPanel(LSuggested, alRight, 220);
   BComplete := NewButton(LRow, TranslateStr(1867, 'Complete'), BCompleteClick, 100);
   BComplete.SetBounds(S(6), S(4), S(100), S(26));
+  // Out of this subschema for good (its excludedRelations)
+  BDiscard := NewButton(LRow, TranslateStr(2020, 'Discard'), BDiscardClick, 100);
+  BDiscard.SetBounds(S(112), S(4), S(100), S(26));
+  BDiscard.Hint := TranslateStr(2021, 'Leaves the suggestion out of this ' +
+    'subschema: it is not suggested again here');
+  BDiscard.ShowHint := True;
+  // A relation by hand that does not travel here, out of the dictionary
+  BDeleteSuggestion := NewButton(LRow, TranslateStr(150, 'Delete'),
+    BDeleteSuggestionClick, 100);
+  BDeleteSuggestion.SetBounds(S(6), S(34), S(100), S(26));
+  BDeleteSuggestion.Hint := TranslateStr(2025, 'Deletes the relation by ' +
+    'hand: it leaves every subschema');
+  BDeleteSuggestion.ShowHint := True;
   ListSuggestions := TListBox.Create(Self);
   ListSuggestions.Parent := LSuggested;
   ListSuggestions.Align := alClient;
+  ListSuggestions.OnClick := ListSuggestionsClick;
   ListSuggestions.OnDblClick := BCompleteClick;
   // A relation the database does not declare
   LNew := NewPanel(LPanel, alClient, 0);
@@ -788,10 +1068,18 @@ begin
   end;
   ENewContext := TEdit.Create(Self);
   ENewContext.Parent := LRow;
-  ENewContext.SetBounds(S(94), S(6), S(316), S(24));
+  ENewContext.SetBounds(S(94), S(6), S(200), S(24));
   BAddRelation := NewButton(LRow, TranslateStr(1874, 'Add relation'),
-    BAddRelationClick, 120);
-  BAddRelation.SetBounds(S(420), S(5), S(120), S(26));
+    BAddRelationClick, 130);
+  BAddRelation.SetBounds(S(300), S(5), S(130), S(26));
+  // The relation by hand selected above, loaded in these controls
+  BUpdateRelation := NewButton(LRow, TranslateStr(2022, 'Update relation'),
+    BUpdateRelationClick, 140);
+  BUpdateRelation.SetBounds(S(436), S(5), S(140), S(26));
+  BUpdateRelation.Hint := TranslateStr(2023, 'Changes the relation by hand ' +
+    'selected above: its tables and pairs of columns');
+  BUpdateRelation.ShowHint := True;
+  BUpdateRelation.Enabled := False;
   LRow := NewPanel(LPairs, alRight, 130);
   BRemovePair := NewButton(LRow, TranslateStr(1892, 'Remove'), BRemovePairClick, 120);
   BRemovePair.SetBounds(S(6), S(4), S(120), S(26));
@@ -802,13 +1090,24 @@ end;
 
 procedure TFRpLocalSchemasVCL.BuildValidationTab(ATab: TTabSheet);
 var
-  LPanel, LButtons: TPanel;
+  LPanel, LButtons, LAIRow, LAIHost: TPanel;
 begin
   LPanel := NewPanel(ATab, alClient, 0);
   LPanel.BorderWidth := S(6);
   NewLabel(LPanel, TranslateStr(1877, 'The AI reads the schema as the copilot ' +
     'sends it and says what it does not understand: describe the tables and ' +
     'columns it marks.'));
+  // The AI that analyzes (provider, mode and credits, as in the chat); its
+  // progress and its Stop take its place while it works
+  FAISelection := TFRpAISelectionVCL.Create(Self);
+  LAIRow := NewPanel(LPanel, alTop, 0);
+  LAIRow.Height := FAISelection.PreferredHeight + S(6);
+  LAIHost := NewPanel(LAIRow, alLeft, 460);
+  FAISelection.Parent := LAIHost;
+  // alTop as in the chat: the selection sets its own height
+  FAISelection.Align := alTop;
+  FAISelection.OnStopRequest := AISelectionStopRequest;
+  FAISelection.OnProviderChange := AISelectionProviderChange;
   LButtons := NewPanel(LPanel, alTop, 38);
   BAnalyze := NewButton(LButtons, TranslateStr(1876, 'Analyze with AI'),
     BAnalyzeClick, 170);
@@ -834,41 +1133,106 @@ end;
 
 { The file }
 
-procedure TFRpLocalSchemasVCL.LoadFile(ARefresh: Boolean);
+function TFRpLocalSchemasVCL.LoadFile(ARefresh: Boolean): Boolean;
+var
+  LExists: Boolean;
+  LLoaded: TRpLocalSchemaFile;
+  LTask: TRpCatalogReadTask;
+begin
+  Result := True;
+  if not ARefresh then
+  begin
+    LLoaded := TRpLocalSchemaFile.Create;
+    try
+      LExists := LLoaded.LoadFromFile(FFileName);
+    except
+      LLoaded.Free;
+      raise;
+    end;
+    FFile.Free;
+    FFile := LLoaded;
+    if FFile.Alias = '' then
+      FFile.Alias := UpperCase(FDatabase.Alias);
+    if FFile.Dialect = '' then
+      FFile.Dialect := RpLocalDatabaseDialect(FDatabase);
+    // Read from the database (and saved) the first time
+    if LExists then
+      Exit;
+  end;
+  // A large catalog reads again the columns of the tables in use
+  LTask := TRpCatalogReadTask.Create(FReport.Params);
+  RpLocalSchemaKeepList(FFile, LTask.Keep);
+  if not RunRead(LTask, Format(string(TranslateStr(2040,
+    'Reading the catalog of %s')), [FDatabase.Alias])) then
+    Exit(False);
+  try
+    if LTask.Failed then
+      raise Exception.Create(LTask.ErrorText);
+    if ARefresh then
+    begin
+      // In memory, with what is being edited: Save writes it. The relations
+      // pointed to the tables read before
+      FRelations.Clear;
+      FSuggestions.Clear;
+      FEditForeignKey := nil;
+    end;
+    FFile.SetCatalog(LTask.Tables, LTask.Dialect);
+    // The file owns them now
+    LTask.Tables := nil;
+    if FFile.Alias = '' then
+      FFile.Alias := UpperCase(FDatabase.Alias);
+    if not ARefresh then
+      FFile.SaveToFile(FFileName);
+  finally
+    LTask.Free;
+  end;
+end;
+
+function TFRpLocalSchemasVCL.RunRead(ATask: TRpReadTask;
+  const ATitle: string): Boolean;
 var
   LCursor: TCursor;
-  LDialect: string;
-  LLoaded: TRpLocalSchemaFile;
-  LTables: TJSONArray;
+  LForm: TFRpReadProgressVCL;
+  LStart: TDateTime;
+  LCancelled: Boolean;
 begin
+  if FWorker = nil then
+    FWorker := TRpReadWorker.Create(FDatabase);
+  FWorker.Post(ATask);
+  // A fast read shows no window
   LCursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   try
-    try
-      if ARefresh then
-      begin
-        // In memory, with what is being edited: Save writes it
-        LTables := RpReadLocalSchemaCatalog(FDatabase, FReport.Params, LDialect);
-        // The relations point to the tables read before
-        FRelations.Clear;
-        FSuggestions.Clear;
-        FFile.SetCatalog(LTables, LDialect);
-        if FFile.Alias = '' then
-          FFile.Alias := UpperCase(FDatabase.Alias);
-      end
-      else
-      begin
-        // Generated (and saved) the first time
-        LLoaded := RpLoadLocalSchema(FDatabase, FReport.Params, True, False);
-        FFile.Free;
-        FFile := LLoaded;
-      end;
-    finally
-      FDatabase.DisConnect;
-    end;
+    LStart := Now;
+    while not ATask.Done and (MilliSecondsBetween(Now, LStart) < 300) do
+      Sleep(10);
   finally
     Screen.Cursor := LCursor;
   end;
+  LCancelled := False;
+  if not ATask.Done then
+  begin
+    LForm := TFRpReadProgressVCL.CreateFor(Self, ATask, FWorker, ATitle);
+    try
+      LForm.ShowModal;
+      LCancelled := LForm.CancelRequested;
+      if LForm.GivenUp then
+      begin
+        // The worker frees the task when it ends, and then itself: the
+        // next read takes a new one
+        FWorker.Retire;
+        FWorker := nil;
+        Exit(False);
+      end;
+    finally
+      LForm.Free;
+    end;
+  end;
+  // Cancelled (stopped between rows, or read anyway after Cancel): as if
+  // it had not been read
+  Result := not (LCancelled or ATask.Cancelled);
+  if not Result then
+    ATask.Free;
 end;
 
 procedure TFRpLocalSchemasVCL.SaveFile;
@@ -897,6 +1261,13 @@ begin
   LStatus.Visible := LHasSchema;
 end;
 
+procedure TFRpLocalSchemasVCL.ShowAnalysisRunning(ARunning: Boolean);
+begin
+  BStop.Enabled := ARunning;
+  FAISelection.SetInferenceProgress(ARunning);
+  UpdateAnalyzeButton;
+end;
+
 procedure TFRpLocalSchemasVCL.Changed;
 begin
   FModified := True;
@@ -921,10 +1292,11 @@ begin
     FFile.GetTableNames(Result);
 end;
 
-// The plan of the account, not with the AI of an Agent
+// The plan of the account, not with the AI of an Agent (the one chosen in
+// Validation)
 function TFRpLocalSchemasVCL.PlanApplies: Boolean;
 begin
-  Result := (FChat = nil) or not SameText(FChat.GetAITier, 'LocalAgent');
+  Result := (FAISelection = nil) or not SameText(FAISelection.AITier, 'LocalAgent');
 end;
 
 { Filling }
@@ -995,43 +1367,79 @@ begin
     TranslateStr(1854, 'Read from the database') + ': ' + FFile.GeneratedUtc + sLineBreak +
     TranslateStr(1855, 'Tables in the catalog') + ': ' + IntToStr(FFile.TableCount) + sLineBreak +
     TranslateStr(1856, 'Schema file') + ': ' + FFileName;
+  if FFile.UnreadTableCount > 0 then
+    LConnection.Caption := LConnection.Caption + sLineBreak + sLineBreak +
+      Format(string(TranslateStr(2032, 'Large catalog: %s tables. The columns ' +
+      'of a table are read when it is used.')), [IntToStr(FFile.TableCount)]);
 end;
 
 procedure TFRpLocalSchemasVCL.FillTables;
 var
   I: Integer;
-  LNames, LChosen: TStringList;
+  LChosen, LWords: TStringList;
+  LName: string;
+  LTable: TJSONObject;
+
+  function SelectIn(AList: TListBox; ANames: TStrings): Boolean;
+  var
+    LIndex: Integer;
+  begin
+    LIndex := ANames.IndexOf(FTablesTable);
+    Result := (FTablesTable <> '') and (LIndex >= 0);
+    if Result and (LIndex < AList.Count) then
+      AList.Selected[LIndex] := True;
+  end;
+
+  // Every word of the filter in the name or in the description
+  function Matches(const AName: string; ATable: TJSONObject): Boolean;
+  begin
+    Result := (LWords.Count = 0) or RpWordsMatch(LWords, RpFoldText(AName),
+      RpFoldText(JsonText(ATable, 'context')));
+  end;
+
 begin
-  LNames := TStringList.Create;
   LChosen := SchemaTables;
+  LWords := TStringList.Create;
   FUpdating := True;
   try
-    FFile.GetTableNames(LNames);
-    ListAvailable.Items.BeginUpdate;
-    try
-      ListAvailable.Items.Clear;
-      if SelectedSchema <> nil then
-        for I := 0 to LNames.Count - 1 do
-          if (LChosen.IndexOf(LNames[I]) < 0) and
-            MatchesFilter(LNames[I], EFilterAvailable.Text) then
-            ListAvailable.Items.Add(LNames[I]);
-    finally
-      ListAvailable.Items.EndUpdate;
+    // All the tables, walked once: the ones not chosen that match
+    FAvailable.Clear;
+    if SelectedSchema <> nil then
+    begin
+      LChosen.Sorted := True;
+      RpFilterWords(EFilterAvailable.Text, LWords);
+      for I := 0 to FFile.Tables.Count - 1 do
+      begin
+        if not (FFile.Tables.Items[I] is TJSONObject) then
+          Continue;
+        LTable := TJSONObject(FFile.Tables.Items[I]);
+        LName := JsonText(LTable, 'name');
+        if (LName <> '') and (LChosen.IndexOf(LName) < 0) and
+          Matches(LName, LTable) then
+          FAvailable.Add(LName);
+      end;
+      LChosen.Free;
+      LChosen := SchemaTables;
     end;
-    ListChosen.Items.BeginUpdate;
-    try
-      ListChosen.Items.Clear;
-      for I := 0 to LChosen.Count - 1 do
-        if MatchesFilter(LChosen[I], EFilterChosen.Text) then
-          ListChosen.Items.Add(LChosen[I]);
-    finally
-      ListChosen.Items.EndUpdate;
-    end;
+    RpFilterWords(EFilterChosen.Text, LWords);
+    FChosen.Clear;
+    for I := 0 to LChosen.Count - 1 do
+      if Matches(LChosen[I], FFile.FindTable(LChosen[I])) then
+        FChosen.Add(LChosen[I]);
+    ShowList(ListAvailable, FAvailable);
+    ShowList(ListChosen, FChosen);
   finally
     FUpdating := False;
+    LWords.Free;
     LChosen.Free;
-    LNames.Free;
   end;
+  // The table described below is selected in the list it is in, and
+  // forgotten when it is in neither: a new subschema showed the
+  // description of the table chosen before with no table selected, and
+  // typing there changed that table
+  if not SelectIn(ListChosen, FChosen) and
+    not SelectIn(ListAvailable, FAvailable) then
+    FTablesTable := '';
   FillTableContext;
 end;
 
@@ -1058,24 +1466,43 @@ end;
 
 procedure TFRpLocalSchemasVCL.FillColumnTables;
 var
-  LTables: TStringList;
+  I: Integer;
+  LTables, LWords: TStringList;
 begin
   LTables := SchemaTables;
+  LWords := TStringList.Create;
   FUpdating := True;
   try
-    ListColumnTables.Items.Assign(LTables);
+    // The words of the filter in the name or the description
+    RpFilterWords(EFilterColumnTables.Text, LWords);
+    if LWords.Count > 0 then
+      for I := LTables.Count - 1 downto 0 do
+        if not RpWordsMatch(LWords, RpFoldText(LTables[I]),
+          RpFoldText(JsonText(FFile.FindTable(LTables[I]), 'context'))) then
+          LTables.Delete(I);
+    FColumnTables.Assign(LTables);
+    ShowList(ListColumnTables, FColumnTables);
     if LTables.IndexOf(FColumnsTable) < 0 then
     begin
-      if LTables.Count > 0 then
-        FColumnsTable := LTables[0]
-      else
-        FColumnsTable := '';
+      // The first table read: in a large catalog opening the screen reads
+      // nothing (a table is read when it is chosen)
+      FColumnsTable := '';
+      for I := 0 to LTables.Count - 1 do
+        if FFile.ColumnsRead(LTables[I]) then
+        begin
+          FColumnsTable := LTables[I];
+          Break;
+        end;
       FColumn := '';
       ClearPreview;
     end;
-    ListColumnTables.ItemIndex := LTables.IndexOf(FColumnsTable);
+    I := LTables.IndexOf(FColumnsTable);
+    if I >= ListColumnTables.Count then
+      I := -1;
+    ListColumnTables.ItemIndex := I;
   finally
     FUpdating := False;
+    LWords.Free;
     LTables.Free;
   end;
   FillColumns;
@@ -1119,19 +1546,26 @@ end;
 procedure TFRpLocalSchemasVCL.FillColumns;
 var
   I, LIndex: Integer;
-  LNames: TStringList;
+  LNames, LWords: TStringList;
 begin
+  // A table of a large catalog shows its columns once read
+  if (FColumnsTable <> '') and not FFile.ColumnsRead(FColumnsTable) then
+    EnsureTableColumns(FColumnsTable);
   LNames := TStringList.Create;
+  LWords := TStringList.Create;
   FUpdating := True;
   try
     FFile.GetColumnNames(FColumnsTable, LNames);
+    RpFilterWords(EFilterColumns.Text, LWords);
     FShownColumns.Clear;
     CheckColumns.Items.BeginUpdate;
     try
       CheckColumns.Items.Clear;
       for I := 0 to LNames.Count - 1 do
       begin
-        if not MatchesFilter(LNames[I], EFilterColumns.Text) then
+        if (LWords.Count > 0) and not RpWordsMatch(LWords,
+          RpFoldText(LNames[I]), RpFoldText(JsonText(FFile.FindColumn(
+          FColumnsTable, LNames[I]), 'context'))) then
           Continue;
         LIndex := CheckColumns.Items.Add(ColumnCaption(LNames[I]));
         FShownColumns.Add(LNames[I]);
@@ -1146,6 +1580,7 @@ begin
     CheckColumns.ItemIndex := FShownColumns.IndexOf(FColumn);
   finally
     FUpdating := False;
+    LWords.Free;
     LNames.Free;
   end;
   FillColumnDetails;
@@ -1260,9 +1695,15 @@ begin
       ListSuggestions.Items.EndUpdate;
     end;
     BComplete.Enabled := FSuggestions.Count > 0;
+    BDiscard.Enabled := False;
+    BDeleteSuggestion.Enabled := False;
     MemoRelationContext.Text := '';
     MemoRelationContext.Enabled := False;
     BDeleteRelation.Enabled := False;
+    // The relation being changed may be gone: chosen again to change it
+    FEditSource := '';
+    FEditForeignKey := nil;
+    BUpdateRelation.Enabled := False;
   finally
     FUpdating := False;
   end;
@@ -1270,15 +1711,26 @@ end;
 
 procedure TFRpLocalSchemasVCL.FillRelationTables;
 var
+  I: Integer;
   LTables: TStringList;
 begin
   // From a table of the subschema to any table of the dictionary (Add
-  // relation brings the target, as Complete does)
+  // relation brings the target, as Complete does). In a large catalog, the
+  // tables read (100.000 items in a combo take seconds and can not be
+  // used): a table is read when it is added or chosen in Columns
   LTables := SchemaTables;
   try
+    if FFile.UnreadTableCount > 0 then
+      for I := LTables.Count - 1 downto 0 do
+        if not FFile.ColumnsRead(LTables[I]) then
+          LTables.Delete(I);
     LTables.Sort;
     ComboSource.Items.Assign(LTables);
     FFile.GetTableNames(LTables);
+    if FFile.UnreadTableCount > 0 then
+      for I := LTables.Count - 1 downto 0 do
+        if not FFile.ColumnsRead(LTables[I]) then
+          LTables.Delete(I);
     LTables.Sort;
     ComboTarget.Items.Assign(LTables);
     ComboSourceColumn.Items.Clear;
@@ -1451,15 +1903,126 @@ begin
   end;
 end;
 
+{ The values of the templates }
+
+// The value of a placeholder of the templates of a schema to import that
+// the catalog has several values of, chosen by the user: '' when cancelled
+function ChooseTemplateValue(AOwner: TComponent; const APlaceholder: string;
+  AValues: TStrings): string;
+var
+  LBottom, LButtons: TPanel;
+  LButton: TButton;
+  LForm: TForm;
+  LLabel: TLabel;
+  LList: TListBox;
+
+  function S(AValue: Integer): Integer;
+  begin
+    Result := (AValue * Screen.PixelsPerInch) div 96;
+  end;
+
+begin
+  Result := '';
+  LForm := TForm.CreateNew(AOwner);
+  try
+    LForm.Caption := string(TranslateStr(2029, 'Template value'));
+    LForm.Position := poScreenCenter;
+    LForm.BorderIcons := [biSystemMenu];
+    LForm.Width := S(460);
+    LForm.Height := S(320);
+    LForm.Constraints.MinWidth := S(320);
+    LForm.Constraints.MinHeight := S(220);
+    LBottom := TPanel.Create(LForm);
+    LBottom.Parent := LForm;
+    LBottom.BevelOuter := bvNone;
+    LBottom.Caption := '';
+    LBottom.Align := alBottom;
+    LBottom.Height := S(44);
+    LButtons := TPanel.Create(LForm);
+    LButtons.Parent := LBottom;
+    LButtons.BevelOuter := bvNone;
+    LButtons.Caption := '';
+    LButtons.Align := alRight;
+    LButtons.Width := S(216);
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(93, 'OK'));
+    LButton.ModalResult := mrOk;
+    LButton.Default := True;
+    LButton.SetBounds(S(4), S(9), S(96), S(26));
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(94, 'Cancel'));
+    LButton.ModalResult := mrCancel;
+    LButton.Cancel := True;
+    LButton.SetBounds(S(110), S(9), S(96), S(26));
+    LLabel := TLabel.Create(LForm);
+    LLabel.Parent := LForm;
+    LLabel.Align := alTop;
+    LLabel.AlignWithMargins := True;
+    LLabel.Margins.SetBounds(S(10), S(10), S(10), S(4));
+    LLabel.AutoSize := False;
+    LLabel.WordWrap := True;
+    LLabel.Height := S(54);
+    LLabel.Caption := Format(string(TranslateStr(2030, 'The schema builds ' +
+      'the names of its tables with %s, and this database has several ' +
+      'values. Choose one:')), ['{' + APlaceholder + '}']);
+    LList := TListBox.Create(LForm);
+    LList.Parent := LForm;
+    LList.Align := alClient;
+    LList.AlignWithMargins := True;
+    LList.Margins.SetBounds(S(10), S(4), S(10), S(0));
+    LList.Items.Assign(AValues);
+    LList.ItemIndex := 0;
+    if (LForm.ShowModal = mrOk) and (LList.ItemIndex >= 0) then
+      Result := LList.Items[LList.ItemIndex];
+  finally
+    LForm.Free;
+  end;
+end;
+
+// AChosen gets the values for the templates of a schema to import that the
+// catalog has several values of ('NAME=value'): the user chooses them, the
+// others are not asked. False when the user cancels one
+function ChooseTemplateValues(AOwner: TComponent; AFile: TRpLocalSchemaFile;
+  const AJson: string; AChosen: TStrings): Boolean;
+var
+  I: Integer;
+  LNames, LValues: TStringList;
+  LValue: string;
+begin
+  Result := True;
+  AChosen.Clear;
+  LNames := TStringList.Create;
+  LValues := TStringList.Create;
+  try
+    RpImportPlaceholders(AFile, AJson, LNames);
+    for I := 0 to LNames.Count - 1 do
+    begin
+      RpImportPlaceholderValues(AFile, AJson, LNames[I], LValues);
+      if LValues.Count < 2 then
+        Continue;
+      LValue := ChooseTemplateValue(AOwner, LNames[I], LValues);
+      if LValue = '' then
+        Exit(False);
+      AChosen.Add(LNames[I] + '=' + LValue);
+    end;
+  finally
+    LValues.Free;
+    LNames.Free;
+  end;
+end;
+
 procedure TFRpLocalSchemasVCL.BImportClick(Sender: TObject);
 var
   LCount: Integer;
   LDialog: TOpenDialog;
-  LName: string;
-  LSkipped: TStringList;
+  LJson, LName: string;
+  LSkipped, LValues: TStringList;
 begin
   LDialog := TOpenDialog.Create(Self);
   LSkipped := TStringList.Create;
+  LValues := TStringList.Create;
   try
     LDialog.Title := DialogTitle(BImport.Caption);
     LDialog.Filter := SchemaFileFilter;
@@ -1467,22 +2030,213 @@ begin
     LDialog.Options := LDialog.Options + [ofFileMustExist];
     if not LDialog.Execute then
       Exit;
-    LCount := RpImportSchemaFile(FFile, LDialog.FileName, LName, LSkipped);
+    LJson := RpReadSchemaFile(LDialog.FileName);
+    if not ChooseTemplateValues(Self, FFile, LJson, LValues) then
+      Exit;
+    // A large catalog reads the columns of the tables it uses first
+    RpImportTableNames(FFile, LJson, LValues, LSkipped);
+    if not EnsureColumns(LSkipped) then
+      Exit;
+    LCount := RpImportSchemaJson(FFile, LJson, LDialog.FileName, LName,
+      LSkipped, LValues);
     if LCount < 0 then
     begin
       RpMessageBox(string(TranslateStr(1938,
         'The file is not a schema exported by Reportman AI.')), '', [smbOK], smsCritical);
       Exit;
     end;
-    ImportDone(LCount, LName, LSkipped);
+    ImportDone(LCount, LName, LSkipped, LValues);
   finally
+    LValues.Free;
     LSkipped.Free;
     LDialog.Free;
   end;
 end;
 
+{ Export all / Import all (spec X) }
+
+// What Import all does when the connection has something written already:
+// 0 cancel, 1 merge, 2 replace
+function ChooseImportAllMode(AOwner: TComponent; AHave, ABrings: Integer): Integer;
+var
+  LBottom, LButtons: TPanel;
+  LButton: TButton;
+  LForm: TForm;
+  LLabel: TLabel;
+
+  function S(AValue: Integer): Integer;
+  begin
+    Result := (AValue * Screen.PixelsPerInch) div 96;
+  end;
+
+  // Below the ones before it: a Top past them before aligning (the same
+  // order in both designers)
+  function NewText(const AText: string; AHeight: Integer): TLabel;
+  begin
+    Result := TLabel.Create(LForm);
+    Result.Parent := LForm;
+    Result.Top := LForm.ClientHeight;
+    Result.Align := alTop;
+    Result.AlignWithMargins := True;
+    Result.Margins.SetBounds(S(10), S(10), S(10), S(0));
+    Result.AutoSize := False;
+    Result.WordWrap := True;
+    Result.Height := S(AHeight);
+    Result.Caption := AText;
+  end;
+
+begin
+  Result := 0;
+  LForm := TForm.CreateNew(AOwner);
+  try
+    LForm.Caption := StringReplace(string(TranslateStr(2044, 'Import all...')),
+      '...', '', []);
+    LForm.Position := poScreenCenter;
+    LForm.BorderIcons := [biSystemMenu];
+    LForm.Width := S(520);
+    LForm.Height := S(300);
+    LForm.Constraints.MinWidth := S(420);
+    LForm.Constraints.MinHeight := S(260);
+    LBottom := TPanel.Create(LForm);
+    LBottom.Parent := LForm;
+    LBottom.BevelOuter := bvNone;
+    LBottom.Caption := '';
+    LBottom.Align := alBottom;
+    LBottom.Height := S(44);
+    LButtons := TPanel.Create(LForm);
+    LButtons.Parent := LBottom;
+    LButtons.BevelOuter := bvNone;
+    LButtons.Caption := '';
+    LButtons.Align := alRight;
+    LButtons.Width := S(326);
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(2048, 'Merge'));
+    LButton.ModalResult := mrYes;
+    LButton.Default := True;
+    LButton.SetBounds(S(4), S(9), S(100), S(26));
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(2049, 'Replace'));
+    LButton.ModalResult := mrNo;
+    LButton.SetBounds(S(112), S(9), S(100), S(26));
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(94, 'Cancel'));
+    LButton.ModalResult := mrCancel;
+    LButton.Cancel := True;
+    LButton.SetBounds(S(220), S(9), S(100), S(26));
+    // The question, then what each answer does
+    LLabel := NewText(Format(string(TranslateStr(2047, 'This connection ' +
+      'already has local schemas (%s subschemas) and the file brings %s. What ' +
+      'do you want to do?')), [IntToStr(AHave), IntToStr(ABrings)]), 40);
+    LLabel.Font.Style := [fsBold];
+    NewText(string(TranslateStr(2050, 'Merge: the subschemas of the ' +
+      'file are added, and one with the name of one you have replaces it. In ' +
+      'descriptions and allowed values the file wins where it has them; the ' +
+      'rest of yours stays.')), 54);
+    NewText(string(TranslateStr(2051, 'Replace: your subschemas, ' +
+      'descriptions, allowed values and relations by hand go, and those of the ' +
+      'file come in. The tables and columns are always those of this database.')), 54);
+    case LForm.ShowModal of
+      mrYes:
+        Result := 1;
+      mrNo:
+        Result := 2;
+    end;
+  finally
+    LForm.Free;
+  end;
+end;
+
+procedure TFRpLocalSchemasVCL.BExportAllClick(Sender: TObject);
+var
+  LDialog: TSaveDialog;
+begin
+  if FFile.Alias = '' then
+    FFile.Alias := UpperCase(FDatabase.Alias);
+  LDialog := TSaveDialog.Create(Self);
+  try
+    LDialog.Title := DialogTitle(BExportAll.Caption);
+    LDialog.Filter := SchemaFileFilter;
+    LDialog.DefaultExt := 'json';
+    // The name of the file of the connection (dbxschemas/<ALIAS>.json)
+    LDialog.FileName := ExtractFileName(RpLocalSchemaFileName(FDatabase));
+    LDialog.Options := LDialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not LDialog.Execute then
+      Exit;
+    // What is on screen, saved or not
+    RpExportAllToFile(FFile, LDialog.FileName);
+    ShowInfo(Format(string(TranslateStr(1935, 'Exported to %s.')),
+      [LDialog.FileName]));
+  finally
+    LDialog.Free;
+  end;
+end;
+
+procedure TFRpLocalSchemasVCL.BImportAllClick(Sender: TObject);
+var
+  LAdded, LReplaced, LMode: Integer;
+  LDialog: TOpenDialog;
+  LJson, LText: string;
+  LNames, LSkipped: TStringList;
+begin
+  ShowInfo('');
+  LDialog := TOpenDialog.Create(Self);
+  LNames := TStringList.Create;
+  LSkipped := TStringList.Create;
+  try
+    LDialog.Title := DialogTitle(BImportAll.Caption);
+    LDialog.Filter := SchemaFileFilter;
+    LDialog.DefaultExt := 'json';
+    LDialog.Options := LDialog.Options + [ofFileMustExist];
+    if not LDialog.Execute then
+      Exit;
+    LJson := RpReadSchemaFile(LDialog.FileName);
+    if not RpIsLocalSchemaFileJson(LJson) then
+    begin
+      RpMessageBox(string(TranslateStr(2053, 'The file is not a file of ' +
+        'local schemas saved with Export all (a subschema is brought with ' +
+        'Import...).')), '', [smbOK], smsCritical);
+      Exit;
+    end;
+    RpImportAllSchemaNames(LJson, LNames);
+    // Something written here already: merge, replace or nothing
+    LMode := 1;
+    if RpLocalSchemaHasContent(FFile) then
+      LMode := ChooseImportAllMode(Self, FFile.SchemaCount, LNames.Count);
+    if LMode = 0 then
+      Exit;
+    // A large catalog reads the columns of the tables of the file first
+    RpImportAllUnreadTables(FFile, LJson, LSkipped);
+    if not EnsureColumns(LSkipped) then
+      Exit;
+    LSkipped.Clear;
+    RpImportAllSchemas(FFile, LJson, LMode = 2, LSkipped, LAdded, LReplaced);
+    // Not saved: Save writes it, closing asks
+    FModified := True;
+    if LNames.Count > 0 then
+      FillSchemas(LNames[0])
+    else
+      FillSchemas('');
+    LText := Format(string(TranslateStr(2052, 'Imported %s subschemas (%s ' +
+      'replaced one with the same name). Save to keep them.')),
+      [IntToStr(LAdded), IntToStr(LReplaced)]);
+    if LSkipped.Count > 0 then
+      LText := LText + ' ' + Format(string(TranslateStr(1937,
+        'Not in the database, not imported: %s')), [RpShortNameList(LSkipped, 8)]);
+    ShowInfo(LText);
+    if LSkipped.Count > 0 then
+      RpMessageBox(LText);
+  finally
+    LSkipped.Free;
+    LNames.Free;
+    LDialog.Free;
+  end;
+end;
+
 procedure TFRpLocalSchemasVCL.ImportDone(ACount: Integer; const AName: string;
-  ASkipped: TStrings);
+  ASkipped, AValues: TStrings);
 var
   LText: string;
 begin
@@ -1501,36 +2255,51 @@ begin
   Pages.ActivePageIndex := 1;
   LText := Format(string(TranslateStr(1936,
     'Imported as %s: %s tables. Save to keep it.')), [AName, IntToStr(ACount)]);
+  // The values a template took (the company of a Dynamics BC) are said with
+  // what was left out
+  if AValues.Count > 0 then
+    LText := LText + ' ' + Format(string(TranslateStr(2031,
+      'Template values: %s')), [RpTemplateValuesText(AValues)]) + '.';
   if ASkipped.Count > 0 then
-  begin
     LText := LText + ' ' + Format(string(TranslateStr(1937,
       'Not in the database, not imported: %s')), [RpShortNameList(ASkipped, 8)]);
-    ShowInfo(LText);
+  ShowInfo(LText);
+  if (ASkipped.Count > 0) or (AValues.Count > 0) then
     RpMessageBox(LText);
-  end
-  else
-    ShowInfo(LText);
 end;
 
 { The library of Reportman AI }
 
 type
-  // The categories of the library and their schemas: one is chosen
+  // The categories of the library and their schemas: one is chosen. Each
+  // schema says how many of its tables this database has, and the one that
+  // matches it best is chosen at first (spec D2)
   TFRpSchemaLibraryVCL = class(TForm)
   private
     FLibrary: TJSONArray;
+    // 'id=matched,total' of the schemas read
+    FCoverage: TStringList;
     ComboCategory: TComboBox;
     LDescription: TLabel;
+    LDetected: TLabel;
+    LSchemaLabel: TLabel;
     ListSchemas: TListView;
     BOK: TButton;
     function S(AValue: Integer): Integer;
+    function Coverage(ASchema: TJSONObject; out AMatched,
+      ATotal: Integer): Boolean;
+    procedure ChooseDetected;
     procedure FillSchemas;
     procedure ComboCategoryChange(Sender: TObject);
     procedure ListSchemasSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure ListSchemasDblClick(Sender: TObject);
   public
-    constructor CreateFor(AOwner: TComponent; ALibrary: TJSONArray);
+    // AIds and AFullSchemas: the schemas read and their fullSchema, to
+    // measure them against the catalog of AFile
+    constructor CreateFor(AOwner: TComponent; ALibrary: TJSONArray;
+      AFile: TRpLocalSchemaFile; AIds, AFullSchemas: TStrings);
+    destructor Destroy; override;
     function SelectedId: Int64;
     function SelectedName: string;
   end;
@@ -1541,9 +2310,10 @@ begin
 end;
 
 constructor TFRpSchemaLibraryVCL.CreateFor(AOwner: TComponent;
-  ALibrary: TJSONArray);
+  ALibrary: TJSONArray; AFile: TRpLocalSchemaFile; AIds,
+  AFullSchemas: TStrings);
 var
-  I: Integer;
+  I, LMatched, LTotal: Integer;
   LTop, LBottom, LButtons: TPanel;
   LLabel: TLabel;
   LColumn: TListColumn;
@@ -1551,11 +2321,17 @@ var
 begin
   inherited CreateNew(AOwner);
   FLibrary := ALibrary;
+  FCoverage := TStringList.Create;
+  for I := 0 to AIds.Count - 1 do
+  begin
+    RpImportCoverage(AFile, AFullSchemas[I], LMatched, LTotal);
+    FCoverage.Add(AIds[I] + '=' + IntToStr(LMatched) + ',' + IntToStr(LTotal));
+  end;
   Caption := string(TranslateStr(1988, 'Schema library'));
   Position := poScreenCenter;
   BorderIcons := [biSystemMenu];
-  Width := S(560);
-  Height := S(440);
+  Width := S(620);
+  Height := S(460);
   Constraints.MinWidth := S(420);
   Constraints.MinHeight := S(320);
   // Bottom: OK and Cancel at the right
@@ -1612,11 +2388,21 @@ begin
   LDescription.Height := S(30);
   LDescription.Top := S(2000);
   LDescription.Align := alTop;
-  LLabel := TLabel.Create(Self);
-  LLabel.Parent := LTop;
-  LLabel.Caption := string(TranslateStr(1528, 'Schema'));
-  LLabel.Top := S(3000);
-  LLabel.Align := alTop;
+  // The schema that matches this database (ChooseDetected)
+  LDetected := TLabel.Create(Self);
+  LDetected.Parent := LTop;
+  LDetected.AutoSize := False;
+  LDetected.WordWrap := True;
+  LDetected.Font.Style := [fsBold];
+  LDetected.Height := S(22);
+  LDetected.Top := S(2500);
+  LDetected.Align := alTop;
+  LDetected.Visible := False;
+  LSchemaLabel := TLabel.Create(Self);
+  LSchemaLabel.Parent := LTop;
+  LSchemaLabel.Caption := string(TranslateStr(1528, 'Schema'));
+  LSchemaLabel.Top := S(3000);
+  LSchemaLabel.Align := alTop;
   ListSchemas := TListView.Create(Self);
   ListSchemas.Parent := Self;
   ListSchemas.Align := alClient;
@@ -1629,10 +2415,13 @@ begin
   ListSchemas.HideSelection := False;
   LColumn := ListSchemas.Columns.Add;
   LColumn.Caption := string(TranslateStr(544, 'Name'));
-  LColumn.Width := S(380);
+  LColumn.Width := S(310);
   LColumn := ListSchemas.Columns.Add;
   LColumn.Caption := string(TranslateStr(91, 'Version'));
-  LColumn.Width := S(110);
+  LColumn.Width := S(90);
+  LColumn := ListSchemas.Columns.Add;
+  LColumn.Caption := string(TranslateStr(2026, 'In this database'));
+  LColumn.Width := S(150);
   ListSchemas.OnSelectItem := ListSchemasSelectItem;
   ListSchemas.OnDblClick := ListSchemasDblClick;
   for I := 0 to FLibrary.Count - 1 do
@@ -1642,11 +2431,94 @@ begin
   if ComboCategory.Items.Count > 0 then
     ComboCategory.ItemIndex := 0;
   FillSchemas;
+  ChooseDetected;
+  if LDetected.Visible then
+    LTop.Height := LTop.Height + LDetected.Height;
+end;
+
+destructor TFRpSchemaLibraryVCL.Destroy;
+begin
+  FCoverage.Free;
+  inherited Destroy;
+end;
+
+function TFRpSchemaLibraryVCL.Coverage(ASchema: TJSONObject; out AMatched,
+  ATotal: Integer): Boolean;
+var
+  LText: string;
+begin
+  AMatched := 0;
+  ATotal := 0;
+  LText := FCoverage.Values[JsonText(ASchema, 'id')];
+  Result := LText <> '';
+  if Result then
+  begin
+    AMatched := StrToIntDef(Copy(LText, 1, Pos(',', LText) - 1), 0);
+    ATotal := StrToIntDef(Copy(LText, Pos(',', LText) + 1, Length(LText)), 0);
+  end;
+end;
+
+// The schema written for this database chosen, and said: the detected one
+// with more tables in it, then the one with more of its own, then the first
+// in the library
+procedure TFRpSchemaLibraryVCL.ChooseDetected;
+var
+  I, J, LBestCategory, LBestMatched, LBestTotal, LMatched, LTotal: Integer;
+  LBest, LSchema: TJSONObject;
+  LSchemas: TJSONValue;
+begin
+  LBest := nil;
+  LBestCategory := -1;
+  LBestMatched := 0;
+  LBestTotal := 1;
+  for I := 0 to ComboCategory.Items.Count - 1 do
+  begin
+    LSchemas := TJSONObject(ComboCategory.Items.Objects[I]).Values['schemas'];
+    if not (LSchemas is TJSONArray) then
+      Continue;
+    for J := 0 to TJSONArray(LSchemas).Count - 1 do
+    begin
+      if not (TJSONArray(LSchemas).Items[J] is TJSONObject) then
+        Continue;
+      LSchema := TJSONObject(TJSONArray(LSchemas).Items[J]);
+      if not Coverage(LSchema, LMatched, LTotal) or
+        not RpImportCoverageDetected(LMatched, LTotal) then
+        Continue;
+      if (LMatched > LBestMatched) or ((LMatched = LBestMatched) and
+        (LMatched * LBestTotal > LBestMatched * LTotal)) then
+      begin
+        LBest := LSchema;
+        LBestCategory := I;
+        LBestMatched := LMatched;
+        LBestTotal := LTotal;
+      end;
+    end;
+  end;
+  if LBest = nil then
+    Exit;
+  ComboCategory.ItemIndex := LBestCategory;
+  FillSchemas;
+  for I := 0 to ListSchemas.Items.Count - 1 do
+    if ListSchemas.Items[I].Data = Pointer(LBest) then
+    begin
+      ListSchemas.Items[I].Selected := True;
+      ListSchemas.Items[I].Focused := True;
+      Break;
+    end;
+  LDetected.Caption := Format(string(TranslateStr(2028, 'Detected: %s, ' +
+    'schema %s (%s of %s tables are in this database)')),
+    [ComboCategory.Items[LBestCategory], JsonText(LBest, 'name'),
+    IntToStr(LBestMatched), IntToStr(LBestTotal)]);
+  // Shown above "Schema" (a control of alTop shown later goes where its Top
+  // says)
+  LDetected.Top := LSchemaLabel.Top - 1;
+  LDetected.Visible := True;
+  BOK.Enabled := ListSchemas.Selected <> nil;
 end;
 
 procedure TFRpSchemaLibraryVCL.FillSchemas;
 var
-  I: Integer;
+  I, LMatched, LTotal: Integer;
   LCategory, LSchema: TJSONObject;
   LSchemas: TJSONValue;
   LItem: TListItem;
@@ -1670,6 +2542,11 @@ begin
       LItem := ListSchemas.Items.Add;
       LItem.Caption := JsonText(LSchema, 'name');
       LItem.SubItems.Add(JsonText(LSchema, 'version'));
+      if Coverage(LSchema, LMatched, LTotal) then
+        LItem.SubItems.Add(Format(string(TranslateStr(2027, '%s of %s')),
+          [IntToStr(LMatched), IntToStr(LTotal)]))
+      else
+        LItem.SubItems.Add('');
       LItem.Data := Pointer(LSchema);
     end;
   finally
@@ -1710,21 +2587,58 @@ begin
     Result := ListSchemas.Selected.Caption;
 end;
 
+// The schemas of the library read (AIds, their fullSchema in AFullSchemas),
+// to say how many of their tables each database has: one that can not be
+// read says nothing, and is read again if it is chosen
+procedure ReadLibrarySchemas(AHttp: TRpDatabaseHttp; ALibrary: TJSONArray;
+  AIds, AFullSchemas: TStrings);
+var
+  I, J: Integer;
+  LId: string;
+  LSchemas: TJSONValue;
+begin
+  for I := 0 to ALibrary.Count - 1 do
+  begin
+    if not (ALibrary.Items[I] is TJSONObject) then
+      Continue;
+    LSchemas := TJSONObject(ALibrary.Items[I]).Values['schemas'];
+    if not (LSchemas is TJSONArray) then
+      Continue;
+    for J := 0 to TJSONArray(LSchemas).Count - 1 do
+    begin
+      if not (TJSONArray(LSchemas).Items[J] is TJSONObject) then
+        Continue;
+      LId := JsonText(TJSONObject(TJSONArray(LSchemas).Items[J]), 'id');
+      if (StrToInt64Def(LId, 0) <= 0) or (AIds.IndexOf(LId) >= 0) then
+        Continue;
+      try
+        AFullSchemas.Add(AHttp.GetLibrarySchema(StrToInt64(LId)));
+        AIds.Add(LId);
+      except
+        // Without its coverage
+      end;
+    end;
+  end;
+end;
+
 procedure TFRpLocalSchemasVCL.BLibraryClick(Sender: TObject);
 var
-  LCount: Integer;
+  LCount, LIndex: Integer;
   LCursor: TCursor;
   LDialog: TFRpSchemaLibraryVCL;
   LFullSchema, LName, LSchemaName: string;
   LHttp: TRpDatabaseHttp;
   LId: Int64;
   LLibrary: TJSONArray;
-  LSkipped: TStringList;
+  LFullSchemas, LIds, LSkipped, LValues: TStringList;
 begin
   ShowInfo('');
   LLibrary := nil;
   LHttp := TRpDatabaseHttp.Create;
   LSkipped := TStringList.Create;
+  LValues := TStringList.Create;
+  LIds := TStringList.Create;
+  LFullSchemas := TStringList.Create;
   try
     LHttp.Token := TRpAuthManager.Instance.Token;
     LHttp.InstallId := TRpAuthManager.Instance.InstallId;
@@ -1743,10 +2657,12 @@ begin
           Exit;
         end;
       end;
+      ReadLibrarySchemas(LHttp, LLibrary, LIds, LFullSchemas);
     finally
       Screen.Cursor := LCursor;
     end;
-    LDialog := TFRpSchemaLibraryVCL.CreateFor(Self, LLibrary);
+    LDialog := TFRpSchemaLibraryVCL.CreateFor(Self, LLibrary, FFile, LIds,
+      LFullSchemas);
     try
       if LDialog.ShowModal <> mrOk then
         Exit;
@@ -1757,26 +2673,40 @@ begin
     end;
     if LId <= 0 then
       Exit;
-    Screen.Cursor := crHourGlass;
-    try
+    LIndex := LIds.IndexOf(IntToStr(LId));
+    if LIndex >= 0 then
+      LFullSchema := LFullSchemas[LIndex]
+    else
+    begin
+      Screen.Cursor := crHourGlass;
       try
-        LFullSchema := LHttp.GetLibrarySchema(LId);
-      except
-        on E: Exception do
-        begin
-          Screen.Cursor := LCursor;
-          RpMessageBox(Format(string(TranslateStr(1989,
-            'The library could not be read: %s')), [E.Message]), '', [smbOK],
-            smsCritical);
-          Exit;
+        try
+          LFullSchema := LHttp.GetLibrarySchema(LId);
+        except
+          on E: Exception do
+          begin
+            Screen.Cursor := LCursor;
+            RpMessageBox(Format(string(TranslateStr(1989,
+              'The library could not be read: %s')), [E.Message]), '', [smbOK],
+              smsCritical);
+            Exit;
+          end;
         end;
+      finally
+        Screen.Cursor := LCursor;
       end;
-    finally
-      Screen.Cursor := LCursor;
     end;
+    // The values of its templates (the company of a Dynamics BC), when the
+    // catalog has several
+    if not ChooseTemplateValues(Self, FFile, LFullSchema, LValues) then
+      Exit;
+    // A large catalog reads the columns of the tables it uses first
+    RpImportTableNames(FFile, LFullSchema, LValues, LSkipped);
+    if not EnsureColumns(LSkipped) then
+      Exit;
     // The import of a file (F7), named after the schema of the library
     LCount := RpImportLibrarySchemaJson(FFile, LFullSchema, LSchemaName, LName,
-      LSkipped);
+      LSkipped, LValues);
     if LCount < 0 then
     begin
       RpMessageBox(Format(string(TranslateStr(1989,
@@ -1785,8 +2715,11 @@ begin
         smsCritical);
       Exit;
     end;
-    ImportDone(LCount, LName, LSkipped);
+    ImportDone(LCount, LName, LSkipped, LValues);
   finally
+    LFullSchemas.Free;
+    LIds.Free;
+    LValues.Free;
     LSkipped.Free;
     LHttp.Free;
     LLibrary.Free;
@@ -1810,7 +2743,8 @@ begin
   LSelected := '';
   if SelectedSchema <> nil then
     LSelected := SelectedSchema.Name;
-  LoadFile(True);
+  if not LoadFile(True) then
+    Exit;
   FModified := True;
   FillSchemas(LSelected);
 end;
@@ -1826,12 +2760,22 @@ end;
 procedure TFRpLocalSchemasVCL.BAddTableClick(Sender: TObject);
 var
   I: Integer;
+  LAdded: TStringList;
 begin
   if SelectedSchema = nil then
     Exit;
-  for I := 0 to ListAvailable.Items.Count - 1 do
-    if ListAvailable.Selected[I] then
-      FFile.AddSchemaTable(SelectedSchema, ListAvailable.Items[I]);
+  LAdded := TStringList.Create;
+  try
+    for I := 0 to ListAvailable.Count - 1 do
+      if ListAvailable.Selected[I] then
+        LAdded.Add(FAvailable[I]);
+    // A table of a large catalog comes in with its columns
+    EnsureColumns(LAdded);
+    for I := 0 to LAdded.Count - 1 do
+      FFile.AddSchemaTable(SelectedSchema, LAdded[I]);
+  finally
+    LAdded.Free;
+  end;
   Changed;
   FillTables;
   FillColumnTables;
@@ -1845,9 +2789,9 @@ var
 begin
   if SelectedSchema = nil then
     Exit;
-  for I := 0 to ListChosen.Items.Count - 1 do
+  for I := ListChosen.Count - 1 downto 0 do
     if ListChosen.Selected[I] then
-      FFile.RemoveSchemaTable(SelectedSchema, ListChosen.Items[I]);
+      FFile.RemoveSchemaTable(SelectedSchema, FChosen[I]);
   Changed;
   FillTables;
   FillColumnTables;
@@ -1864,8 +2808,94 @@ begin
   LList := TListBox(Sender);
   if LList.ItemIndex < 0 then
     Exit;
-  FTablesTable := LList.Items[LList.ItemIndex];
+  if LList = ListChosen then
+    FTablesTable := FChosen[LList.ItemIndex]
+  else
+    FTablesTable := FAvailable[LList.ItemIndex];
   FillTableContext;
+end;
+
+procedure TFRpLocalSchemasVCL.ShowList(AList: TListBox; ANames: TStrings);
+begin
+  AList.Count := 0;
+  AList.Count := ANames.Count;
+end;
+
+procedure TFRpLocalSchemasVCL.FilterColumnTablesChange(Sender: TObject);
+begin
+  if not FUpdating then
+    FillColumnTables;
+end;
+
+procedure TFRpLocalSchemasVCL.ListAvailableData(Control: TWinControl;
+  Index: Integer; var Data: string);
+begin
+  if (Index >= 0) and (Index < FAvailable.Count) then
+    Data := FAvailable[Index];
+end;
+
+procedure TFRpLocalSchemasVCL.ListChosenData(Control: TWinControl;
+  Index: Integer; var Data: string);
+begin
+  if (Index >= 0) and (Index < FChosen.Count) then
+    Data := FChosen[Index];
+end;
+
+procedure TFRpLocalSchemasVCL.ListColumnTablesData(Control: TWinControl;
+  Index: Integer; var Data: string);
+begin
+  if (Index >= 0) and (Index < FColumnTables.Count) then
+    Data := FColumnTables[Index];
+end;
+
+function TFRpLocalSchemasVCL.EnsureColumns(ANames: TStrings): Boolean;
+var
+  LTask: TRpColumnsReadTask;
+  LUnread: TStringList;
+begin
+  Result := True;
+  LUnread := TStringList.Create;
+  try
+    FFile.GetUnreadTables(ANames, LUnread);
+    if LUnread.Count = 0 then
+      Exit;
+    LTask := TRpColumnsReadTask.Create(FReport.Params);
+    LTask.Names.Assign(LUnread);
+    // A cancel leaves the tables unread, and says nothing
+    if not RunRead(LTask, Format(string(TranslateStr(2033,
+      'Reading the columns of %s...')), [RpShortNameList(LUnread, 5)])) then
+      Exit(False);
+    try
+      if LTask.Failed then
+      begin
+        Result := False;
+        RpMessageBox(Format(string(TranslateStr(2036, 'The columns of %s ' +
+          'could not be read: %s')), [RpShortNameList(LUnread, 5),
+          LTask.ErrorText]), '', [smbOK], smsCritical);
+        Exit;
+      end;
+      // What was read is not a change of the person: it is saved with the
+      // next one, and read again otherwise
+      FFile.MergeColumns(LTask.Tables);
+    finally
+      LTask.Free;
+    end;
+  finally
+    LUnread.Free;
+  end;
+end;
+
+function TFRpLocalSchemasVCL.EnsureTableColumns(const ATable: string): Boolean;
+var
+  LNames: TStringList;
+begin
+  LNames := TStringList.Create;
+  try
+    LNames.Add(ATable);
+    Result := EnsureColumns(LNames);
+  finally
+    LNames.Free;
+  end;
 end;
 
 procedure TFRpLocalSchemasVCL.MemoTableContextChange(Sender: TObject);
@@ -1882,7 +2912,7 @@ procedure TFRpLocalSchemasVCL.ListColumnTablesClick(Sender: TObject);
 begin
   if FUpdating or (ListColumnTables.ItemIndex < 0) then
     Exit;
-  FColumnsTable := ListColumnTables.Items[ListColumnTables.ItemIndex];
+  FColumnsTable := FColumnTables[ListColumnTables.ItemIndex];
   FColumn := '';
   ClearPreview;
   FillColumns;
@@ -1991,15 +3021,37 @@ procedure TFRpLocalSchemasVCL.GridValuesSetEditText(Sender: TObject; ACol,
 begin
   if FUpdating then
     Exit;
-  GridValues.Cells[ACol, ARow] := Value;
+  // The grid already has the text in the cell: assigning it again reloaded
+  // the editor with its text selected, so every key replaced the text
+  // typed before it and only the last character of a value was kept
   SaveAllowedValues;
+end;
+
+// The two columns fill the grid: wider than it, editing the label scrolled
+// the value out of sight
+procedure TFRpLocalSchemasVCL.GridValuesFit(Sender: TObject);
+var
+  LWidth: Integer;
+begin
+  LWidth := GridValues.ClientWidth - 2 * GridValues.GridLineWidth;
+  if LWidth < S(120) then
+    Exit;
+  GridValues.ColWidths[0] := LWidth * 35 div 100;
+  GridValues.ColWidths[1] := LWidth - GridValues.ColWidths[0];
 end;
 
 procedure TFRpLocalSchemasVCL.BAddValueClick(Sender: TObject);
 begin
-  GridValues.RowCount := GridValues.RowCount + 1;
-  GridValues.Cells[0, GridValues.RowCount - 1] := '';
-  GridValues.Cells[1, GridValues.RowCount - 1] := '';
+  // The last row is the one for a new value: "+" goes to it while it is
+  // empty (it added a second empty row under the first one) and adds
+  // another only once it has something
+  if (Trim(GridValues.Cells[0, GridValues.RowCount - 1]) <> '') or
+    (Trim(GridValues.Cells[1, GridValues.RowCount - 1]) <> '') then
+  begin
+    GridValues.RowCount := GridValues.RowCount + 1;
+    GridValues.Cells[0, GridValues.RowCount - 1] := '';
+    GridValues.Cells[1, GridValues.RowCount - 1] := '';
+  end;
   GridValues.Row := GridValues.RowCount - 1;
   GridValues.Col := 0;
   GridValues.SetFocus;
@@ -2036,50 +3088,40 @@ end;
 
 procedure TFRpLocalSchemasVCL.BPreviewClick(Sender: TObject);
 var
-  I, LRow: Integer;
-  LCursor: TCursor;
-  LData: TDataSet;
+  I, J: Integer;
+  LRow: TStringList;
+  LTask: TRpRowsReadTask;
 begin
   if FColumnsTable = '' then
     Exit;
   ClearPreview;
-  LCursor := Screen.Cursor;
-  Screen.Cursor := crHourGlass;
+  LTask := TRpRowsReadTask.Create(FReport.Params);
+  LTask.Sql := RpLocalSchemaPreviewSql(FFile.Dialect, FColumnsTable, CPreviewRows);
+  LTask.MaxRows := CPreviewRows;
+  if not RunRead(LTask, Format(string(TranslateStr(2041,
+    'Reading the first rows of %s')), [FColumnsTable])) then
+    Exit;
   try
-    try
-      LData := FDatabase.OpenDatasetFromSQL(RpLocalSchemaPreviewSql(
-        FFile.Dialect, FColumnsTable, CPreviewRows), nil, False, FReport.Params);
-      try
-        if LData.FieldCount > 0 then
-          GridPreview.ColCount := LData.FieldCount;
-        for I := 0 to LData.FieldCount - 1 do
-        begin
-          GridPreview.Cells[I, 0] := LData.Fields[I].FieldName;
-          GridPreview.ColWidths[I] := S(110);
-        end;
-        LRow := 0;
-        while (not LData.Eof) and (LRow < CPreviewRows) do
-        begin
-          Inc(LRow);
-          GridPreview.RowCount := LRow + 1;
-          for I := 0 to LData.FieldCount - 1 do
-            if LData.Fields[I].IsBlob and not (LData.Fields[I].DataType in
-              [ftMemo, ftWideMemo, ftFmtMemo]) then
-              GridPreview.Cells[I, LRow] := '(BLOB)'
-            else
-              GridPreview.Cells[I, LRow] := LData.Fields[I].DisplayText;
-          LData.Next;
-        end;
-        if GridPreview.RowCount > 1 then
-          GridPreview.FixedRows := 1;
-      finally
-        LData.Free;
-      end;
-    finally
-      FDatabase.DisConnect;
+    if LTask.Failed then
+      raise Exception.Create(LTask.ErrorText);
+    if LTask.Header.Count > 0 then
+      GridPreview.ColCount := LTask.Header.Count;
+    for I := 0 to LTask.Header.Count - 1 do
+    begin
+      GridPreview.Cells[I, 0] := LTask.Header[I];
+      GridPreview.ColWidths[I] := S(110);
     end;
+    for J := 0 to LTask.Rows.Count - 1 do
+    begin
+      LRow := TStringList(LTask.Rows[J]);
+      GridPreview.RowCount := J + 2;
+      for I := 0 to LRow.Count - 1 do
+        GridPreview.Cells[I, J + 1] := LRow[I];
+    end;
+    if GridPreview.RowCount > 1 then
+      GridPreview.FixedRows := 1;
   finally
-    Screen.Cursor := LCursor;
+    LTask.Free;
   end;
 end;
 
@@ -2096,10 +3138,55 @@ begin
   try
     MemoRelationContext.Enabled := True;
     MemoRelationContext.Text := LRelation.Context;
-    BDeleteRelation.Enabled := LRelation.IsManual;
+    // Every relation: of the database or by hand
+    BDeleteRelation.Enabled := True;
   finally
     FUpdating := False;
   end;
+  EditRelation(LRelation);
+end;
+
+procedure TFRpLocalSchemasVCL.EditRelation(ARelation: TRpLocalRelation);
+var
+  I: Integer;
+  LSource, LTarget: TStringList;
+begin
+  // The ones of the database mirror it: only their description changes
+  if (ARelation = nil) or not ARelation.IsManual then
+  begin
+    FEditSource := '';
+    FEditForeignKey := nil;
+    BUpdateRelation.Enabled := False;
+    Exit;
+  end;
+  FEditSource := ARelation.SourceTable;
+  FEditForeignKey := ARelation.ForeignKey;
+  LSource := TStringList.Create;
+  LTarget := TStringList.Create;
+  try
+    ARelation.GetSourceColumns(LSource);
+    ARelation.GetTargetColumns(LTarget);
+    ComboSource.ItemIndex := ComboSource.Items.IndexOf(ARelation.SourceTable);
+    ComboTarget.ItemIndex := ComboTarget.Items.IndexOf(ARelation.TargetTable);
+    FFile.GetColumnNames(ComboSource.Text, ComboSourceColumn.Items);
+    FFile.GetColumnNames(ComboTarget.Text, ComboTargetColumn.Items);
+    FPairSource.Clear;
+    FPairTarget.Clear;
+    ListPairs.Items.Clear;
+    for I := 0 to LSource.Count - 1 do
+      if I < LTarget.Count then
+      begin
+        FPairSource.Add(LSource[I]);
+        FPairTarget.Add(LTarget[I]);
+        ListPairs.Items.Add(LSource[I] + CArrow + LTarget[I]);
+      end;
+    // Its description is the one above
+    ENewContext.Text := '';
+  finally
+    LTarget.Free;
+    LSource.Free;
+  end;
+  BUpdateRelation.Enabled := True;
 end;
 
 procedure TFRpLocalSchemasVCL.MemoRelationContextChange(Sender: TObject);
@@ -2115,7 +3202,48 @@ procedure TFRpLocalSchemasVCL.BDeleteRelationClick(Sender: TObject);
 begin
   if ListRelations.ItemIndex < 0 then
     Exit;
-  FFile.DeleteRelation(TRpLocalRelation(FRelations[ListRelations.ItemIndex]));
+  // No question, as the web: adding it again brings it back
+  FFile.RemoveRelation(SelectedSchema,
+    TRpLocalRelation(FRelations[ListRelations.ItemIndex]));
+  Changed;
+  FillRelations;
+  FillColumns;
+end;
+
+procedure TFRpLocalSchemasVCL.ListSuggestionsClick(Sender: TObject);
+var
+  LRelation: TRpLocalRelation;
+begin
+  if FUpdating or (ListSuggestions.ItemIndex < 0) then
+    Exit;
+  LRelation := TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]);
+  BDiscard.Enabled := SelectedSchema <> nil;
+  BDeleteSuggestion.Enabled := LRelation.IsManual;
+  EditRelation(LRelation);
+end;
+
+procedure TFRpLocalSchemasVCL.BDiscardClick(Sender: TObject);
+begin
+  if (SelectedSchema = nil) or (ListSuggestions.ItemIndex < 0) then
+    Exit;
+  FFile.ExcludeRelation(SelectedSchema,
+    TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]));
+  Changed;
+  FillRelations;
+  FillColumns;
+end;
+
+procedure TFRpLocalSchemasVCL.BDeleteSuggestionClick(Sender: TObject);
+var
+  LRelation: TRpLocalRelation;
+begin
+  if ListSuggestions.ItemIndex < 0 then
+    Exit;
+  LRelation := TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]);
+  // Discard is the one for a relation of the database
+  if not LRelation.IsManual then
+    Exit;
+  FFile.DeleteRelation(LRelation);
   Changed;
   FillRelations;
   FillColumns;
@@ -2124,6 +3252,10 @@ end;
 procedure TFRpLocalSchemasVCL.BCompleteClick(Sender: TObject);
 begin
   if (SelectedSchema = nil) or (ListSuggestions.ItemIndex < 0) then
+    Exit;
+  // The table it brings, with its columns
+  if not EnsureTableColumns(TRpLocalRelation(
+    FSuggestions[ListSuggestions.ItemIndex]).TargetTable) then
     Exit;
   FFile.CompleteRelation(SelectedSchema,
     TRpLocalRelation(FSuggestions[ListSuggestions.ItemIndex]));
@@ -2136,6 +3268,7 @@ end;
 
 procedure TFRpLocalSchemasVCL.ComboSourceChange(Sender: TObject);
 begin
+  EnsureTableColumns(ComboSource.Text);
   FFile.GetColumnNames(ComboSource.Text, ComboSourceColumn.Items);
   FPairSource.Clear;
   FPairTarget.Clear;
@@ -2144,6 +3277,7 @@ end;
 
 procedure TFRpLocalSchemasVCL.ComboTargetChange(Sender: TObject);
 begin
+  EnsureTableColumns(ComboTarget.Text);
   FFile.GetColumnNames(ComboTarget.Text, ComboTargetColumn.Items);
   FPairSource.Clear;
   FPairTarget.Clear;
@@ -2185,8 +3319,10 @@ begin
   LRelation := TRpLocalRelation.Create;
   try
     LRelation.SourceTable := ComboSource.Text;
+    // One deleted or discarded before comes back
     LRelation.ForeignKey := FFile.AddRelation(ComboSource.Text,
-      ComboTarget.Text, FPairSource, FPairTarget, ENewContext.Text);
+      ComboTarget.Text, FPairSource, FPairTarget, ENewContext.Text,
+      SelectedSchema);
     // In a subschema it travels: completed as a suggested one
     FFile.CompleteRelation(SelectedSchema, LRelation);
   finally
@@ -2200,13 +3336,43 @@ begin
   FillRelationTables;
 end;
 
+procedure TFRpLocalSchemasVCL.BUpdateRelationClick(Sender: TObject);
+var
+  LRelation: TRpLocalRelation;
+begin
+  if FEditForeignKey = nil then
+    Exit;
+  if (ComboSource.ItemIndex < 0) or (ComboTarget.ItemIndex < 0) or
+    (FPairSource.Count = 0) then
+  begin
+    RpMessageBox(TranslateStr(1889, 'Choose the two tables and at least one ' +
+      'pair of columns.'));
+    Exit;
+  end;
+  LRelation := TRpLocalRelation.Create;
+  try
+    LRelation.SourceTable := FEditSource;
+    LRelation.ForeignKey := FEditForeignKey;
+    FFile.UpdateRelation(LRelation, ComboSource.Text, ComboTarget.Text,
+      FPairSource, FPairTarget, SelectedSchema);
+    // In a subschema it travels, as an added one
+    FFile.CompleteRelation(SelectedSchema, LRelation);
+  finally
+    LRelation.Free;
+  end;
+  Changed;
+  FillTables;
+  FillColumnTables;
+  FillRelations;
+  FillRelationTables;
+end;
+
 { Validation }
 
 procedure TFRpLocalSchemasVCL.BAnalyzeClick(Sender: TObject);
 var
   LConfig: TRpApiDatabaseConfig;
-  LTier, LMode, LSecret, LSchemaName: string;
-  LAgentAiId: Int64;
+  LSchemaName: string;
 begin
   if FAnalysis <> nil then
     Exit;
@@ -2224,18 +3390,8 @@ begin
       'Sign in to Reportman AI to analyze the schema.'));
     Exit;
   end;
-  LTier := 'Standard';
-  LMode := 'Fast';
-  LSecret := '';
-  LAgentAiId := 0;
-  if FChat <> nil then
-  begin
-    LTier := FChat.GetAITier;
-    LMode := FChat.GetAIMode;
-    LSecret := FChat.GetAgentSecret;
-    LAgentAiId := FChat.GetAgentAiId;
-  end;
-  // What the copilot would send of the subschema, as it is now on screen
+  // What the copilot would send of the subschema, as it is now on screen,
+  // to the AI chosen above
   LConfig := TRpApiDatabaseConfig.Create;
   try
     LConfig.Name := FDatabase.Alias;
@@ -2243,14 +3399,14 @@ begin
     LConfig.SchemaTablesJson := RpSubSchemaTablesJson(FFile, FDatabase.Alias,
       SelectedSchema.Name, LSchemaName);
     LConfig.SchemaName := LSchemaName;
-    FAnalysis := RpStartSchemaAnalysis(LConfig, LTier, LMode, LSecret, LAgentAiId);
+    FAnalysis := RpStartSchemaAnalysis(LConfig, FAISelection.AITier,
+      FAISelection.AIMode, FAISelection.AgentSecret, FAISelection.AgentAiId);
   finally
     LConfig.Free;
   end;
   LStatus.Caption := TranslateStr(1878,
     'Analyzing the schema... (this may take a while)');
-  BAnalyze.Enabled := False;
-  BStop.Enabled := True;
+  ShowAnalysisRunning(True);
   FAnalysisTimer.Enabled := True;
 end;
 
@@ -2267,8 +3423,21 @@ procedure TFRpLocalSchemasVCL.BStopClick(Sender: TObject);
 begin
   StopAnalysis;
   LStatus.Caption := TranslateStr(1881, 'Analysis cancelled.');
-  UpdateAnalyzeButton;
-  BStop.Enabled := False;
+  ShowAnalysisRunning(False);
+end;
+
+// The Stop of the selection while the AI works: the one of the tab
+procedure TFRpLocalSchemasVCL.AISelectionStopRequest(Sender: TObject);
+begin
+  if FAnalysis <> nil then
+    BStopClick(Sender);
+end;
+
+// With the AI of an Agent the plan does not limit the schema
+procedure TFRpLocalSchemasVCL.AISelectionProviderChange(Sender: TObject);
+begin
+  if LTablesCounter <> nil then
+    UpdateCounters;
 end;
 
 procedure TFRpLocalSchemasVCL.AnalysisTimerTick(Sender: TObject);
@@ -2287,15 +3456,17 @@ begin
   if not LState.Finished then
   begin
     if (LState.InputTokens > 0) or (LState.OutputTokens > 0) then
+    begin
       LStatus.Caption := Format(TranslateStr(1879,
         'Analyzing... Tokens: %d in, %d out'), [LState.InputTokens,
         LState.OutputTokens]);
+      FAISelection.UpdateTokens(LState.InputTokens, LState.OutputTokens, '');
+    end;
     Exit;
   end;
   FAnalysisTimer.Enabled := False;
   FAnalysis := nil;
-  UpdateAnalyzeButton;
-  BStop.Enabled := False;
+  ShowAnalysisRunning(False);
   if LState.Cancelled then
   begin
     LStatus.Caption := TranslateStr(1881, 'Analysis cancelled.');
@@ -2314,10 +3485,13 @@ begin
       LStatus.Caption := '';
       Exit;
     end;
-    // The credits of the account, as the chat refreshes them
+    // The credits of the account, as the chat refreshes them, and its gauge
     LProfile := TJSONObject(LJson).Values['userProfile'];
     if LProfile is TJSONObject then
+    begin
       TRpAuthManager.Instance.UpdateProfileFromJson(TJSONObject(LProfile));
+      FAISelection.RefreshState;
+    end;
     LMessage := JsonText(TJSONObject(LJson), 'errorMessage');
     if Trim(LMessage) <> '' then
     begin
@@ -2369,7 +3543,9 @@ begin
   Result := False;
   LForm := TFRpLocalSchemasVCL.CreateFor(Application, AReport, AAlias, AChat);
   try
-    LForm.LoadFile(False);
+    // A read of the catalog cancelled: nothing to show
+    if not LForm.LoadFile(False) then
+      Exit;
     LForm.FillSchemas(ASchemaName);
     if AAddNew and not LForm.AddNewSchema then
       Exit;

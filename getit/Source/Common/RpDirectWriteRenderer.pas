@@ -442,7 +442,11 @@ begin
     end;
     for i := 0 to Integer(glyphRun.glyphCount) - 1 do
     begin
-      FillChar(GlyphPos, SizeOf(TGlyphPos), 0);
+      // Default, not FillChar: TGlyphPos holds a string (FontFamily), and zeroing it
+      // dropped the reference to the family of the previous glyph without releasing
+      // it. Every glyph of a run in another face (bold, <font face>) leaked its
+      // family name on every measure of an HTML text (18-10-2026)
+      GlyphPos := Default(TGlyphPos);
       GlyphPos.GlyphIndex := IdxArray[i];
       GlyphPos.XAdvance := Round(AdvArray[i] * DIP_TO_TWIPS_FACTOR);
       GlyphPos.YAdvance := 0;
@@ -453,7 +457,11 @@ begin
 {$ELSE}
         var Offset := OffArray[i];
 {$ENDIF}
-        GlyphPos.XOffset := Round(-Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
+        // advanceOffset goes in the reading direction: to the left in RTL runs
+        if runIsRTL then
+          GlyphPos.XOffset := Round(-Offset.advanceOffset * DIP_TO_TWIPS_FACTOR)
+        else
+          GlyphPos.XOffset := Round(Offset.advanceOffset * DIP_TO_TWIPS_FACTOR);
         GlyphPos.YOffset := Round(Offset.ascenderOffset * DIP_TO_TWIPS_FACTOR);
       end
       else

@@ -346,6 +346,75 @@ begin
 end;
 {$ENDIF}
 
+// The font DirectWrite has for a GDI font name (12-10-2026). A GDI family can be a face of a
+// typographic family: «Gotham Light», «Segoe UI Light» and «Arial Narrow» are, for DirectWrite,
+// the families Gotham, Segoe UI and Arial with their weight or stretch. FindFamilyName does not
+// find them; the font GDI takes for that name, through IDWriteGdiInterop, gives the family,
+// weight, style and stretch to lay the text out with, and the font face. False when DirectWrite
+// has no font for it.
+function DWriteFontForGdiName(const AFactory: IDWriteFactory; var AFamily: WideString;
+  ABold, AItalic: Boolean; var AWeight: DWRITE_FONT_WEIGHT; var AStyle: DWRITE_FONT_STYLE;
+  var AStretch: DWRITE_FONT_STRETCH; out AFace: IDWriteFontFace): Boolean;
+var
+  interop: IDWriteGdiInterop;
+{$IFDEF FPC}
+  unk: IUnknown;
+{$ENDIF}
+  lf: LOGFONTW;
+  font: IDWriteFont;
+  family: IDWriteFontFamily;
+  names: IDWriteLocalizedStrings;
+  index, len: Cardinal;
+  exists: BOOL;
+  name: WideString;
+begin
+  Result := False;
+  AFace := nil;
+{$IFDEF FPC}
+  if not Succeeded(AFactory.GetGdiInterop(unk)) then
+    Exit;
+  if not Supports(unk, IDWriteGdiInterop, interop) then
+    Exit;
+{$ELSE}
+  if not Succeeded(AFactory.GetGdiInterop(interop)) then
+    Exit;
+{$ENDIF}
+  FillChar(lf, SizeOf(lf), 0);
+  lf.lfHeight := -100;
+  if ABold then
+    lf.lfWeight := FW_BOLD
+  else
+    lf.lfWeight := FW_NORMAL;
+  if AItalic then
+    lf.lfItalic := 1;
+  lf.lfCharSet := DEFAULT_CHARSET;
+  lf.lfOutPrecision := OUT_TT_ONLY_PRECIS;
+  Move(PWideChar(AFamily)^, lf.lfFaceName[0], Min(Length(AFamily), LF_FACESIZE - 1) * SizeOf(WideChar));
+  if not Succeeded(interop.CreateFontFromLOGFONT(lf, font)) or (font = nil) then
+    Exit;
+  if not Succeeded(font.CreateFontFace(AFace)) then
+    Exit;
+  AWeight := font.GetWeight;
+  AStyle := font.GetStyle;
+  AStretch := font.GetStretch;
+  if Succeeded(font.GetFontFamily(family)) and Succeeded(family.GetFamilyNames(names)) then
+  begin
+    index := 0;
+    exists := False;
+    names.FindLocaleName(PWideChar(WideString('en-us')), index, exists);
+    if not exists then
+      index := 0;
+    len := 0;
+    if Succeeded(names.GetStringLength(index, len)) and (len > 0) then
+    begin
+      SetLength(name, len);
+      if Succeeded(names.GetString(index, PWideChar(name), len + 1)) then
+        AFamily := name;
+    end;
+  end;
+  Result := True;
+end;
+
 function TRpGDIInfoProvider.TextExtent(
   const Text: WideString;
   var Rect: TRect;
@@ -376,6 +445,7 @@ var
   FamilyNameWide: WideString;
   FontWeight: DWRITE_FONT_WEIGHT;
   FontStyle: DWRITE_FONT_STYLE;
+  FontStretch: DWRITE_FONT_STRETCH;
   FontCollection: IDWriteFontCollection;
   FontFamily: IDWriteFontFamily;
   Font: IDWriteFont;
@@ -388,6 +458,8 @@ var
   ascentSpacing:integer;
   PWideChartext: PWideChar;
   PlainText: WideString;
+  LayoutText: WideString;
+  lineEnd, nextStart: Integer;
   minLineCluster:integer;
   maxLineCluster:integer;
   lineCluster:integer;
@@ -401,6 +473,7 @@ var
 {$IFDEF FPC}
   inTag: Boolean;
   firstStrongRTL: Boolean;
+  strongFound: Boolean;
   ci: Integer;
   cp: Integer;
   Segments: TList<THtmlSegment>;
@@ -451,6 +524,7 @@ begin
 
   // --- Obtener FontFace ---
   FontFace := nil;
+  FontStretch := DWRITE_FONT_STRETCH_NORMAL;
   Factory.GetSystemFontCollection(FontCollection, False);
   FontCollection.FindFamilyName(PWideChar(FamilyNameWide), Index, Exists);
   if Exists then
@@ -458,7 +532,14 @@ begin
     FontCollection.GetFontFamily(Index, FontFamily);
     FontFamily.GetFirstMatchingFont(FontWeight, DWRITE_FONT_STRETCH_NORMAL, FontStyle, Font);
     Font.CreateFontFace(FontFace);
-  end;
+  end
+  else
+    // A GDI name of a face of a typographic family; without a font face the metrics below
+    // raised an access violation
+    DWriteFontForGdiName(Factory, FamilyNameWide, pdfFont.Bold, pdfFont.Italic,
+      FontWeight, FontStyle, FontStretch, FontFace);
+  if FontFace = nil then
+    raise Exception.Create('DirectWrite has no font for ' + String(FamilyNameWide));
   lastTopPos:=0;
 
   // --- Crear TextFormat ---
@@ -467,7 +548,7 @@ begin
     nil,
     FontWeight,
     FontStyle,
-    DWRITE_FONT_STRETCH_NORMAL,
+    FontStretch,
     FontSizeInDips,
 {$IFDEF FPC}
     PWideChar(WideString('en-us')),
@@ -481,6 +562,7 @@ begin
 {$IFDEF FPC}
   inTag := False;
   firstStrongRTL := False;
+  strongFound := False;
   for ci := 1 to Length(Text) do
   begin
     if Text[ci] = '<' then begin inTag := True; Continue; end;
@@ -490,6 +572,7 @@ begin
 {$ELSE}
   var inTag: Boolean := False;
   var firstStrongRTL: Boolean := False;
+  var strongFound: Boolean := False;
   for var ci := 1 to Length(Text) do
   begin
     if Text[ci] = '<' then begin inTag := True; Continue; end;
@@ -502,19 +585,23 @@ begin
     if ((cp >= $600) and (cp <= $6FF)) or ((cp >= $750) and (cp <= $77F)) or
        ((cp >= $8A0) and (cp <= $8FF)) or ((cp >= $FB50) and (cp <= $FDFF)) or
        ((cp >= $FE70) and (cp <= $FEFF)) then
-    begin firstStrongRTL := True; Break; end;
+    begin firstStrongRTL := True; strongFound := True; Break; end;
     // Hebrew
     if ((cp >= $590) and (cp <= $5FF)) or ((cp >= $FB1D) and (cp <= $FB4F)) then
-    begin firstStrongRTL := True; Break; end;
+    begin firstStrongRTL := True; strongFound := True; Break; end;
     // Latin, Greek, Cyrillic = LTR
     if (cp >= $41) and (cp <= $24F) then
-    begin Break; end;
+    begin strongFound := True; Break; end;
     // CJK = LTR
     if (cp >= $4E00) and (cp <= $9FFF) then
-    begin Break; end;
+    begin strongFound := True; Break; end;
   end;
-//  if firstStrongRTL then
-//    TextFormat.SetReadingDirection(1); // DWRITE_READING_DIRECTION_RIGHT_TO_LEFT = 1
+  // The bidi algorithm resolves the neutral characters (punctuation, brackets,
+  // spaces) by the direction of the paragraph: its first strong letter, else
+  // the direction of the object. Left to right, a period between Arabic and
+  // Latin text went with the Latin text.
+  if firstStrongRTL or ((not strongFound) and RightToLeft) then
+    TextFormat.SetReadingDirection(DWRITE_READING_DIRECTION_RIGHT_TO_LEFT);
 
   // Initialize per-character font info arrays
   SetLength(charFontFamilies, 0);
@@ -667,6 +754,12 @@ begin
     );
   end;
 
+  // The text DirectWrite lays out, which its clusters count
+  if IsHtml then
+    LayoutText := PlainText
+  else
+    LayoutText := Text;
+
   // --- Obtener métricas de la fuente ---
   FontFace.GetMetrics(FontMetrics);
   scale := FontSizeInDips / FontMetrics.DesignUnitsPerEm;
@@ -715,7 +808,15 @@ begin
       begin
         LineInfo.Position := minLineCluster+1;
         LineINfo.Size:=maxLineCluster-minLineCluster+1;
-        LineInfo.Text := Copy(Text, LineInfo.Position, LineInfo.Size);
+        // THE TEXT OF THE LINE AND ITS CLUSTERS, as the other providers (12-10-2026): the
+        // clusters of DirectWrite count the characters of the whole text laid out (without
+        // the HTML tags), while the PDF reads them as positions in Text of the line
+        // (TextoDeCadaGlifo, ToUnicode). The text was copied from the HTML source and the
+        // clusters were absolute: they only matched on the first line, before any tag.
+        LineInfo.Text := Copy(LayoutText, LineInfo.Position, LineInfo.Size);
+        for j:=0 to Length(LineInfo.Glyphs)-1 do
+          if (LineInfo.Glyphs[j].LineCluster>=Cardinal(minLineCluster)) then
+            LineInfo.Glyphs[j].LineCluster := LineInfo.Glyphs[j].LineCluster - Cardinal(minLineCluster);
       end
       else
       begin
@@ -741,6 +842,31 @@ begin
 
       Result[i] := LineInfo;
     end;
+
+    // The text of a line ends where its last cluster does, not where it starts: a ligature
+    // (lam-alef) at the end of a line is two characters. Up to the next line, without the
+    // white space and line breaks in between.
+    for i := 0 to High(Result) do
+      if (Result[i].Size > 0) then
+      begin
+        nextStart := Length(LayoutText);
+        for j := i + 1 to High(Result) do
+          if (Result[j].Size > 0) then
+          begin
+            nextStart := Result[j].Position - 1;
+            break;
+          end;
+        lineEnd := nextStart;
+        while ((lineEnd > Result[i].Position - 1 + Result[i].Size) and
+          ((LayoutText[lineEnd] = ' ') or (LayoutText[lineEnd] = #9) or
+           (LayoutText[lineEnd] = #10) or (LayoutText[lineEnd] = #13))) do
+          Dec(lineEnd);
+        if (lineEnd > Result[i].Position - 1 + Result[i].Size) then
+        begin
+          Result[i].Size := lineEnd - (Result[i].Position - 1);
+          Result[i].Text := Copy(LayoutText, Result[i].Position, Result[i].Size);
+        end;
+      end;
 
     // Ajustar rectángulo final
     Rect.Right := Rect.Left + Round(TotalWidth);
@@ -972,7 +1098,7 @@ function TRpGDIInfoProvider.TextExtent(
 var
   lineSubTexts: TList<TLineSubText>;
   lineSubText: TLineSubText;
-  line: string;
+  line: UnicodeString;
   Bidi: TICUBidi;
   logicalRuns: TList<TBidiRun>;
   logicalRun, vRun: TBidiRun;
@@ -1044,12 +1170,16 @@ begin
     for lineSubText in lineSubTexts do
     begin
       line := Copy(PlainText, lineSubText.Position, lineSubText.Length);
+      // What is created for the paragraph is freed at its end, as in
+      // TRpFTInfoProvider.TextExtentHtml (18-10-2026)
       possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
 
       calculatedLines := TList<TLineGlyphs>.Create;
-
-      Bidi := TICUBidi.Create;
       logicalRuns := nil;
+      visualRuns := nil;
+      currentChunk := nil;
+      try
+      Bidi := TICUBidi.Create;
       try
         // $FF (UBIDI_DEFAULT_RTL) only in a right-to-left object: elsewhere a line with no
         // letter of its own direction (a row of emoji) would come out backwards. Same rule as
@@ -1132,6 +1262,7 @@ begin
                 chunks := BreakChunksRTL(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line)
               else
                 chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
+              try
               for j:=0 to chunks.Count-1 do
               begin
                 chunk:=chunks[j];
@@ -1161,19 +1292,23 @@ begin
                   currentChunk:=TLineGlyphs.Create(textOffset);
                 end;
               end;
+              finally
+                chunks.Free;
+              end;
             end;
           end;
           SegStartAbs := SegEndAbs;
         end;
       end;
-      if (currentChunk.Glyphs.Count>0) then
+      // An empty paragraph is a line too ("a<br><br>b" is three lines), as
+      // DirectWrite and TRpFTInfoProvider.TextExtentHtml (18-10-2026)
+      if (currentChunk.Glyphs.Count>0) or (calculatedLines.Count=0) then
       begin
         calculatedLines.Add(currentChunk);
       end;
 
       // Visual ordering
       Bidi := TICUBidi.Create;
-      visualRuns := nil;
       try
         if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
           raise Exception.Create('VisualRuns error');
@@ -1188,6 +1323,7 @@ begin
         var maxCluster:=calculatedline.MaxClusterText;
 
         visualGlyphs:=TList<TGlyphPos>.Create;
+        try
         for vRun in visualRuns do
         begin
          if vRun.Direction = UBIDI_RTL then
@@ -1219,10 +1355,20 @@ begin
         end;
         LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
 
-        LineInfo.Position := minCluster;
-        LineInfo.Size := maxCluster - minCluster + 1;
+        if Length(LineInfo.Glyphs) > 0 then
+        begin
+          LineInfo.Position := minCluster;
+          LineInfo.Size := maxCluster - minCluster + 1;
+          LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
+        end
+        else
+        begin
+          // An empty line: no cluster, the start of its paragraph
+          LineInfo.Position := lineSubText.Position;
+          LineInfo.Size := 0;
+          LineInfo.Text := '';
+        end;
         LineInfo.TopPos := Round(posY);
-        LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
 
         LineInfo.Width := 0;
         for k := 0 to High(LineInfo.Glyphs) do
@@ -1237,10 +1383,22 @@ begin
 
         if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
         posY := posY + linespacing;
+        finally
+          visualGlyphs.Free;
+        end;
       end;
 
-      calculatedLines.Free;
-      possibleBreaksCharIdx.Free;
+      finally
+        // The last chunk is the list's when it became a line
+        if (currentChunk <> nil) and (calculatedLines.IndexOf(currentChunk) < 0) then
+          currentChunk.Free;
+        for calculatedLine in calculatedLines do
+          calculatedLine.Free;
+        calculatedLines.Free;
+        logicalRuns.Free;
+        visualRuns.Free;
+        possibleBreaksCharIdx.Free;
+      end;
     end;
 
     if Length(Result) > 0 then
@@ -1818,6 +1976,11 @@ begin
     mat.eM12.value := 0; mat.eM12.fract := 0;
     mat.eM21.value := 0; mat.eM21.fract := 0;
     mat.eM22.value := 1; mat.eM22.fract := 0;
+   // The font of the glyph, and its advance in thousandths of an em as GetCharWidth: GDI
+   // gives it in pixels of the font selected at TTF_PRECISION points (12-10-2026). The pixels
+   // went to the /W widths of the PDF, 4/3 too wide at 96 dpi: the boxes of the shaped glyphs
+   // overlapped and a viewer copied their text with spaces in the middle of the words.
+   SelectFont(pdffont);
    res:=GetGlyphOutlineW(adc,glyph,GGO_METRICS or GGO_GLYPH_INDEX,gm,0,nil,mat);
    if res = GDI_ERROR then
       width:=0
@@ -1827,11 +1990,11 @@ begin
     if (not data.glyphsInfo.ContainsKey(glyph)) then
     begin
      ginfo.Glyph := glyph;
-     ginfo.Width := width;
+     ginfo.Width := width/GetDeviceCaps(adc,LOGPIXELSX)*72000.0/TTF_PRECISION;
      ginfo.Char := charC;
      data.glyphsInfo.Add(glyph,ginfo);
     end;
-    Result:=width;
+    Result:=width/GetDeviceCaps(adc,LOGPIXELSX)*72000.0/TTF_PRECISION;
  end;
 end;
 

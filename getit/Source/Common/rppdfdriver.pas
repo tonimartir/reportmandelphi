@@ -32,6 +32,9 @@ uses Classes,Sysutils,
  Windows,
 {$ENDIF}
  rptypes,rpmetafile,rppdffile,
+{$IF DEFINED(FPC) AND DEFINED(DARWIN)}
+ rpinfoprovct,
+{$IFEND}
 {$IFNDEF FORWEBAX}
  rpbasereport,rpreport,rpmdchart,
 {$ENDIF}
@@ -367,7 +370,15 @@ begin
 {$IFDEF LINUX}
     FPDFFile.Canvas.Font.LFontName:=page.GetLFontName(Obj);
     FPDFFile.Canvas.Font.WFontName:=FPDFFile.Canvas.Font.LFontName;
+{$IF DEFINED(FPC) AND DEFINED(DARWIN)}
+    // Core Text takes the WFontName when the system lacks the LFontName
+    // (RpCTBaseFontName), as when the report was laid out
+    if FPDFFile.Canvas.InfoProvider is TRpCTInfoProvider then
+     FPDFFile.Canvas.Font.WFontName:=page.GetWFontName(Obj);
+{$IFEND}
 {$ENDIF}
+    // The font the object was measured with (MeasuredAsPDF14)
+    FPDFFile.Canvas.MeasuredFont:=TrpType1Font(obj.Type1Font);
     // Transparent ?
     if (PDFConformance = TPDFConformanceType.PDF_A_3) then
       FPDFFile.Canvas.Font.Name:=TrpType1Font.poEmbedded
@@ -662,6 +673,9 @@ begin
   if (PDFVersionA3) then
     adriver.PDFConformance:=PDF_A_3;
   adriver.NewDocument(metafile,1,false);
+  // Laid out as PDF 1.4, written as PDF/A-3: the lines keep their spacing
+  adriver.PDFFile.Canvas.MeasuredAsPDF14:=pdfVersionA3 and
+   (metafile.PDFConformance=PDF_1_4);
   try
    for i:=frompage to topage do
    begin
@@ -708,6 +722,9 @@ begin
   adriver.PDFConformance := PDF_A_3;
  end;
  adriver.NewDocument(metafile,1,false);
+ // Laid out as PDF 1.4, written as PDF/A-3: the lines keep their spacing
+ adriver.PDFFile.Canvas.MeasuredAsPDF14:=pdfVersionA3 and
+  (metafile.PDFConformance=PDF_1_4);
  try
   metafile.RequestPage(MAX_PAGECOUNT);
   for i:=0 to metafile.CurrentPageCount-1 do

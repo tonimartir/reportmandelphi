@@ -51,6 +51,9 @@ TTrueTypeFontSubSet = class
     FOutFont: TBytes;
     FFontPtr: Integer;
     FDirectoryOffset: Cardinal;
+    // A face with CFF outlines in a collection: it cannot be subset here, it is extracted
+    FExtractFace: Boolean;
+    FFaceOffset: Integer;
 
     procedure AssembleFont;
     function CreateTableDirectory: boolean;
@@ -65,6 +68,7 @@ TTrueTypeFontSubSet = class
     procedure WriteFontString(const Value: string);
     procedure ReadBytes(StartIndex: Integer; var Buffer: TBytes; Offset, Length: Integer);
     function GetPostcriptName(Offset: Integer): string;
+    function ExtractFace(Offset: Integer): TBytes;
   public
     constructor Create(const FontName: string; const RFArray: TBytes; GlyphsUsed: TDictionary<Integer, TArray<Integer>>; DirectoryOffset: Cardinal);
     function Execute: TBytes;
@@ -153,7 +157,11 @@ function TTrueTypeFontSubSet.Execute: TBytes;
 begin
   if (not CreateTableDirectory) then
   begin
-   Result:=FRFArray;
+   // A collection is not a font program: its face, alone
+   if FExtractFace then
+    Result:=ExtractFace(FFaceOffset)
+   else
+    Result:=FRFArray;
    exit;
   end;
   ReadLoca;
@@ -312,6 +320,7 @@ begin
           Found := True;
           FDirectoryOffset := Offsets[I] + 4;
           NIndex := FDirectoryOffset;
+          FFaceOffset := Offsets[I];
           Break;
         end;
       end;
@@ -320,6 +329,15 @@ begin
       begin
         FDirectoryOffset := Offsets[0] + 4;
         NIndex := FDirectoryOffset;
+        FFaceOffset := Offsets[0];
+      end;
+      // A face with CFF outlines (Noto Sans CJK): no glyf table to subset; it is extracted
+      // from the collection whole (12-10-2026)
+      if (ByteArrayToInt(FRFArray, FFaceOffset, 4) = $4F54544F) then
+      begin
+        FExtractFace := True;
+        Result := False;
+        Exit;
       end;
     end
     else
@@ -419,9 +437,15 @@ begin
 
   FTableGlyphOffset := TData.Location;
 
-  for K := 0 to FGlyphsInList.Count - 1 do
+  // A while, not a for: CheckGlyphComposite appends the components of a composite glyph to the
+  // list, and they can be composites too (the alef with hamza of DejaVu Sans is the alef and a
+  // composite hamza). The bound of a Pascal for is taken once, so the components of the second
+  // level were left out of the subset and drew nothing: the hamza was lost.
+  K := 0;
+  while K < FGlyphsInList.Count do
   begin
     CheckGlyphComposite(FGlyphsInList[K]);
+    Inc(K);
   end;
 end;
 
@@ -631,6 +655,38 @@ end;
 
 
 
+// The face at Offset of a collection as a font of its own: its table directory with the
+// offsets of its tables in the new file, and the tables, each on a 4 byte boundary
+function TTrueTypeFontSubSet.ExtractFace(Offset: Integer): TBytes;
+var
+  NumTables, I, Size, Ptr, Location, Len: Integer;
+begin
+  NumTables := ByteArrayToUShort(FRFArray, Offset + 4, 2);
+  Size := 12 + NumTables * 16;
+  for I := 0 to NumTables - 1 do
+    Inc(Size, (ByteArrayToInt(FRFArray, Offset + 12 + I * 16 + 12, 4) + 3) and not 3);
+  SetLength(Result, Size);
+  FillChar(Result[0], Size, 0);
+  // Offset table (version, number of tables, search fields) as in the collection
+  Move(FRFArray[Offset], Result[0], 12);
+  Ptr := 12 + NumTables * 16;
+  for I := 0 to NumTables - 1 do
+  begin
+    // Tag, checksum and length as they are, and the new offset
+    Move(FRFArray[Offset + 12 + I * 16], Result[12 + I * 16], 16);
+    Location := ByteArrayToInt(FRFArray, Offset + 12 + I * 16 + 8, 4);
+    Len := ByteArrayToInt(FRFArray, Offset + 12 + I * 16 + 12, 4);
+    Result[12 + I * 16 + 8] := Byte(Ptr shr 24);
+    Result[12 + I * 16 + 9] := Byte(Ptr shr 16);
+    Result[12 + I * 16 + 10] := Byte(Ptr shr 8);
+    Result[12 + I * 16 + 11] := Byte(Ptr);
+    // Location is from the start of the collection file
+    if (Len > 0) and (Location >= 0) and (Location + Len <= Length(FRFArray)) then
+      Move(FRFArray[Location], Result[Ptr], Len);
+    Inc(Ptr, (Len + 3) and not 3);
+  end;
+end;
+
 function TTrueTypeFontSubSet.GetPostcriptName(Offset: Integer): string;
 var
   ID, NumTables, NIndex, Checksum, Location, Length, NameOffset, StringOffset, I: Integer;
@@ -642,7 +698,9 @@ begin
   ID := ByteArrayToInt(FRFArray, Offset, 4);  // Usamos ByteArrayToInt con tres parámetros
   Inc(Offset, 4);
 
-  if ID <> $00010000 then
+  // Any sfnt: TrueType outlines, CFF ones ('OTTO', Noto Sans CJK) or Apple 'true'; only its
+  // name table is read here
+  if (ID <> $00010000) and (ID <> $4F54544F) and (ID <> $74727565) then
     raise Exception.Create('Font collection to font offset error');
 
   NumTables := ByteArrayToUShort(FRFArray, Offset, 2);  // Usamos ByteArrayToUShort con tres parámetros

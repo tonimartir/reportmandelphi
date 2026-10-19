@@ -312,6 +312,7 @@
         <DCCReference Include="..\Common\rpreportdesignercontracts.pas"/>
         <DCCReference Include="..\Common\rpdesignerclientsql.pas"/>
         <DCCReference Include="..\Common\rplocalschemas.pas"/>
+        <DCCReference Include="..\Common\rpsamplesutil.pas"/>
         <DCCReference Include="..\Common\rpwebdbxadmin.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

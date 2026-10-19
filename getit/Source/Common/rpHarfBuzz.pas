@@ -552,6 +552,11 @@ var
 
 procedure InitHarfBuzz;
 
+// The glyphs of a variable TrueType font as a static font, for a PDF (which has no variable
+// fonts): see the implementation. False when it cannot be made.
+function RpHBVariableInstance(AData: PByte; ASize: Cardinal; AFaceIndex: Cardinal;
+  AWeight: Single; const AGlyphs: array of Integer; out AFont: TBytes): Boolean;
+
 implementation
 
 Procedure THBBuffer.Destroy;
@@ -1064,6 +1069,181 @@ begin
   if not Assigned(hb_subset_or_fail) then
     raise Exception.CreateFmt('Falta funci�n: %s', [ProcName]);
   end;
+  end;
+end;
+
+// The glyphs of a variable TrueType font as a static font (12-10-2026). PDF has no variable
+// fonts: a variable font embedded whole (or subset without its variations) draws its default
+// instance whatever weight the text was laid out with, and the bold of Noto Sans Arabic came
+// out regular, with the advances of the bold. The subset of HarfBuzz pins every axis at the
+// coordinates of the named instance in the upper 16 bits of AFaceIndex (the face index of
+// fontconfig and FreeType), or at its default, with its weight axis at AWeight when it is
+// not 0 (GDI does not tell the instance, only the weight), and keeps the glyph numbers. False when it
+// cannot be made: not a variable TrueType font (CFF2 outlines are not instanced), or a
+// HarfBuzz without hb_subset_input_pin_axis_location (before 6.0: Red Hat 8); the caller
+// embeds the font as before.
+function RpHBVariableInstance(AData: PByte; ASize: Cardinal; AFaceIndex: Cardinal;
+  AWeight: Single; const AGlyphs: array of Integer; out AFont: TBytes): Boolean;
+type
+  THbAxisInfo = record
+    AxisIndex, Tag, NameId, Flags: Cardinal;
+    MinValue, DefaultValue, MaxValue: Single;
+    Reserved: Cardinal;
+  end;
+  TGetAxisInfos = function(face: THBFace; start_offset: Cardinal; axes_count: PCardinal;
+    axes_array: Pointer): Cardinal; cdecl;
+  TGetInstanceCoords = function(face: THBFace; instance_index: Cardinal;
+    coords_length: PCardinal; coords: PSingle): Cardinal; cdecl;
+  TPinAxis = function(input: Phb_subset_input_t; face: THBFace; axis_tag: Cardinal;
+    axis_value: Single): LongBool; cdecl;
+var
+  getAxisInfos: TGetAxisInfos;
+  getCoords: TGetInstanceCoords;
+  pin: TPinAxis;
+  blob, outBlob: Phb_blob_t;
+  face, newFace: THBFace;
+  input: Phb_subset_input_t;
+  glyphs: Phb_set_t;
+  axes: array of THbAxisInfo;
+  coords: array of Single;
+  tags: array[0..255] of Cardinal;
+  tagCount, axisCount, coordCount, i, instance: Cardinal;
+  k: Integer;
+  hasFvar, hasGlyf, hasCFF2: Boolean;
+  outData: PByte;
+  outSize: Cardinal;
+
+  // A function of HarfBuzz that may be missing (nil, not an exception)
+  function OptionalProc(ASubset: Boolean; const AName: string): Pointer;
+  begin
+    Result := nil;
+{$IFDEF MSWINDOWS}
+    if ASubset then
+      Result := GetProcAddress(HarfBuzzlibSubset, {$IFDEF FPC}PAnsiChar(AnsiString(AName)){$ELSE}PWideChar(AName){$ENDIF})
+    else
+      Result := GetProcAddress(HarfBuzzlib, {$IFDEF FPC}PAnsiChar(AnsiString(AName)){$ELSE}PWideChar(AName){$ENDIF});
+{$ENDIF}
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
+{$IFDEF FPC}
+    if ASubset then
+      Result := Dynlibs.GetProcAddress(HarfBuzzlibSubset, AName)
+    else
+      Result := Dynlibs.GetProcAddress(HarfBuzzlib, AName);
+{$ELSE}
+    if ASubset then
+      Result := SysUtils.GetProcAddress(HarfBuzzlibSubset, PWideChar(AName))
+    else
+      Result := SysUtils.GetProcAddress(HarfBuzzlib, PWideChar(AName));
+{$ENDIF}
+{$IFEND}
+  end;
+
+begin
+  Result := False;
+  SetLength(AFont, 0);
+  if (not HarfBuzzSubSetImplementation) or (AData = nil) or (ASize = 0) then
+    Exit;
+  pin := TPinAxis(OptionalProc(True, 'hb_subset_input_pin_axis_location'));
+  getAxisInfos := TGetAxisInfos(OptionalProc(False, 'hb_ot_var_get_axis_infos'));
+  getCoords := TGetInstanceCoords(OptionalProc(False, 'hb_ot_var_named_instance_get_design_coords'));
+  if (not Assigned(pin)) or (not Assigned(getAxisInfos)) or (not Assigned(getCoords)) then
+    Exit;
+  // A HarfBuzz whose loading stopped half way (an old library without some function)
+  if (not Assigned(hb_blob_create)) or (not Assigned(hb_face_create)) or
+     (not Assigned(hb_face_get_table_tags)) or (not Assigned(hb_subset_input_create_or_fail)) or
+     (not Assigned(hb_subset_input_set_flags)) or (not Assigned(hb_subset_input_glyph_set)) or
+     (not Assigned(hb_set_add)) or (not Assigned(hb_subset_or_fail)) or
+     (not Assigned(hb_face_reference_blob)) or (not Assigned(hb_blob_get_data)) or
+     (not Assigned(hb_blob_destroy)) or (not Assigned(hb_face_destroy)) or
+     (not Assigned(hb_subset_input_destroy)) then
+    Exit;
+  blob := hb_blob_create(AData, ASize, hbmmReadonly, nil, nil);
+  if blob = nil then
+    Exit;
+  try
+    face := hb_face_create(blob, AFaceIndex and $FFFF);
+    try
+      // A variable TrueType font: fvar and glyf, without CFF2
+      tagCount := Length(tags);
+      hb_face_get_table_tags(face, 0, tagCount, Phb_tag_t(@tags[0]));
+      if tagCount = 0 then
+        Exit;
+      hasFvar := False;
+      hasGlyf := False;
+      hasCFF2 := False;
+      for i := 0 to tagCount - 1 do
+        if tags[i] = $66766172 then hasFvar := True          // 'fvar'
+        else if tags[i] = $676C7966 then hasGlyf := True     // 'glyf'
+        else if tags[i] = $43464632 then hasCFF2 := True;    // 'CFF2'
+      if (not hasFvar) or (not hasGlyf) or hasCFF2 then
+        Exit;
+      axisCount := getAxisInfos(face, 0, nil, nil);
+      if axisCount = 0 then
+        Exit;
+      SetLength(axes, axisCount);
+      getAxisInfos(face, 0, @axisCount, @axes[0]);
+      // The coordinates of the named instance, else the defaults
+      SetLength(coords, axisCount);
+      for i := 0 to axisCount - 1 do
+        coords[i] := axes[i].DefaultValue;
+      instance := AFaceIndex shr 16;
+      if instance > 0 then
+      begin
+        coordCount := axisCount;
+        getCoords(face, instance - 1, @coordCount, @coords[0]);
+      end;
+      if AWeight > 0 then
+        for i := 0 to axisCount - 1 do
+          if axes[i].Tag = $77676874 then   // 'wght'
+          begin
+            coords[i] := AWeight;
+            if coords[i] < axes[i].MinValue then
+              coords[i] := axes[i].MinValue;
+            if coords[i] > axes[i].MaxValue then
+              coords[i] := axes[i].MaxValue;
+          end;
+      input := hb_subset_input_create_or_fail;
+      if input = nil then
+        Exit;
+      try
+        hb_subset_input_set_flags(input, HB_SUBSET_FLAGS_RETAIN_GIDS);
+        glyphs := hb_subset_input_glyph_set(input);
+        hb_set_add(glyphs, 0);
+        // An Integer: with i a Cardinal, Length - 1 of no glyphs is 4294967295 (a font embedded
+        // without any glyph drawn, as PDF/A-3 embeds every font) and the loop read past the array
+        for k := 0 to Length(AGlyphs) - 1 do
+          hb_set_add(glyphs, Cardinal(AGlyphs[k]));
+        for i := 0 to axisCount - 1 do
+          if not pin(input, face, axes[i].Tag, coords[i]) then
+            Exit;
+        newFace := hb_subset_or_fail(face, input);
+        // THBFace wraps the pointer hb_subset_or_fail returns (nil: it failed)
+        if PPointer(@newFace)^ = nil then
+          Exit;
+        try
+          outBlob := hb_face_reference_blob(newFace);
+          try
+            outData := hb_blob_get_data(outBlob, outSize);
+            if Assigned(outData) and (outSize > 0) then
+            begin
+              SetLength(AFont, outSize);
+              Move(outData^, AFont[0], outSize);
+              Result := True;
+            end;
+          finally
+            hb_blob_destroy(outBlob);
+          end;
+        finally
+          hb_face_destroy(newFace);
+        end;
+      finally
+        hb_subset_input_destroy(input);
+      end;
+    finally
+      hb_face_destroy(face);
+    end;
+  finally
+    hb_blob_destroy(blob);
   end;
 end;
 

@@ -272,6 +272,8 @@ begin
  finally
   astream.free;
  end;
+ // A relative SQLite database of the report is looked for next to it
+ FReport.ReportFolder:=ExtractFilePath(ExpandFileName(AFilename));
 end;
 
 

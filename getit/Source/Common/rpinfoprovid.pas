@@ -123,6 +123,21 @@ type
   // puede guardar uno. Lo llena el emisor de glifos conformados a partir del cluster, y lo consume
   // el CMap de ToUnicode. Vacio para todo lo demas: con un solo caracter basta el de `glyphsInfo`.
   glyphText:TDictionary<integer, string>;
+  // CODES OF THEIR OWN for a glyph drawn for different texts (12-10-2026). The content stream
+  // writes each glyph by a code (CID) that is its glyph number, and the ToUnicode CMap gives one
+  // text per code. A font that splits the dots of its letters into marks (Noto Sans Arabic,
+  // Noto Naskh Arabic) draws the same skeleton for several letters, and the same dots for
+  // several more: with one text per glyph, the text copied from the PDF had wrong letters. The
+  // first text of a glyph keeps its glyph number as its code (CIDClaim); another text gets a
+  // code of its own from GlyphCount up (CIDExtra), drawn through a CIDToGIDMap.
+  GlyphCount:integer;                       // glyphs of the font (maxp); -1 not read, 0 unknown
+  CIDClaim:TDictionary<integer, string>;    // glyph -> the text of its own number
+  CIDExtra:TDictionary<string, integer>;    // glyph + text -> its code
+  CIDExtraGlyph:TList<integer>;             // code - GlyphCount -> glyph
+  CIDExtraText:TList<string>;               // code - GlyphCount -> text
+  // Embedded as an OpenType font with CFF outlines (12-10-2026): /FontFile3 /OpenType and a
+  // CIDFontType0, not /FontFile2 and a CIDFontType2, which only holds TrueType outlines
+  CFFOpenType:boolean;
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;
@@ -191,17 +206,17 @@ function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text: string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text: UnicodeString
 ): TList<TGlyphPosArray>;
 
 function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:UnicodeString
 ): TList<TGlyphPosArray>;
 
-function DividesIntoLines(const text: string): TList<TLineSubText>;
+function DividesIntoLines(const text: UnicodeString): TList<TLineSubText>;
 
 // The ICU paragraph level for ubidi_setPara of an object's line (see TRpInfoProvider.TextExtent).
 function BidiParagraphLevel(RightToLeft: Boolean): Byte;
@@ -222,10 +237,12 @@ begin
 end;
 
 
-function DividesIntoLines(const text: string): TList<TLineSubText>;
+function DividesIntoLines(const text: UnicodeString): TList<TLineSubText>;
 var
   i, lineStart, lineEnd: Integer;
-  c: Char;
+  // UTF-16, as the positions it gives: the text it is given (a WideString) went to a string,
+  // UTF-8 in FPC, and the positions came out in bytes (12-10-2026)
+  c: WideChar;
   lb: TLineSubText;
 begin
   Result := TList<TLineSubText>.Create;
@@ -277,8 +294,13 @@ begin
 end;
 
 destructor TLineGlyphs.Destroy;
+var
+  lst: TList<Integer>;
 begin
   Glyphs.free;
+  // The lists of the map are its own (AddGlyph creates them)
+  for lst in ClusterMap.Values do
+    lst.Free;
   ClusterMap.Free;
   inherited;
 end;
@@ -324,13 +346,27 @@ begin
 {$ENDIF}
  glyphsInfo:=TDictionary<integer, TGlyphInfo>.Create;
  glyphText:=TDictionary<integer, string>.Create;
+ GlyphCount:=-1;
+ CIDClaim:=TDictionary<integer, string>.Create;
+ CIDExtra:=TDictionary<string, integer>.Create;
+ CIDExtraGlyph:=TList<integer>.Create;
+ CIDExtraText:=TList<string>.Create;
 end;
 
 destructor TRpTTFontData.Destroy;
 var
  i:integer;
 begin
+ // Created by the constructor and never freed: the HTML layout of the FreeType
+ // provider creates a font data per family on every measure (18-10-2026)
+ glyphs.Free;
+ widths.Free;
+ glyphsInfo.Free;
  glyphText.Free;
+ CIDClaim.Free;
+ CIDExtra.Free;
+ CIDExtraGlyph.Free;
+ CIDExtraText.Free;
  for i:=0 to kerningsadded.count-1 do
  begin
   loadedkernings[StrToInt(kerningsadded.Strings[i])].Free;
@@ -450,7 +486,7 @@ function BreakChunksLTR(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:UnicodeString
 ): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;
@@ -492,7 +528,11 @@ begin
       while j <= High(positions) do
       begin
         acc := acc + positions[j].XAdvance;
-        if GlyphHasBreak(j) then
+        // A break after glyph j only when it fits, or is a blank (trimmed at the end of the
+        // line). The FreeType provider numbers its clusters from 1, so GlyphHasBreak is true
+        // for the last letter before a space: registered before the overflow test, a word
+        // whose last letter did not fit stayed on the line and went past its edge (12-10-2026)
+        if GlyphHasBreak(j) and ((acc <= lineWidthLimit) or (positions[j].CharCode = ' ')) then
           lastBreakGlyphIdx := j;
         if acc > lineWidthLimit then
           Break;
@@ -543,7 +583,7 @@ function BreakChunksRTL(
   const positions: TGlyphPosArray;
   lineWidthLimit: Double;
   lineMaxLimit:Double;
-  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:string
+  const possibleBreaksCharIdx: TDictionary<Integer,Integer>;Text:UnicodeString
 ): TList<TGlyphPosArray>;
 var
   chunks: TList<TGlyphPosArray>;
@@ -583,7 +623,11 @@ begin
       while j >= 0 do
       begin
         acc := acc + positions[j].XAdvance;
-        if GlyphHasBreak(j) then
+        // A break after glyph j only when it fits, or is a blank (trimmed at the end of the
+        // line). The FreeType provider numbers its clusters from 1, so GlyphHasBreak is true
+        // for the last letter before a space: registered before the overflow test, a word
+        // whose last letter did not fit stayed on the line and went past its edge (12-10-2026)
+        if GlyphHasBreak(j) and ((acc <= lineWidthLimit) or (positions[j].CharCode = ' ')) then
           lastBreakGlyphIdx := j;
         if acc > lineWidthLimit then
           Break;

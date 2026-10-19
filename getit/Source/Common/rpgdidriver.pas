@@ -170,7 +170,7 @@ type
     procedure ComputeGlyphPixPositions(const linfo: TRpLineInfo; Alignment: integer;
       const ARect: TRect; aintdpix: integer; var allPixPos, allDx: TArray<Integer>);
     procedure DrawGlyphRuns(Canvas: TCanvas; const linfo: TRpLineInfo;
-      const allPixPos, allDx: TArray<Integer>; nposy: integer; aintdpiy: integer;
+      const allPixPos, allDx: TArray<Integer>; nposy: integer; aintdpix, aintdpiy: integer;
       BaseFontStyle: integer);
     procedure TextRectJustifyGlyphs(Canvas: TCanvas; const ARect: TRect; Text: WideString;
       const larray: TRpLineInfoArray; Alignment: integer; posy: integer;
@@ -1767,7 +1767,7 @@ begin
                 ComputeGlyphPixPositions(lwordinfos[index], 0, wordrect, aintdpix,
                   allPixPos, allDx);
                 DrawGlyphRuns(Canvas, lwordinfos[index], allPixPos, allDx, nposy,
-                  aintdpiy, basestyle);
+                  aintdpix, aintdpiy, basestyle);
               end;
               currpos := currpos + StrToInt(lwidths.Strings[index]) + alinedif;
             end;
@@ -1786,7 +1786,7 @@ begin
       // Whole line at its aligned position (last paragraph line or lines where
       // the space cannot be distributed)
       ComputeGlyphPixPositions(larray[i], Alignment, ARect, aintdpix, allPixPos, allDx);
-      DrawGlyphRuns(Canvas, larray[i], allPixPos, allDx, nposy, aintdpiy, basestyle);
+      DrawGlyphRuns(Canvas, larray[i], allPixPos, allDx, nposy, aintdpix, aintdpiy, basestyle);
     end;
   end;
 end;
@@ -1846,9 +1846,12 @@ end;
 // Draws the glyphs of a shaped line with ExtTextOutW (ETO_GLYPH_INDEX), batching
 // consecutive glyphs into runs while style/family/size/color stay constant.
 // nposy is the line top in twips; per-run ascent differences are compensated so all
-// runs share the same baseline. Restores Canvas.Font name/size/color on exit.
+// runs share the same baseline. A glyph the shaper moved off its pen position (a
+// mark: the dots of Noto Sans Arabic, vowel signs, accents) is drawn alone at its
+// XOffset/YOffset, ExtTextOutW only advances along the baseline.
+// Restores Canvas.Font name/size/color on exit.
 procedure TRpGDIDriver.DrawGlyphRuns(Canvas: TCanvas; const linfo: TRpLineInfo;
-  const allPixPos, allDx: TArray<Integer>; nposy: integer; aintdpiy: integer;
+  const allPixPos, allDx: TArray<Integer>; nposy: integer; aintdpix, aintdpiy: integer;
   BaseFontStyle: integer);
 var
   k: integer;
@@ -1857,99 +1860,28 @@ var
   baseBold, baseItalic, baseUnderline, baseStrikeOut: Boolean;
   runGlyphs: array of Word;
   runDx: array of Integer;
-begin
-  glyphCount := Length(linfo.Glyphs);
-  if glyphCount = 0 then
-    exit;
-  baseBold := (BaseFontStyle and 1) > 0;
-  baseItalic := (BaseFontStyle and 2) > 0;
-  baseUnderline := (BaseFontStyle and 4) > 0;
-  baseStrikeOut := (BaseFontStyle and 8) > 0;
+  runFontFamily: string;
+  runFontSize: Single;
+  runColor: Integer;
+  runHasColor: Boolean;
+  origFontName: string;
+  origFontSize: Integer;
+  origFontColor: TColor;
+  runFirstGlyph: Integer;
+  baseTM: TTextMetric;
+  baseAscent: Integer;
+  gFontFamily: string;
+  gFontSize: Single;
+  gColor: Integer;
+  gHasColor: Boolean;
+  glyph: Word;
+  pixY: Integer;
 
-  runStyle := linfo.Glyphs[0].Style;
-  var runFontFamily: string := linfo.Glyphs[0].FontFamily;
-  var runFontSize: Single := linfo.Glyphs[0].FontSize;
-  var runColor: Integer := linfo.Glyphs[0].Color;
-  var runHasColor: Boolean := linfo.Glyphs[0].HasColor;
-  var origFontName: string := Canvas.Font.Name;
-  var origFontSize: Integer := Canvas.Font.Size;
-  var origFontColor: TColor := Canvas.Font.Color;
-  if not linfo.Glyphs[0].HasFontSize then
-    runFontSize := origFontSize;
-
-  // Run tracking
-  var runFirstGlyph: Integer := 0;
-  SetLength(runGlyphs, 0);
-  SetLength(runDx, 0);
-
-  // Compute base font ascent for baseline alignment
-  var baseTM: TTextMetric;
-  Canvas.Font.Name := origFontName;
-  Canvas.Font.Size := origFontSize;
-  GetTextMetrics(Canvas.Handle, baseTM);
-  var baseAscent: Integer := baseTM.tmAscent;
-
-  for k := 0 to glyphCount - 1 do
-  begin
-    glyphStyle := linfo.Glyphs[k].Style;
-    var gFontFamily: string := linfo.Glyphs[k].FontFamily;
-    var gFontSize: Single := linfo.Glyphs[k].FontSize;
-    if not linfo.Glyphs[k].HasFontSize then
-      gFontSize := origFontSize;
-
-    var gColor: Integer := linfo.Glyphs[k].Color;
-    var gHasColor: Boolean := linfo.Glyphs[k].HasColor;
-
-    // If style, font, or color changed, flush the current run
-    if ((glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
-        (gFontSize <> runFontSize) or (gColor <> runColor) or
-        (gHasColor <> runHasColor)) and (Length(runGlyphs) > 0) then
-    begin
-      Canvas.Font.Style := [];
-      if baseBold or ((runStyle and 1) > 0) then
-        Canvas.Font.Style := Canvas.Font.Style + [fsBold];
-      if baseItalic or ((runStyle and 2) > 0) then
-        Canvas.Font.Style := Canvas.Font.Style + [fsItalic];
-      if baseUnderline or ((runStyle and 4) > 0) then
-        Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
-      if baseStrikeOut or ((runStyle and 8) > 0) then
-        Canvas.Font.Style := Canvas.Font.Style + [fsStrikeOut];
-      if runFontFamily <> '' then
-        Canvas.Font.Name := runFontFamily;
-      Canvas.Font.Size := Round(runFontSize);
-      if runHasColor then
-        Canvas.Font.Color := runColor
-      else
-        Canvas.Font.Color := origFontColor;
-
-      var runTM: TTextMetric;
-      GetTextMetrics(Canvas.Handle, runTM);
-      var baselineOffset: Integer := runTM.tmAscent - baseAscent;
-
-      // Draw run at pre-computed pixel position
-      var pixY: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset;
-      ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY, ETO_GLYPH_INDEX, nil,
-        PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
-
-      SetLength(runGlyphs, 0);
-      SetLength(runDx, 0);
-      runStyle := glyphStyle;
-      runFontFamily := gFontFamily;
-      runFontSize := gFontSize;
-      runColor := gColor;
-      runHasColor := gHasColor;
-      runFirstGlyph := k;
-    end;
-
-    // Accumulate glyph index and pre-computed dx
-    SetLength(runGlyphs, Length(runGlyphs) + 1);
-    runGlyphs[High(runGlyphs)] := Word(linfo.Glyphs[k].GlyphIndex);
-    SetLength(runDx, Length(runDx) + 1);
-    runDx[High(runDx)] := allDx[k];
-  end;
-
-  // Flush the last run
-  if Length(runGlyphs) > 0 then
+  // Selects the font of the current run; returns the top of its glyphs in
+  // pixels, on the baseline of the line
+  function SelectRunFont: Integer;
+  var
+    runTM: TTextMetric;
   begin
     Canvas.Font.Style := [];
     if baseBold or ((runStyle and 1) > 0) then
@@ -1967,15 +1899,101 @@ begin
       Canvas.Font.Color := runColor
     else
       Canvas.Font.Color := origFontColor;
-
-    var runTM2: TTextMetric;
-    GetTextMetrics(Canvas.Handle, runTM2);
-    var baselineOffset2: Integer := runTM2.tmAscent - baseAscent;
-
-    var pixY2: Integer := Round(nposy * aintdpiy / 1440) - baselineOffset2;
-    ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], pixY2, ETO_GLYPH_INDEX, nil,
-      PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
+    GetTextMetrics(Canvas.Handle, runTM);
+    Result := Round(nposy * aintdpiy / 1440) - (runTM.tmAscent - baseAscent);
   end;
+
+  procedure FlushRun;
+  begin
+    if Length(runGlyphs) = 0 then
+      exit;
+    ExtTextOutW(Canvas.Handle, allPixPos[runFirstGlyph], SelectRunFont, ETO_GLYPH_INDEX, nil,
+      PWideChar(@runGlyphs[0]), Length(runGlyphs), @runDx[0]);
+    SetLength(runGlyphs, 0);
+    SetLength(runDx, 0);
+  end;
+
+begin
+  glyphCount := Length(linfo.Glyphs);
+  if glyphCount = 0 then
+    exit;
+  baseBold := (BaseFontStyle and 1) > 0;
+  baseItalic := (BaseFontStyle and 2) > 0;
+  baseUnderline := (BaseFontStyle and 4) > 0;
+  baseStrikeOut := (BaseFontStyle and 8) > 0;
+
+  origFontName := Canvas.Font.Name;
+  origFontSize := Canvas.Font.Size;
+  origFontColor := Canvas.Font.Color;
+  runStyle := linfo.Glyphs[0].Style;
+  runFontFamily := linfo.Glyphs[0].FontFamily;
+  runFontSize := linfo.Glyphs[0].FontSize;
+  runColor := linfo.Glyphs[0].Color;
+  runHasColor := linfo.Glyphs[0].HasColor;
+  if not linfo.Glyphs[0].HasFontSize then
+    runFontSize := origFontSize;
+
+  // Run tracking
+  runFirstGlyph := 0;
+  SetLength(runGlyphs, 0);
+  SetLength(runDx, 0);
+
+  // Compute base font ascent for baseline alignment
+  Canvas.Font.Name := origFontName;
+  Canvas.Font.Size := origFontSize;
+  GetTextMetrics(Canvas.Handle, baseTM);
+  baseAscent := baseTM.tmAscent;
+
+  for k := 0 to glyphCount - 1 do
+  begin
+    glyphStyle := linfo.Glyphs[k].Style;
+    gFontFamily := linfo.Glyphs[k].FontFamily;
+    gFontSize := linfo.Glyphs[k].FontSize;
+    if not linfo.Glyphs[k].HasFontSize then
+      gFontSize := origFontSize;
+    gColor := linfo.Glyphs[k].Color;
+    gHasColor := linfo.Glyphs[k].HasColor;
+
+    // If style, font, or color changed, flush the current run
+    if (glyphStyle <> runStyle) or (gFontFamily <> runFontFamily) or
+       (gFontSize <> runFontSize) or (gColor <> runColor) or
+       (gHasColor <> runHasColor) then
+    begin
+      FlushRun;
+      runStyle := glyphStyle;
+      runFontFamily := gFontFamily;
+      runFontSize := gFontSize;
+      runColor := gColor;
+      runHasColor := gHasColor;
+    end;
+
+    // A glyph off its pen position, alone at its offset (YOffset is upwards),
+    // without underline and strikeout: the run of its base glyph draws them,
+    // here GDI would draw them again at the offset and over its own width
+    if (linfo.Glyphs[k].XOffset <> 0) or (linfo.Glyphs[k].YOffset <> 0) then
+    begin
+      FlushRun;
+      glyph := Word(linfo.Glyphs[k].GlyphIndex);
+      pixY := SelectRunFont;
+      Canvas.Font.Style := Canvas.Font.Style - [fsUnderline, fsStrikeOut];
+      ExtTextOutW(Canvas.Handle,
+        allPixPos[k] + Round(linfo.Glyphs[k].XOffset * aintdpix / 1440),
+        pixY - Round(linfo.Glyphs[k].YOffset * aintdpiy / 1440),
+        ETO_GLYPH_INDEX, nil, PWideChar(@glyph), 1, nil);
+      continue;
+    end;
+
+    // Accumulate glyph index and pre-computed dx
+    if Length(runGlyphs) = 0 then
+      runFirstGlyph := k;
+    SetLength(runGlyphs, Length(runGlyphs) + 1);
+    runGlyphs[High(runGlyphs)] := Word(linfo.Glyphs[k].GlyphIndex);
+    SetLength(runDx, Length(runDx) + 1);
+    runDx[High(runDx)] := allDx[k];
+  end;
+
+  // Flush the last run
+  FlushRun;
 
   // Restore original font
   Canvas.Font.Name := origFontName;
@@ -2098,7 +2116,7 @@ begin
       begin
         ComputeGlyphPixPositions(larray[i], Alignment, ARect, aintdpix, allPixPos, allDx);
         nposy := posy + larray[i].TopPos - ascent;
-        DrawGlyphRuns(Canvas, larray[i], allPixPos, allDx, nposy, aintdpiy, BaseFontStyle);
+        DrawGlyphRuns(Canvas, larray[i], allPixPos, allDx, nposy, aintdpix, aintdpiy, BaseFontStyle);
       end
       else
       begin

@@ -74,6 +74,7 @@ contains
   rpfrmlocalschemasvcl in '..\Common\rpfrmlocalschemasvcl.pas',
   rpfrmaischemaselectorvcl in '..\Common\rpfrmaischemaselectorvcl.pas',
   rpfrmmonacoeditorvcl in '..\Common\rpfrmmonacoeditorvcl.pas',
+  rpfrmwelcomevcl in '..\Common\rpfrmwelcomevcl.pas',
   rpmdcueviewvcl in '..\Common\rpmdcueviewvcl.pas',
   rpmdfnewreportwizardvcl in '..\Common\rpmdfnewreportwizardvcl.pas';
 

@@ -44,6 +44,14 @@ type
     IsOnline: Boolean;
   end;
 
+  // Shared by the frame and the threads that load the agents: cancelled
+  // when the frame is destroyed, so a late answer never touches it
+  IRpAISelectionGuard = interface
+    ['{6D3F2B1A-8C4E-4F7A-9B2D-1E5C7A9F3B60}']
+    function IsCancelled: Boolean;
+    procedure Invalidate;
+  end;
+
   TFRpAISelectionVCL = class(TFrame)
     PAI: TPanel;
     PNonInference: TPanel;
@@ -78,6 +86,14 @@ type
     FShowGauge: Boolean;
     FLblProvider: TLabel;
     FLblMode: TLabel;
+    // LoadUserAgents: the load that counts (an older answer is dropped), the
+    // choice to restore and the provider shown while the list comes
+    FAgentsGuard: IRpAISelectionGuard;
+    FAgentsVersion: Integer;
+    FAgentsTier: string;
+    FAgentsAgentAiId: Int64;
+    FAgentsShownIndex: Integer;
+    procedure ApplyUserAgents(AAgents: TStrings; AVersion: Integer);
     procedure ClearProgressTokens;
     procedure CMVisibleChanged(var Message: TMessage); message CM_VISIBLECHANGED;
     function EnsureProgressTokenEntry(const AProgressId: string): TRpProgressTokenEntry;
@@ -110,6 +126,15 @@ type
     procedure AddAgentEndpoint(AId: Int64; const ASecret, AName: string; AOnline: Boolean);
     procedure ClearAgentEndpoints;
     procedure RestoreProviderSelection(const AAITier: string; AAgentAiId: Int64);
+    // For a host that does not load the agents itself: the online agents of
+    // the signed-in user (TRpDatabaseHttp.GetUserAgents) are loaded in a
+    // thread and then AAITier / AAgentAiId is chosen (the choice of the user
+    // when it changed meanwhile). Without the arguments, what is chosen now.
+    // Without a session there are no agents: chosen at once
+    procedure LoadUserAgents; overload;
+    procedure LoadUserAgents(const AAITier: string; AAgentAiId: Int64); overload;
+    // Chooses the mode by its value (AIMode): 'Reasoning', anything else Fast
+    procedure SelectAIMode(const AAIMode: string);
     function AgentEndpointCount: Integer;
     procedure SetInferenceProgress(AActive: Boolean);
     procedure TouchProgressToken(const AProgressId: string);
@@ -130,7 +155,29 @@ type
 
 implementation
 
+uses
+  rpdatahttp;
+
 {$R *.dfm}
+
+type
+  TRpAISelectionGuard = class(TInterfacedObject, IRpAISelectionGuard)
+  private
+    FCancelled: Boolean;
+  public
+    function IsCancelled: Boolean;
+    procedure Invalidate;
+  end;
+
+function TRpAISelectionGuard.IsCancelled: Boolean;
+begin
+  Result := FCancelled;
+end;
+
+procedure TRpAISelectionGuard.Invalidate;
+begin
+  FCancelled := True;
+end;
 
 const
   CAISelectionLabelHeight = 16;
@@ -175,6 +222,9 @@ end;
 
 destructor TFRpAISelectionVCL.Destroy;
 begin
+  // A list of agents still coming is dropped
+  if FAgentsGuard <> nil then
+    FAgentsGuard.Invalidate;
   ClearProgressTokens;
   FProgressTokens.Free;
   inherited Destroy;
@@ -807,6 +857,123 @@ begin
     ComboAIProvider.ItemIndex := 0;
 
   ComboAIProviderChange(ComboAIProvider);
+end;
+
+procedure TFRpAISelectionVCL.LoadUserAgents;
+begin
+  LoadUserAgents(AITier, AgentAiId);
+end;
+
+procedure TFRpAISelectionVCL.LoadUserAgents(const AAITier: string;
+  AAgentAiId: Int64);
+var
+  LGuard: IRpAISelectionGuard;
+  LInstallId, LToken: string;
+  LVersion: Integer;
+  LWorker: TThread;
+begin
+  Inc(FAgentsVersion);
+  LVersion := FAgentsVersion;
+  FAgentsTier := AAITier;
+  FAgentsAgentAiId := AAgentAiId;
+  // What can be chosen now; an agent once the list is here
+  RestoreProviderSelection(AAITier, AAgentAiId);
+  FAgentsShownIndex := ComboAIProvider.ItemIndex;
+  LToken := TRpAuthManager.Instance.Token;
+  if LToken = '' then
+  begin
+    ClearAgentEndpoints;
+    RestoreProviderSelection(AAITier, AAgentAiId);
+    Exit;
+  end;
+  LInstallId := TRpAuthManager.Instance.InstallId;
+  if FAgentsGuard = nil then
+    FAgentsGuard := TRpAISelectionGuard.Create;
+  LGuard := FAgentsGuard;
+  LWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      LAgents: TStringList;
+      LHttp: TRpDatabaseHttp;
+    begin
+      LAgents := TStringList.Create;
+      try
+        LHttp := TRpDatabaseHttp.Create;
+        try
+          LHttp.Token := LToken;
+          LHttp.InstallId := LInstallId;
+          if not LHttp.GetUserAgents(LAgents) then
+            LAgents.Clear;
+        finally
+          LHttp.Free;
+        end;
+      except
+        LAgents.Clear;
+      end;
+      // Not tied to this thread: it may end before the main thread runs it
+      TThread.Queue(nil,
+        procedure
+        begin
+          try
+            if not LGuard.IsCancelled then
+              ApplyUserAgents(LAgents, LVersion);
+          finally
+            LAgents.Free;
+          end;
+        end);
+    end);
+  LWorker.FreeOnTerminate := True;
+  LWorker.Start;
+end;
+
+procedure TFRpAISelectionVCL.ApplyUserAgents(AAgents: TStrings;
+  AVersion: Integer);
+var
+  I: Integer;
+  LAgentAiId: Int64;
+  LParts: TStringList;
+  LTier: string;
+begin
+  // A newer load is on its way
+  if AVersion <> FAgentsVersion then
+    Exit;
+  // The user chose another one while the list came: that one stays
+  if ComboAIProvider.ItemIndex <> FAgentsShownIndex then
+  begin
+    LTier := AITier;
+    LAgentAiId := AgentAiId;
+  end
+  else
+  begin
+    LTier := FAgentsTier;
+    LAgentAiId := FAgentsAgentAiId;
+  end;
+  ClearAgentEndpoints;
+  LParts := TStringList.Create;
+  try
+    LParts.Delimiter := '|';
+    LParts.StrictDelimiter := True;
+    // 'Name=id|secret|online': only the online agents can answer
+    for I := 0 to AAgents.Count - 1 do
+    begin
+      LParts.DelimitedText := AAgents.ValueFromIndex[I];
+      if (LParts.Count >= 3) and (LParts[2] = '1') then
+        AddAgentEndpoint(StrToInt64Def(LParts[0], 0), LParts[1],
+          AAgents.Names[I], True);
+    end;
+  finally
+    LParts.Free;
+  end;
+  RestoreProviderSelection(LTier, LAgentAiId);
+end;
+
+procedure TFRpAISelectionVCL.SelectAIMode(const AAIMode: string);
+begin
+  if SameText(AAIMode, 'Reasoning') then
+    ComboAIMode.ItemIndex := 1
+  else
+    ComboAIMode.ItemIndex := 0;
+  ComboAIModeChange(ComboAIMode);
 end;
 
 procedure TFRpAISelectionVCL.SetInferenceProgress(AActive: Boolean);

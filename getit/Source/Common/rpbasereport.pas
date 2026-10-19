@@ -160,6 +160,7 @@ type
    FReportAction:TRpReportActions;
    FPreviewAbout:Boolean;
    FUndoCue:TObject;
+   FReportFolder:string;
     FBlockChangesCount:Integer;
     FBlockChangesSource:TRpBaseReport;
     FOnBlockChanges:TRpReportBlockChangesEvent;
@@ -342,6 +343,10 @@ type
    procedure SaveToFile(Filename:string);
    procedure LoadFromStream(Stream:TStream);
    procedure LoadFromFile(FileName:string);
+   // Folder of the file the report was loaded from or saved to, with the path
+   // delimiter (the designers set it too): a relative SQLite database of a
+   // connection is looked for there first. Not saved with the report.
+   property ReportFolder:string read FReportFolder write FReportFolder;
    property OnReadError:TReaderError read FOnReadError write FOnReadError;
    // Design functions
    procedure Createnew;
@@ -1011,6 +1016,7 @@ begin
  finally
   fstream.free;
  end;
+ FReportFolder:=ExtractFilePath(ExpandFileName(Filename));
 end;
 
 
@@ -1024,6 +1030,7 @@ begin
  finally
   stream.free;
  end;
+ FReportFolder:=ExtractFilePath(ExpandFileName(FileName));
 end;
 
 procedure TRpBaseReport.Clear();

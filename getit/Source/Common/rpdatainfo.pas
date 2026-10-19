@@ -316,6 +316,7 @@ type
 {$ENDIF}
    procedure ReadAdoConnectionString(Reader:TReader);
    procedure WriteAdoConnectionString(Writer:TWriter);
+   function ResolveSQLiteDatabase(const ADatabase:string):string;
   protected
     procedure DefineProperties(Filer:TFiler);override;
   public
@@ -420,6 +421,8 @@ type
    function Add(alias:string):TRpDatabaseInfoItem;
    function IndexOf(Value:string):integer;
    function ItemByName(AName:string):TRpDatabaseInfoItem;
+   // The report of the connections (nil in a list of its own)
+   property Report:TComponent read FReport;
    function GetReportStream(ConnectionName:String;ReportName:WideString;paramlist:TRpParamList):TStream;
    procedure SaveReportStream(ConnectionName:String;ReportName:WideString;astream:TStream;paramlist:TRpParamList);
    procedure SaveToFile(ainifile:String);
@@ -2299,6 +2302,105 @@ begin
  end;
 end;
 
+function RpIsRelativeFileName(const AName:string):Boolean;
+begin
+ Result:=(AName<>'') and (AName[1]<>'/') and (AName[1]<>'\') and
+  not ((Length(AName)>1) and (AName[2]=':'));
+end;
+
+// The file of the SQLite database of the connection when its name is
+// relative (the samples: DBPARAM_DATABASE=samples.db): in the folder of the
+// report first, then from the current folder and, in the FPC build, in the
+// folders the designer knows and in the development tree. A relative
+// database of a report loaded from a file that is in none of them raises an
+// error that names the connection and the folders: SQLite would create an
+// empty one, and the report would only say that a table does not exist.
+// An absolute name, and a relative one without a report folder (the report
+// library, which creates its database), are left to SQLite as before, as
+// are the special names (memory, URI, FireDAC macros).
+function TRpDatabaseInfoItem.ResolveSQLiteDatabase(const ADatabase:string):string;
+var
+ candidates:TStringList;
+ report:TComponent;
+ dbName,searched,folder:string;
+ i:integer;
+
+ procedure AddCandidate(const AName:string);
+ var
+  j:integer;
+ begin
+  // Two names of the same file (a relative one and a folder) are one
+  for j:=0 to candidates.Count-1 do
+   if ExpandFileName(candidates[j])=ExpandFileName(AName) then
+    exit;
+  candidates.Add(AName);
+ end;
+
+begin
+ Result:=ADatabase;
+ if (ADatabase='') or (ADatabase=':memory:') or (Pos('$(',ADatabase)>0) or
+  SameText(Copy(ADatabase,1,5),'file:') then
+  exit;
+{$IFDEF MSWINDOWS}
+ dbName:=StringReplace(ADatabase,'/','\',[rfReplaceAll]);
+{$ELSE}
+ dbName:=StringReplace(ADatabase,'\','/',[rfReplaceAll]);
+{$ENDIF}
+ if not RpIsRelativeFileName(dbName) then
+ begin
+  Result:=dbName;
+  exit;
+ end;
+ report:=nil;
+ if Assigned(Collection) then
+  report:=TRpDatabaseInfoList(Collection).FReport;
+ folder:='';
+ if report is TRpBaseReport then
+  folder:=TRpBaseReport(report).ReportFolder;
+ candidates:=TStringList.Create;
+ try
+  if folder<>'' then
+   AddCandidate(IncludeTrailingPathDelimiter(folder)+dbName);
+{$IFDEF FPC}
+  if RpReportFolder<>'' then
+   AddCandidate(IncludeTrailingPathDelimiter(RpReportFolder)+dbName);
+{$ENDIF}
+  AddCandidate(dbName);
+{$IFDEF FPC}
+  if RpSamplesFolder<>'' then
+   AddCandidate(IncludeTrailingPathDelimiter(RpSamplesFolder)+ExtractFileName(dbName));
+  // The development tree
+  AddCandidate(ExtractFileName(dbName));
+  AddCandidate('repman'+PathDelim+'repsamples'+PathDelim+ExtractFileName(dbName));
+  AddCandidate('..'+PathDelim+'..'+PathDelim+'..'+PathDelim+'repman'+PathDelim+
+   'repsamples'+PathDelim+ExtractFileName(dbName));
+{$ENDIF}
+  searched:='';
+  for i:=0 to candidates.Count-1 do
+  begin
+   if FileExists(candidates[i]) then
+   begin
+    Result:=candidates[i];
+    exit;
+   end;
+   if searched<>'' then
+    searched:=searched+', ';
+   searched:=searched+ExpandFileName(candidates[i]);
+  end;
+ finally
+  candidates.Free;
+ end;
+ // Without the folder of a report, SQLite creates it as before
+ if folder='' then
+ begin
+  Result:=dbName;
+  exit;
+ end;
+ Raise Exception.Create(Format(TranslateStr(2019,
+  'The SQLite database %s of the connection %s was not found. Searched: %s'),
+  [ADatabase,Alias,searched]));
+end;
+
 procedure TRpDatabaseinfoitem.Connect(params:TRpParamList);
 var
  conname:string;
@@ -2850,14 +2952,24 @@ begin
         ConAdmin.GetConnectionParams(conname,FFDConnection.Params);
        end;
        MergeList(paramlist,FFDConnection.Params);
+       // A relative SQLite database is looked for next to the report
+       if SameText(FFDConnection.Params.Values['DriverID'],'SQLite') or
+        SameText(FFDConnection.Params.Values['DriverName'],'SQLite') then
+        FFDConnection.Params.Values['Database']:=
+         ResolveSQLiteDatabase(FFDConnection.Params.Values['Database']);
        ConvertParamsFromDBXToFDac(FFDConnection);
        try
         FFDConnection.Connected:=true;
        except
-        WriteLn('Params:');
-        for i := 0 to FFDConnection.Params.Count-1 do
+        // Only a console has an output: in the designer WriteLn would raise
+        // an I/O error that hides the error of the connection
+        if IsConsole then
         begin
-         Writeln(FFDConnection.Params[i]);
+         WriteLn('Params:');
+         for i := 0 to FFDConnection.Params.Count-1 do
+         begin
+          Writeln(FFDConnection.Params[i]);
+         end;
         end;
         raise;
        end       ;
@@ -2918,23 +3030,10 @@ begin
            if dbName = '' then
              dbName := alist.Values['DatabaseName'];
 
-           // The file of a SQLite database (the samples) near the program
-           if (driverId = 'SQLITE') and (dbName <> '') and (not FileExists(dbName)) then
-           begin
-             {$IFDEF UNIX}
-             dbNameAlt := StringReplace(dbName, '\', '/', [rfReplaceAll]);
-             {$ELSE}
-             dbNameAlt := StringReplace(dbName, '/', '\', [rfReplaceAll]);
-             {$ENDIF}
-             if FileExists(dbNameAlt) then
-               dbName := dbNameAlt
-             else if FileExists(ExtractFileName(dbName)) then
-               dbName := ExtractFileName(dbName)
-             else if FileExists('repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
-               dbName := 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)
-             else if FileExists('..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName)) then
-               dbName := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim + 'repman' + PathDelim + 'repsamples' + PathDelim + ExtractFileName(dbName);
-           end;
+           // The file of a SQLite database: next to the report (the
+           // samples), from the current folder, in the samples folder...
+           if driverId = 'SQLITE' then
+             dbName := ResolveSQLiteDatabase(dbName);
 
            // The FPC build maps FireDAC connections to SQLdb, with the
            // drivers that SQLdb has (rpsqldbconnfpc)

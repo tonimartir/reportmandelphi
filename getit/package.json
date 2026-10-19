@@ -1,7 +1,7 @@
 {
   "Id": "Reportman",
   "Name": "Report Manager (Reportman)",
-  "Version": "4.0.19",
+  "Version": "4.0.22",
   "Vendor": "Toni Martir",
   "VendorUrl": "http:\/\/www.reportman.es",
   "License": "MPL1.txt",
@@ -10,7 +10,7 @@
   "Description": "Reportman is a cross platform reporting library, it generate PDFs on any platform. In Windows you can design, preview and print reports.",
   "Category": "Reporting",
   "ProjectUrl": "https:\/\/www.reportman.es",
-  "Modified": "2026-10-11 01:33:04",
+  "Modified": "2026-10-19 18:38:48",
   "LicenseName": "MOZILLA PUBLIC LICENSE",
   "RequireElevation": "0",
   "AllUsers": "0",

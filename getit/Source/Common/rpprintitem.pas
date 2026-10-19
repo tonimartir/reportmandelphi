@@ -1062,13 +1062,23 @@ begin
   pos := 1;
   while pos <= Length(text) do
   begin
+{$IFDEF FPC}
+    // FPC: a plain literal picks the AnsiString PosEx, which converts the
+    // text to UTF-8 and returns byte positions; Copy counts characters
+    startPos := PosEx(UnicodeString('{{'), UnicodeString(text), pos);
+{$ELSE}
     startPos := PosEx('{{', text, pos);
+{$ENDIF}
     if startPos = 0 then
     begin
       Result := Result + Copy(text, pos, Length(text) - pos + 1);
       Break;
     end;
+{$IFDEF FPC}
+    endPos := PosEx(UnicodeString('}}'), UnicodeString(text), startPos + 2);
+{$ELSE}
     endPos := PosEx('}}', text, startPos + 2);
+{$ENDIF}
     if endPos = 0 then
     begin
       Result := Result + Copy(text, pos, Length(text) - pos + 1);

@@ -46,6 +46,13 @@ uses Classes,SysUtils,rptruetype,rptypes,rpmunits,
 
 type
 
+ // The line metrics of a face for the HTML layout (TextExtentHtml), in the
+ // units of the font data (1000 per em): hhea, or the OS/2 table when the font
+ // has one, as DirectWrite measures
+ TRpFaceLineMetrics=record
+  Ascent,Descent,Leading,Height:integer;
+ end;
+
  TRpLogFont=class(TObject)
   fixedpitch:boolean;
   postcriptname:string;
@@ -79,6 +86,9 @@ type
   LoadedFace:boolean;
   CustomImplementation:TObject;
   data: TRpTTFontData;
+  // The metrics of TextExtentHtml, read from the file once (FaceLineMetrics)
+  LineMetricsRead:boolean;
+  LineMetrics:TRpFaceLineMetrics;
   constructor Create;
   destructor Destroy;override;
   procedure OpenFont;
@@ -914,6 +924,10 @@ end;
 // japones y latino contesta 'Zyyy' (comun); un tramo, en cambio, es de un solo script por
 // construccion, asi que se mira el suyo. Mismos rangos que el port .NET, para que los dos
 // motores conformen cada tramo con la misma etiqueta.
+//
+// DIGITS AND PUNCTUATION DO NOT DECIDE THE SCRIPT (12-10-2026): a right to left tramo is not
+// split, and one that began with "{{'0.'" or "<u>" was shaped as Latin, the Arabic after it
+// in isolated letters that did not join.
 function DetectaScript(const texto:WideString):string;
 var
  i,cp:integer;
@@ -922,6 +936,10 @@ begin
  begin
   cp:=Ord(texto[i]);
   if (cp<=32) then
+   continue;
+  // Neutral: ASCII digits and punctuation, and the signs of Latin-1
+  if ((cp<$41) or ((cp>$5A) and (cp<$61)) or ((cp>$7A) and (cp<$C0))
+      or (cp=$D7) or (cp=$F7)) then
    continue;
   if (((cp>=$0600) and (cp<=$06FF)) or ((cp>=$0750) and (cp<=$077F))
       or ((cp>=$08A0) and (cp<=$08FF)) or ((cp>=$FB50) and (cp<=$FDFF))
@@ -960,6 +978,76 @@ begin
     RightToLeft);
 end;
 
+// The line metrics of a face, read from its file once and kept in its
+// TRpLogFont, which every provider and thread share (18-10-2026). TextExtentHtml
+// read the whole font file for its OS/2 table once per family on every measure,
+// into a font data of more than a megabyte. The file is read outside the lock:
+// two threads may read it at the same time, and both get the same metrics.
+function FaceLineMetrics(AFont: TRpLogFont): TRpFaceLineMetrics;
+var
+  fontStream: TMemoryStream;
+  os2: TOS2Metrics;
+  cf: Double;
+  dwA, dwD, dwG: Integer;
+begin
+  critSection.Enter;
+  try
+    if AFont.LineMetricsRead then
+    begin
+      Result := AFont.LineMetrics;
+      Exit;
+    end;
+  finally
+    critSection.Leave;
+  end;
+  // Start with hhea-based metrics from the face
+  Result.Ascent := AFont.ascent;
+  Result.Descent := AFont.descent;
+  Result.Leading := AFont.leading;
+  if AFont.height > 0 then
+    Result.Height := AFont.height
+  else
+    Result.Height := AFont.ascent - AFont.descent + AFont.leading;
+  // Override with OS/2 table (matching C# FontInfoFt / DirectWrite)
+  if FileExists(AFont.filename) then
+  begin
+    fontStream := TMemoryStream.Create;
+    try
+      fontStream.LoadFromFile(AFont.filename);
+      ReadOS2Metrics(fontStream, os2);
+      if os2.Found then
+      begin
+        cf := AFont.convfactor;
+        if os2.UseTypoMetrics then
+        begin
+          dwA := os2.sTypoAscender;
+          dwD := -os2.sTypoDescender;
+          dwG := os2.sTypoLineGap;
+          Result.Ascent := Round(cf * dwA);
+          Result.Descent := -Round(cf * dwD);
+          Result.Height := Round(cf * (dwA + dwD + dwG));
+          Result.Leading := Result.Height - Result.Ascent + Result.Descent;
+        end
+        else
+        begin
+          Result.Ascent := Round(cf * os2.usWinAscent);
+          Result.Descent := -Round(cf * os2.usWinDescent);
+          Result.Leading := Result.Height - Result.Ascent + Result.Descent;
+        end;
+      end;
+    finally
+      fontStream.Free;
+    end;
+  end;
+  critSection.Enter;
+  try
+    AFont.LineMetrics := Result;
+    AFont.LineMetricsRead := True;
+  finally
+    critSection.Leave;
+  end;
+end;
+
 function TRpFTInfoProvider.TextExtentHtml(
   const Text: WideString;
   var Rect: TRect;
@@ -974,7 +1062,8 @@ function TRpFTInfoProvider.TextExtentHtml(
 var
   lineSubTexts: TList<TLineSubText>;
   lineSubText: TLineSubText;
-  line: string;
+  // UTF-16 as the clusters (in FPC a string is UTF-8: positions in bytes, 12-10-2026)
+  line: UnicodeString;
   Bidi: TICUBidi;
   logicalRuns: TList<TBidiRun>;
   logicalRun, vRun: TBidiRun;
@@ -986,6 +1075,7 @@ var
   calculatedLines: TList<TLineGlyphs>;
   calculatedLine:TLineGlyphs;
   j, k: Integer;
+  lineEndCluster, nextLineCluster: Integer;
   visualRuns: TList<TBidiRun>;
   LineInfo: TRpLineInfo;
   possibleBreaksCharIdx: TDictionary<Integer,Integer>;
@@ -1009,25 +1099,23 @@ var
   SegEndAbs: Integer;
   IntStart: Integer;
   IntEnd: Integer;
+  wordEndAbs: Integer;
+  firstWordWidth: Double;
   ChunkText: WideString;
   activeSize: Double;
   minCluster: Integer;
   maxCluster: Integer;
   lst: TList<Integer>;
   // Per-line spacing (matching C# FontInfoFt / GDI DirectWrite)
-  fontDataCache: TDictionary<string, TRpTTFontData>;
+  fontDataCache: TDictionary<string, TRpFaceLineMetrics>;
   fontCacheKey: string;
-  cachedData: TRpTTFontData;
+  cachedData: TRpFaceLineMetrics;
   maxBaselineTwips, maxLineHeight: double;
   gFontSize, gAscentTwips, gHeightTwips, gBaselineTwips: double;
   currentLineSpacing, lineBaseline: integer;
   lw: double;
 {$IFDEF FPC}
   textOffset: Integer;
-  fontStream: TMemoryStream;
-  os2: TOS2Metrics;
-  cf: Double;
-  dwA, dwD, dwG: SmallInt;
   doFallback: Boolean;
   acumuladas: TList<TGlyphPos>;
   tramos: TTramoArray;
@@ -1082,19 +1170,28 @@ begin
       TempFont.Color := pdfFont.Color;
       TempFont.WFontName := pdfFont.WFontName;
       TempFont.LFontName := pdfFont.LFontName;
-      fontDataCache := TDictionary<string, TRpTTFontData>.Create;
-      // Cache the base font data
+      fontDataCache := TDictionary<string, TRpFaceLineMetrics>.Create;
+      // The metrics of the base font, from its font data
       fontCacheKey := UpperCase(pdfFont.WFontName);
-      fontDataCache.AddOrSetValue(fontCacheKey, adata);
+      cachedData.Ascent := adata.Ascent;
+      cachedData.Descent := adata.Descent;
+      cachedData.Leading := adata.Leading;
+      cachedData.Height := adata.Height;
+      fontDataCache.AddOrSetValue(fontCacheKey, cachedData);
 
       for lineSubText in lineSubTexts do
       begin
         line := Copy(PlainText, lineSubText.Position, lineSubText.Length);
+        // What is created for the paragraph is freed at its end (18-10-2026): its
+        // lines (TLineGlyphs), the bidi runs, the chunks of a broken run and the
+        // visual order of each line leaked on every measure
         possibleBreaksCharIdx := FillPossibleLineBreaksString(line);
         calculatedLines := TList<TLineGlyphs>.Create;
-
-        Bidi := TICUBidi.Create;
         logicalRuns := nil;
+        visualRuns := nil;
+        currentChunk := nil;
+        try
+        Bidi := TICUBidi.Create;
         try
           if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then
             raise Exception.Create('Bidi error');
@@ -1150,69 +1247,11 @@ begin
                // verdad otra fuente o el mismo fichero con otro nombre.
                fuenteDelTramo := currentfont;
 
-               // Cache font data for per-line spacing calculation (key by family name only)
+               // The line metrics of the family for the spacing of each line (key by
+               // family name only): those of the first face of it the text uses
                fontCacheKey := UpperCase(TempFont.WFontName);
                if not fontDataCache.ContainsKey(fontCacheKey) then
-               begin
-                 cachedData := TRpTTFontData.Create;
-                 // Start with hhea-based metrics from currentfont
-                 cachedData.Ascent := currentfont.ascent;
-                 cachedData.Descent := currentfont.descent;
-                 cachedData.Leading := currentfont.leading;
-                 if currentfont.height > 0 then
-                   cachedData.Height := currentfont.height
-                 else
-                   cachedData.Height := currentfont.ascent - currentfont.descent + currentfont.leading;
-                 // Override with OS/2 table (matching C# FontInfoFt / DirectWrite)
-                 if FileExists(currentfont.filename) then
-                 begin
-{$IFDEF FPC}
-                    fontStream := TMemoryStream.Create;
-{$ELSE}
-                    var fontStream := TMemoryStream.Create;
-{$ENDIF}
-                   try
-                     fontStream.LoadFromFile(currentfont.filename);
-{$IFNDEF FPC}
-                      var os2: TOS2Metrics;
-{$ENDIF}
-                     ReadOS2Metrics(fontStream, os2);
-                     if os2.Found then
-                     begin
-{$IFDEF FPC}
-                        cf := currentfont.convfactor;
-{$ELSE}
-                        var cf := currentfont.convfactor;
-{$ENDIF}
-                       if os2.UseTypoMetrics then
-                       begin
-{$IFDEF FPC}
-                          dwA := os2.sTypoAscender;
-                          dwD := -os2.sTypoDescender;
-                          dwG := os2.sTypoLineGap;
-{$ELSE}
-                          var dwA := os2.sTypoAscender;
-                          var dwD := -os2.sTypoDescender;
-                          var dwG := os2.sTypoLineGap;
-{$ENDIF}
-                         cachedData.Ascent := Round(cf * dwA);
-                         cachedData.Descent := -Round(cf * dwD);
-                         cachedData.Height := Round(cf * (dwA + dwD + dwG));
-                         cachedData.Leading := cachedData.Height - cachedData.Ascent + cachedData.Descent;
-                       end
-                       else
-                       begin
-                         cachedData.Ascent := Round(cf * os2.usWinAscent);
-                         cachedData.Descent := -Round(cf * os2.usWinDescent);
-                         cachedData.Leading := cachedData.Height - cachedData.Ascent + cachedData.Descent;
-                       end;
-                     end;
-                   finally
-                     fontStream.Free;
-                   end;
-                 end;
-                 fontDataCache.Add(fontCacheKey, cachedData);
-               end;
+                 fontDataCache.Add(fontCacheKey, FaceLineMetrics(currentfont));
 
                if logicalRun.Direction = UBIDI_RTL then
                  direction := RP_UBIDI_RTL
@@ -1328,6 +1367,32 @@ begin
                  positions[k].HasColor := Seg.HasColor;
                end;
 
+               // A segment that starts a word after a space of the previous segment
+               // (12-10-2026): when its first word does not fit what is left of the
+               // line, the line ends before the segment. BreakChunksLTR/RTL only break
+               // after a glyph of the segment, so they took the glyphs that fitted and
+               // split the word: «...análisis de S» / «QL.» for «de <i>SQL</i>.». The
+               // positions are taken in PlainText (UTF-16), as the clusters.
+               if (WordWrap and (runWidth > remaining) and (remaining < lineWidthLimit) and
+                  (IntStart > 1) and ((PlainText[IntStart - 1] = ' ') or (PlainText[IntStart - 1] = #10))) then
+               begin
+                 wordEndAbs := IntStart;
+                 while ((wordEndAbs < IntEnd) and (PlainText[wordEndAbs] <> ' ') and
+                   (PlainText[wordEndAbs] <> #10)) do
+                   Inc(wordEndAbs);
+                 firstWordWidth := 0;
+                 for k:=0 to Length(positions)-1 do
+                   if ((Integer(positions[k].LineCluster) >= IntStart - lineSubText.Position) and
+                       (Integer(positions[k].LineCluster) < wordEndAbs - lineSubText.Position)) then
+                     firstWordWidth := firstWordWidth + positions[k].XAdvance;
+                 if (firstWordWidth > remaining) then
+                 begin
+                   calculatedLines.Add(currentChunk);
+                   currentChunk:=TLineGlyphs.Create(textOffset);
+                   remaining:=lineWidthLimit;
+                 end;
+               end;
+
                if ((runWidth<=remaining) or (not WordWrap)) then
                begin
                  for g in positions do
@@ -1341,6 +1406,7 @@ begin
                  else
                    chunks := BreakChunksLTR(positions, remaining, lineWidthLimit ,possibleBreaksCharIdx,line);
 
+                 try
                  for j:=0 to chunks.Count-1 do
                  begin
                    chunk:=chunks[j];
@@ -1368,15 +1434,23 @@ begin
                      currentChunk:=TLineGlyphs.Create(textOffset);
                    end;
                  end;
+                 finally
+                   chunks.Free;
+                 end;
                end;
              end;
              SegStartAbs := SegEndAbs;
           end;
         end;
-        if (currentChunk.Glyphs.Count>0) then calculatedLines.Add(currentChunk);
+        // AN EMPTY PARAGRAPH IS A LINE TOO (18-10-2026, as the C# port): "a<br><br>b"
+        // leaves a blank line between them, as DirectWrite does with the same text
+        // (rpinfoprovgdi). Without it the empty line had no TRpLineInfo and no height,
+        // and the paragraphs of an HTML text printed one against the other. The line
+        // without glyphs below takes the height of the base font.
+        if (currentChunk.Glyphs.Count>0) or (calculatedLines.Count=0) then
+          calculatedLines.Add(currentChunk);
 
         Bidi := TICUBidi.Create;
-        visualRuns := nil;
         try
           if not Bidi.SetPara(line, BidiParagraphLevel(RightToLeft)) then raise Exception.Create('VisualRuns error');
           visualRuns := Bidi.GetVisualRuns(line);
@@ -1394,6 +1468,7 @@ begin
           minCluster:=calculatedline.MinClusterText;
           maxCluster:=calculatedline.MaxClusterText;
           visualGlyphs:=TList<TGlyphPos>.Create;
+          try
           for vRun in visualRuns do
           begin
            if vRun.Direction = UBIDI_RTL then
@@ -1506,9 +1581,36 @@ begin
           end;
 
           LineInfo.Glyphs:=TGlyphPosArray(visualGlyphs.ToArray());
-          LineInfo.Position := minCluster;
-          LineInfo.Size := maxCluster - minCluster + 1;
-          LineInfo.Text :=Copy(PlainText, minCluster, maxCluster - minCluster + 1);
+          // THE TEXT OF THE LINE AND ITS CLUSTERS (12-10-2026). The clusters are positions in the
+          // paragraph (`line`, from 1), and the line was cut from the whole text with them: from
+          // the second paragraph on, its text (the /ActualText, and the text the PDF gives each
+          // glyph) came from another place, and a viewer copied repeated and cut words. Position
+          // is now in the whole text (from 1, as the other providers), the text reaches the end
+          // of the last cluster (a lam-alef ligature is two characters), and the clusters of the
+          // glyphs are positions in the text of the line, from 0, as TextoDeCadaGlifo reads them.
+          if (Length(LineInfo.Glyphs) > 0) then
+          begin
+            nextLineCluster := Length(line);
+            if (lineIdx + 1 < calculatedLines.Count) then
+              for j := 0 to calculatedLines[lineIdx + 1].Glyphs.Count - 1 do
+                if (Integer(calculatedLines[lineIdx + 1].Glyphs[j].LineCluster) - 1 < nextLineCluster) then
+                  nextLineCluster := Integer(calculatedLines[lineIdx + 1].Glyphs[j].LineCluster) - 1;
+            lineEndCluster := maxCluster;
+            while ((lineEndCluster < nextLineCluster) and (lineEndCluster < Length(line)) and
+                   (line[lineEndCluster + 1] > ' ')) do
+              Inc(lineEndCluster);
+            LineInfo.Position := lineSubText.Position + minCluster - 1;
+            LineInfo.Size := lineEndCluster - minCluster + 1;
+            LineInfo.Text := Copy(line, minCluster, LineInfo.Size);
+            for k := 0 to High(LineInfo.Glyphs) do
+              LineInfo.Glyphs[k].LineCluster := LineInfo.Glyphs[k].LineCluster - Cardinal(minCluster);
+          end
+          else
+          begin
+            LineInfo.Position := lineSubText.Position;
+            LineInfo.Size := 0;
+            LineInfo.Text := '';
+          end;
 
           // Per-line width and max font size
           lw := 0;
@@ -1553,22 +1655,25 @@ begin
           if LineInfo.Width > maxWidth then maxWidth := LineInfo.Width;
           rectTop := rectTop + currentLineSpacing;
           Inc(lineIdx);
+          finally
+            visualGlyphs.Free;
+          end;
         end;
-        calculatedLines.Free;
-        possibleBreaksCharIdx.Free;
+        finally
+          // The last chunk is the list's when it became a line
+          if (currentChunk <> nil) and (calculatedLines.IndexOf(currentChunk) < 0) then
+            currentChunk.Free;
+          for calculatedLine in calculatedLines do
+            calculatedLine.Free;
+          calculatedLines.Free;
+          logicalRuns.Free;
+          visualRuns.Free;
+          possibleBreaksCharIdx.Free;
+        end;
       end;
     finally
       TempFont.Free;
-      // Free cached font data objects (except adata which is not owned)
-      if Assigned(fontDataCache) then
-      begin
-        for cachedData in fontDataCache.Values do
-        begin
-          if cachedData <> adata then
-            cachedData.Free;
-        end;
-        fontDataCache.Free;
-      end;
+      fontDataCache.Free;
     end;
     if Length(Result) > 0 then Result[High(Result)].lastline := True;
   finally
@@ -1626,7 +1731,12 @@ begin
     end;
     currentfont.data.FontData.Fontdata.Position := 0;
     mem := currentfont.data.FontData.Fontdata.Memory;
-    CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, currentfont.data.FontData.Fontdata.Size, 0, shapedata.FreeTypeFace));
+    // The face fontconfig chose (12-10-2026): its index in a collection and, in the upper 16
+    // bits, the named instance of a variable font. Face 0 shaped the first face of a .ttc
+    // while another was embedded, and the default instance of a variable font (its regular)
+    // while the bold was asked.
+    CheckFreeType(FT_New_Memory_Face(ftlibrary, mem, currentfont.data.FontData.Fontdata.Size,
+      currentfont.fontIndex, shapedata.FreeTypeFace));
 
     currentfont.CustomImplementation := shapedata;
     currentfont.LoadedFace := True;
@@ -2955,6 +3065,9 @@ var
   outSize: Cardinal;
   isVariable: boolean;
   HasCCF2: boolean;
+  glyphList: array of Integer;
+  instanceBytes: TBytes;
+  k: Integer;
 begin
 
   HasCCF2 := False;
@@ -2976,11 +3089,26 @@ begin
      isVariable := FontHasCFF2OrFVAR(face);
      if  (isVariable or HasCCF2) then
      begin
-      //Result := TMemoryStream.Create;
-      //Result.SetSize(data.FontData.FontData.Size);
-      //Move(data.FontData.Fontdata.Memory^, Result.Memory^, data.FontData.FontData.Size);
-      //Result.Position := 0;
-      Result:=GetFontStreamNative(data);
+      // A variable font: a static instance of the one the text was shaped with
+      // (RpHBVariableInstance, 12-10-2026); without it (CFF2, or a HarfBuzz before 6.0)
+      // as before, which draws the default instance
+      SetLength(glyphList, data.glyphsInfo.Count);
+      k := 0;
+      for glyphInfo in data.glyphsInfo.Values do
+      begin
+        glyphList[k] := glyphInfo.Glyph;
+        Inc(k);
+      end;
+      if RpHBVariableInstance(data.FontData.FontData.Memory, data.FontData.FontData.Size,
+        Cardinal(data.FontIndex), 0, glyphList, instanceBytes) then
+      begin
+        Result := TMemoryStream.Create;
+        Result.SetSize(Int64(Length(instanceBytes)));
+        Move(instanceBytes[0], Result.Memory^, Length(instanceBytes));
+        Result.Position := 0;
+      end
+      else
+        Result:=GetFontStreamNative(data);
      end
      else
      begin

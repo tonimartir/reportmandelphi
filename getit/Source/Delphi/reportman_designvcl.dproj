@@ -279,6 +279,7 @@
         <DCCReference Include="..\Common\rpfrmlocalschemasvcl.pas"/>
         <DCCReference Include="..\Common\rpfrmaischemaselectorvcl.pas"/>
         <DCCReference Include="..\Common\rpfrmmonacoeditorvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmwelcomevcl.pas"/>
         <DCCReference Include="..\Common\rpmdcueviewvcl.pas"/>
         <DCCReference Include="..\Common\rpmdfnewreportwizardvcl.pas"/>
         <BuildConfiguration Include="Base">
