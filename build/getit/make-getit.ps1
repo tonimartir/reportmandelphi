@@ -16,8 +16,11 @@
 #    developer's library path (the repository root, Zeos...) can fill a gap.
 #    The three packages and the two examples are built for Win32 and Win64,
 #    Debug, as package.json asks. It fails when a unit is implicitly imported
-#    into a package (W1033: it would end up in two packages) or when a package
-#    imports a .bpl that is not part of RAD Studio.
+#    into a package (W1033: it would end up in two packages), when a package
+#    imports a .bpl that is not part of RAD Studio, or when a package leaves no
+#    C++Builder files (.hpp, .bpi, .lib/.a: the .dproj ask for all of them, so
+#    C++Builder can use the components). The .hpp go to the work folder, not
+#    to the IDE's hpp folder.
 # 4. Zip of the files of getit\ in git, for the GetIt submission form.
 [CmdletBinding()]
 param([switch]$NoSync)
@@ -85,7 +88,8 @@ foreach ($plat in 'Win32', 'Win64') {
   $m = [regex]::Match($envText, "(<PropertyGroup Condition=`"'\`$\(Platform\)'=='$plat'`">)(.*?)(</PropertyGroup>)", 'Singleline')
   if (-not $m.Success) { Fail "No $plat group in $UserEnv" }
   $body = $m.Groups[2].Value
-  $values = @{ DelphiLibraryPath = "$std;$out;$CatCommon"; DelphiDCPOutput = $out; DelphiDLLOutputPath = $out; DelphiBrowsingPath = '' }
+  $values = @{ DelphiLibraryPath = "$std;$out;$CatCommon"; DelphiDCPOutput = $out; DelphiDLLOutputPath = $out; DelphiBrowsingPath = '';
+    DelphiHPPOutputPath = (Join-Path $out 'hpp') }
   foreach ($tag in $values.Keys) {
     $v = $values[$tag]
     $body = [regex]::Replace($body, "<$tag>.*?</$tag>", { param($x) "<$tag>$v</$tag>" }.GetNewClosure(), 'Singleline')
@@ -164,7 +168,14 @@ foreach ($plat in 'Win32', 'Win64') {
     $foreign = @($imports | Where-Object { $_ -notmatch $Allowed })
     if ($foreign) { Fail "$pkg $plat imports packages that are not part of RAD Studio: $($foreign -join ', ')" }
     Write-Host ("     requires at run time: " + (($imports | ForEach-Object { $_ -replace '370\.bpl$|\.bpl$', '' }) -join ' '))
+    # The C++Builder files: the package's .hpp, its .bpi and its static library
+    $lib = if ($plat -eq 'Win64') { "$pkg.a" } else { "$pkg.lib" }
+    foreach ($f in (Join-Path $Work "out\$plat\hpp\$pkg.hpp"), (Join-Path $Work "out\$plat\$pkg.bpi"), (Join-Path $Work "out\$plat\$lib")) {
+      if (-not (Test-Path $f)) { Fail "$pkg $plat left no $([IO.Path]::GetFileName($f)) for C++Builder" }
+    }
   }
+  $hppCount = @(Get-ChildItem (Join-Path $Work "out\$plat\hpp") -Filter *.hpp).Count
+  Write-Host "     C++Builder: $hppCount .hpp, the .bpi and the static libraries"
   foreach ($ex in 'VCLDemo\VCLDemo.dproj', 'CreatePDF\CreatePDF.dproj') {
     $exe = Join-Path $Work "out\examples\$plat"
     Build (Join-Path $Catalog "Source\Examples\$ex") $plat ([IO.Path]::GetFileNameWithoutExtension($ex)) @("/p:DCC_ExeOutput=$exe")

@@ -35,8 +35,29 @@ Salida: `build\getit\out\Reportman-getit-<v>.zip` (gitignored). Se hace commit d
    - una unidad entra en un paquete sin estar en su `contains` (aviso W1033: acabaría
      en dos paquetes y el IDE no podría cargarlos), o
    - un paquete importa un `.bpl` que no es de RAD Studio. Lista lo que importa cada
-     uno: RTL, VCL, FireDAC, ADO, `dsnap`, `vcledge`, `designide`.
+     uno: RTL, VCL, FireDAC, ADO, `dsnap`, `vcledge`, `designide`, o
+   - un paquete no deja sus ficheros de C++Builder (`.hpp`, `.bpi`, `.lib`/`.a`): los
+     `.dproj` llevan `DCC_CBuilderOutput=All`, de modo que al instalar desde GetIt los
+     `.hpp` van a `hpp\$(Platform)` y los `.bpi`/`.lib` junto a los `.dcp`, las rutas
+     que C++Builder ya busca. En la sala limpia los `.hpp` van a su carpeta de trabajo,
+     no a la del IDE.
 4. Genera el zip con los ficheros de `getit\` que están en git.
+
+## C++Builder
+
+Probado el 19-10-2026 en RAD Studio 13 con un programa de consola C++ que carga un
+informe y lo exporta a PDF con `TPDFReport`, enlazado con los paquetes en tiempo de
+ejecución (`reportman_rtl.bpi` y los de FireDAC de los que depende): compila, enlaza y
+saca los mismos PDF en Win32 (`bcc32c`), Win64 (`bcc64`) y Win64 Modern (`bcc64x`).
+
+- GetIt compila los paquetes para Win32 y Win64 (`package.json`). Para Win64 Modern
+  hay que compilarlos a mano para *Windows 64-bit (Modern)*: el compilador de Delphi
+  genera entonces objetos COFF (`-JF:COFFI`). No se pide en `package.json` porque esa
+  plataforma solo existe si está instalado C++Builder.
+- RAD Studio 13 ya no trae las cabeceras del SDK de Windows: en la primera compilación
+  C++ las copia del SDK de Microsoft a `include\windows\sdk`, y solo acepta las
+  versiones 10.0.26100.4188, .4654 y .4948 (una más nueva, como la .8249 que instala
+  Visual Studio, deja `windows.h` sin encontrar).
 
 La prueba que falta es la instalación en un IDE limpio: `bds.exe -r ReportmanClean`
 arranca RAD Studio con otra rama del registro, como recién instalado, sin tocar el

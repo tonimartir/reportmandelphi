@@ -234,6 +234,7 @@
 
 <h3>RAD Studio 10.3 Rio and later (recommended)</h3>
 <p>In modern RAD Studio the C++Builder and Delphi personalities share the same packages. Open the project group for your version under the <code>packages</code> folder, build it, then install the design-time package <b>reportman_designvcl</b> (it pulls in <b>reportman_rtl</b> and <b>reportman_vcl</b>). To call the components from C++ code, add the components directory to the project include and library paths.</p>
+<p>In <b>RAD Studio 13</b> the packages can also be installed from <b>GetIt</b> (<i>Tools &rarr; GetIt Package Manager</i>, search for Report Manager). They are built with the C++Builder files, so the <code>.hpp</code> headers, <code>.bpi</code> and <code>.lib</code> files land where C++Builder already looks for them, for Windows 32-bit and Windows 64-bit; for Windows 64-bit (Modern), open <code>reportman.groupproj</code> from the installed package and build it for that platform. RAD Studio 13 copies the Windows SDK headers from the Microsoft Windows SDK on the first C++ build, and only from the versions it supports (10.0.26100.4188, .4654 or .4948): with a newer SDK, <code>windows.h</code> is not found.</p>
 <table border="1">
   <tr><th>Version</th><th>Project group</th></tr>
   <tr><td>RAD Studio 13</td><td>packages\13.0\reportman.groupproj</td></tr>
