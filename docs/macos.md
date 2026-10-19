@@ -177,7 +177,7 @@ Trabajos:
 3. **smoke**, en los dos Mac: monta el `.dmg` y ejecuta el diseñador de
    dentro: `--version`; `--check-https` contra `aiapi.reportman.es` con
    `DYLD_PRINT_LIBRARIES` (falla si `libssl` y `libcrypto` no salen de
-   `Contents/Frameworks`); y abre `sample4.rep`, comprueba a los 25 s que
+   `Contents/Frameworks`); y abre `samples/fishes.rep`, comprueba a los 25 s que
    sigue vivo y que el proceso es de la arquitectura del Mac (`vmmap`:
    `ARM64` o `X86-64`).
 
@@ -405,7 +405,8 @@ workflow de Actions):
   (`/etc/ssl/cert.pem`). `Contents/Resources/licenses` lleva las licencias de
   las librerías de dentro.
 - `Contents/Resources`: `reportmanres.*`, `languages/lclstrconsts.*.po`, los
-  ejemplo `sample4.rep` con sus datos (`biolife.*`) en `samples/` y el icono, hecho de `doc/icon-512.png`.
+  informes de ejemplo con su base SQLite en `samples/` (los de `samples/` del
+  repositorio, los mismos de Windows y Linux) y el icono, hecho de `doc/icon-512.png`.
 - `Info.plist`: `LSMinimumSystemVersion` es la mayor versión mínima que
   piden el ejecutable y las librerías según `otool` (hoy 10.15, la de
   `MACOSX_DEPLOYMENT_TARGET` en `build-deps.sh`; el ejecutable de FPC pide

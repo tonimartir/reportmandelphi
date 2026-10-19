@@ -367,12 +367,13 @@ open repman/repmandesigner_lcl.app</code></pre>
   <code>.github/workflows/macos.yml</code> workflow of the source code, which builds and tests on both
   kinds of Mac.</p>
 <p>The application carries FreeType, HarfBuzz and fontconfig with its configuration, the translations
-  and the sample report <code>sample4.rep</code> with its data: open the disk image, drag the
+  and the sample reports with their SQLite database: open the disk image, drag the
   application to Applications and open it. It requires macOS 10.15 or later on Intel and macOS 11
   or later on Apple Silicon (declared in its <code>Info.plist</code>; tested on macOS 11 and 15). The <code>.rep</code> files
   open with the designer from the Finder: double click, drop them on its icon or <i>Open With</i>. The
-  samples are inside the application; to change one, save it in another folder (it keeps finding its
-  sample data). A data file of <code>TClientDataSet</code> (<code>.cds</code>) must be saved as XML
+  welcome window, shown at startup and from <i>Help &rarr; Sample reports&hellip;</i>, lists the
+  samples; they are inside the application, so the designer opens a copy in
+  <code>~/Documents/Report Manager/Samples</code>, where they can be changed and saved. A data file of <code>TClientDataSet</code> (<code>.cds</code>) must be saved as XML
   to be read on macOS: the binary format of Windows is not supported. It also carries
   OpenSSL 3.5 for HTTPS (the login, the AI assistants and the Reportman DB Agent driver), with the root
   certificates of macOS, and the licenses of those libraries. It does not include the client libraries

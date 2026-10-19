@@ -299,7 +299,7 @@ sudo apt install ./reportman-designer_4.0.21_amd64.deb        # back to Qt 6</co
 </ul>
 <table>
   <tr><th>Path</th><th>Contents</th></tr>
-  <tr><td><code>/opt/reportman-designer/</code></td><td>The program, its translations and the sample report (<code>samples/</code>)</td></tr>
+  <tr><td><code>/opt/reportman-designer/</code></td><td>The program, its translations and the sample reports with their SQLite database (<code>samples/</code>)</td></tr>
   <tr><td><code>/opt/reportman-designer/lib/</code></td><td>Qt&nbsp;6 only: <code>libQt6Pas</code>, the Lazarus binding to Qt&nbsp;6 (not packaged by Ubuntu 22.04/24.04 or Debian 12); the rest of Qt&nbsp;6 comes from the distribution</td></tr>
   <tr><td><code>/usr/bin/reportman-designer</code></td><td>Link to the program</td></tr>
   <tr><td><code>/usr/share/applications/reportman-designer.desktop</code></td><td>Menu entry</td></tr>
@@ -358,9 +358,13 @@ sudo apt remove reportman-designer-gtk2   # GTK2 version</code></pre>
 
 <h2>First steps</h2>
 <ul>
-  <li>The sample report, <code>sample4.rep</code>, is in <code>/opt/reportman-designer/samples/</code>
-    with its data (<code>biolife.*</code>). That folder is read-only; copy it to modify the sample:
-    <code>cp -r /opt/reportman-designer/samples ~/reportman-samples</code>.</li>
+  <li>The welcome window, shown at startup and from <i>Help &rarr; Sample reports&hellip;</i>, lists
+    the sample reports (invoices, letters with HTML text, labels, a product catalogue with
+    barcodes, charts, international text&hellip;). Each one reads a small SQLite database installed
+    with it, so it can be previewed right away. They are installed in
+    <code>/opt/reportman-designer/samples/</code>, which is read-only: the designer opens a copy in
+    <code>~/Documents/Report Manager/Samples</code> (the documents folder of your desktop), where
+    they can be changed and saved.</li>
   <li>The designer language (menus, toolbars, dialogs and messages) follows <code>LC_ALL</code>,
     <code>LC_MESSAGES</code> or <code>LANG</code>, in that order: English, Spanish, Catalan, French,
     German, Italian, Portuguese, Czech and Lithuanian. For example

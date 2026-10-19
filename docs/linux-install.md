@@ -66,7 +66,7 @@ Qué instala:
 
 | Ruta | Contenido |
 |---|---|
-| `/opt/reportman-designer/` | El programa, las traducciones (`reportmanres.*`, y en `languages/` las de la LCL) y el informe de ejemplo (`samples/`) |
+| `/opt/reportman-designer/` | El programa, las traducciones (`reportmanres.*`, y en `languages/` las de la LCL) y los informes de ejemplo con su base de datos SQLite (`samples/`) |
 | `/opt/reportman-designer/lib/` | Solo Qt 6: `libQt6Pas`, el enlace de la LCL con Qt 6 (Ubuntu 22.04/24.04 y Debian 12 no la tienen); el resto de Qt 6 es el de la distribución |
 | `/usr/bin/reportman-designer` | Enlace al programa |
 | `/usr/share/applications/reportman-designer.desktop` | Entrada del menú |
@@ -150,13 +150,14 @@ distribución no soportada o algo falla.
 
 ## Primeros pasos
 
-- El informe de ejemplo, `sample4.rep`, está en
-  `/opt/reportman-designer/samples/` junto con sus datos (`biolife.*`). Esa
-  carpeta es de solo lectura; para modificarlo, cópialo a tu carpeta personal:
-
-  ```sh
-  cp -r /opt/reportman-designer/samples ~/reportman-ejemplos
-  ```
+- La ventana de bienvenida, al arrancar y en *Ayuda → Informes de ejemplo…*,
+  lista los informes de ejemplo (facturas, cartas con texto HTML, etiquetas,
+  un catálogo con códigos de barras, gráficos, texto internacional…). Cada uno
+  lee una pequeña base de datos SQLite que se instala con él, así que su vista
+  previa sale al momento. Están en `/opt/reportman-designer/samples/`, de solo
+  lectura: el diseñador abre una copia en `~/Documentos/Report Manager/Samples`
+  (la carpeta de documentos del escritorio), donde se pueden modificar y
+  guardar.
 - El idioma del diseñador (menús, barras de herramientas, diálogos y
   mensajes, también los botones de los diálogos estándar) sigue `LC_ALL`,
   `LC_MESSAGES` o `LANG`, en ese orden (español, inglés, catalán, francés,
