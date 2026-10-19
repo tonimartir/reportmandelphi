@@ -389,6 +389,22 @@ El JSON publicado es el que genera el script: su `CommunityDescription` por
 defecto ya es la que escribió Toni para el primer envío (con la IA y los
 ejemplos).
 
+### 4.0.22 (19-10-2026, commit 2332bed5)
+
+Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.21 quedan en la
+VM, en `~/webs/opm-anteriores/4.0.21`. Novedades para quien lo instala: la
+ventana de bienvenida del diseñador con los informes de ejemplo sobre SQLite
+(`rpsamplesutil.pas` y `design_lcl/rpfrmwelcomelcl.pas`, nuevos en la lista de
+ficheros), una base SQLite con ruta relativa se busca junto al informe, y los
+esquemas locales para el copiloto (biblioteca con plantillas, bases grandes,
+progreso y cancelación, exportar e importar todo). Zip de 200 ficheros,
+5.744.845 bytes, MD5 `50f82085cb893b331fa13caf68b6fd5c`.
+
+Validado igual que la 4.0.21: en Linux con la imagen `reportman-linux-builder`
+(`--ws=gtk2` y `--ws=qt6`, los tres paquetes desde el zip) y en macOS con
+`build/macos/opm-check.sh` (Intel: los tres paquetes, los cuatro ejemplos y
+`pdfconsole`). Windows no se validó.
+
 ### 4.0.21 (15-10-2026, commit abf949db)
 
 Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.20 quedan en la
