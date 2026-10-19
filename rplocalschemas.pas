@@ -620,9 +620,10 @@ procedure RpImportAllSchemaNames(const AJson: string; ANames: TStrings);
 // relation by hand, a description or allowed values. Import all asks before
 // merging into such a file or replacing it
 function RpLocalSchemaHasContent(AFile: TRpLocalSchemaFile): Boolean;
-// The tables of the whole file AJson that AFile has without their columns
-// read (a large catalog), as AFile spells them: they are read before
-// importing it
+// The tables whose columns the import of the whole file AJson uses (those of
+// the file with their columns read, those of its subschemas and the targets
+// of its relations by hand) that AFile has without their columns read (a
+// large catalog), as AFile spells them: they are read before importing it
 procedure RpImportAllUnreadTables(AFile: TRpLocalSchemaFile;
   const AJson: string; AList: TStrings);
 // What is written in the whole file AJson goes to AFile, whose catalog (its
@@ -5538,20 +5539,46 @@ procedure RpImportAllUnreadTables(AFile: TRpLocalSchemaFile;
   const AJson: string; AList: TStrings);
 var
   LImported: TRpLocalSchemaFile;
-  I: Integer;
-  LTable: TJSONObject;
+  I, J: Integer;
+  LItem, LForeignKey: TJSONObject;
+  LItems: TJSONArray;
+
+  procedure Need(const AName: string);
+  var
+    LTable: TJSONObject;
+  begin
+    LTable := AFile.FindTable(AName);
+    if (LTable <> nil) and not AFile.ColumnsRead(JStr(LTable, 'name')) and
+      (AList.IndexOf(JStr(LTable, 'name')) < 0) then
+      AList.Add(JStr(LTable, 'name'));
+  end;
+
 begin
   AList.Clear;
   LImported := TRpLocalSchemaFile.Create;
   try
     LImported.LoadFromJson(AJson);
-    for I := 0 to LImported.Tables.Count - 1 do
+    // Not every table of the file: a large catalog imported into another one
+    // would read it all
+    for I := 0 to LImported.FTables.Count - 1 do
     begin
-      LTable := AFile.FindTable(JStr(JObj(LImported.Tables, I), 'name'));
-      if (LTable <> nil) and not AFile.ColumnsRead(JStr(LTable, 'name')) and
-        (AList.IndexOf(JStr(LTable, 'name')) < 0) then
-        AList.Add(JStr(LTable, 'name'));
+      LItem := JObj(LImported.FTables, I);
+      if LItem = nil then
+        Continue;
+      if LImported.ColumnsRead(JStr(LItem, 'name')) then
+        Need(JStr(LItem, 'name'));
+      LItems := JArr(LItem, 'foreignKeys');
+      if LItems <> nil then
+        for J := 0 to LItems.Count - 1 do
+        begin
+          LForeignKey := JObj(LItems, J);
+          if (LForeignKey <> nil) and (Trim(JStr(LForeignKey, 'constraintName')) = '') then
+            Need(JStr(LForeignKey, 'targetTable'));
+        end;
     end;
+    for I := 0 to LImported.SchemaCount - 1 do
+      for J := 0 to LImported.Schemas[I].Tables.Count - 1 do
+        Need(LImported.Schemas[I].Tables[J]);
   finally
     LImported.Free;
   end;
@@ -5607,9 +5634,9 @@ procedure RpImportAllSchemas(AFile: TRpLocalSchemaFile; const AJson: string;
   AReplace: Boolean; ASkipped: TStrings; out AAdded, AReplaced: Integer);
 var
   LImported: TRpLocalSchemaFile;
-  I, J, LIndex: Integer;
-  LFrom, LTo, LItem, LMatch, LTarget, LEntry: TJSONObject;
-  LItems, LValues: TJSONArray;
+  I, J, K, LIndex, LPass: Integer;
+  LFrom, LTo, LItem, LMatch, LTarget: TJSONObject;
+  LItems, LValues, LForeignKeys, LSourceArray, LTargetArray: TJSONArray;
   LName, LText: string;
   LSource, LTargetColumns: TStringList;
   LSchema, LNew: TRpLocalSubSchema;
@@ -5620,21 +5647,15 @@ var
       ASkipped.Add(AWhat);
   end;
 
-  // An entry of an exclusion list of the file, into a list of AFile when its
-  // source table is in the catalog and the list does not have it
+  // An entry of an exclusion list of the file (as the file spells it), into
+  // a list of AFile when its source table is in the catalog and the list does
+  // not have it
   procedure AddExcluded(AEntry: TJSONObject; AList: TJSONArray);
-  var
-    LSourceTable: TJSONObject;
   begin
-    if AEntry = nil then
+    if (AEntry = nil) or (AFile.FindTable(JStr(AEntry, 'sourceTable')) = nil) or
+      (IndexOfExcluded(AList, JStr(AEntry, 'sourceTable'), AEntry) >= 0) then
       Exit;
-    LSourceTable := AFile.FindTable(JStr(AEntry, 'sourceTable'));
-    if (LSourceTable = nil) or
-      (IndexOfExcluded(AList, JStr(LSourceTable, 'name'), AEntry) >= 0) then
-      Exit;
-    AEntry := TJSONObject(AEntry.Clone);
-    SetPair(AEntry, 'sourceTable', TJSONString.Create(JStr(LSourceTable, 'name')));
-    AList.AddElement(AEntry);
+    AList.AddElement(TJSONObject(AEntry.Clone));
   end;
 
 begin
@@ -5685,39 +5706,70 @@ begin
           if (LValues <> nil) and (LValues.Count > 0) then
             SetPair(LMatch, 'allowedValues', TJSONArray(LValues.Clone));
         end;
-      // The relations of the database: their description; the ones by hand
-      // whose two ends are in the catalog: added (AddRelation does not add
-      // one twice, and gives a description to the one there)
+      // The relations of the database first: their description. Then the
+      // ones by hand whose two ends are in the catalog: added (not twice: one
+      // with the same ends gets the description of the file when it has
+      // one). The exclusions of AFile are not touched
       LItems := JArr(LFrom, 'foreignKeys');
       if LItems <> nil then
-        for J := 0 to LItems.Count - 1 do
-        begin
-          LItem := JObj(LItems, J);
-          if LItem = nil then
-            Continue;
-          LText := JStr(LItem, 'relationshipContext');
-          if Trim(JStr(LItem, 'constraintName')) <> '' then
+        for LPass := 0 to 1 do
+          for J := 0 to LItems.Count - 1 do
           begin
-            LMatch := FindByName(JArr(LTo, 'foreignKeys'), 'constraintName',
-              JStr(LItem, 'constraintName'));
-            if LMatch = nil then
-              LMatch := FindRelation(LTo, JStr(LItem, 'targetTable'),
-                JArr(LItem, 'sourceColumns'), JArr(LItem, 'targetColumns'));
-            if (LMatch <> nil) and (Trim(LText) <> '') then
-              SetPair(LMatch, 'relationshipContext', TJSONString.Create(LText));
-          end
-          else
-          begin
+            LItem := JObj(LItems, J);
+            if (LItem = nil) or
+              ((Trim(JStr(LItem, 'constraintName')) <> '') <> (LPass = 0)) then
+              Continue;
+            LText := JStr(LItem, 'relationshipContext');
+            if LPass = 0 then
+            begin
+              LMatch := FindByName(JArr(LTo, 'foreignKeys'), 'constraintName',
+                JStr(LItem, 'constraintName'));
+              if LMatch = nil then
+                LMatch := FindRelation(LTo, JStr(LItem, 'targetTable'),
+                  JArr(LItem, 'sourceColumns'), JArr(LItem, 'targetColumns'));
+              if (LMatch <> nil) and (Trim(LText) <> '') then
+                SetPair(LMatch, 'relationshipContext', TJSONString.Create(LText));
+              Continue;
+            end;
             LTarget := AFile.FindTable(JStr(LItem, 'targetTable'));
             ArrayNames(JArr(LItem, 'sourceColumns'), LSource);
             ArrayNames(JArr(LItem, 'targetColumns'), LTargetColumns);
-            if (LTarget <> nil) and (LSource.Count > 0) and
-              (LSource.Count = LTargetColumns.Count) and
-              ColumnsExist(LTo, LSource) and ColumnsExist(LTarget, LTargetColumns) then
-              AFile.AddRelation(LName, JStr(LTarget, 'name'), LSource,
-                LTargetColumns, LText, nil);
+            LSourceArray := TJSONArray.Create;
+            LTargetArray := TJSONArray.Create;
+            try
+              // The ends as the catalog spells them
+              if (LTarget = nil) or (LSource.Count <> LTargetColumns.Count) or
+                not SpellColumns(LTo, LSource, LSourceArray) or
+                not SpellColumns(LTarget, LTargetColumns, LTargetArray) then
+                Continue;
+              LMatch := FindRelation(LTo, JStr(LTarget, 'name'), LSourceArray,
+                LTargetArray);
+              if LMatch <> nil then
+              begin
+                if Trim(LText) <> '' then
+                  SetPair(LMatch, 'relationshipContext', TJSONString.Create(LText));
+                Continue;
+              end;
+              LMatch := TJSONObject.Create;
+              LMatch.AddPair('constraintName', '');
+              LMatch.AddPair('targetTable', JStr(LTarget, 'name'));
+              LMatch.AddPair('sourceColumns', LSourceArray);
+              LSourceArray := nil;
+              LMatch.AddPair('targetColumns', LTargetArray);
+              LTargetArray := nil;
+              LMatch.AddPair('relationshipContext', LText);
+              LForeignKeys := JArr(LTo, 'foreignKeys');
+              if LForeignKeys = nil then
+              begin
+                LForeignKeys := TJSONArray.Create;
+                SetPair(LTo, 'foreignKeys', LForeignKeys);
+              end;
+              LForeignKeys.AddElement(LMatch);
+            finally
+              LTargetArray.Free;
+              LSourceArray.Free;
+            end;
           end;
-        end;
     end;
     // The exclusions of the root
     for I := 0 to LImported.FExcluded.Count - 1 do
@@ -5742,7 +5794,25 @@ begin
           if LNew.Tables.IndexOf(JStr(LTo, 'name')) < 0 then
             LNew.Tables.Add(JStr(LTo, 'name'));
         end;
-        // The lists of columns, of the columns of the catalog
+        // The lists of columns, of the columns of the catalog (the others are
+        // said)
+        for J := 0 to LSchema.FColumns.Count - 1 do
+        begin
+          LTo := AFile.FindTable(LSchema.FColumns.Pairs[J].JsonString.Value);
+          if LTo = nil then
+          begin
+            Skip(LSchema.FColumns.Pairs[J].JsonString.Value);
+            Continue;
+          end;
+          if LSchema.FColumns.Pairs[J].JsonValue is TJSONArray then
+          begin
+            LItems := TJSONArray(LSchema.FColumns.Pairs[J].JsonValue);
+            for K := 0 to LItems.Count - 1 do
+              if (LItems.Items[K] <> nil) and
+                (FindByName(JArr(LTo, 'columns'), 'name', LItems.Items[K].Value) = nil) then
+                Skip(JStr(LTo, 'name') + '.' + LItems.Items[K].Value);
+          end;
+        end;
         LNew.FColumns.Free;
         LNew.FColumns := TJSONObject(LSchema.FColumns.Clone);
         LNew.KeepColumnsOf(AFile.FTables);

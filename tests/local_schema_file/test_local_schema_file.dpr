@@ -1562,7 +1562,7 @@ const
     '{"name":"ID","dataType":"Integer","context":"","isPrimaryKey":true}],"foreignKeys":[]}],' +
     '"schemas":[{"name":"sales","description":"F sales","tables":["ORDERS","GHOST"],' +
     '"columns":{"ORDERS":["ID","STATUS","NOPE"]}},' +
-    '{"name":"New","description":"","tables":["CUSTOMERS"]}],' +
+    '{"name":"New","description":"","tables":["CUSTOMERS"],"columns":{"CUSTOMERS":["ID","ZZZ"]}}],' +
     '"excludedRelations":[{"sourceTable":"ORDERS","sourceColumns":["X"],' +
     '"targetTable":"PRODUCTS","targetColumns":["ID"]}]}';
 
@@ -1630,7 +1630,9 @@ begin
       'import all, merge: both relations by hand');
     Check(LFile.ExcludedRelations.Count = 1, 'import all: the exclusion of the root of the file');
     Check((LSkipped.IndexOf('GHOST') >= 0) and (LSkipped.IndexOf('ORDERS.NOPE') >= 0) and
-      (LSkipped.Count = 2), 'import all: what this database lacks is skipped (' + LSkipped.CommaText + ')');
+      (LSkipped.IndexOf('CUSTOMERS.ZZZ') >= 0) and (LSkipped.Count = 3),
+      'import all: what this database lacks is skipped, the lists of the subschemas too (' +
+      LSkipped.CommaText + ')');
     // The same file again: nothing added twice
     RpImportAllSchemas(LFile, ImportAllFile, False, LSkipped, LAdded, LReplaced);
     Check((SchemaNames(LFile) = 'sales,Mine,New') and (LAdded = 2) and (LReplaced = 2) and
@@ -1683,6 +1685,38 @@ begin
         'import all: what Export all writes, imported replacing, gives the same subschemas and dictionary');
       RpImportAllUnreadTables(LOther, ImportAllFile, LList);
       Check(LList.Count = 0, 'import all: no table to read in a catalog read whole');
+    finally
+      LOther.Free;
+    end;
+
+    // A relation by hand of the file that the connection excludes stays
+    // excluded: merging does not touch the exclusions of the connection
+    LFile.LoadFromJson(ImportAllDest);
+    LFile.ExcludedRelations.AddElement(TJSONObject.ParseJSONValue(
+      '{"sourceTable":"ORDERS","sourceColumns":["X"],"targetTable":"PRODUCTS","targetColumns":["ID"]}'));
+    RpImportAllSchemas(LFile,
+      '{"version":2,"tables":[{"name":"ORDERS","context":"","columns":[{"name":"X"}],' +
+      '"foreignKeys":[{"constraintName":"","targetTable":"PRODUCTS","sourceColumns":["x"],' +
+      '"targetColumns":["id"],"relationshipContext":"F text"}]}],"schemas":[]}',
+      False, LSkipped, LAdded, LReplaced);
+    Check((LFile.ExcludedRelations.Count = 1) and (ManualCount(LFile, 'ORDERS') = 1) and
+      (TJSONObject(TJSONArray(LFile.FindTable('ORDERS').Values['foreignKeys']).Items[0]).
+      Values['relationshipContext'].Value = 'F text'),
+      'import all: a relation by hand with the same ends gets the text, the exclusion stays');
+
+    // A large catalog: only the tables whose columns the import uses are read
+    LOther := TRpLocalSchemaFile.Create;
+    try
+      LOther.LoadFromJson('{"version":2,"tables":[' +
+        '{"name":"ORDERS","columnsRead":false},{"name":"CUSTOMERS","columnsRead":false},' +
+        '{"name":"PRODUCTS","columnsRead":false},{"name":"BIG","columnsRead":false}],"schemas":[]}');
+      RpImportAllUnreadTables(LOther, '{"version":2,"tables":[' +
+        '{"name":"ORDERS","columns":[{"name":"ID"}],"foreignKeys":[{"constraintName":"",' +
+        '"targetTable":"PRODUCTS","sourceColumns":["ID"],"targetColumns":["ID"]}]},' +
+        '{"name":"CUSTOMERS","columnsRead":false},{"name":"BIG","columnsRead":false}],' +
+        '"schemas":[{"name":"S","tables":["CUSTOMERS"]}]}', LList);
+      Check(LList.CommaText = 'ORDERS,PRODUCTS,CUSTOMERS',
+        'import all: the tables read first are those the import uses (' + LList.CommaText + ')');
     finally
       LOther.Free;
     end;
