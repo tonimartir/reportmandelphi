@@ -41,8 +41,11 @@ Source: "c:\desarrollo\prog\toni\reportman\repman\binr32\repmandxp.exe"; DestDir
 Source: "c:\desarrollo\prog\toni\reportman\samples\*"; DestDir: "{app}\samples"; Flags: recursesubdirs createallsubdirs
 ; net2 (.NET designer + printreport) se instala aparte con el instalador independiente
 ; "Report Manager .NET Designer": reportmanxe_net_64.iss / reportmanxe_net_x32.iss
-Source: "c:\desarrollo\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{%PUBLIC}"
-Source: "c:\desarrollo\prog\toni\reportman\repman\dbxconnections.ini"; DestDir: "{%PUBLIC}"
+; The connections file is the user's: installed only when there is none (an update must not
+; replace the user's connections with the default ones) and never removed by the uninstaller,
+; like the drivers file the connections refer to
+Source: "c:\desarrollo\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{%PUBLIC}"; Flags: uninsneveruninstall
+Source: "c:\desarrollo\prog\toni\reportman\repman\dbxconnections.ini"; DestDir: "{%PUBLIC}"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\binr32\printreptopdf.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\activex\binr32\Reportman.ocx"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printrep\binr32\printrepxp.exe"; DestDir: "{app}"
