@@ -33,6 +33,8 @@ program test_local_schema_file;
 {      catalog read when a table is used.               }
 {  11. The thread that reads for a screen: a cancel     }
 {      between rows, and a read given up.               }
+{  12. Export all / Import all (spec X): the whole file }
+{      merged or replacing what is written.             }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_local_schema_      }
 {   file.lpi (lazbuild). Run:                           }
@@ -1526,6 +1528,173 @@ begin
   Check(True, 'worker: retired, it ended on its own');
 end;
 
+// The file of the connection (D) and the whole file imported (F) of spec X.6
+const
+  ImportAllDest =
+    '{"version":2,"alias":"T","dialect":"SQLite","generatedUtc":"","tables":[' +
+    '{"name":"ORDERS","context":"D orders","columns":[' +
+    '{"name":"ID","dataType":"Integer","context":"","isPrimaryKey":true},' +
+    '{"name":"STATUS","dataType":"String","context":"","allowedValues":[{"value":"A","label":"a"}]},' +
+    '{"name":"X","dataType":"Integer","context":""}],"foreignKeys":[' +
+    '{"constraintName":"","targetTable":"PRODUCTS","sourceColumns":["X"],"targetColumns":["ID"],' +
+    '"relationshipContext":"D by hand"}]},' +
+    '{"name":"CUSTOMERS","context":"D customers","columns":[' +
+    '{"name":"ID","dataType":"Integer","context":"","isPrimaryKey":true},' +
+    '{"name":"Y","dataType":"Integer","context":""}],"foreignKeys":[]},' +
+    '{"name":"PRODUCTS","context":"","columns":[' +
+    '{"name":"ID","dataType":"Integer","context":"","isPrimaryKey":true}],"foreignKeys":[]}],' +
+    '"schemas":[{"name":"Sales","description":"D sales","tables":["ORDERS","CUSTOMERS"]},' +
+    '{"name":"Mine","description":"","tables":["PRODUCTS"]}]}';
+  ImportAllFile =
+    '{"version":2,"alias":"OTHER","dialect":"SQLite","generatedUtc":"","tables":[' +
+    '{"name":"orders","context":"F orders","columns":[' +
+    '{"name":"ID","dataType":"Integer","context":"","isPrimaryKey":true},' +
+    '{"name":"STATUS","dataType":"String","context":"","allowedValues":' +
+    '[{"value":"B","label":"b"},{"value":"C","label":"c"}]},' +
+    '{"name":"NOPE","dataType":"Integer","context":"a column this database lacks"}],"foreignKeys":[]},' +
+    '{"name":"CUSTOMERS","context":"","columns":[' +
+    '{"name":"ID","dataType":"Integer","context":"","isPrimaryKey":true},' +
+    '{"name":"Y","dataType":"Integer","context":""}],"foreignKeys":[' +
+    '{"constraintName":"","targetTable":"ORDERS","sourceColumns":["Y"],"targetColumns":["ID"],' +
+    '"relationshipContext":"F by hand"}]},' +
+    '{"name":"GHOST","context":"a table this database lacks","columns":[],"foreignKeys":[]},' +
+    '{"name":"PRODUCTS","context":"","columns":[' +
+    '{"name":"ID","dataType":"Integer","context":"","isPrimaryKey":true}],"foreignKeys":[]}],' +
+    '"schemas":[{"name":"sales","description":"F sales","tables":["ORDERS","GHOST"],' +
+    '"columns":{"ORDERS":["ID","STATUS","NOPE"]}},' +
+    '{"name":"New","description":"","tables":["CUSTOMERS"]}],' +
+    '"excludedRelations":[{"sourceTable":"ORDERS","sourceColumns":["X"],' +
+    '"targetTable":"PRODUCTS","targetColumns":["ID"]}]}';
+
+// The relations by hand of a table (an empty constraintName)
+function ManualCount(AFile: TRpLocalSchemaFile; const ATable: string): Integer;
+var
+  I: Integer;
+  LForeignKeys: TJSONArray;
+begin
+  Result := 0;
+  LForeignKeys := TJSONArray(AFile.FindTable(ATable).Values['foreignKeys']);
+  for I := 0 to LForeignKeys.Count - 1 do
+    if TJSONObject(LForeignKeys.Items[I]).Values['constraintName'].Value = '' then
+      Inc(Result);
+end;
+
+function SchemaNames(AFile: TRpLocalSchemaFile): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to AFile.SchemaCount - 1 do
+  begin
+    if Result <> '' then
+      Result := Result + ',';
+    Result := Result + AFile.Schemas[I].Name;
+  end;
+end;
+
+// Export all / Import all (spec X of 19-10-2026)
+procedure TestImportAll;
+var
+  LFile, LOther: TRpLocalSchemaFile;
+  LSkipped, LValues, LLabels, LList: TStringList;
+  LAdded, LReplaced: Integer;
+  LTable: TJSONObject;
+begin
+  LFile := TRpLocalSchemaFile.Create;
+  LSkipped := TStringList.Create;
+  LValues := TStringList.Create;
+  LLabels := TStringList.Create;
+  LList := TStringList.Create;
+  try
+    // Merge
+    LFile.LoadFromJson(ImportAllDest);
+    Check(RpLocalSchemaHasContent(LFile), 'import all: a file with subschemas has content');
+    RpImportAllSchemas(LFile, ImportAllFile, False, LSkipped, LAdded, LReplaced);
+    Check(SchemaNames(LFile) = 'sales,Mine,New',
+      'import all, merge: the subschema with the same name replaced in its place, the others kept, the new one at the end (' +
+      SchemaNames(LFile) + ')');
+    Check((LAdded = 2) and (LReplaced = 1), Format('import all, merge: 2 imported, 1 replaced (%d, %d)',
+      [LAdded, LReplaced]));
+    Check((LFile.Schemas[0].Tables.CommaText = 'ORDERS') and (LFile.Schemas[0].Description = 'F sales'),
+      'import all, merge: the subschema of the file, with the tables of this database as it spells them (' +
+      LFile.Schemas[0].Tables.CommaText + ')');
+    LFile.Schemas[0].GetColumns('ORDERS', LList);
+    Check(LList.CommaText = 'ID,STATUS', 'import all: its list of columns, of the columns of this database (' +
+      LList.CommaText + ')');
+    Check((LFile.FindTable('ORDERS').Values['context'].Value = 'F orders') and
+      (LFile.FindTable('CUSTOMERS').Values['context'].Value = 'D customers'),
+      'import all, merge: the description of the file wins where it has one, the other one stays');
+    LFile.GetAllowedValues('ORDERS', 'STATUS', LValues, LLabels);
+    Check(LValues.CommaText = 'B,C', 'import all: the allowed values of the file (' + LValues.CommaText + ')');
+    Check((ManualCount(LFile, 'ORDERS') = 1) and (ManualCount(LFile, 'CUSTOMERS') = 1),
+      'import all, merge: both relations by hand');
+    Check(LFile.ExcludedRelations.Count = 1, 'import all: the exclusion of the root of the file');
+    Check((LSkipped.IndexOf('GHOST') >= 0) and (LSkipped.IndexOf('ORDERS.NOPE') >= 0) and
+      (LSkipped.Count = 2), 'import all: what this database lacks is skipped (' + LSkipped.CommaText + ')');
+    // The same file again: nothing added twice
+    RpImportAllSchemas(LFile, ImportAllFile, False, LSkipped, LAdded, LReplaced);
+    Check((SchemaNames(LFile) = 'sales,Mine,New') and (LAdded = 2) and (LReplaced = 2) and
+      (ManualCount(LFile, 'CUSTOMERS') = 1) and (LFile.ExcludedRelations.Count = 1),
+      'import all twice: the same subschemas, relations and exclusions');
+
+    // Replace
+    LFile.LoadFromJson(ImportAllDest);
+    LSkipped.Clear;
+    RpImportAllSchemas(LFile, ImportAllFile, True, LSkipped, LAdded, LReplaced);
+    Check((SchemaNames(LFile) = 'sales,New') and (LAdded = 2) and (LReplaced = 0),
+      'import all, replace: only the subschemas of the file (' + SchemaNames(LFile) + ')');
+    Check((LFile.FindTable('ORDERS').Values['context'].Value = 'F orders') and
+      (LFile.FindTable('CUSTOMERS').Values['context'].Value = ''),
+      'import all, replace: the descriptions are those of the file');
+    Check((ManualCount(LFile, 'ORDERS') = 0) and (ManualCount(LFile, 'CUSTOMERS') = 1),
+      'import all, replace: only the relation by hand of the file');
+    LFile.GetAllowedValues('ORDERS', 'STATUS', LValues, LLabels);
+    Check(LValues.CommaText = 'B,C', 'import all, replace: the allowed values of the file');
+    LTable := LFile.FindTable('ORDERS');
+    Check(TJSONArray(LTable.Values['columns']).Count = 3, 'import all: the catalog does not change');
+
+    // Has content; not a whole file
+    LOther := TRpLocalSchemaFile.Create;
+    try
+      LOther.LoadFromJson('{"version":2,"alias":"T","tables":[{"name":"ORDERS","context":"",' +
+        '"columns":[{"name":"ID","context":"","isPrimaryKey":true}],"foreignKeys":[]}],"schemas":[]}');
+      Check(not RpLocalSchemaHasContent(LOther), 'import all: a fresh catalog has no content');
+    finally
+      LOther.Free;
+    end;
+    Check(RpIsLocalSchemaFileJson(ImportAllFile) and
+      not RpIsLocalSchemaFileJson('{"name":"x","schemaTables":[]}') and
+      not RpIsLocalSchemaFileJson('[1]') and not RpIsLocalSchemaFileJson('not json'),
+      'import all: only a whole file of local schemas');
+
+    // Export all, then imported into the same catalog without what is written
+    LFile.LoadFromJson(ImportAllDest);
+    LOther := TRpLocalSchemaFile.Create;
+    try
+      LOther.LoadFromJson(ImportAllDest);
+      RpImportAllSchemas(LOther, ImportAllFile, True, LSkipped, LAdded, LReplaced);
+      // LOther now has other things written; replacing with the export of LFile gives LFile back
+      LSkipped.Clear;
+      RpImportAllSchemas(LOther, LFile.ToJsonText, True, LSkipped, LAdded, LReplaced);
+      Check((SchemaNames(LOther) = SchemaNames(LFile)) and (LSkipped.Count = 0) and
+        (LOther.FindTable('ORDERS').Values['context'].Value = 'D orders') and
+        (LOther.FindTable('CUSTOMERS').Values['context'].Value = 'D customers') and
+        (ManualCount(LOther, 'ORDERS') = 1) and (ManualCount(LOther, 'CUSTOMERS') = 0),
+        'import all: what Export all writes, imported replacing, gives the same subschemas and dictionary');
+      RpImportAllUnreadTables(LOther, ImportAllFile, LList);
+      Check(LList.Count = 0, 'import all: no table to read in a catalog read whole');
+    finally
+      LOther.Free;
+    end;
+  finally
+    LList.Free;
+    LLabels.Free;
+    LValues.Free;
+    LSkipped.Free;
+    LFile.Free;
+  end;
+end;
+
 var
   LFixture, LSaved: string;
 begin
@@ -1552,6 +1721,7 @@ begin
     TestLibraryTemplates(ExtractFilePath(LFixture) + 'library' + PathDelim);
     TestFilterAndLargeCatalog;
     TestReadWorker;
+    TestImportAll;
   except
     on E: Exception do
     begin

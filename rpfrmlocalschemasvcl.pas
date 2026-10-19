@@ -129,6 +129,8 @@ type
     BDelete: TButton;
     BExport: TButton;
     BImport: TButton;
+    BExportAll: TButton;
+    BImportAll: TButton;
     BLibrary: TButton;
     MemoDescription: TMemo;
     // Bottom
@@ -263,6 +265,8 @@ type
     procedure BDeleteClick(Sender: TObject);
     procedure BExportClick(Sender: TObject);
     procedure BImportClick(Sender: TObject);
+    procedure BExportAllClick(Sender: TObject);
+    procedure BImportAllClick(Sender: TObject);
     procedure BLibraryClick(Sender: TObject);
     procedure MemoDescriptionChange(Sender: TObject);
     procedure BRefreshClick(Sender: TObject);
@@ -698,7 +702,7 @@ begin
   LLeft := NewPanel(Self, alLeft, 230);
   LLeft.BorderWidth := S(6);
   NewLabel(LLeft, TranslateStr(1846, 'Subschemas'));
-  LLeftBottom := NewPanel(LLeft, alBottom, 222);
+  LLeftBottom := NewPanel(LLeft, alBottom, 252);
   NewLabel(LLeftBottom, TranslateStr(197, 'Description'));
   MemoDescription := NewMemo(LLeftBottom, 70, MemoDescriptionChange);
   LButtons := NewPanel(LLeftBottom, alClient, 0);
@@ -725,10 +729,24 @@ begin
   BImport.Hint := string(TranslateStr(1934, 'Creates a subschema from a ' +
     'schema exported by the Reportman AI web or by another local schema'));
   BImport.ShowHint := True;
+  // The whole file of the connection, to another installation (spec X)
+  BExportAll := NewButton(LButtons, string(TranslateStr(2043, 'Export all...')),
+    BExportAllClick, 104);
+  BExportAll.SetBounds(0, S(94), S(104), S(26));
+  BExportAll.Hint := string(TranslateStr(2045, 'Saves every subschema, ' +
+    'description and relation of the connection to a file, to bring them to ' +
+    'another installation'));
+  BExportAll.ShowHint := True;
+  BImportAll := NewButton(LButtons, string(TranslateStr(2044, 'Import all...')),
+    BImportAllClick, 104);
+  BImportAll.SetBounds(S(110), S(94), S(104), S(26));
+  BImportAll.Hint := string(TranslateStr(2046, 'Brings the subschemas, ' +
+    'descriptions and relations of a file saved with Export all'));
+  BImportAll.ShowHint := True;
   // The same import with a schema of the library of Reportman AI
   BLibrary := NewButton(LButtons, string(TranslateStr(1986,
     'From the library...')), BLibraryClick, 214);
-  BLibrary.SetBounds(0, S(94), S(214), S(26));
+  BLibrary.SetBounds(0, S(124), S(214), S(26));
   BLibrary.Hint := string(TranslateStr(1987, 'Creates a subschema from a ' +
     'schema of the Reportman AI library'));
   BLibrary.ShowHint := True;
@@ -2031,6 +2049,188 @@ begin
   finally
     LValues.Free;
     LSkipped.Free;
+    LDialog.Free;
+  end;
+end;
+
+{ Export all / Import all (spec X) }
+
+// What Import all does when the connection has something written already:
+// 0 cancel, 1 merge, 2 replace
+function ChooseImportAllMode(AOwner: TComponent; AHave, ABrings: Integer): Integer;
+var
+  LBottom, LButtons: TPanel;
+  LButton: TButton;
+  LForm: TForm;
+  LLabel: TLabel;
+
+  function S(AValue: Integer): Integer;
+  begin
+    Result := (AValue * Screen.PixelsPerInch) div 96;
+  end;
+
+  // Below the ones before it: a Top past them before aligning (the same
+  // order in both designers)
+  function NewText(const AText: string; AHeight: Integer): TLabel;
+  begin
+    Result := TLabel.Create(LForm);
+    Result.Parent := LForm;
+    Result.Top := LForm.ClientHeight;
+    Result.Align := alTop;
+    Result.AlignWithMargins := True;
+    Result.Margins.SetBounds(S(10), S(10), S(10), S(0));
+    Result.AutoSize := False;
+    Result.WordWrap := True;
+    Result.Height := S(AHeight);
+    Result.Caption := AText;
+  end;
+
+begin
+  Result := 0;
+  LForm := TForm.CreateNew(AOwner);
+  try
+    LForm.Caption := StringReplace(string(TranslateStr(2044, 'Import all...')),
+      '...', '', []);
+    LForm.Position := poScreenCenter;
+    LForm.BorderIcons := [biSystemMenu];
+    LForm.Width := S(520);
+    LForm.Height := S(300);
+    LForm.Constraints.MinWidth := S(420);
+    LForm.Constraints.MinHeight := S(260);
+    LBottom := TPanel.Create(LForm);
+    LBottom.Parent := LForm;
+    LBottom.BevelOuter := bvNone;
+    LBottom.Caption := '';
+    LBottom.Align := alBottom;
+    LBottom.Height := S(44);
+    LButtons := TPanel.Create(LForm);
+    LButtons.Parent := LBottom;
+    LButtons.BevelOuter := bvNone;
+    LButtons.Caption := '';
+    LButtons.Align := alRight;
+    LButtons.Width := S(326);
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(2048, 'Merge'));
+    LButton.ModalResult := mrYes;
+    LButton.Default := True;
+    LButton.SetBounds(S(4), S(9), S(100), S(26));
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(2049, 'Replace'));
+    LButton.ModalResult := mrNo;
+    LButton.SetBounds(S(112), S(9), S(100), S(26));
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(94, 'Cancel'));
+    LButton.ModalResult := mrCancel;
+    LButton.Cancel := True;
+    LButton.SetBounds(S(220), S(9), S(100), S(26));
+    // The question, then what each answer does
+    LLabel := NewText(Format(string(TranslateStr(2047, 'This connection ' +
+      'already has local schemas (%s subschemas) and the file brings %s. What ' +
+      'do you want to do?')), [IntToStr(AHave), IntToStr(ABrings)]), 40);
+    LLabel.Font.Style := [fsBold];
+    NewText(string(TranslateStr(2050, 'Merge: the subschemas of the ' +
+      'file are added, and one with the name of one you have replaces it. In ' +
+      'descriptions and allowed values the file wins where it has them; the ' +
+      'rest of yours stays.')), 54);
+    NewText(string(TranslateStr(2051, 'Replace: your subschemas, ' +
+      'descriptions, allowed values and relations by hand go, and those of the ' +
+      'file come in. The tables and columns are always those of this database.')), 54);
+    case LForm.ShowModal of
+      mrYes:
+        Result := 1;
+      mrNo:
+        Result := 2;
+    end;
+  finally
+    LForm.Free;
+  end;
+end;
+
+procedure TFRpLocalSchemasVCL.BExportAllClick(Sender: TObject);
+var
+  LDialog: TSaveDialog;
+begin
+  if FFile.Alias = '' then
+    FFile.Alias := UpperCase(FDatabase.Alias);
+  LDialog := TSaveDialog.Create(Self);
+  try
+    LDialog.Title := DialogTitle(BExportAll.Caption);
+    LDialog.Filter := SchemaFileFilter;
+    LDialog.DefaultExt := 'json';
+    // The name of the file of the connection (dbxschemas/<ALIAS>.json)
+    LDialog.FileName := ExtractFileName(RpLocalSchemaFileName(FDatabase));
+    LDialog.Options := LDialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not LDialog.Execute then
+      Exit;
+    // What is on screen, saved or not
+    RpExportAllToFile(FFile, LDialog.FileName);
+    ShowInfo(Format(string(TranslateStr(1935, 'Exported to %s.')),
+      [LDialog.FileName]));
+  finally
+    LDialog.Free;
+  end;
+end;
+
+procedure TFRpLocalSchemasVCL.BImportAllClick(Sender: TObject);
+var
+  LAdded, LReplaced, LMode: Integer;
+  LDialog: TOpenDialog;
+  LJson, LText: string;
+  LNames, LSkipped: TStringList;
+begin
+  ShowInfo('');
+  LDialog := TOpenDialog.Create(Self);
+  LNames := TStringList.Create;
+  LSkipped := TStringList.Create;
+  try
+    LDialog.Title := DialogTitle(BImportAll.Caption);
+    LDialog.Filter := SchemaFileFilter;
+    LDialog.DefaultExt := 'json';
+    LDialog.Options := LDialog.Options + [ofFileMustExist];
+    if not LDialog.Execute then
+      Exit;
+    LJson := RpReadSchemaFile(LDialog.FileName);
+    if not RpIsLocalSchemaFileJson(LJson) then
+    begin
+      RpMessageBox(string(TranslateStr(2053, 'The file is not a file of ' +
+        'local schemas saved with Export all (a subschema is brought with ' +
+        'Import...).')), '', [smbOK], smsCritical);
+      Exit;
+    end;
+    RpImportAllSchemaNames(LJson, LNames);
+    // Something written here already: merge, replace or nothing
+    LMode := 1;
+    if RpLocalSchemaHasContent(FFile) then
+      LMode := ChooseImportAllMode(Self, FFile.SchemaCount, LNames.Count);
+    if LMode = 0 then
+      Exit;
+    // A large catalog reads the columns of the tables of the file first
+    RpImportAllUnreadTables(FFile, LJson, LSkipped);
+    if not EnsureColumns(LSkipped) then
+      Exit;
+    LSkipped.Clear;
+    RpImportAllSchemas(FFile, LJson, LMode = 2, LSkipped, LAdded, LReplaced);
+    // Not saved: Save writes it, closing asks
+    FModified := True;
+    if LNames.Count > 0 then
+      FillSchemas(LNames[0])
+    else
+      FillSchemas('');
+    LText := Format(string(TranslateStr(2052, 'Imported %s subschemas (%s ' +
+      'replaced one with the same name). Save to keep them.')),
+      [IntToStr(LAdded), IntToStr(LReplaced)]);
+    if LSkipped.Count > 0 then
+      LText := LText + ' ' + Format(string(TranslateStr(1937,
+        'Not in the database, not imported: %s')), [RpShortNameList(LSkipped, 8)]);
+    ShowInfo(LText);
+    if LSkipped.Count > 0 then
+      RpMessageBox(LText);
+  finally
+    LSkipped.Free;
+    LNames.Free;
     LDialog.Free;
   end;
 end;
