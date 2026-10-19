@@ -48,7 +48,14 @@ Salida: `build\getit\out\Reportman-getit-<v>.zip` (gitignored). Se hace commit d
 Probado el 19-10-2026 en RAD Studio 13 con un programa de consola C++ que carga un
 informe y lo exporta a PDF con `TPDFReport`, enlazado con los paquetes en tiempo de
 ejecución (`reportman_rtl.bpi` y los de FireDAC de los que depende): compila, enlaza y
-saca los mismos PDF en Win32 (`bcc32c`), Win64 (`bcc64`) y Win64 Modern (`bcc64x`).
+saca los mismos PDF en Win32 (`bcc32c`), Win64 (`bcc64`) y Win64 Modern (`bcc64x`). Y
+con una aplicación VCL C++ (`reportman_vcl` y `reportman_designvcl` en tiempo de
+ejecución), en Win32 y Win64: la vista previa de `TVCLReport` y `TRpDesignerVCL` con el
+diseñador completo (estructura, chat de IA, *Informe → Configuración de datos* con el
+editor SQL Monaco, *Mostrar datos* sobre SQLite y la vista previa desde el diseñador), sin
+ninguna excepción. `TRpDesignerVCL` necesita una aplicación de ventanas: en una de consola
+no hay ventana de aplicación y los marcos del diseñador no pueden crearse (*Control
+'FRpStructureVCL' has no parent window*).
 
 - GetIt compila los paquetes para Win32 y Win64 (`package.json`). Para Win64 Modern
   hay que compilarlos a mano para *Windows 64-bit (Modern)*: el compilador de Delphi

@@ -150,7 +150,11 @@ end;
 
 destructor TFRpStructureVCL.Destroy;
 begin
- browser.FreeFieldsInfo;
+ // Also run when the constructor fails before creating the browser (the
+ // frame loads its form file first): an access violation here would hide
+ // that error
+ if Assigned(browser) then
+  browser.FreeFieldsInfo;
  inherited Destroy;
 end;
 
