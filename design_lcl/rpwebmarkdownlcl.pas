@@ -45,7 +45,7 @@ uses
   rpmarkdownlcl;
 
 const
-  AssetsVersion = '5';
+  AssetsVersion = '6';
   // Oldest blocks are dropped from the native view beyond this count
   RpMarkdownMaxBlocks = 800;
 

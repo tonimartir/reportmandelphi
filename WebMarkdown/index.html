@@ -401,8 +401,10 @@
 
     <script src="./markdown-it.min.js"></script>
     <script>
+        // Raw HTML in an answer is shown as text, not interpreted: a model
+        // explaining HTML formatting writes tags like <b> as examples
         var md = window.markdownit({
-            html: true,
+            html: false,
             breaks: true,
             linkify: true,
             typographer: false
@@ -481,7 +483,8 @@
         window.appendMessage = function(role, text) {
             var el = document.createElement('div');
             el.className = 'msg msg-' + role;
-            
+            el.setAttribute('data-raw', text || '');
+
             var icon = role === 'user' ? '👤' : '🤖';
             var header = role === 'user' ? 'You' : 'Assistant';
 
@@ -571,6 +574,7 @@
                 el.innerHTML = '<i>' + icon + '</i> ' + escapeHtml(actorName);
             } else {
                 el.className = 'msg-log';
+                el.setAttribute('data-raw', text || '');
                 el.innerHTML = renderMarkdown(text);
             }
             
@@ -673,7 +677,9 @@
                 // Prefer the original raw text stored during streaming/rendering
                 var raw = node.getAttribute('data-raw');
                 if (raw) {
-                    parts.push(raw);
+                    // A chat message keeps its title (You / Assistant)
+                    var header = node.querySelector('.msg-header');
+                    parts.push(header ? header.innerText + '\n\n' + raw : raw);
                 } else {
                     // For nodes without data-raw, temporarily open all collapsed
                     // think-block <details> so innerText captures their content.
