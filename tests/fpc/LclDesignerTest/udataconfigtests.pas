@@ -37,6 +37,10 @@ uses
   rpmdfsampledatalcl, rpmdfdatatextlcl,
   umainform;
 
+const
+  // Zeos, MyBase, SQLdb (FireDAC) and the Agent; ADO too on Windows
+  FPC_DRIVER_COUNT = {$IFDEF MSWINDOWS}5{$ELSE}4{$ENDIF};
+
 type
   { TDataConfigTests }
 
@@ -284,8 +288,8 @@ begin
     try
       dlg.Interactive := False;
       dlg.Report := rep;
-      // Drivers of the FPC build
-      CheckInt(4, dlg.DriverList.Items.Count, 'Driver list: drivers of the FPC build');
+      // Drivers of the FPC build (ADO only on Windows)
+      CheckInt(FPC_DRIVER_COUNT, dlg.DriverList.Items.Count, 'Driver list: drivers of the FPC build');
       for i := 0 to dlg.DriverList.Items.Count - 1 do
         Check(IsFpcDriverAvailable(TRpDbDriver(PtrInt(dlg.DriverList.Items.Objects[i]))),
           'Driver list: only available drivers');
@@ -294,23 +298,30 @@ begin
       CheckStr(Trim(string(SrpDriverZeosDesc)), Trim(dlg.DriverHelp.Text),
         'Driver description of Zeos');
       // The first connection: its driver selected among the FPC ones
-      CheckInt(4, dlg.DriverCombo.Items.Count, 'Driver combo: drivers of the FPC build');
+      CheckInt(FPC_DRIVER_COUNT, dlg.DriverCombo.Items.Count, 'Driver combo: drivers of the FPC build');
       CheckStr(FpcDriverName(rpdatazeos), dlg.DriverCombo.Text, 'Driver combo: Zeos connection');
-      // A driver the FPC build does not have is kept
       dlg.ConnectionList.ItemIndex := 1;
       dlg.ConnectionList.OnClick(dlg.ConnectionList);
-      CheckInt(5, dlg.DriverCombo.Items.Count, 'Driver combo: the ADO driver listed for its connection');
       Check(Pos(FpcDriverName(rpdataado), dlg.DriverCombo.Text) = 1,
         'Driver combo: ADO connection shows its driver (' + dlg.DriverCombo.Text + ')');
+{$IFDEF MSWINDOWS}
+      // ADO through the OleDB protocol of Zeos
+      CheckInt(FPC_DRIVER_COUNT, dlg.DriverCombo.Items.Count, 'Driver combo: ADO is a driver of the build');
+      Check(Pos(string(TranslateStr(1036, 'Not available')), dlg.DriverCombo.Text) = 0,
+        'Driver combo: ADO available on Windows');
+{$ELSE}
+      // A driver the FPC build does not have is kept
+      CheckInt(FPC_DRIVER_COUNT + 1, dlg.DriverCombo.Items.Count, 'Driver combo: the ADO driver listed for its connection');
       Check(Pos(string(TranslateStr(1036, 'Not available')), dlg.DriverCombo.Text) > 0,
         'Driver combo: marked as not available');
+{$ENDIF}
       dlg.ConnectionList.ItemIndex := 2;
       dlg.ConnectionList.OnClick(dlg.ConnectionList);
       Check(Pos(FpcDriverName(rpdatadriver), dlg.DriverCombo.Text) = 1,
         'Driver combo: .Net connection shows its driver');
       dlg.ConnectionList.ItemIndex := 0;
       dlg.ConnectionList.OnClick(dlg.ConnectionList);
-      CheckInt(4, dlg.DriverCombo.Items.Count, 'Driver combo: back to the FPC drivers');
+      CheckInt(FPC_DRIVER_COUNT, dlg.DriverCombo.Items.Count, 'Driver combo: back to the FPC drivers');
       nOps := cue.UndoOperations.Count;
       Check(dlg.ApplyChanges, 'OK without changes');
       Check(not dlg.Applied, 'Opening a report with unavailable drivers changes nothing');

@@ -46,9 +46,11 @@ biblioteca*. Se edita una copia de las conexiones; *Aceptar* la devuelve.
 - *Configurar* (`ShowDBXConfig`): el diálogo de configuración DBX lo porta
   otro agente (`rpdbxconfiglcl`); el botón queda sin acción con el comentario
   `// Wired to rpdbxconfiglcl.ShowDBXConfig when merged`.
-- La cadena ADO se muestra con la contraseña enmascarada (como el VCL) pero es
-  de solo lectura: ADO no existe en FPC y el VCL, al editarla, guarda la
-  cadena enmascarada. El botón *Build...* (`PromptDataSource`) no se porta.
+- La cadena ADO se muestra con la contraseña enmascarada (como el VCL). En
+  Windows se edita (ADO se abre con el protocolo `OleDB` de Zeos, ver
+  `fase8_datos.md`) y la contraseña enmascarada se restaura al guardarla
+  (`RestoreADOPassword`); fuera de Windows es de solo lectura. El botón
+  *Build...* está en el diálogo de datos, no en este.
 - Las funciones sin preguntas (`NewConnection`, `DeleteConnection`,
   `RenameConnection`, `TestConnection`, `CreateLibrary`) son lo que hacen los
   botones tras preguntar al usuario.
@@ -109,7 +111,7 @@ Para Zeos no hace nada (autocommit).
 | Editor de conexiones: nueva, eliminar, renombrar, parámetros, controlador, tablas y campos | Igual |
 | Comprobar conexión, crear biblioteca, explorar biblioteca | Igual |
 | Configuración DBX | Pendiente de `rpdbxconfiglcl` (botón sin acción) |
-| Cadena ADO | Solo lectura; sin *Build...* |
+| Cadena ADO | Editable en Windows; solo lectura en otros sistemas; sin *Build...* |
 | Árbol: nuevo grupo/informe, eliminar, renombrar, mover, buscar, exportar, vista previa, imprimir, parámetros, impresora | Igual |
 | Archivo > Bibliotecas (configurar, abrir de, guardar en) | Igual (mismos ids de texto) |
 | Barra de desplazamiento automático al arrastrar (`timerscroll1`) | La del propio `TTreeView` de la LCL |
