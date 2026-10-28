@@ -101,17 +101,31 @@
   </url>
   <url>
     <loc>https://reportman.es/company.html</loc>
-    <lastmod>2026-06-18</lastmod>
+    <lastmod>2026-10-28</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/company.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/companyes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/company.html"/>
   </url>
   <url>
     <loc>https://reportman.es/companyes.html</loc>
-    <lastmod>2026-06-18</lastmod>
+    <lastmod>2026-10-28</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/company.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/companyes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/company.html"/>
+  </url>
+  <url>
+    <loc>https://reportman.es/legal.html</loc>
+    <lastmod>2026-10-28</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/legal.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/legales.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/legal.html"/>
+  </url>
+  <url>
+    <loc>https://reportman.es/legales.html</loc>
+    <lastmod>2026-10-28</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/legal.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/legales.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/legal.html"/>
   </url>
   <url>
     <loc>https://reportman.es/contrib.html</loc>
