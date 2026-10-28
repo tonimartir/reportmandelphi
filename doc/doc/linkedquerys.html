@@ -228,12 +228,12 @@
 <nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Linked queries</span></nav>
 <h1>Linked queries</h1>
 <h2>Advanced report design</h2>
-<h3>Linked querys</h3>
-<p></p>
-<p>A subreport can have only a main dataset, but you can open as many datasets 
-  as you want, and you can link this datasets to the main dataset or to other 
-  dataset linked to the main dataset. You can also use the <a href="childsubreports.html">child 
-  subreport</a> property of a section to merge subreports.</p>
+<h3>Linked queries</h3>
+<p>A subreport has only one main dataset, but it can open as many datasets as
+  you need, and each of them can be linked to the main dataset or to another
+  dataset that is itself linked to the main dataset. You can also use the
+  <a href="childsubreports.html">child subreport</a> property of a section to
+  merge subreports.</p>
 <p>For example:</p>
 <ul>
   <li> A main dataset with a query to obtain the order lines and order header</li>
@@ -242,18 +242,33 @@
   <li>A ship company dataset linked to the customer dataset by (ship company number)</li>
 </ul>
 <p></p>
-<p>To link a dataset with another dataset you must select the property Master 
-  Dataset. A linked dataset must have parameters, the name of the parameters must 
-  be the same as the field names of the linked dataset.</p>
-<p>Here is a sample:</p>
-<p><img src="images/datalink.jpg" width="547" height="497" alt="Linked querys (screenshot 1)" loading="lazy" decoding="async"></p>
-<p><img src="images/datalink2.jpg" width="547" height="497" alt="Linked querys (screenshot 2)" loading="lazy" decoding="async"></p>
-<p>When you assign a main dataset to a subreport, this subreport, prints the details 
-  once for each record. So while printing a subreport, if the main dataset has 
-  a linked query , it will be updated, for example if the custno field in the 
-  main dataset changes and the linked query is parametrized with this field, the 
-  linked query will change, and the new field values will be available to print. 
-</p>
+<p>To link a dataset to another one, open <b>Data access configuration</b>,
+  select the linked (detail) dataset and choose the other one in its
+  <b>Master dataset</b> property. The SQL of the linked dataset must use
+  parameters, and each parameter must have the same name as a field of the
+  master dataset: every time the master record changes, each parameter takes
+  the value of the master field with its name and the linked query is opened
+  again with the new values.</p>
+<p>Here is a sample with two datasets, ORDERS and CUSTOMERS. ORDERS is the main
+  dataset of the subreport, one record per order line:</p>
+<pre>SELECT FIRST 100 ITEMS.*,ORDERS.* FROM ORDERS
+LEFT OUTER JOIN ITEMS
+ON ITEMS.OrderNo=ORDERS.OrderNo
+ORDER BY ORDERS.CustNo,ORDERS.OrderNo,PartNo</pre>
+<p><img src="images/datalink.jpg" width="547" height="497" alt="Data access configuration: the ORDERS main dataset and its SQL, with no master dataset" loading="lazy" decoding="async"></p>
+<p>CUSTOMERS has <b>Master dataset</b> set to ORDERS, and its parameter
+  <code>:CUSTNO</code> is named after the CUSTNO field of ORDERS:</p>
+<pre>SELECT * FROM CUSTOMER WHERE CUSTNO=:CUSTNO</pre>
+<p><img src="images/datalink2.jpg" width="547" height="497" alt="Data access configuration: the CUSTOMERS dataset linked to ORDERS through the CUSTNO parameter" loading="lazy" decoding="async"></p>
+<p>When you assign a main dataset to a subreport, the subreport prints its
+  details once for each record. So, while the subreport prints, every time the
+  CUSTNO field of ORDERS changes the CUSTOMERS query is opened again for the new
+  customer, and its fields are available to print the customer of the current
+  order line. In expressions, refer to each field through the alias of its
+  dataset, for example <code>CUSTOMERS.COMPANY</code>.</p>
+<p>The parameter goes on the right of the comparison
+  (<code>WHERE CUSTNO=:CUSTNO</code>): some database drivers reject a parameter
+  on the left. See also <a href="repparams.html">report parameters</a>.</p>
 <p>Note: With the BDE driver (legacy) you can link Tables by selecting the correct IndexFields
   and Master Fields properties like you do in Delphi or Builder.</p>
 </main>
