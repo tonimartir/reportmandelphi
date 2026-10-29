@@ -631,13 +631,18 @@ begin
 
   if LMax > 0 then
   begin
-    if LAuth.UsesFreeCredits then
+    if LAuth.UsesFreeCredits or LAuth.UsingBag then
     begin
-      // Free credits (a guest, the Free tier) do not renew: what is left
+      // Free credits (a guest, the Free tier) do not renew, nor does the
+      // credit bag a paid tier spends once its day is spent: what is left
       LLeft := LMax - LUsed;
       if LLeft < 0 then
         LLeft := 0;
-      LHint := TranslateStr(1524, 'Free Credits') + LineEnding +
+      if LAuth.UsingBag then
+        LHint := TranslateStr(2054, 'Credit bag')
+      else
+        LHint := TranslateStr(1524, 'Free Credits');
+      LHint := LHint + LineEnding +
         Format(TranslateStr(1835, 'Left: %s of %s'),
         [FormatFloat('#,##0', LLeft), FormatFloat('#,##0', LMax)]);
     end
@@ -900,7 +905,9 @@ begin
     DisplayValue := 0;
   if DisplayValue > 1 then
     DisplayValue := 1;
-  if DisplayValue < 0.5 then
+  if TRpAuthManager.Instance.UsingBag then
+    IndicatorColor := RGBToColor(126, 87, 194)  // violet: the credit bag
+  else if DisplayValue < 0.5 then
     IndicatorColor := ClrSuccess
   else if DisplayValue < 0.75 then
     IndicatorColor := RGBToColor(255, 193, 7)  // amber
