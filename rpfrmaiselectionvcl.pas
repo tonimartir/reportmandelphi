@@ -695,8 +695,8 @@ begin
 
   if TRpAuthManager.Instance.UsingBag then IndicatorColor := RGB(126, 87, 194) // violet: the credit bag
   else if DisplayValue < 0.5 then IndicatorColor := ClrSuccess
-  else if DisplayValue < 0.75 then IndicatorColor := RGB(7, 193, 255) // amber-ish BGR
-  else if DisplayValue < 0.9 then IndicatorColor := RGB(0, 152, 255)  // orange BGR
+  else if DisplayValue < 0.75 then IndicatorColor := RGB(255, 193, 7) // amber (RGB takes r, g, b: it orders the bytes itself)
+  else if DisplayValue < 0.9 then IndicatorColor := RGB(255, 152, 0)  // orange
   else IndicatorColor := ClrDanger;
 
   if DisplayValue > 0 then
