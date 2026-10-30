@@ -39,9 +39,11 @@ unit rpmdfnewreportwizardlcl;
     while one runs. The VCL runs them in the main thread.
   - Driver families: the ones of the FPC engine. FireDAC is the SQLite
     driver of the FPC engine (SQLdb) and Zeos keeps its protocols;
-    dbExpress, BDE and Microsoft DAO (ADO) are not in the FPC engine, so
-    their choices and the ADO connection string page are not shown. The
-    connections go through rpdbxadminlcl (the FPC part of rpwebdbxadmin).
+    dbExpress and BDE are not in the FPC engine, so their choices are not
+    shown. Microsoft DAO (ADO) is on Windows only, with the ADO connection
+    string page (the engine opens it through the OleDB protocol of Zeos).
+    The connections go through rpdbxadminlcl (the FPC part of
+    rpwebdbxadmin).
   - A new Zeos connection is a ZeosLib connection with the chosen protocol
     (the VCL creates an Interbase dbExpress connection and drops the
     protocol).
@@ -63,8 +65,10 @@ uses
 
 type
   TRpWizardRoute = (wrUndefined, wrAgent, wrDirect, wrNoConnection);
-  // dfDbExpress only classifies the connections of other drivers
-  TRpWizardDriverFamily = (dfUndefined, dfFireDac, dfZeos, dfDbExpress);
+  // dfDbExpress only classifies the connections of other drivers; dfDao
+  // (Microsoft ADO, only on Windows) has a connection string, not a
+  // connection of the connections file
+  TRpWizardDriverFamily = (dfUndefined, dfFireDac, dfZeos, dfDbExpress, dfDao);
   TRpWizardConnMode = (cnUndefined, cnExisting, cnNew);
 
   // wpAgentSchema and wpDirectSchema are the same page (the schema for the
@@ -76,6 +80,7 @@ type
     wpDirectSchema,
     wpDriver,
     wpConnName,
+    wpDaoConn,
     wpParams,
     wpFinish
   );
@@ -86,7 +91,8 @@ type
     woHubLogin,          // Hub databases of the API key
     woAgentConnection,   // test of a new Reportman AI connection
     woTestExisting,      // Test Connection of an existing connection
-    woTestParams         // Test Connection of the parameters page
+    woTestParams,        // Test Connection of the parameters page
+    woTestAdo            // Test Connection of the ADO connection string
   );
 
   TRpWizardState = record
@@ -103,6 +109,8 @@ type
     DriverConcrete: string;     // FireDAC DriverID or Zeos protocol
     ConnMode: TRpWizardConnMode;
     ConnName: string;
+    // The connection of the dfDao family
+    AdoConnectionString: string;
   end;
 
   { TFRpNewReportWizardLCL }
@@ -173,6 +181,7 @@ type
     procedure BuildPageSchema;
     procedure BuildPageDriver;
     procedure BuildPageConnName;
+    procedure BuildPageDaoConn;
     procedure BuildPageParams;
     procedure BuildPageFinish;
 
@@ -186,6 +195,10 @@ type
     procedure DoConnNameModeChange(Sender: TObject);
     procedure DoExistingConnChange(Sender: TObject);
     procedure DoParamsTest(Sender: TObject);
+    // The ADO connection string page: the Data Link dialog of Windows and
+    // the connection test
+    procedure DoDaoBuild(Sender: TObject);
+    procedure DoDaoTest(Sender: TObject);
     procedure DoRouteChange(Sender: TObject);
     procedure DoSchemasLoaded(Sender: TObject);
     // "New local schema...": the local schema screen of the connection
@@ -216,7 +229,8 @@ type
     procedure BeginOperation(AOperation: TRpWizardOperation; const AStatus: string);
     procedure EndOperation;
     procedure StartConnectionTest(AOperation: TRpWizardOperation;
-      const AConnectionName: string; AValues: TStrings);
+      const AConnectionName: string; AValues: TStrings;
+      const AAdoConnectionString: string = '');
     procedure AgentConnectionTested(ASuccess: Boolean; const AMessage: string);
     procedure ExistingConnectionTested(ASuccess: Boolean; const AMessage: string);
     procedure ParamsTested(ASuccess: Boolean; const AMessage: string);
@@ -272,6 +286,9 @@ type
     ParamsScroll: TScrollBox;
     BtnParamsTest: TButton;
     LblParamsCaption: TLabel;
+    EdAdoConnString: TEdit;
+    BtnDaoBuild: TButton;
+    BtnDaoTest: TButton;
     MemoFinishPrompt: TMemo;
     AISchemaSelector: TFRpAISchemaSelectorLCL;
 
@@ -326,15 +343,16 @@ function NewModernReportWizard(report: TRpReport;
 
 // The connection wizard (Data configuration > Add connection, a connection
 // of a report not configured on this computer), see StartConnectionMode.
-// True when the user finished it: the connection is in the connections file.
+// True when the user finished it: the connection is in the connections file
+// (an ADO connection has its connection string instead).
 function ShowConnectionWizard(const AFixedName: string;
   APreferredHubDatabaseId: Int64; out AConnectionName: string;
-  out ADriver: TRpDbDriver): Boolean;
+  out ADriver: TRpDbDriver; out AAdoConnectionString: string): Boolean;
 
 type
   TRpShowConnectionWizardFunc = function(const AFixedName: string;
     APreferredHubDatabaseId: Int64; out AConnectionName: string;
-    out ADriver: TRpDbDriver): Boolean;
+    out ADriver: TRpDbDriver; out AAdoConnectionString: string): Boolean;
   // The Hub database of a Reportman AI schema when the designer knows it
   // (the schemas of the design chat), 0 otherwise
   TRpHubDatabaseOfSchema = function(AHubSchemaId: Int64): Int64 of object;
@@ -356,7 +374,11 @@ implementation
 
 uses
   rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout, rpsqldbconnfpc,
-  rplocalschemas, rpfrmlocalschemaslcl, rpchatmodernstylelcl;
+  rplocalschemas, rpfrmlocalschemaslcl, rpchatmodernstylelcl
+{$IFDEF MSWINDOWS}
+  , ZDbcOleDBUtils
+{$ENDIF}
+  ;
 
 const
   SExamplePrompt = 'Sales by customer with a group total and a grand total';
@@ -401,6 +423,8 @@ type
     ConnectionName: string;
     Params: TStringList;
     Token: string;
+    // Not empty: the test of an ADO connection string (no connections file)
+    AdoConnectionString: string;
     constructor Create(const AMailbox: IRpAsyncMailbox);
     destructor Destroy; override;
   protected
@@ -531,8 +555,28 @@ procedure TRpWizardTestWorker.Run;
 var
   LResult: TRpDbxConnectionTestResult;
   LPayload: TRpWizardTestPayload;
+  LDatabases: TRpDatabaseInfoList;
+  LItem: TRpDatabaseInfoItem;
 begin
-  LResult := RpExecuteConnectionTest(ConnectionName, Params, Token);
+  if AdoConnectionString <> '' then
+  begin
+    // As the VCL (TADOConnection Open and Close): the engine opens it
+    LDatabases := TRpDatabaseInfoList.Create(nil);
+    try
+      LItem := LDatabases.Add('ADO');
+      LItem.Driver := rpdataado;
+      LItem.LoginPrompt := False;
+      LItem.ADOConnectionString := AdoConnectionString;
+      LItem.Connect(nil);
+      LItem.DisConnect;
+    finally
+      LDatabases.Free;
+    end;
+    LResult.Success := True;
+    LResult.MessageText := '';
+  end
+  else
+    LResult := RpExecuteConnectionTest(ConnectionName, Params, Token);
   LPayload := TRpWizardTestPayload.Create;
   LPayload.Version := Version;
   LPayload.Success := LResult.Success;
@@ -606,12 +650,13 @@ end;
 
 function ShowConnectionWizard(const AFixedName: string;
   APreferredHubDatabaseId: Int64; out AConnectionName: string;
-  out ADriver: TRpDbDriver): Boolean;
+  out ADriver: TRpDbDriver; out AAdoConnectionString: string): Boolean;
 var
   dia: TFRpNewReportWizardLCL;
 begin
   AConnectionName := '';
   ADriver := rpdbHttp;
+  AAdoConnectionString := '';
   dia := TFRpNewReportWizardLCL.Create(Application);
   try
     dia.StartConnectionMode(AFixedName, APreferredHubDatabaseId);
@@ -621,6 +666,7 @@ begin
     begin
       AConnectionName := dia.ResultConnection;
       ADriver := dia.ResultDriver;
+      AAdoConnectionString := dia.State.AdoConnectionString;
     end;
   finally
     dia.Free;
@@ -634,7 +680,7 @@ var
   I, J, LIndex: Integer;
   LData: TRpDataInfoItem;
   LDatabase: TRpDatabaseInfoItem;
-  LMessage, LName: string;
+  LMessage, LName, LAdo: string;
   LDriver: TRpDbDriver;
   LPreferred: Int64;
   LChecked: TStringList;
@@ -674,7 +720,7 @@ begin
             if LPreferred > 0 then
               Break;
           end;
-      if not RpConnectionWizardFunc(LDatabase.Alias, LPreferred, LName, LDriver) then
+      if not RpConnectionWizardFunc(LDatabase.Alias, LPreferred, LName, LDriver, LAdo) then
         Exit(False);
       // The next Connect reads the new settings
       LDatabase.UpdateConAdmin;
@@ -779,7 +825,7 @@ begin
   if not FConnectionMode then
     Exit;
   case FCurrentPage of
-    wpAgentLogin, wpParams:
+    wpAgentLogin, wpParams, wpDaoConn:
       Result := True;
     wpConnName:
       // An existing connection is added as it is
@@ -795,6 +841,12 @@ begin
     FResultDriver := rpdbHttp
   else if FState.DriverFamily = dfZeos then
     FResultDriver := rpdatazeos
+  else if FState.DriverFamily = dfDao then
+  begin
+    // As the VCL: the ADO connection of the report, with its string
+    FResultDriver := rpdataado;
+    FResultConnection := 'ADO';
+  end
   else
     FResultDriver := rpfiredac;
   FCommitted := True;
@@ -1115,6 +1167,7 @@ begin
   LblExistingConnDriver := nil;
   EdNewConnName := nil; BtnTestExisting := nil;
   ParamsScroll := nil; BtnParamsTest := nil; LblParamsCaption := nil;
+  EdAdoConnString := nil; BtnDaoBuild := nil; BtnDaoTest := nil;
   MemoFinishPrompt := nil;
   AISchemaSelector := nil;
   FParamEditors.Clear;
@@ -1136,6 +1189,7 @@ begin
       wpDirectSchema:          BuildPageSchema;
       wpDriver:                BuildPageDriver;
       wpConnName:              BuildPageConnName;
+      wpDaoConn:               BuildPageDaoConn;
       wpParams:                BuildPageParams;
       wpFinish:                BuildPageFinish;
     end;
@@ -1184,6 +1238,12 @@ begin
         LStepTitle.Caption := TR(400, 'Connection Name');
         LStepHelper.Caption := TR(1718, 'Pick an existing connection or create a new ' +
           'one for this driver.');
+      end;
+    wpDaoConn:
+      begin
+        LStepTitle.Caption := TR(1998, 'ADO Connection String');
+        LStepHelper.Caption := TR(1999, 'Edit the ADO connection string directly or ' +
+          'use the builder to generate it.');
       end;
     wpParams:
       begin
@@ -1240,6 +1300,10 @@ begin
     BtnTestExisting.Enabled := LIdle and Assigned(RbExisting) and RbExisting.Checked;
   if Assigned(BtnParamsTest) then
     BtnParamsTest.Enabled := LIdle;
+  if Assigned(BtnDaoTest) then
+    BtnDaoTest.Enabled := LIdle;
+  if Assigned(BtnDaoBuild) then
+    BtnDaoBuild.Enabled := LIdle;
 end;
 
 function TFRpNewReportWizardLCL.NextPageFor(APage: TRpWizardPage): TRpWizardPage;
@@ -1252,7 +1316,8 @@ begin
         if FState.Route = wrAgent then Result := wpConnName
         else Result := wpDriver;
       wpDriver:
-        Result := wpConnName;
+        if FState.DriverFamily = dfDao then Result := wpDaoConn
+        else Result := wpConnName;
       wpConnName:
         if FState.ConnMode = cnExisting then
           Result := wpFinish
@@ -1277,7 +1342,9 @@ begin
     wpAgentLogin:                    Result := wpAgentSchema;
     wpAgentSchema:                   Result := wpFinish;
     wpDirectSchema:                  Result := wpFinish;
-    wpDriver:                        Result := wpConnName;
+    wpDriver:
+      if FState.DriverFamily = dfDao then Result := wpDaoConn
+      else                                Result := wpConnName;
     wpConnName:
       begin
         if FState.Route = wrAgent then
@@ -1294,6 +1361,7 @@ begin
         else
           Result := wpDirectSchema;
       end;
+    wpDaoConn:                       Result := wpDirectSchema;
     wpParams:                        Result := wpDirectSchema;
     wpFinish:                        Result := wpFinish;
   else
@@ -1454,12 +1522,29 @@ begin
           ShowInfo(TR(1761, 'Please choose a driver family.'));
           Exit;
         end;
-        if (CbConcrete = nil) or (Trim(CbConcrete.Text) = '') then
+        // ADO: no driver to choose (its provider is in the string)
+        if FState.DriverFamily = dfDao then
+          FState.DriverConcrete := ''
+        else
         begin
-          ShowInfo(TR(1762, 'Please choose a specific driver.'));
+          if (CbConcrete = nil) or (Trim(CbConcrete.Text) = '') then
+          begin
+            ShowInfo(TR(1762, 'Please choose a specific driver.'));
+            Exit;
+          end;
+          FState.DriverConcrete := Trim(CbConcrete.Text);
+        end;
+      end;
+    wpDaoConn:
+      begin
+        FState.AdoConnectionString := Trim(EdAdoConnString.Text);
+        if FState.AdoConnectionString = '' then
+        begin
+          ShowInfo(TR(2000, 'Please provide an ADO connection string or use Build ' +
+            'connection string.'));
           Exit;
         end;
-        FState.DriverConcrete := Trim(CbConcrete.Text);
+        FState.ConnName := 'ADO';
       end;
     wpConnName:
       begin
@@ -1969,12 +2054,17 @@ begin
   NewLabel(TR(1739, 'Driver Family'), 0, 16);
   LRow := NewRow(0, 4);
   CbFamily := NewRowCombo(LRow, csDropDownList);
-  // The families of the FPC engine
-  SetLength(FFamilies, 2);
+  // The families of the FPC engine; ADO only on Windows (through OLE DB)
+  SetLength(FFamilies, {$IFDEF MSWINDOWS}3{$ELSE}2{$ENDIF});
   FFamilies[0] := dfFireDac;
   FFamilies[1] := dfZeos;
   CbFamily.Items.Add(TR(1740, 'FireDAC / SQLdb (Cross-platform) - Recommended'));
   CbFamily.Items.Add(TR(1741, 'Zeos (Cross-platform)'));
+{$IFDEF MSWINDOWS}
+  // The caption of the VCL wizard (and of the driver list)
+  FFamilies[2] := dfDao;
+  CbFamily.Items.Add('Microsoft DAO');
+{$ENDIF}
   CbFamily.ItemIndex := -1;
   for I := 0 to High(FFamilies) do
     if FFamilies[I] = FState.DriverFamily then
@@ -2021,6 +2111,13 @@ begin
         CbConcrete.Items.CommaText :=
           'firebird,interbase,mysql,postgresql,sqlite,oracle,mssql,sybase'
           {$IFDEF MSWINDOWS} + ',ado'{$ENDIF};
+      end;
+    dfDao:
+      begin
+        LblConcrete.Caption := TR(2001, 'No driver selection required for Microsoft DAO');
+        CbConcrete.Text := '';
+        CbConcrete.Enabled := False;
+        Exit;
       end;
   end;
   CbConcrete.Enabled := True;
@@ -2203,6 +2300,48 @@ begin
       WideString(TR(1775, 'Connection Error')), [smbOK], smsCritical, smbOK, smbOK);
     BNext.Caption := TR(1748, 'Edit Connection');
   end;
+end;
+
+procedure TFRpNewReportWizardLCL.BuildPageDaoConn;
+var
+  LRow: TPanel;
+begin
+  NewLabel(TR(1998, 'ADO Connection String'), 0, 16);
+  LRow := NewRow(0, 4);
+  EdAdoConnString := NewRowEdit(LRow);
+  EdAdoConnString.Text := FState.AdoConnectionString;
+  LRow := NewRow(0, 12);
+  BtnDaoTest := NewRowButton(LRow, [TR(1746, 'Test Connection')], DoDaoTest);
+  BtnDaoBuild := NewRowButton(LRow, [TR(2002, 'Build Connection String')], DoDaoBuild);
+end;
+
+procedure TFRpNewReportWizardLCL.DoDaoBuild(Sender: TObject);
+{$IFDEF MSWINDOWS}
+var
+  newstring: string;
+{$ENDIF}
+begin
+{$IFDEF MSWINDOWS}
+  // The Data Link dialog of Windows (PromptDataSource of the VCL)
+  newstring := UTF8Encode(PromptDataSource(Handle, UTF8Decode(EdAdoConnString.Text)));
+  if Trim(newstring) <> '' then
+    EdAdoConnString.Text := newstring;
+{$ELSE}
+  ShowInfo(TR(2003, 'ADO support is not available in this build.'));
+{$ENDIF}
+end;
+
+procedure TFRpNewReportWizardLCL.DoDaoTest(Sender: TObject);
+begin
+  if FOperation <> woNone then
+    Exit;
+  if Trim(EdAdoConnString.Text) = '' then
+  begin
+    ShowInfo(TR(2000, 'Please provide an ADO connection string or use Build ' +
+      'connection string.'));
+    Exit;
+  end;
+  StartConnectionTest(woTestAdo, '', nil, Trim(EdAdoConnString.Text));
 end;
 
 procedure TFRpNewReportWizardLCL.BuildPageParams;
@@ -2634,7 +2773,8 @@ begin
 end;
 
 procedure TFRpNewReportWizardLCL.StartConnectionTest(AOperation: TRpWizardOperation;
-  const AConnectionName: string; AValues: TStrings);
+  const AConnectionName: string; AValues: TStrings;
+  const AAdoConnectionString: string);
 var
   LWorker: TRpWizardTestWorker;
 begin
@@ -2642,7 +2782,9 @@ begin
   LWorker := TRpWizardTestWorker.Create(FMailboxRef);
   LWorker.Version := FOperationVersion;
   LWorker.ConnectionName := AConnectionName;
-  LWorker.Params.Assign(AValues);
+  if AValues <> nil then
+    LWorker.Params.Assign(AValues);
+  LWorker.AdoConnectionString := AAdoConnectionString;
   LWorker.Token := TRpAuthManager.Instance.Token;
   LWorker.Start;
 end;
@@ -2672,6 +2814,8 @@ begin
       woAgentConnection: AgentConnectionTested(LTest.Success, LTest.MessageText);
       woTestExisting: ExistingConnectionTested(LTest.Success, LTest.MessageText);
       woTestParams: ParamsTested(LTest.Success, LTest.MessageText);
+      // The same messages as the test of the parameters page
+      woTestAdo: ParamsTested(LTest.Success, LTest.MessageText);
     end;
   end;
 end;
@@ -2728,6 +2872,12 @@ begin
           item := FDestReport.DatabaseInfo.Add(FState.ConnName);
           item.Driver := rpdatazeos;
           item.Alias := FState.ConnName;
+        end;
+      dfDao:
+        begin
+          item := FDestReport.DatabaseInfo.Add('ADO');
+          item.Driver := rpdataado;
+          item.ADOConnectionString := FState.AdoConnectionString;
         end;
     end;
   end;

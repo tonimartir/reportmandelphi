@@ -320,7 +320,8 @@ type
     // Adds a connection of the connections file (New drop down)
     procedure AddAvailableConnection(const AName: string);
     // Adds (or selects) the connection made by the connection wizard
-    procedure AddWizardConnection(const AName: string; ADriver: TRpDbDriver);
+    procedure AddWizardConnection(const AName: string; ADriver: TRpDbDriver;
+      const AAdoConnectionString: string = '');
     // Selects a driver of the driver list (VCL GDriver)
     procedure SelectListDriver(ADriver: TRpDbDriver);
     // Tests the active connection in a worker (VCL BTestClick)
@@ -3463,17 +3464,18 @@ end;
 
 procedure TFRpDInfoLCL.BWizardConnClick(Sender: TObject);
 var
-  LName: string;
+  LName, LAdo: string;
   LDriver: TRpDbDriver;
 begin
   if not CheckCanModify then
     Exit;
   SaveActiveConn;
-  if RpConnectionWizardFunc('', 0, LName, LDriver) then
-    AddWizardConnection(LName, LDriver);
+  if RpConnectionWizardFunc('', 0, LName, LDriver, LAdo) then
+    AddWizardConnection(LName, LDriver, LAdo);
 end;
 
-procedure TFRpDInfoLCL.AddWizardConnection(const AName: string; ADriver: TRpDbDriver);
+procedure TFRpDInfoLCL.AddWizardConnection(const AName: string; ADriver: TRpDbDriver;
+  const AAdoConnectionString: string);
 var
   conname: string;
   index: Integer;
@@ -3492,6 +3494,14 @@ begin
     item.Driver := ADriver;
     LConnections.Items.Add(item.Alias);
     index := LConnections.Count - 1;
+  end
+  else
+    item := FWork.DatabaseInfo[index];
+  // ADO is not in the connections file: the string of the wizard (VCL)
+  if ADriver = rpdataado then
+  begin
+    item.ADOConnectionString := AAdoConnectionString;
+    item.DisConnect;
   end;
   LConnections.ItemIndex := index;
   LoadConnDetails(index);
@@ -3499,14 +3509,14 @@ end;
 
 procedure TFRpDInfoLCL.BWizardConfigureClick(Sender: TObject);
 var
-  LName: string;
+  LName, LAdo: string;
   LDriver: TRpDbDriver;
 begin
   if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
     Exit;
   SaveActiveConn;
   if RpConnectionWizardFunc(FWork.DatabaseInfo[FActiveConnIndex].Alias, 0, LName,
-    LDriver) then
+    LDriver, LAdo) then
   begin
     LoadConAdmin;
     LoadConnDetails(FActiveConnIndex);

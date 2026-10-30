@@ -700,12 +700,14 @@ var
 // The connection wizard: a new connection is WIZCONN; both are written to the
 // connections file with the Hub database of HUBCONN
 function DataFakeWizard(const AFixedName: string; APreferredHubDatabaseId: Int64;
-  out AConnectionName: string; out ADriver: TRpDbDriver): Boolean;
+  out AConnectionName: string; out ADriver: TRpDbDriver;
+  out AAdoConnectionString: string): Boolean;
 var
   LIni: TMemIniFile;
 begin
   Inc(GDataWizardCalls);
   GDataWizardName := AFixedName;
+  AAdoConnectionString := '';
   if AFixedName = '' then
     AConnectionName := 'WIZCONN'
   else
