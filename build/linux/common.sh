@@ -21,7 +21,7 @@ rm_version() {
 
 # Traducciones de la LCL (lclstrconsts.<idioma>.po) que se instalan: los
 # idiomas de reportmanres.* (ca = .cat, cs = .csy) y pt_BR ademas de pt
-LCL_LANGUAGES="es ca cs de fr it lt pt pt_BR"
+LCL_LANGUAGES="es ca cs de fr it lt pl pt pt_BR"
 
 # Directorio lcl/languages de la instalacion de Lazarus de la imagen (junto a
 # lazbuild: /usr/share/lazarus/<version>/lcl/languages)
