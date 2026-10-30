@@ -264,7 +264,17 @@ begin
   ptype:=ptInteger;
   // The barcode color is shown as SrpSColor, the model only knows BColor
   if pname=SrpSColor then Result:='bColor'
-  else if pname=SrpSBackColor then Result:='backColor';
+  else if pname=SrpSBackColor then Result:='backColor'
+  // Names the model reads only as their property (as the LCL inspector):
+  // reading the inspector name raised and the change was not recorded
+  else if pname=SRpECCLevel then Result:='eccLevel'
+  else if pname=SRpNumRows then Result:='numRows'
+  else if pname=SRpNumCols then Result:='numColumns'
+  else if pname=SrpSAlignment then Result:='alignment';
+  if Result<>'' then
+   exit;
+  ptype:=ptBoolean;
+  if pname=SRpTruncatedPDF417 then Result:='truncated';
   if Result<>'' then
    exit;
  end;
