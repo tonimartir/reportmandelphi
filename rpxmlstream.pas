@@ -601,6 +601,8 @@ begin
   WritePropertyI('NUMROWS',compb.NumRows,Stream);
   WritePropertyI('ECCLEVEL',compb.ECCLevel,Stream);
   WritePropertyBool('TRUNCATED',compb.Truncated,Stream);
+  if compb.Alignment<>0 then
+   WritePropertyI('ALIGNMENT',compb.Alignment,Stream);
  end;
  WriteStringToStream('</COMPONENT>'+CRLF,Stream);
 end;
@@ -2055,6 +2057,9 @@ begin
   else
   if propname='TRUNCATED' then
    compb.Truncated:=RpStrToBool(propvalue)
+  else
+  if propname='ALIGNMENT' then
+   compb.Alignment:=StrToInt(String(propvalue))
  end;
 end;
 

@@ -536,7 +536,8 @@ begin
     else if pname = SRpSRotation then Result := 'rotation'
     else if pname = SRpECCLevel then Result := 'eccLevel'
     else if pname = SRpNumRows then Result := 'numRows'
-    else if pname = SRpNumCols then Result := 'numColumns';
+    else if pname = SRpNumCols then Result := 'numColumns'
+    else if pname = SrpSAlignment then Result := 'alignment';
     if Result <> '' then
       Exit;
     ptype := ptNumber;

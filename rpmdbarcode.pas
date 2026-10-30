@@ -91,6 +91,7 @@ type
    FTransparent:boolean;
    FECCLevel,FNumRows,FNumColumns:Integer;
    FTruncated:Boolean;
+   FAlignment:integer;
    FCodewords:TSPDF417CodewordList;
    FNumCodewords:Integer;
    FUsedCodewords:Integer;
@@ -143,6 +144,7 @@ type
    procedure Draw2DBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
    procedure DrawQrBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
    procedure DrawDataMatrixBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
+   function AlignedOrigin(FLeft,FTop,barwidth:integer):TPoint;
    procedure DrawStartPattern (RowNumber     : Integer;
                                              WorkBarHeight : Integer);
    procedure DrawStopPattern (RowNumber     : Integer;
@@ -211,6 +213,11 @@ type
    property ECCLevel : Integer read FECCLevel write SetECCLevel default -1;
    property Truncated : Boolean read FTruncated write FTruncated
            default False;
+   // Position of a linear or PDF417 barcode along the width of the
+   // component: 0 (left, as previous versions), AlignmentFlags_AlignLeft,
+   // AlignmentFlags_AlignRight or AlignmentFlags_AlignHCenter (the flags of
+   // TRpGenTextComponent.Alignment). QR and DataMatrix are always centered.
+   property Alignment:integer read FAlignment write FAlignment default 0;
   end;
 
  const BarcodeTypeStrings:array[bcCode_2_5_interleaved..bcCodeDataMatrix] of string=
@@ -227,6 +234,10 @@ type
  function StringECCToInteger(value: AnsiString):Integer;
  function ECCToString(value:integer): AnsiString;
  procedure FillECCValues(alist:TRpWideStrings);
+ // Alignment of a barcode as the inspector shows it, and back
+ function BarcodeAlignmentToText(value:integer):WideString;
+ function TextToBarcodeAlignment(const value:WideString):integer;
+ procedure FillBarcodeAlignmentValues(alist:TRpWideStrings);
 
 implementation
 
@@ -261,6 +272,12 @@ end;
 function BarcodePropertyApplies(atyp:TRpBarcodeType;const pname:WideString):Boolean;
 begin
  Result:=True;
+ // QR and DataMatrix symbols are always centered in the component
+ if (atyp in [bcCodeQr,bcCodeDataMatrix]) and (pname=SrpSAlignment) then
+ begin
+  Result:=False;
+  exit;
+ end;
  // A DataMatrix symbol is defined by its text only: module size, ratio,
  // rotation, checksum and the PDF417 options do not change it
  if atyp=bcCodeDataMatrix then
@@ -1615,9 +1632,16 @@ begin
   end;
 
   xadd := 0;
-  orgin.x := FLeft;
-  orgin.y := FTop;
   alpha := Rotation / 10 * pi / 180.0;
+  // The width of the bars, from the pattern
+  awidth := 0;
+  for i := 1 to Length(data) do
+    case data[i] of
+      '0'..'3': awidth := awidth + modules[Ord(data[i]) - Ord('0')];
+      '5'..'8': awidth := awidth + modules[Ord(data[i]) - Ord('5')];
+      'A'..'D': awidth := awidth + modules[Ord(data[i]) - Ord('A')];
+    end;
+  orgin := AlignedOrigin(FLeft, FTop, awidth);
 
   PenWidth := 0;
   PenColor := 0;
@@ -2863,13 +2887,12 @@ var
   CodewordPos       : Integer;
   ErrorLevel        : Integer;
   NumErrorCodewords : Integer;
+  orgin             : TPoint;
 
 const
   SymbolPadding = 900;
 
 begin
-  FPDFLeft:=FLeft;
-  FPDFTop:=FTop;
   FPDFMeta:=meta;
   { Set the error correction level automatically if needed }
   ErrorLevel := GetRealErrorLevel;
@@ -2877,6 +2900,15 @@ begin
   NumErrorCodewords := Trunc (Power (2, ErrorLevel + 1));
 
   CalculateSize (XSize, YSize);
+
+  // Start, left indicator, XSize data columns, right indicator and the stop
+  // pattern of 18 modules; truncated, no right indicator and a stop of 1
+  if Truncated then
+    orgin := AlignedOrigin(FLeft, FTop, ((XSize + 2) * SPDF417CellWidth + 1) * Modul)
+  else
+    orgin := AlignedOrigin(FLeft, FTop, ((XSize + 3) * SPDF417CellWidth + 18) * Modul);
+  FPDFLeft:=orgin.x;
+  FPDFTop:=orgin.y;
 
   { The first codewords is always the length }
   if FNumCodewords +
@@ -3132,6 +3164,38 @@ begin
  end;
 end;
 
+// 0 draws as AlignmentFlags_AlignLeft (1)
+function BarcodeAlignmentToText(value:integer):WideString;
+begin
+ case value of
+  2: Result:=SRpSAlignRight;
+  4: Result:=SRpSAlignCenter;
+ else
+  Result:=SRpSAlignLeft;
+ end;
+end;
+
+function TextToBarcodeAlignment(const value:WideString):integer;
+begin
+ Result:=0;
+ if value=SRpSAlignLeft then
+  Result:=1
+ else
+ if value=SRpSAlignRight then
+  Result:=2
+ else
+ if value=SRpSAlignCenter then
+  Result:=4;
+end;
+
+procedure FillBarcodeAlignmentValues(alist:TRpWideStrings);
+begin
+ alist.Clear;
+ alist.Add(SRpSAlignLeft);
+ alist.Add(SRpSAlignCenter);
+ alist.Add(SRpSAlignRight);
+end;
+
 procedure TRpBarcode.DrawQrBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
 var
   QRCode: TRpDelphiZXingQRCode;
@@ -3208,6 +3272,41 @@ begin
   finally
     QRCode.Free;
   end;
+end;
+
+// The origin of a barcode barwidth wide (before its rotation), moved along
+// its bars by the Alignment inside the width of the component (the height
+// when it is rotated 90 or 270 degrees). A barcode wider than the component
+// starts at its origin, as previous versions.
+function TRpBarcode.AlignedOrigin(FLeft,FTop,barwidth:integer):TPoint;
+const
+  AlignmentFlags_AlignLeft = 1;
+  AlignmentFlags_AlignRight = 2;
+  AlignmentFlags_AlignHCenter = 4;
+var
+  available, offset: integer;
+  alpha: double;
+  shift: TPoint;
+begin
+  Result.x := FLeft;
+  Result.y := FTop;
+  available := Width;
+  if (Abs(Rotation) mod 1800) = 900 then
+    available := Height;
+  if barwidth >= available then
+    Exit;
+  case FAlignment of
+    AlignmentFlags_AlignHCenter: offset := (available - barwidth) div 2;
+    AlignmentFlags_AlignRight: offset := available - barwidth;
+  else
+    offset := 0;
+  end;
+  if offset = 0 then
+    Exit;
+  alpha := Rotation / 10 * pi / 180.0;
+  shift.x := offset;
+  shift.y := 0;
+  Result := Translate2D(Rotate2D(shift, alpha), Result);
 end;
 
 procedure TRpBarcode.DrawDataMatrixBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
@@ -3324,6 +3423,11 @@ begin
   FTruncated := value;
   exit;
  end;
+ if SameText(propName, 'Alignment') then
+ begin
+  FAlignment := value;
+  exit;
+ end;
  inherited;
 end;
 
@@ -3397,6 +3501,11 @@ begin
  if SameText(propName, 'Truncated') then
  begin
   Result := FTruncated;
+  exit;
+ end;
+ if SameText(propName, 'Alignment') then
+ begin
+  Result := FAlignment;
   exit;
  end;
  Result := inherited GetItemProperty(propName);

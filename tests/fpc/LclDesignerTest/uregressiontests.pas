@@ -34,11 +34,11 @@ var
 implementation
 
 uses
-  Classes, SysUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
+  Classes, SysUtils, StrUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
   Graphics, Menus, Generics.Collections, sqldb, sqlite3conn,
   rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
   rpprintitem, rplabelitem, rpmdchart, rpmdcharttypes, rpparams, rpdatainfo, rpgraphutilslcl,
-  rpdrawitem, rpmdbarcode, rptranslator,
+  rpdrawitem, rpmdbarcode, rptranslator, rpmetafile,
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
   rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfchartintlcl, rpmdfbarcodeintlcl,
   rpmdobjinsplcl, rpmdfmainlcl, rpmdfparamslcl, rpmdfdinfolcl,
@@ -1488,7 +1488,8 @@ begin
     SrpSModul, SRpSCurrency, SrpSRatio, SRpSCurrency, SrpSExpression, SRpSExpression,
     SrpSDisplayFormat, SRpSString, SRpSRotation, SrpSList, SrpSColor, SRpSColor,
     SrpSBackColor, SRpSColor, SrpSTransparent, SRpSBool, SRpECCLevel, SRpSList,
-    SRpNumRows, SRpInteger, SRpNumCols, SRpInteger, SRpTruncatedPDF417, SRpSBool]);
+    SRpNumRows, SRpInteger, SRpNumCols, SRpInteger, SRpTruncatedPDF417, SRpSBool,
+    SrpSAlignment, SRpSList]);
 end;
 
 procedure VCLShapeProps(L: TStringList);
@@ -1924,6 +1925,8 @@ begin
     CheckRoundTrip(aint, SRpECCLevel, PossibleValue(aint, SRpECCLevel, 2), 'Barcode');
     CheckRoundTrip(aint, SRpNumRows, '4', 'Barcode');
     CheckRoundTrip(aint, SRpTruncatedPDF417, BoolToStr(True, True), 'Barcode');
+    CheckRoundTrip(aint, SrpSAlignment, SRpSAlignCenter, 'Barcode');
+    CheckInt(4, TRpBarcode(aint.printitem).Alignment, 'Barcode alignment in the model');
 
     aint := ChildInt(frame, nShape);
     CheckRoundTrip(aint, SrpSShape, StringShapeType[rpsEllipse], 'Shape');
@@ -3110,6 +3113,173 @@ begin
   LogMsg('Schema list of the AI chat verified');
 end;
 
+// Alignment of linear and PDF417 barcodes inside the width of the component:
+// 0 draws as previous versions, a barcode wider than the component does not
+// move, QR is always centered, and the property is saved as text and XML
+type
+  // DoPrint is protected
+  TBarcodeAccess = class(TRpBarcode);
+
+procedure TestBarcodeAlignment;
+const
+  BAR_LEFT = 1000;
+  BAR_TOP = 2000;
+  BAR_WIDTH = 4000;
+var
+  rep, rep2: TRpReport;
+  sec: TRpSection;
+  bar, bar2: TRpBarcode;
+  l0, r0, l1, r1, l2, r2, l4, r4, w: Integer;
+  mem: TMemoryStream;
+  fmt: TRpStreamFormat;
+
+  // The horizontal extent of what the barcode draws with AAlignment
+  procedure DrawBars(AAlignment: Integer; out ALeft, ARight: Integer);
+  var
+    meta: TRpMetafileReport;
+    partial: Boolean;
+    i: Integer;
+    obj: TRpMetaObject;
+  begin
+    bar.Alignment := AAlignment;
+    meta := TRpMetafileReport.Create(nil);
+    try
+      meta.NewPage;
+      meta.CurrentPage := 0;
+      TBarcodeAccess(bar).DoPrint(nil, BAR_LEFT, BAR_TOP, -1, -1, meta, Point(0, 0), partial);
+      ALeft := MaxInt;
+      ARight := -MaxInt;
+      for i := 0 to meta.Pages[0].ObjectCount - 1 do
+      begin
+        obj := meta.Pages[0].Objects[i];
+        if obj.Left < ALeft then
+          ALeft := obj.Left;
+        if obj.Left + obj.Width > ARight then
+          ARight := obj.Left + obj.Width;
+      end;
+    finally
+      meta.Free;
+    end;
+  end;
+
+  // How many times ALIGNMENT is in the XML of the report
+  function XmlAlignmentCount(AAlignment: Integer): Integer;
+  var
+    xml: string;
+    p: Integer;
+  begin
+    bar.Alignment := AAlignment;
+    mem := TMemoryStream.Create;
+    try
+      rep.StreamFormat := rpStreamXML;
+      rep.SaveToStream(mem);
+      SetString(xml, PAnsiChar(mem.Memory), mem.Size);
+    finally
+      mem.Free;
+    end;
+    Result := 0;
+    p := Pos('ALIGNMENT', xml);
+    while p > 0 do
+    begin
+      Inc(Result);
+      p := PosEx('ALIGNMENT', xml, p + 1);
+    end;
+  end;
+
+  procedure CheckAligned(const AWhat: string);
+  begin
+    DrawBars(0, l0, r0);
+    DrawBars(1, l1, r1);
+    DrawBars(2, l2, r2);
+    DrawBars(4, l4, r4);
+    CheckInt(BAR_LEFT, l0, AWhat + ': no alignment starts at the left');
+    Check((l1 = l0) and (r1 = r0), AWhat + ': left alignment draws as no alignment');
+    CheckInt(BAR_LEFT + BAR_WIDTH, r2, AWhat + ': right alignment ends at the right');
+    CheckInt(r0 - l0, r2 - l2, AWhat + ': right alignment keeps the width');
+    CheckInt(BAR_LEFT + (BAR_WIDTH - (r0 - l0)) div 2, l4, AWhat + ': centered');
+    CheckInt(r0 - l0, r4 - l4, AWhat + ': centering keeps the width');
+  end;
+
+begin
+  LogMsg('Barcode alignment: linear and PDF417 barcodes inside their width');
+  rep := NewEngineReport(sec);
+  try
+    rep.InitEvaluator;
+    bar := TRpBarcode.Create(rep);
+    bar.Name := 'BARALIGN';
+    sec.ReportComponents.Add.Component := bar;
+    bar.Expression := QuotedStr('5449000000996');
+    bar.Typ := bcCodeEAN13;
+    bar.Width := BAR_WIDTH;
+    bar.Height := 800;
+    // The white bars are drawn too: the extent is the whole pattern
+    bar.Transparent := False;
+    CheckInt(0, bar.Alignment, 'Barcode alignment defaults to 0');
+    CheckAligned('EAN13');
+
+    // Turned 180 degrees the bars go from the origin to the left: the right
+    // alignment moves them by the same distance, to the left
+    w := r0 - l0;
+    bar.Rotation := 1800;
+    DrawBars(0, l0, r0);
+    DrawBars(2, l2, r2);
+    CheckInt(BAR_WIDTH - w, l0 - l2, 'EAN13 at 180 degrees, right alignment');
+    bar.Rotation := 0;
+
+    // Wider than the component: it stays at the origin
+    bar.Width := 300;
+    DrawBars(4, l4, r4);
+    CheckInt(BAR_LEFT, l4, 'A barcode wider than the component is not moved');
+    bar.Width := BAR_WIDTH;
+
+    bar.Typ := bcCodePDF417;
+    bar.Truncated := False;
+    CheckAligned('PDF417');
+    bar.Truncated := True;
+    CheckAligned('PDF417 truncated');
+    bar.Truncated := False;
+
+    bar.Typ := bcCodeQr;
+    DrawBars(0, l0, r0);
+    DrawBars(2, l2, r2);
+    Check((l0 = l2) and (r0 = r2), 'QR is always centered');
+    Check(not BarcodePropertyApplies(bcCodeQr, SrpSAlignment), 'No alignment in the inspector for QR');
+    Check(not BarcodePropertyApplies(bcCodeDataMatrix, SrpSAlignment),
+      'No alignment in the inspector for DataMatrix');
+    Check(BarcodePropertyApplies(bcCodeEAN13, SrpSAlignment), 'Alignment in the inspector for EAN13');
+
+    // Saved and read back
+    bar.Typ := bcCodeEAN13;
+    bar.Alignment := 4;
+    for fmt in [rpStreamText, rpStreamXML] do
+    begin
+      mem := TMemoryStream.Create;
+      rep2 := TRpReport.Create(nil);
+      try
+        rep.StreamFormat := fmt;
+        rep.SaveToStream(mem);
+        mem.Position := 0;
+        rep2.LoadFromStream(mem);
+        bar2 := TRpBarcode(rep2.FindComponent('BARALIGN'));
+        Check(Assigned(bar2), 'Barcode read back');
+        if Assigned(bar2) then
+          CheckInt(4, bar2.Alignment, 'Barcode alignment read back, format ' + IntToStr(Ord(fmt)));
+      finally
+        rep2.Free;
+        mem.Free;
+      end;
+    end;
+    // Not aligned, the XML of the barcode is the one of previous versions
+    // (the report writes its own ALIGNMENT; a property is an opening and a
+    // closing tag)
+    CheckInt(XmlAlignmentCount(4) - 2, XmlAlignmentCount(0),
+      'A barcode without alignment writes no ALIGNMENT in XML');
+  finally
+    rep.Free;
+  end;
+  LogMsg('Barcode alignment verified');
+end;
+
 procedure RunRegressionTests(const ASamplePath: string);
 var
   t: TRegressionTests;
@@ -3137,6 +3307,7 @@ begin
     TestDesignerKeepsHistory(ASamplePath);
     // F5: the schema list of the AI chat
     TestChatSchemaList;
+    TestBarcodeAlignment;
   finally
     t.Free;
   end;

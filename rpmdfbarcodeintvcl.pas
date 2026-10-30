@@ -184,6 +184,13 @@ begin
  lcat.Add(SRpBarcode);
  if Assigned(lvalues) then
   lvalues.Add(BoolToStr(TRpBarcode(printitem).Truncated,True));
+ // Alignment (linear and PDF417)
+ lnames.Add(SrpSAlignment);
+ ltypes.Add(SRpSList);
+ lhints.Add('refbarcode.html');
+ lcat.Add(SRpBarcode);
+ if Assigned(lvalues) then
+  lvalues.Add(BarcodeAlignmentToText(TRpBarcode(printitem).Alignment));
 end;
 
 procedure TRpBarcodeInterface.SetProperty(pname:string;value:Widestring);
@@ -251,6 +258,12 @@ begin
  if pname=SRpTruncatedPDF417 then
  begin
   TRpBarcode(fprintitem).Truncated:=StrToBool(value);
+  invalidate;
+  exit;
+ end;
+ if pname=SrpSAlignment then
+ begin
+  TRpBarcode(fprintitem).Alignment:=TextToBarcodeAlignment(value);
   invalidate;
   exit;
  end;
@@ -334,6 +347,11 @@ begin
   Result:=BoolToStr(TRpBarcode(printitem).Truncated,true);
   exit;
  end;
+ if pname=SrpSAlignment then
+ begin
+  Result:=BarcodeAlignmentToText(TRpBarcode(printitem).Alignment);
+  exit;
+ end;
  if pname=SRpNumRows then
  begin
   Result:=IntToStr(TRpBarcode(printitem).NumRows);
@@ -376,6 +394,11 @@ begin
  if pname=SRpECCLevel then
  begin
   FillEccValues(lpossiblevalues);
+  exit;
+ end;
+ if pname=SrpSAlignment then
+ begin
+  FillBarcodeAlignmentValues(lpossiblevalues);
   exit;
  end;
  inherited GetPropertyValues(pname,lpossiblevalues);

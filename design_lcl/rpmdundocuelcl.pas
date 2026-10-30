@@ -2017,6 +2017,7 @@ begin
     op.AddProperty('numRows', ptInteger, Null, pitem.GetItemProperty('NumRows'));
     op.AddProperty('eccLevel', ptInteger, Null, pitem.GetItemProperty('ECCLevel'));
     op.AddProperty('truncated', ptBoolean, Null, pitem.GetItemProperty('Truncated'));
+    op.AddProperty('alignment', ptInteger, Null, pitem.GetItemProperty('Alignment'));
   end;
 end;
 

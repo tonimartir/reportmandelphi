@@ -96,6 +96,8 @@ begin
   AddProp(SRpNumRows, SRpInteger);
   AddProp(SRpNumCols, SRpInteger);
   AddProp(SRpTruncatedPDF417, SRpSBool);
+  // Linear and PDF417
+  AddProp(SrpSAlignment, SRpSList);
 end;
 
 procedure TRpBarcodeInterface.SetProperty(pname: WideString; value: WideString);
@@ -177,6 +179,12 @@ begin
     Invalidate;
     Exit;
   end;
+  if pname = SrpSAlignment then
+  begin
+    abar.Alignment := TextToBarcodeAlignment(value);
+    Invalidate;
+    Exit;
+  end;
   if pname = SRpNumCols then
   begin
     abar.NumColumns := StrToIntDef(value, abar.NumColumns);
@@ -222,6 +230,7 @@ begin
   else if pname = SRpNumRows then Result := IntToStr(abar.NumRows)
   else if pname = SRpNumCols then Result := IntToStr(abar.NumColumns)
   else if pname = SRpECCLevel then Result := WideString(ECCToString(abar.ECCLevel))
+  else if pname = SrpSAlignment then Result := BarcodeAlignmentToText(abar.Alignment)
   else Result := inherited GetProperty(pname);
 end;
 
@@ -249,6 +258,11 @@ begin
   begin
     lpossiblevalues.Clear;
     FillECCValues(lpossiblevalues);
+    Exit;
+  end;
+  if pname = SrpSAlignment then
+  begin
+    FillBarcodeAlignmentValues(lpossiblevalues);
     Exit;
   end;
   inherited GetPropertyValues(pname, lpossiblevalues);
