@@ -649,6 +649,7 @@ begin
   if SameText(propName, 'dpiRes') then Exit('dpires');
   if SameText(propName, 'drawStyle') then Exit('DrawStyle');
   if SameText(propName, 'copyMode') then Exit('CopyMode');
+  if SameText(propName, 'dmcFlag') then Exit('DMCFlag');
   if SameText(propName, 'barType') then Exit('Typ');
   if SameText(propName, 'checksum') then Exit('Checksum');
   if SameText(propName, 'bColor') then Exit('BColor');
@@ -1997,6 +1998,7 @@ begin
     op.AddProperty('dpiRes', ptInteger, Null, pitem.GetItemProperty('dpires'));
     op.AddProperty('copyMode', ptInteger, Null, pitem.GetItemProperty('CopyMode'));
     op.AddProperty('sharedImage', ptInteger, Null, pitem.GetItemProperty('sharedImage'));
+    op.AddProperty('dmcFlag', ptInteger, Null, pitem.GetItemProperty('DMCFlag'));
     op.AddProperty('streamBase64', ptString, Null, pitem.GetItemProperty('streamBase64'));
   end
   else if pitem is TRpBarcode then

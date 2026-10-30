@@ -536,6 +536,8 @@ begin
   WritePropertyI('DPIRES',compi.dpires,Stream);
   WritePropertyI('COPYMODE',compi.CopyMode,Stream);
   WritePropertyI('CACHEDIMAGE',Integer(compi.CachedImage),Stream);
+  if compi.DMCFlag<>0 then
+   WritePropertyI('DMCFLAG',compi.DMCFlag,Stream);
  end
  else
  // TRpChart
@@ -1888,7 +1890,10 @@ begin
   end
   else
   if propname='COPYMODE' then
-   compi.CopyMode:=StrToInt(String(propvalue));
+   compi.CopyMode:=StrToInt(String(propvalue))
+  else
+  if propname='DMCFLAG' then
+   compi.DMCFlag:=StrToInt(String(propvalue));
  end
  else
  // TRpChart

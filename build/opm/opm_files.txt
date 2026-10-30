@@ -24,8 +24,22 @@ packages/fpc_lcl/reportman_designlcl.pas
 
 # --- Licencia ---
 LICENSE.TXT
+LICENSE.libdmtx.txt
 
 # --- reportman_rtl: unidades del motor en la raiz ---
+dmtx.pas
+dmtxbytelist.pas
+dmtxencode.pas
+dmtxencodeascii.inc
+dmtxencodebase256.inc
+dmtxencodescheme.inc
+dmtxencodestream.inc
+dmtximage.pas
+dmtxmatrix3.pas
+dmtxmessage.pas
+dmtxplacemod.pas
+dmtxreedsol.pas
+dmtxsymbol.pas
 rpaireportcontracts.pas
 rpalias.pas
 rpauthmanager.pas
@@ -37,6 +51,7 @@ rpcompobase.pas
 rpcsvdriver.pas
 rpdatahttp.pas
 rpdatainfo.pas
+rpdatamatrix.pas
 rpdataset.pas
 rpdatatext.pas
 rpDelphiZXIngQRCode.pas

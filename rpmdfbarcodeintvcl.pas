@@ -44,6 +44,7 @@ type
    procedure SetProperty(pname:string;value:Widestring);override;
    function GetProperty(pname:string):Widestring;override;
    procedure GetPropertyValues(pname:string;lpossiblevalues:TRpWideStrings);override;
+   function IsPropertyEnabled(pname:string):Boolean;override;
  end;
 
 
@@ -63,6 +64,14 @@ class procedure TRpBarcodeInterface.FillAncestors(alist:TStrings);
 begin
  inherited FillAncestors(alist);
  alist.Add('TRpBarcodeInterface');
+end;
+
+function TRpBarcodeInterface.IsPropertyEnabled(pname:string):Boolean;
+begin
+ if Assigned(printitem) then
+  Result:=BarcodePropertyApplies(TRpBarcode(printitem).Typ,pname)
+ else
+  Result:=inherited IsPropertyEnabled(pname);
 end;
 
 procedure TRpBarcodeInterface.GetProperties(lnames,ltypes,lvalues,lhints,lcat:TRpWideStrings);
@@ -350,7 +359,7 @@ var
 begin
  if pname=SRpSBarcodeType then
  begin
-  for it:=bcCode_2_5_interleaved to bcCodeQr do
+  for it:=bcCode_2_5_interleaved to bcCodeDataMatrix do
   begin
    lpossiblevalues.Add(BarcodeTypeStrings[it]);
   end;

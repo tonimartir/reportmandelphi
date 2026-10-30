@@ -30,7 +30,10 @@ object FRpAboutBoxVCL: TFRpAboutBoxVCL
       
         'Barcode codebase: Andreas Schmidth and friends (shmia@bizerba.de' +
         ')'
-      'QR Code. ZXing delphi')
+      'QR Code. ZXing delphi'
+      
+        'DataMatrix (libdmtx): Mike Laughton, Vadim A. Misbakh-Soloviov, ' +
+        'Tim Zaman. Pascal translation: Ladislav Karrach')
     ReadOnly = True
     ScrollBars = ssBoth
     TabOrder = 0

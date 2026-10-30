@@ -44,7 +44,7 @@ uses
 {$IFDEF MSWINDOWS}
  Windows,
 {$ENDIF}
- rpprintitem,rpbarcodecons,math,rpDelphiZXIngQRCode;
+ rpprintitem,rpbarcodecons,math,rpDelphiZXIngQRCode,rpdatamatrix;
 
 const
  MAX_DIGITS_NUM=2000;
@@ -65,7 +65,7 @@ type
 		bcCodeCodabar,
 		bcCodeEAN8,
         	bcCodeEAN13,
-                bcCodePDF417,bcCodeQr
+                bcCodePDF417,bcCodeQr,bcCodeDataMatrix
 				);
 
  TRpDigit='0'..'9';
@@ -142,6 +142,7 @@ type
    function IsNumericString (const S : AnsiString) : boolean;
    procedure Draw2DBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
    procedure DrawQrBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
+   procedure DrawDataMatrixBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
    procedure DrawStartPattern (RowNumber     : Integer;
                                              WorkBarHeight : Integer);
    procedure DrawStopPattern (RowNumber     : Integer;
@@ -212,14 +213,17 @@ type
            default False;
   end;
 
- const BarcodeTypeStrings:array[bcCode_2_5_interleaved..bcCodeQr] of string=
+ const BarcodeTypeStrings:array[bcCode_2_5_interleaved..bcCodeDataMatrix] of string=
   ('2_5_interleaved','2_5_industrial',
    '2_5_matrix','Code39','Code39Extended',
    '128A','128B','128C','128',
    'Code93','Code93Ex','MSI',
-   'PostNet','Codabar','EAN8','EAN13','PDF417','QR');
+   'PostNet','Codabar','EAN8','EAN13','PDF417','QR','DataMatrix');
 
  function StringBarcodeToBarCodeType(value: AnsiString):TRpBarCodeType;
+ // False when the designer property pname (inspector name) has no effect
+ // on a barcode of type atyp
+ function BarcodePropertyApplies(atyp:TRpBarcodeType;const pname:WideString):Boolean;
  function StringECCToInteger(value: AnsiString):Integer;
  function ECCToString(value:integer): AnsiString;
  procedure FillECCValues(alist:TRpWideStrings);
@@ -244,7 +248,7 @@ var
  i:TRpBarCodeType;
 begin
  Result:=bcCodeEAN13;
- for i:=bcCode_2_5_interleaved to bcCodeQr do
+ for i:=bcCode_2_5_interleaved to bcCodeDataMatrix do
  begin
   if (String(value)=BarcodeTypeStrings[i]) then
   begin
@@ -252,6 +256,17 @@ begin
    break;
   end;
  end;
+end;
+
+function BarcodePropertyApplies(atyp:TRpBarcodeType;const pname:WideString):Boolean;
+begin
+ Result:=True;
+ // A DataMatrix symbol is defined by its text only: module size, ratio,
+ // rotation, checksum and the PDF417 options do not change it
+ if atyp=bcCodeDataMatrix then
+  Result:=not ((pname=SRpSChecksum) or (pname=SRpSModul) or (pname=SRpSRatio) or
+   (pname=SRpSRotation) or (pname=SRpECCLevel) or (pname=SRpNumRows) or
+   (pname=SRpNumCols) or (pname=SRpTruncatedPDF417));
 end;
 
 
@@ -1593,6 +1608,11 @@ begin
     DrawQrBarcode(FLeft, FTop, meta);
     Exit;
   end;
+  if Typ = bcCodeDataMatrix then
+  begin
+    DrawDataMatrixBarcode(FLeft, FTop, meta);
+    Exit;
+  end;
 
   xadd := 0;
   orgin.x := FLeft;
@@ -1809,6 +1829,7 @@ begin
  	bcCodeEAN8:             data := Code_EAN8;
  	bcCodeEAN13:            data := Code_EAN13;
  	bcCodeQr:            data := '';
+ 	bcCodeDataMatrix:    data := '';
  else
  	raise Exception.Create(SRpWrongBarcodeType);
  end;
@@ -3187,6 +3208,44 @@ begin
   finally
     QRCode.Free;
   end;
+end;
+
+procedure TRpBarcode.DrawDataMatrixBarcode(FLeft,FTop:integer;meta:TRpMetaFileReport);
+const
+  // ISO/IEC 16022 quiet zone: one module on every side
+  QUIET_ZONE = 1;
+var
+  symbol: TRpDataMatrixModules;
+  rows, cols, totalRows, totalCols: Integer;
+  Row, Column: Integer;
+  squareSize: Integer;
+begin
+  if not RpDataMatrixEncode(CurrentText, symbol) then
+    Exit;
+  rows := Length(symbol);
+  cols := Length(symbol[0]);
+  totalRows := rows + 2 * QUIET_ZONE;
+  totalCols := cols + 2 * QUIET_ZONE;
+  squareSize := Min(Width div totalCols, Height div totalRows);
+  if squareSize < 1 then
+    Exit;
+  // Center the symbol in the rectangle
+  FLeft := FLeft + (Width - squareSize * totalCols) div 2;
+  FTop := FTop + (Height - squareSize * totalRows) div 2;
+  if (Not Transparent) then
+  begin
+    meta.Pages[meta.CurrentPage].NewDrawObject(
+        FTop,FLeft,squareSize*totalCols,squareSize*totalRows,
+        integer(rpsRectangle),0,BackColor,0,0,BackColor,'');
+  end;
+  FLeft := FLeft + QUIET_ZONE * squareSize;
+  FTop := FTop + QUIET_ZONE * squareSize;
+  for Row := 0 to rows - 1 do
+    for Column := 0 to cols - 1 do
+      if symbol[Row][Column] then
+        meta.Pages[meta.CurrentPage].NewDrawObject(
+            FTop+Row*squareSize,FLeft+Column*squareSize,squareSize,squareSize,
+            integer(rpsRectangle),0,BColor,0,0,BColor,'');
 end;
 
 

@@ -167,6 +167,13 @@ begin
   FMemoLicense.Lines.Add('');
   FMemoLicense.Lines.Add('Copyright (c) 1994-2026 Toni Martir.');
   FMemoLicense.Lines.Add('All rights reserved.');
+  FMemoLicense.Lines.Add('');
+  FMemoLicense.Lines.Add('PDF Export base: K.Nishita (info@nishita.com)');
+  FMemoLicense.Lines.Add('ZLib Compression: Jean-loup Gailly, Mark Adler, Jacques Nomssi Nzali');
+  FMemoLicense.Lines.Add('Barcode codebase: Andreas Schmidth and friends (shmia@bizerba.de)');
+  FMemoLicense.Lines.Add('QR Code. ZXing delphi');
+  FMemoLicense.Lines.Add('DataMatrix (libdmtx): Mike Laughton, Vadim A. Misbakh-Soloviov, ' +
+    'Tim Zaman. Pascal translation: Ladislav Karrach');
 end;
 
 procedure TFRpAboutBoxLCL.ProjectLinkClick(Sender: TObject);

@@ -196,6 +196,16 @@
         <DCCReference Include="..\..\rpclientdataset.pas"/>
         <DCCReference Include="..\..\rplastsav.pas"/>
         <DCCReference Include="..\..\rpDelphiZXIngQRCode.pas"/>
+        <DCCReference Include="..\..\rpdatamatrix.pas"/>
+        <DCCReference Include="..\..\dmtx.pas"/>
+        <DCCReference Include="..\..\dmtxbytelist.pas"/>
+        <DCCReference Include="..\..\dmtximage.pas"/>
+        <DCCReference Include="..\..\dmtxmatrix3.pas"/>
+        <DCCReference Include="..\..\dmtxmessage.pas"/>
+        <DCCReference Include="..\..\dmtxsymbol.pas"/>
+        <DCCReference Include="..\..\dmtxplacemod.pas"/>
+        <DCCReference Include="..\..\dmtxreedsol.pas"/>
+        <DCCReference Include="..\..\dmtxencode.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

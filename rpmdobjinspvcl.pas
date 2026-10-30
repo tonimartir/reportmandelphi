@@ -144,6 +144,7 @@ type
     procedure ComboAliasChange(Sender:TObject);
     procedure ComboPrintOnlyChange(Sender:TObject);
     procedure UpdatePosValues;
+    procedure UpdateEnabledProperties;
     procedure CreateControlsSubReport;
     procedure SelectProperty(propname:string);
     procedure SetPropertyFull(propname:string;value:Widestring);overload;
@@ -1110,6 +1111,7 @@ begin
   aitem:=TRpSizeInterface(FSelectedItems.Objects[i]);
   aitem.SetProperty(propname,value);
  end;
+ UpdateEnabledProperties;
 end;
 
 // Sets the property on every selected item recording the undo operations
@@ -2657,6 +2659,32 @@ begin
    end;
   end;
  end;
+ UpdateEnabledProperties;
+end;
+
+// Disables the label and editors of the properties that have no effect
+// with the current settings of the item (IsPropertyEnabled)
+procedure TRpPanelObj.UpdateEnabledProperties;
+var
+ i:integer;
+ en:boolean;
+begin
+ if not Assigned(FCompItem) then
+  exit;
+ for i:=0 to LNames.Count-1 do
+ begin
+  if (i>=LControls.Count) or (i>=LControls2.Count) then
+   break;
+  en:=FCompItem.IsPropertyEnabled(LNames.Strings[i]);
+  TControl(LControls.Objects[i]).Enabled:=en;
+  TControl(LControls2.Objects[i]).Enabled:=en;
+  // Two labels for each property: page "All" and category page
+  if 2*i+1<LLabels.Count then
+  begin
+   TLabel(LLabels[2*i]).Enabled:=en;
+   TLabel(LLabels[2*i+1]).Enabled:=en;
+  end;
+ end;
 end;
 
 procedure TRpPanelObj.SelectProperty(propname:string);
@@ -2804,6 +2832,7 @@ begin
   FRpMainf:=TFRpMainFVCL(Owner.Owner);
   FRpMainf.freportstructure.RView.Selected.Text:=TRpSection(FRpMainf.freportstructure.RView.Selected.Data).SectionCaption(true);
  end;
+ UpdateEnabledProperties;
 end;
 
 procedure TRpPanelObj.ShapeMouseUp(Sender: TObject; Button: TMouseButton;

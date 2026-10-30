@@ -94,6 +94,9 @@ type
     procedure SetProperty(pname: WideString; stream: TMemoryStream); overload; virtual;
     procedure GetProperty(pname: WideString; var Stream: TMemoryStream); overload; virtual;
     function GetProperty(pname: WideString): WideString; overload; virtual;
+    // False when the property has no effect with the current settings,
+    // the inspector shows it disabled
+    function IsPropertyEnabled(pname: WideString): Boolean; virtual;
     // SetProperty recording the change (model values) in the undo cue
     procedure SetPropertyUndo(const pname: WideString; const value: WideString); overload;
     procedure SetPropertyUndo(const pname: WideString; stream: TMemoryStream); overload;
@@ -882,6 +885,11 @@ end;
 procedure TRpSizeInterface.GetPropertyValues(pname: WideString; lpossiblevalues: TRpWideStrings);
 begin
   // Override in descendants
+end;
+
+function TRpSizeInterface.IsPropertyEnabled(pname: WideString): Boolean;
+begin
+  Result := True;
 end;
 
 procedure TRpSizeInterface.GetPropertyValues(pname: WideString; lpossiblevalues: TStrings);

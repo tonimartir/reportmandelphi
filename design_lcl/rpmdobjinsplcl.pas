@@ -137,6 +137,7 @@ type
     procedure ComboAliasChange(Sender: TObject);
     procedure ComboPrintOnlyChange(Sender: TObject);
     procedure UpdatePosValues;
+    procedure UpdateEnabledProperties;
     procedure CreateControlsSubReport;
     procedure DupValue(Sender: TControl);
     procedure RefreshCueView;
@@ -1040,8 +1041,34 @@ begin
         end;
       end;
     end;
+    UpdateEnabledProperties;
   finally
     FUpdatingValues := False;
+  end;
+end;
+
+// Disables the label and editors of the properties that have no effect
+// with the current settings of the item (IsPropertyEnabled)
+procedure TRpPanelObjLCL.UpdateEnabledProperties;
+var
+  i: Integer;
+  en: Boolean;
+begin
+  if not Assigned(FCompItem) then
+    Exit;
+  for i := 0 to LNames.Count - 1 do
+  begin
+    if (i >= LControls.Count) or (i >= LControls2.Count) then
+      Break;
+    en := FCompItem.IsPropertyEnabled(LNames.Strings[i]);
+    TControl(LControls.Objects[i]).Enabled := en;
+    TControl(LControls2.Objects[i]).Enabled := en;
+    // Two labels for each property: page "All" and category page
+    if 2 * i + 1 < LLabels.Count then
+    begin
+      TLabel(LLabels[2 * i]).Enabled := en;
+      TLabel(LLabels[2 * i + 1]).Enabled := en;
+    end;
   end;
 end;
 
@@ -1138,6 +1165,7 @@ begin
       FCompItem.Invalidate;
     end;
   end;
+  UpdateEnabledProperties;
 
   if Assigned(TFRpObjInspLCL(Owner).DesignFrame) and
      (TFRpObjInspLCL(Owner).DesignFrame is TFRpDesignFrameLCL) then
@@ -1594,6 +1622,7 @@ begin
   finally
     items.Free;
   end;
+  UpdateEnabledProperties;
 end;
 
 procedure TRpPanelObjLCL.SetPropertyFull(propname: string; stream: TMemoryStream);

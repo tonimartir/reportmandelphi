@@ -68,6 +68,9 @@ type
    procedure SetProperty(pname:string;stream:TMemoryStream);overload;virtual;
    procedure GetProperty(pname:string;var Stream:TMemoryStream);overload;virtual;
    function GetProperty(pname:string):Widestring;overload;virtual;
+   // False when the property has no effect with the current settings,
+   // the inspector shows it disabled
+   function IsPropertyEnabled(pname:string):Boolean;virtual;
    constructor Create(AOwner:TComponent;pritem:TRpCommonComponent);reintroduce;overload;virtual;
    property printitem:TRpCommonComponent read fprintitem;
    property Selected:Boolean read FSelected write SetSelected;
@@ -286,6 +289,11 @@ end;
 procedure TRpSizeInterface.GetPropertyValues(pname:string;lpossiblevalues:TRpWideStrings);
 begin
  Raise Exception.Create(SRpPropertyHaveNoListValues+pname);
+end;
+
+function TRpSizeInterface.IsPropertyEnabled(pname:string):Boolean;
+begin
+ Result:=True;
 end;
 
 procedure TRpSizeInterface.SetProperty(pname:string;stream:TMemoryStream);
