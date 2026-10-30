@@ -481,7 +481,7 @@ uses
   // rpchatdialogvcl CollectAgentSchemaOnlyContext and
   // BuildDesignExpressionContextJson)
   IniFiles, LCLIntf, PrintersDlgs, md5, rpmdsysinfolcl, rpauthmanager, rpxmlstream, rpexpredlglcl,
-  rpmdfnewreportwizardlcl, rplcllayout,
+  rpmdfnewreportwizardlcl, rplcllayout, rpformcenterlcl,
   // Report library: connections editor and tree (rpeditconnvcl, rpmdftreevcl)
   rpeditconnlcl, rpmdftreelcl,
   rplcldriver,
@@ -4046,7 +4046,12 @@ var
 begin
   psetup := TPrinterSetupDialog.Create(nil);
   try
-    psetup.Execute;
+    RpBeginCenterDialog(Self);
+    try
+      psetup.Execute;
+    finally
+      RpEndCenterDialog;
+    end;
   finally
     psetup.Free;
   end;

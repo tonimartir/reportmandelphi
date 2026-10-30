@@ -403,7 +403,8 @@ implementation
 uses
   rpjsonfpc, rpauthmanager, rpdatahttp, rpdbxconfiglcl, rpmdfsampledatalcl,
   rpmdfdatatextlcl, rplcllayout, rpmdfnewreportwizardlcl, rplocalschemas,
-  rpdesignerclientsql, rpreportdesignercontracts, rpfrmlocalschemaslcl
+  rpdesignerclientsql, rpreportdesignercontracts, rpfrmlocalschemaslcl,
+  rpformcenterlcl
 {$IFDEF MSWINDOWS}
   , ZDbcOleDBUtils
 {$ENDIF}
@@ -3012,7 +3013,12 @@ begin
     Exit;
   item := FWork.DatabaseInfo[FActiveConnIndex];
   current := RestoreADOPassword(EAdoConn.Text, item.ADOConnectionString);
-  newstring := UTF8Encode(PromptDataSource(Handle, UTF8Decode(current)));
+  RpBeginCenterDialog(Self);
+  try
+    newstring := UTF8Encode(PromptDataSource(Handle, UTF8Decode(current)));
+  finally
+    RpEndCenterDialog;
+  end;
   if (newstring = '') or (newstring = current) then
     Exit;
   item.ADOConnectionString := newstring;

@@ -137,6 +137,7 @@ rtl_fpc/rpstreamfpc.pas
 rtl_fpc/rpsysutilsfpc.pas
 
 # --- reportman_lcl ---
+lcl/rpformcenterlcl.pas
 lcl/rpgraphutilslcl.lfm
 lcl/rpgraphutilslcl.pas
 lcl/rplcldriver.lfm

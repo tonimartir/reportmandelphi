@@ -34,6 +34,9 @@ var
 implementation
 
 uses
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
   Classes, SysUtils, StrUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
   Graphics, Menus, Generics.Collections, sqldb, sqlite3conn,
   rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
@@ -42,8 +45,12 @@ uses
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
   rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfchartintlcl, rpmdfbarcodeintlcl,
   rpmdobjinsplcl, rpmdfmainlcl, rpmdfparamslcl, rpmdfdinfolcl,
-  rpmdfopenliblcl, rprflclparams, rpmdesignerlcl, rpfrmchatlcl,
-  rplocalschemas, umainform;
+  rpmdfopenliblcl, rprflclparams, rpmdesignerlcl, rpfrmchatlcl, rpmdfgridlcl,
+  rplocalschemas, rpformcenterlcl, umainform
+{$IFDEF MSWINDOWS}
+  , ZDbcOleDBUtils
+{$ENDIF}
+  ;
 
 const
   GUARD_HANDLED_TAG = $5EC7;
@@ -3280,6 +3287,184 @@ begin
   LogMsg('Barcode alignment verified');
 end;
 
+{$IFDEF MSWINDOWS}
+var
+  // The form of TestDialogCentering and where its dialog box of Windows
+  // opened
+  NativeDialogOwner: HWND;
+  NativeDialogRect: TRect;
+  NativeDialogSeen: Boolean;
+
+function FindOwnedDialog(wnd: HWND; lp: LPARAM): BOOL; stdcall;
+var
+  cls: array[0..15] of AnsiChar;
+begin
+  Result := True;
+  if IsWindowVisible(wnd) and (GetWindow(wnd, GW_OWNER) = NativeDialogOwner) and
+    (GetClassNameA(wnd, cls, SizeOf(cls)) > 0) and (AnsiString(cls) = '#32770') then
+  begin
+    PHandle(lp)^ := wnd;
+    Result := False;
+  end;
+end;
+
+// Reads the place of the dialog box shown on the form and closes it
+procedure NativeDialogTimer(hwnd: HWND; uMsg: UINT; idEvent: UINT_PTR; dwTime: DWORD); stdcall;
+var
+  dlgwnd: HWND;
+begin
+  dlgwnd := 0;
+  EnumThreadWindows(GetCurrentThreadId, @FindOwnedDialog, LPARAM(@dlgwnd));
+  if dlgwnd = 0 then
+    exit;
+  KillTimer(0, idEvent);
+  NativeDialogSeen := GetWindowRect(dlgwnd, NativeDialogRect);
+  PostMessage(dlgwnd, WM_COMMAND, IDCANCEL, 0);
+end;
+
+procedure CheckNativeDialogCentered(AForm: TForm; const What: string);
+var
+  prect: TRect;
+begin
+  Check(NativeDialogSeen, What + ' was shown');
+  GetWindowRect(AForm.Handle, prect);
+  with NativeDialogRect do
+  begin
+    Check(Abs((Left + Right) div 2 - (prect.Left + prect.Right) div 2) <= 2,
+      Format('%s horizontally centered (%d..%d, form %d..%d)',
+        [What, Left, Right, prect.Left, prect.Right]));
+    Check(Abs((Top + Bottom) div 2 - (prect.Top + prect.Bottom) div 2) <= 2,
+      Format('%s vertically centered (%d..%d, form %d..%d)',
+        [What, Top, Bottom, prect.Top, prect.Bottom]));
+  end;
+end;
+{$ENDIF}
+
+// The Report Manager dialogs open centered on the form they are opened
+// from (rpformcenterlcl), not on the centre of a monitor
+procedure TestDialogCentering;
+var
+  parent, other, used: TForm;
+  dlg: TFRpGridOptionsLCL;
+  area: TRect;
+{$IFDEF MSWINDOWS}
+  i: Integer;
+{$ENDIF}
+
+  procedure CheckCentered(const Context: string);
+  var
+    r, a: TRect;
+  begin
+    CheckInt(Ord(poDesigned), Ord(dlg.Position), Context + ': position taken over');
+    r := used.BoundsRect;
+    a := Screen.MonitorFromRect(r).WorkareaRect;
+    Check((dlg.Left >= a.Left) and (dlg.Top >= a.Top) and
+      (dlg.Left + dlg.Width <= a.Right) and (dlg.Top + dlg.Height <= a.Bottom),
+      Context + ': dialog inside the work area of the monitor of the form');
+    // Not limited by the work area: the centres are the same
+    if (r.Left >= a.Left) and (r.Top >= a.Top) and (r.Right <= a.Right) and
+      (r.Bottom <= a.Bottom) then
+    begin
+      Check(Abs((dlg.Left + dlg.Width div 2) - (r.Left + r.Right) div 2) <= 1,
+        Format('%s: horizontally centered (dialog %d+%d, form %d..%d)',
+          [Context, dlg.Left, dlg.Width, r.Left, r.Right]));
+      Check(Abs((dlg.Top + dlg.Height div 2) - (r.Top + r.Bottom) div 2) <= 1,
+        Format('%s: vertically centered (dialog %d+%d, form %d..%d)',
+          [Context, dlg.Top, dlg.Height, r.Top, r.Bottom]));
+    end;
+  end;
+
+  // The form the dialog is centered on: the active one, else the main form
+  function ExpectedParent: TForm;
+  begin
+    if (Screen.ActiveCustomForm is TForm) and Screen.ActiveCustomForm.Visible then
+      Result := TForm(Screen.ActiveCustomForm)
+    else
+      Result := TForm(Application.MainForm);
+  end;
+
+begin
+  LogMsg('Testing that the dialogs open centered on their form');
+  area := Screen.MonitorFromRect(Application.MainForm.BoundsRect).WorkareaRect;
+  parent := TForm.CreateNew(nil);
+  dlg := TFRpGridOptionsLCL.Create(nil);
+  other := TForm.CreateNew(nil);
+  try
+    parent.Position := poDesigned;
+    parent.SetBounds(area.Left + 40, area.Top + 40, 700, 500);
+    parent.Show;
+    parent.BringToFront;
+    Application.ProcessMessages;
+
+    used := ExpectedParent;
+    LogMsg('Dialogs centered on ' + used.ClassName);
+    dlg.Show;
+    // Centered again with its final size (an AutoSize form)
+    Application.ProcessMessages;
+    CheckCentered('First show');
+    dlg.Hide;
+
+    // Shown again after the form moved: centered again
+    parent.SetBounds(area.Left + 80, area.Top + 60, 640, 480);
+    Application.ProcessMessages;
+    used := ExpectedParent;
+    dlg.Show;
+    Application.ProcessMessages;
+    CheckCentered('Second show');
+    dlg.Hide;
+
+    // The forms of the application keep their own position
+    other.Position := poScreenCenter;
+    other.SetBounds(0, 0, 200, 100);
+    other.Show;
+    CheckInt(Ord(poScreenCenter), Ord(other.Position),
+      'A form that is not of Report Manager keeps its position');
+    other.Hide;
+
+{$IFDEF MSWINDOWS}
+    // A dialog box of Windows (print, Data Link...) after RpBeginCenterDialog
+    NativeDialogOwner := parent.Handle;
+    NativeDialogSeen := False;
+    RpBeginCenterDialog(parent);
+    try
+      SetTimer(0, 0, 100, @NativeDialogTimer);
+      MessageBoxW(parent.Handle, 'Centered', 'RpCenterDialogTest', MB_OK);
+    finally
+      RpEndCenterDialog;
+    end;
+    CheckNativeDialogCentered(parent, 'Message box of Windows');
+
+    // The Data Link of ADO centers itself inside the primary monitor: the
+    // form on another monitor when there is one
+    for i := 0 to Screen.MonitorCount - 1 do
+      if not Screen.Monitors[i].Primary then
+      begin
+        area := Screen.Monitors[i].WorkareaRect;
+        parent.SetBounds(area.Left + 60, area.Top + 60, 800, 600);
+        Break;
+      end;
+    Application.ProcessMessages;
+    LogMsg(Format('Data Link dialog on a form at %d,%d (%d monitors)',
+      [parent.Left, parent.Top, Screen.MonitorCount]));
+    NativeDialogOwner := parent.Handle;
+    NativeDialogSeen := False;
+    RpBeginCenterDialog(parent);
+    try
+      SetTimer(0, 0, 200, @NativeDialogTimer);
+      PromptDataSource(parent.Handle, '');
+    finally
+      RpEndCenterDialog;
+    end;
+    CheckNativeDialogCentered(parent, 'Data Link dialog');
+{$ENDIF}
+  finally
+    other.Free;
+    dlg.Free;
+    parent.Free;
+  end;
+  LogMsg('Dialog centering verified');
+end;
+
 procedure RunRegressionTests(const ASamplePath: string);
 var
   t: TRegressionTests;
@@ -3308,6 +3493,7 @@ begin
     // F5: the schema list of the AI chat
     TestChatSchemaList;
     TestBarcodeAlignment;
+    TestDialogCentering;
   finally
     t.Free;
   end;

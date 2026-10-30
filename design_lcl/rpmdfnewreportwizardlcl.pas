@@ -374,7 +374,7 @@ implementation
 
 uses
   rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout, rpsqldbconnfpc,
-  rplocalschemas, rpfrmlocalschemaslcl, rpchatmodernstylelcl
+  rplocalschemas, rpfrmlocalschemaslcl, rpchatmodernstylelcl, rpformcenterlcl
 {$IFDEF MSWINDOWS}
   , ZDbcOleDBUtils
 {$ENDIF}
@@ -2323,7 +2323,12 @@ var
 begin
 {$IFDEF MSWINDOWS}
   // The Data Link dialog of Windows (PromptDataSource of the VCL)
-  newstring := UTF8Encode(PromptDataSource(Handle, UTF8Decode(EdAdoConnString.Text)));
+  RpBeginCenterDialog(Self);
+  try
+    newstring := UTF8Encode(PromptDataSource(Handle, UTF8Decode(EdAdoConnString.Text)));
+  finally
+    RpEndCenterDialog;
+  end;
   if Trim(newstring) <> '' then
     EdAdoConnString.Text := newstring;
 {$ELSE}

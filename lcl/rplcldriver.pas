@@ -315,7 +315,7 @@ procedure ExFilterImage(memstream:TMemoryStream);
 implementation
 
 uses
- rplcllayout, rpcocoaprint;
+ rplcllayout, rpcocoaprint, rpformcenterlcl;
 
 {$R *.lfm}
 
@@ -500,7 +500,12 @@ begin
    sheetwait.Free;
   end;
 {$ELSE}
-  executed:=dia.execute;
+  RpBeginCenterDialog;
+  try
+   executed:=dia.execute;
+  finally
+   RpEndCenterDialog;
+  end;
 {$ENDIF}
   if executed then
   begin
