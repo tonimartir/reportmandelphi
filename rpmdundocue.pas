@@ -196,8 +196,10 @@ begin
     VariantArrayToStrings(value, list);
     for index := 0 to list.Count - 1 do
     begin
+      // #10 as TRpLabel.UpdateAllStrings splits the text: a line break
+      // of Windows left a #13 at the end of every language but the last
       if index > 0 then
-        Result := Result + sLineBreak;
+        Result := Result + #10;
       Result := Result + list[index];
     end;
   finally
