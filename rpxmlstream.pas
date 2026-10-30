@@ -536,6 +536,8 @@ begin
   WritePropertyI('DPIRES',compi.dpires,Stream);
   WritePropertyI('COPYMODE',compi.CopyMode,Stream);
   WritePropertyI('CACHEDIMAGE',Integer(compi.CachedImage),Stream);
+  if compi.DMCFlag<>0 then
+   WritePropertyI('DMCFLAG',compi.DMCFlag,Stream);
  end
  else
  // TRpChart
@@ -599,6 +601,8 @@ begin
   WritePropertyI('NUMROWS',compb.NumRows,Stream);
   WritePropertyI('ECCLEVEL',compb.ECCLevel,Stream);
   WritePropertyBool('TRUNCATED',compb.Truncated,Stream);
+  if compb.Alignment<>0 then
+   WritePropertyI('ALIGNMENT',compb.Alignment,Stream);
  end;
  WriteStringToStream('</COMPONENT>'+CRLF,Stream);
 end;
@@ -1888,7 +1892,10 @@ begin
   end
   else
   if propname='COPYMODE' then
-   compi.CopyMode:=StrToInt(String(propvalue));
+   compi.CopyMode:=StrToInt(String(propvalue))
+  else
+  if propname='DMCFLAG' then
+   compi.DMCFlag:=StrToInt(String(propvalue));
  end
  else
  // TRpChart
@@ -2050,6 +2057,9 @@ begin
   else
   if propname='TRUNCATED' then
    compb.Truncated:=RpStrToBool(propvalue)
+  else
+  if propname='ALIGNMENT' then
+   compb.Alignment:=StrToInt(String(propvalue))
  end;
 end;
 

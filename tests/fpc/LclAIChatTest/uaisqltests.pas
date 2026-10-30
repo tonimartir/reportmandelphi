@@ -28,6 +28,8 @@ procedure RunAISqlTests(const AShotsDir: string);
 implementation
 
 uses
+  // First: the units after it take precedence over its names
+  {$IFDEF MSWINDOWS}Windows,{$ENDIF}
   SysUtils, Classes, Types, Forms, Controls, Graphics, StdCtrls, ExtCtrls,
   ComCtrls, LCLType, LCLIntf, fphttpserver, httpdefs, SynEdit, SynCompletion,
   SynHighlighterSQL, SynEditKeyCmds,
@@ -1509,6 +1511,10 @@ var
   begin
     Result := Pos('CLIENTS', MessageWith('96:')) > 0;
   end;
+  function Got94: Boolean;
+  begin
+    Result := MessageWith('94:') <> '';
+  end;
   function DialogReady: Boolean;
   begin
     Result := (LDlg.MonacoEditor.EditorReady or LDlg.MonacoEditor.UseFallback) and
@@ -1587,6 +1593,18 @@ begin
     else
       Skip('the suggest widget did not open here: ' + MessageWith('96:'));
     TRpAuthManager.Instance.AIEnabled := True;
+    // The windows of the form recreated (a dialog shown again modally): the
+    // browser goes on in the new handle with its page (it stayed grey)
+    LForm.Hide;
+    RecreateWnd(LForm);
+    LForm.Show;
+    Pump(300);
+    Check(Windows.FindWindowEx(LEditor.WebView.Handle, 0, nil, nil) <> 0,
+      'the browser window is a child of the new handle');
+    FWebMessages.Clear;
+    LEditor.WebView.ExecuteScript('window.chrome.webview.postMessage("94:" + window.editor.getValue());');
+    WaitUntil(Got94, 10000, 'the page answers after the handle is recreated');
+    CheckEquals('94:SELECT * FROM ', MessageWith('94:'), 'the same page and its text');
   finally
     LForm.Free;
   end;

@@ -25,7 +25,7 @@
     <Description Value="Report Manager engine for Free Pascal (non-visual): report model, expression evaluator, data access through Zeos, SQLdb (the FireDAC connections of Delphi: SQLite, PostgreSQL, MySQL/MariaDB, Firebird/InterBase, SQL Server, Oracle and ODBC) and text files, and export to PDF, SVG, HTML, CSV, plain text and the Report Manager metafile format. Home page: https://reportman.es"/>
     <License Value="Mozilla Public License 1.1 (MPL), dual licensed: the GPL may be used instead. See LICENSE.TXT."/>
     <Version Major="4" Release="22"/>
-    <Files Count="82">
+    <Files Count="92">
       <Item1>
         <Filename Value="..\..\rptypes.pas"/>
         <UnitName Value="rptypes"/>
@@ -355,6 +355,46 @@
         <Filename Value="..\..\rpsamplesutil.pas"/>
         <UnitName Value="rpsamplesutil"/>
       </Item82>
+      <Item83>
+        <Filename Value="..\..\rpdatamatrix.pas"/>
+        <UnitName Value="rpdatamatrix"/>
+      </Item83>
+      <Item84>
+        <Filename Value="..\..\dmtx.pas"/>
+        <UnitName Value="dmtx"/>
+      </Item84>
+      <Item85>
+        <Filename Value="..\..\dmtxbytelist.pas"/>
+        <UnitName Value="dmtxbytelist"/>
+      </Item85>
+      <Item86>
+        <Filename Value="..\..\dmtximage.pas"/>
+        <UnitName Value="dmtximage"/>
+      </Item86>
+      <Item87>
+        <Filename Value="..\..\dmtxmatrix3.pas"/>
+        <UnitName Value="dmtxmatrix3"/>
+      </Item87>
+      <Item88>
+        <Filename Value="..\..\dmtxmessage.pas"/>
+        <UnitName Value="dmtxmessage"/>
+      </Item88>
+      <Item89>
+        <Filename Value="..\..\dmtxsymbol.pas"/>
+        <UnitName Value="dmtxsymbol"/>
+      </Item89>
+      <Item90>
+        <Filename Value="..\..\dmtxplacemod.pas"/>
+        <UnitName Value="dmtxplacemod"/>
+      </Item90>
+      <Item91>
+        <Filename Value="..\..\dmtxreedsol.pas"/>
+        <UnitName Value="dmtxreedsol"/>
+      </Item91>
+      <Item92>
+        <Filename Value="..\..\dmtxencode.pas"/>
+        <UnitName Value="dmtxencode"/>
+      </Item92>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

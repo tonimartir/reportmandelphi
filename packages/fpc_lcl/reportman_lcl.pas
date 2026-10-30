@@ -11,7 +11,7 @@ uses
   rplclfonts, rpgraphutilslcl, rpmaskedit, rplcldriver, rprflclparams, 
   rppreviewmetalcl, rppreviewcontrol, rppagesetuplcl, rplclpreview, 
   rplclreport, rpreglcl, rpmdfembeddedfilelcl, rpmdprintconfiglcl,
-  rplcllayout, rpcocoaprint, rpcocoatext, LazarusPackageIntf;
+  rplcllayout, rpcocoaprint, rpcocoatext, rpformcenterlcl, LazarusPackageIntf;
 
 implementation
 

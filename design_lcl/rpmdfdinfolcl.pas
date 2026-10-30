@@ -104,6 +104,10 @@ type
     LabelConfigFile: TLabel;
     EConfigFile: TEdit;
     BBrowseFile: TButton;
+    // ADO (Windows): the connection string, in the place of the file
+    LabelAdoConn: TLabel;
+    EAdoConn: TEdit;
+    BBuildAdo: TButton;
     CheckLoginPrompt: TCheckBox;
     CheckLoadParams: TCheckBox;
     CheckLoadDriverParams: TCheckBox;
@@ -188,6 +192,9 @@ type
     procedure LoadConAdmin;
     procedure RefreshAvailable;
     procedure FillDriverCombo(ADriver: TRpDbDriver);
+    procedure ComboDriverChange(Sender: TObject);
+    procedure UpdateAdoControls;
+    procedure BBuildAdoClick(Sender: TObject);
     function ComboDriverValue(out ADriver: TRpDbDriver): Boolean;
     function SelectedListDriver: TRpDbDriver;
     procedure LDriversClick(Sender: TObject);
@@ -313,7 +320,8 @@ type
     // Adds a connection of the connections file (New drop down)
     procedure AddAvailableConnection(const AName: string);
     // Adds (or selects) the connection made by the connection wizard
-    procedure AddWizardConnection(const AName: string; ADriver: TRpDbDriver);
+    procedure AddWizardConnection(const AName: string; ADriver: TRpDbDriver;
+      const AAdoConnectionString: string = '');
     // Selects a driver of the driver list (VCL GDriver)
     procedure SelectListDriver(ADriver: TRpDbDriver);
     // Tests the active connection in a worker (VCL BTestClick)
@@ -395,7 +403,12 @@ implementation
 uses
   rpjsonfpc, rpauthmanager, rpdatahttp, rpdbxconfiglcl, rpmdfsampledatalcl,
   rpmdfdatatextlcl, rplcllayout, rpmdfnewreportwizardlcl, rplocalschemas,
-  rpdesignerclientsql, rpreportdesignercontracts, rpfrmlocalschemaslcl;
+  rpdesignerclientsql, rpreportdesignercontracts, rpfrmlocalschemaslcl,
+  rpformcenterlcl
+{$IFDEF MSWINDOWS}
+  , ZDbcOleDBUtils
+{$ENDIF}
+  ;
 
 type
   { "Show data" (VCL BShowDataClick): the dataset is opened in a worker on a
@@ -412,6 +425,10 @@ type
   end;
 
   TRpShowDataWorker = class(TRpAsyncWorker)
+  private
+    FSyncError: string;
+    procedure OpenData;
+    procedure OpenDataInMainThread;
   public
     Session: Integer;
     RequestVersion: Integer;
@@ -765,9 +782,8 @@ begin
   inherited Destroy;
 end;
 
-procedure TRpShowDataWorker.Run;
+procedure TRpShowDataWorker.OpenData;
 var
-  LMsg: TRpShowDataResult;
   i: Integer;
 begin
   // VCL BShowDataClick: disconnect, evaluator, parameters, open
@@ -777,6 +793,47 @@ begin
   Report.AddReportItemsToEvaluator(Report.Evaluator);
   Report.PrepareParamsBeforeOpen;
   Report.DataInfo.Items[DataInfoIndex].Connect(Report.DatabaseInfo, Report.Params);
+end;
+
+procedure TRpShowDataWorker.OpenDataInMainThread;
+begin
+  FSyncError := '';
+  try
+    OpenData;
+  except
+    on E: Exception do
+    begin
+      FSyncError := E.Message;
+      // Its COM objects belong to the main thread: closed here
+      FreeDataCopy(Report);
+    end;
+  end;
+end;
+
+procedure TRpShowDataWorker.Run;
+var
+  LMsg: TRpShowDataResult;
+{$IFDEF MSWINDOWS}
+  i: Integer;
+  LMainThread: Boolean;
+{$ENDIF}
+begin
+{$IFDEF MSWINDOWS}
+  // ADO (Zeos "ado" protocol) is COM: the dataset is read and freed in the
+  // main thread, so it is opened there too
+  LMainThread := False;
+  for i := 0 to Report.DatabaseInfo.Count - 1 do
+    if Report.DatabaseInfo.Items[i].Driver = rpdataado then
+      LMainThread := True;
+  if LMainThread then
+  begin
+    SyncCall(OpenDataInMainThread);
+    if FSyncError <> '' then
+      raise Exception.Create(FSyncError);
+  end
+  else
+{$ENDIF}
+    OpenData;
   LMsg := TRpShowDataResult.Create;
   LMsg.Session := Session;
   LMsg.RequestVersion := RequestVersion;
@@ -1246,6 +1303,30 @@ begin
   BBrowseFile.OnClick := BBrowseFileClick;
   EConfigFile.AnchorToNeighbour(akRight, Scale96ToScreen(5), BBrowseFile);
   EConfigFile.Anchors := [akLeft, akTop, akRight];
+
+  LabelAdoConn := TLabel.Create(PConnProps);
+  LabelAdoConn.Parent := PConnProps;
+  LabelAdoConn.Caption := TranslateStr(1119, 'ADO Conn.String') + ':';
+  LabelAdoConn.SetBounds(Scale96ToScreen(10), Scale96ToScreen(124), Scale96ToScreen(200), Scale96ToScreen(16));
+  LabelAdoConn.Visible := False;
+
+  BBuildAdo := TButton.Create(PConnProps);
+  BBuildAdo.Parent := PConnProps;
+  BBuildAdo.Caption := TranslateStr(168, 'Build...');
+  BBuildAdo.SetBounds(Scale96ToScreen(310), Scale96ToScreen(144), RpCaptionWidth(BBuildAdo,
+    [BBuildAdo.Caption], 80), Scale96ToScreen(24));
+  BBuildAdo.AnchorParallel(akRight, Scale96ToScreen(10), PConnProps);
+  BBuildAdo.Anchors := [akTop, akRight];
+  BBuildAdo.OnClick := BBuildAdoClick;
+  BBuildAdo.Visible := False;
+
+  EAdoConn := TEdit.Create(PConnProps);
+  EAdoConn.Parent := PConnProps;
+  EAdoConn.SetBounds(Scale96ToScreen(10), Scale96ToScreen(144), Scale96ToScreen(290), Scale96ToScreen(24));
+  EAdoConn.AnchorToNeighbour(akRight, Scale96ToScreen(5), BBuildAdo);
+  EAdoConn.Anchors := [akLeft, akTop, akRight];
+  EAdoConn.Visible := False;
+  ComboDriver.OnChange := ComboDriverChange;
 
   CheckLoginPrompt := TCheckBox.Create(PConnProps);
   CheckLoginPrompt.Parent := PConnProps;
@@ -1873,6 +1954,9 @@ begin
   if ComboDriverValue(driver) then
     item.Driver := driver;
 
+  if EAdoConn.Visible then
+    item.ADOConnectionString := RestoreADOPassword(EAdoConn.Text,
+      item.ADOConnectionString);
   item.ConfigFile := EConfigFile.Text;
   item.LoginPrompt := CheckLoginPrompt.Checked;
   item.LoadParams := CheckLoadParams.Checked;
@@ -2870,6 +2954,8 @@ begin
       FillDriverCombo(SelectedListDriver);
       ComboDriver.ItemIndex := -1;
       EConfigFile.Text := '';
+      EAdoConn.Text := '';
+      UpdateAdoControls;
       CheckLoginPrompt.Checked := False;
       CheckLoadParams.Checked := False;
       CheckLoadDriverParams.Checked := False;
@@ -2884,12 +2970,60 @@ begin
     EConnAlias.Text := item.Alias;
     FillDriverCombo(item.Driver);
     EConfigFile.Text := item.ConfigFile;
+    EAdoConn.Text := EncodeADOPassword(item.ADOConnectionString);
+    UpdateAdoControls;
     CheckLoginPrompt.Checked := item.LoginPrompt;
     CheckLoadParams.Checked := item.LoadParams;
     CheckLoadDriverParams.Checked := item.LoadDriverParams;
   finally
     FUpdatingControls := False;
   end;
+end;
+
+procedure TFRpDInfoLCL.UpdateAdoControls;
+var
+  driver: TRpDbDriver;
+  ado: Boolean;
+begin
+  ado := ComboDriverValue(driver) and (driver = rpdataado);
+  LabelAdoConn.Visible := ado;
+  EAdoConn.Visible := ado;
+  // The Windows Data Link dialog
+  BBuildAdo.Visible := ado and IsFpcDriverAvailable(rpdataado);
+  EAdoConn.ReadOnly := not IsFpcDriverAvailable(rpdataado);
+  LabelConfigFile.Visible := not ado;
+  EConfigFile.Visible := not ado;
+  BBrowseFile.Visible := not ado;
+end;
+
+procedure TFRpDInfoLCL.ComboDriverChange(Sender: TObject);
+begin
+  UpdateAdoControls;
+end;
+
+procedure TFRpDInfoLCL.BBuildAdoClick(Sender: TObject);
+{$IFDEF MSWINDOWS}
+var
+  item: TRpDatabaseInfoItem;
+  current, newstring: string;
+{$ENDIF}
+begin
+{$IFDEF MSWINDOWS}
+  if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
+    Exit;
+  item := FWork.DatabaseInfo[FActiveConnIndex];
+  current := RestoreADOPassword(EAdoConn.Text, item.ADOConnectionString);
+  RpBeginCenterDialog(Self);
+  try
+    newstring := UTF8Encode(PromptDataSource(Handle, UTF8Decode(current)));
+  finally
+    RpEndCenterDialog;
+  end;
+  if (newstring = '') or (newstring = current) then
+    Exit;
+  item.ADOConnectionString := newstring;
+  EAdoConn.Text := EncodeADOPassword(newstring);
+{$ENDIF}
 end;
 
 procedure TFRpDInfoLCL.FillDriverCombo(ADriver: TRpDbDriver);
@@ -3336,17 +3470,18 @@ end;
 
 procedure TFRpDInfoLCL.BWizardConnClick(Sender: TObject);
 var
-  LName: string;
+  LName, LAdo: string;
   LDriver: TRpDbDriver;
 begin
   if not CheckCanModify then
     Exit;
   SaveActiveConn;
-  if RpConnectionWizardFunc('', 0, LName, LDriver) then
-    AddWizardConnection(LName, LDriver);
+  if RpConnectionWizardFunc('', 0, LName, LDriver, LAdo) then
+    AddWizardConnection(LName, LDriver, LAdo);
 end;
 
-procedure TFRpDInfoLCL.AddWizardConnection(const AName: string; ADriver: TRpDbDriver);
+procedure TFRpDInfoLCL.AddWizardConnection(const AName: string; ADriver: TRpDbDriver;
+  const AAdoConnectionString: string);
 var
   conname: string;
   index: Integer;
@@ -3365,6 +3500,14 @@ begin
     item.Driver := ADriver;
     LConnections.Items.Add(item.Alias);
     index := LConnections.Count - 1;
+  end
+  else
+    item := FWork.DatabaseInfo[index];
+  // ADO is not in the connections file: the string of the wizard (VCL)
+  if ADriver = rpdataado then
+  begin
+    item.ADOConnectionString := AAdoConnectionString;
+    item.DisConnect;
   end;
   LConnections.ItemIndex := index;
   LoadConnDetails(index);
@@ -3372,14 +3515,14 @@ end;
 
 procedure TFRpDInfoLCL.BWizardConfigureClick(Sender: TObject);
 var
-  LName: string;
+  LName, LAdo: string;
   LDriver: TRpDbDriver;
 begin
   if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
     Exit;
   SaveActiveConn;
   if RpConnectionWizardFunc(FWork.DatabaseInfo[FActiveConnIndex].Alias, 0, LName,
-    LDriver) then
+    LDriver, LAdo) then
   begin
     LoadConAdmin;
     LoadConnDetails(FActiveConnIndex);

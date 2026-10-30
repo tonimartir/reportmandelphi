@@ -336,8 +336,10 @@ begin
     VariantArrayToStrings(value, list);
     for index := 0 to list.Count - 1 do
     begin
+      // #10 as TRpLabel.UpdateAllStrings splits the text: a line break
+      // of Windows left a #13 at the end of every language but the last
       if index > 0 then
-        Result := Result + LineEnding;
+        Result := Result + #10;
       Result := Result + list[index];
     end;
   finally
@@ -647,6 +649,7 @@ begin
   if SameText(propName, 'dpiRes') then Exit('dpires');
   if SameText(propName, 'drawStyle') then Exit('DrawStyle');
   if SameText(propName, 'copyMode') then Exit('CopyMode');
+  if SameText(propName, 'dmcFlag') then Exit('DMCFlag');
   if SameText(propName, 'barType') then Exit('Typ');
   if SameText(propName, 'checksum') then Exit('Checksum');
   if SameText(propName, 'bColor') then Exit('BColor');
@@ -1995,6 +1998,7 @@ begin
     op.AddProperty('dpiRes', ptInteger, Null, pitem.GetItemProperty('dpires'));
     op.AddProperty('copyMode', ptInteger, Null, pitem.GetItemProperty('CopyMode'));
     op.AddProperty('sharedImage', ptInteger, Null, pitem.GetItemProperty('sharedImage'));
+    op.AddProperty('dmcFlag', ptInteger, Null, pitem.GetItemProperty('DMCFlag'));
     op.AddProperty('streamBase64', ptString, Null, pitem.GetItemProperty('streamBase64'));
   end
   else if pitem is TRpBarcode then
@@ -2013,6 +2017,7 @@ begin
     op.AddProperty('numRows', ptInteger, Null, pitem.GetItemProperty('NumRows'));
     op.AddProperty('eccLevel', ptInteger, Null, pitem.GetItemProperty('ECCLevel'));
     op.AddProperty('truncated', ptBoolean, Null, pitem.GetItemProperty('Truncated'));
+    op.AddProperty('alignment', ptInteger, Null, pitem.GetItemProperty('Alignment'));
   end;
 end;
 

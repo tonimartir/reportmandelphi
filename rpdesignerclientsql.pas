@@ -795,6 +795,11 @@ begin
         if not ADatabase.ADOConnection.InTransaction then
           ADatabase.ADOConnection.BeginTrans;
 {$ENDIF}
+{$IFDEF USEADOZEOS}
+        if (ADatabase.ZConnection <> nil) and
+          not ADatabase.ZConnection.InTransaction then
+          ADatabase.ZConnection.StartTransaction;
+{$ENDIF}
       end;
   end;
 end;
@@ -832,6 +837,10 @@ begin
 {$IFDEF USEADO}
         if ADatabase.ADOConnection.InTransaction then
           ADatabase.ADOConnection.RollbackTrans;
+{$ENDIF}
+{$IFDEF USEADOZEOS}
+        if (ADatabase.ZConnection <> nil) and ADatabase.ZConnection.InTransaction then
+          ADatabase.ZConnection.Rollback;
 {$ENDIF}
       end;
   end;

@@ -144,6 +144,7 @@ type
     procedure ComboAliasChange(Sender:TObject);
     procedure ComboPrintOnlyChange(Sender:TObject);
     procedure UpdatePosValues;
+    procedure UpdateEnabledProperties;
     procedure CreateControlsSubReport;
     procedure SelectProperty(propname:string);
     procedure SetPropertyFull(propname:string;value:Widestring);overload;
@@ -263,7 +264,17 @@ begin
   ptype:=ptInteger;
   // The barcode color is shown as SrpSColor, the model only knows BColor
   if pname=SrpSColor then Result:='bColor'
-  else if pname=SrpSBackColor then Result:='backColor';
+  else if pname=SrpSBackColor then Result:='backColor'
+  // Names the model reads only as their property (as the LCL inspector):
+  // reading the inspector name raised and the change was not recorded
+  else if pname=SRpECCLevel then Result:='eccLevel'
+  else if pname=SRpNumRows then Result:='numRows'
+  else if pname=SRpNumCols then Result:='numColumns'
+  else if pname=SrpSAlignment then Result:='alignment';
+  if Result<>'' then
+   exit;
+  ptype:=ptBoolean;
+  if pname=SRpTruncatedPDF417 then Result:='truncated';
   if Result<>'' then
    exit;
  end;
@@ -1110,6 +1121,7 @@ begin
   aitem:=TRpSizeInterface(FSelectedItems.Objects[i]);
   aitem.SetProperty(propname,value);
  end;
+ UpdateEnabledProperties;
 end;
 
 // Sets the property on every selected item recording the undo operations
@@ -2657,6 +2669,32 @@ begin
    end;
   end;
  end;
+ UpdateEnabledProperties;
+end;
+
+// Disables the label and editors of the properties that have no effect
+// with the current settings of the item (IsPropertyEnabled)
+procedure TRpPanelObj.UpdateEnabledProperties;
+var
+ i:integer;
+ en:boolean;
+begin
+ if not Assigned(FCompItem) then
+  exit;
+ for i:=0 to LNames.Count-1 do
+ begin
+  if (i>=LControls.Count) or (i>=LControls2.Count) then
+   break;
+  en:=FCompItem.IsPropertyEnabled(LNames.Strings[i]);
+  TControl(LControls.Objects[i]).Enabled:=en;
+  TControl(LControls2.Objects[i]).Enabled:=en;
+  // Two labels for each property: page "All" and category page
+  if 2*i+1<LLabels.Count then
+  begin
+   TLabel(LLabels[2*i]).Enabled:=en;
+   TLabel(LLabels[2*i+1]).Enabled:=en;
+  end;
+ end;
 end;
 
 procedure TRpPanelObj.SelectProperty(propname:string);
@@ -2804,6 +2842,7 @@ begin
   FRpMainf:=TFRpMainFVCL(Owner.Owner);
   FRpMainf.freportstructure.RView.Selected.Text:=TRpSection(FRpMainf.freportstructure.RView.Selected.Data).SectionCaption(true);
  end;
+ UpdateEnabledProperties;
 end;
 
 procedure TRpPanelObj.ShapeMouseUp(Sender: TObject; Button: TMouseButton;

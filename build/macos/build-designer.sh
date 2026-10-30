@@ -23,7 +23,7 @@ T=${RM_MACOS_TOOLS:-$HOME/dev}
 SRC=$(cd "$(dirname "$0")/../.." && pwd)
 LAZ=${LAZARUS_DIR:-$T/lazarus}
 # Los idiomas de reportmanres.* (ca = .cat, cs = .csy) y pt_BR ademas de pt
-LCL_LANGUAGES="es ca cs de fr it lt pt pt_BR"
+LCL_LANGUAGES="es ca cs de fr it lt pl pt pt_BR"
 
 if ! command -v lazbuild > /dev/null && [ -f "$T/env.sh" ]; then
     . "$T/env.sh"

@@ -291,6 +291,11 @@ end;
 function IsFpcDriverAvailable(ADriver: TRpDbDriver): Boolean;
 begin
   Result := ADriver in [rpdatamybase, rpdatazeos, rpfiredac, rpdbHttp];
+{$IFDEF MSWINDOWS}
+  // ADO through the "ado" protocol of Zeos
+  if ADriver = rpdataado then
+    Result := True;
+{$ENDIF}
 end;
 
 function FpcDriverName(ADriver: TRpDbDriver): string;

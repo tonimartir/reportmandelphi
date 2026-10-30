@@ -117,6 +117,16 @@ contains
   rptextdriver in '..\..\rptextdriver.pas',
   rpclientdataset in '..\..\rpclientdataset.pas',
   rplastsav in '..\..\rplastsav.pas',
-  rpDelphiZXIngQRCode in '..\..\rpDelphiZXIngQRCode.pas';
+  rpDelphiZXIngQRCode in '..\..\rpDelphiZXIngQRCode.pas',
+  rpdatamatrix in '..\..\rpdatamatrix.pas',
+  dmtx in '..\..\dmtx.pas',
+  dmtxbytelist in '..\..\dmtxbytelist.pas',
+  dmtximage in '..\..\dmtximage.pas',
+  dmtxmatrix3 in '..\..\dmtxmatrix3.pas',
+  dmtxmessage in '..\..\dmtxmessage.pas',
+  dmtxsymbol in '..\..\dmtxsymbol.pas',
+  dmtxplacemod in '..\..\dmtxplacemod.pas',
+  dmtxreedsol in '..\..\dmtxreedsol.pas',
+  dmtxencode in '..\..\dmtxencode.pas';
 
 end.

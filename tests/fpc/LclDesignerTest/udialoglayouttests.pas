@@ -160,12 +160,58 @@ begin
     Result := '<' + AControl.ClassName + '>';
 end;
 
+type
+  TControlAccess = class(TControl);
+  TLabelAccess = class(TCustomLabel);
+
+// The caption of a button, check box, radio button or label that does not
+// size itself is not cut by its width (a translation longer than the
+// English text); empty when it fits. The ones that size themselves grow and
+// the overlap check sees them.
+function CaptionProblem(AControl: TControl): string;
+var
+  pad, need: Integer;
+  text: string;
+  bmp: TBitmap;
+begin
+  Result := '';
+  if TControlAccess(AControl).AutoSize then
+    Exit;
+  if AControl is TCustomButton then
+    pad := 16
+  else
+  if AControl is TCustomCheckBox then
+    // The box and its gap (TRadioButton is a TCustomCheckBox too)
+    pad := 20
+  else
+  if (AControl is TCustomLabel) and not TLabelAccess(AControl).WordWrap then
+    pad := 0
+  else
+    Exit;
+  text := StringReplace(AControl.Caption, '&&', #1, [rfReplaceAll]);
+  text := StringReplace(text, '&', '', [rfReplaceAll]);
+  text := StringReplace(text, #1, '&', [rfReplaceAll]);
+  if (text = '') or (Pos(#10, text) > 0) then
+    Exit;
+  bmp := TBitmap.Create;
+  try
+    bmp.Canvas.Font.Assign(TControlAccess(AControl).Font);
+    need := bmp.Canvas.TextWidth(text) + AControl.Scale96ToScreen(pad);
+  finally
+    bmp.Free;
+  end;
+  if need > AControl.Width then
+    Result := Format('text "%s" needs %d pixels, the control has %d', [text, need,
+      AControl.Width]);
+end;
+
 procedure CollectLayoutProblems(AParent: TWinControl; const APath: string;
   AIssues: TStrings);
 var
   i, j: Integer;
   c, d: TControl;
   r, x: TRect;
+  s: string;
 begin
   if AParent is TPageControl then
   begin
@@ -185,6 +231,9 @@ begin
       (c.Left + c.Width > r.Right) or (c.Top + c.Height > r.Bottom)) then
       AIssues.Add(Format('%s.%s (%d,%d %dx%d) does not fit in %dx%d', [APath, ControlName(c),
         c.Left, c.Top, c.Width, c.Height, r.Right, r.Bottom]));
+    s := CaptionProblem(c);
+    if s <> '' then
+      AIssues.Add(Format('%s.%s: %s', [APath, ControlName(c), s]));
     for j := i + 1 to AParent.ControlCount - 1 do
     begin
       d := AParent.Controls[j];

@@ -86,8 +86,10 @@ type
    FRotation:SmallInt;
    FCachedImage:TRpCachedImage;
    cachedpos:int64;
+   FDMCFlag:integer;
    procedure ReadStream(AStream:TStream);
    procedure WriteStream(AStream:TStream);
+   function GetDMCStream(evaluator:TRpEvaluator):TMemoryStream;
    function GetStream:TMemoryStream;
   procedure SetExpression(const Value:WideString);
    procedure WriteExpression(Writer:TWriter);
@@ -116,12 +118,14 @@ type
    property dpires:integer read   Fdpires write Fdpires default DEfAULT_DPI;
    property CopyMode:integer read FCopyMode write FCopyMode default 10;
    property CachedImage:TRpCachedImage read FCachedImage write FCachedImage default rpCachedNone;
+   // 1: the image is a DataMatrix code generated from the text of Expression
+   property DMCFlag:integer read FDMCFlag write FDMCFlag default 0;
   end;
 
 
 implementation
 
-uses rpbasereport{$IFNDEF FPC}, System.NetEncoding{$ELSE}, rpbase64fpc{$ENDIF};
+uses rpbasereport,rpdatamatrix{$IFNDEF FPC}, System.NetEncoding{$ELSE}, rpbase64fpc{$ENDIF};
 
 function StreamToBase64String(stream: TMemoryStream): string;
 var
@@ -307,8 +311,19 @@ begin
 end;
 {$ENDIF}
 
-
-
+// Same bitmap as the DataMatrix image of previous versions: 4 pixel modules, 5 pixel margin
+function TRpImage.GetDMCStream(evaluator:TRpEvaluator):TMemoryStream;
+var
+ expres:Variant;
+begin
+ Result:=nil;
+ evaluator.Expression:=Expression;
+ evaluator.Evaluate;
+ expres:=evaluator.EvalResult;
+ if VarIsNull(expres) or VarIsEmpty(expres) then
+  exit;
+ Result:=RpDataMatrixBitmapStream(AnsiString(VarToStr(expres)),4,5);
+end;
 
 function TRpImage.GetStream:TMemoryStream;
 var
@@ -324,7 +339,10 @@ begin
     Exit;
    areport:=TRpBaseReport(GetReport);
    evaluator:=areport.evaluator;
-   Result:=evaluator.GetStreamFromExpression(Expression);
+   if FDMCFlag<>0 then
+    Result:=GetDMCStream(evaluator)
+   else
+    Result:=evaluator.GetStreamFromExpression(Expression);
    // Filter the image
    if (assigned(Result) and assigned(areport.MetaFile.OnFilterImage)) then
     areport.MetaFile.OnFilterImage(result);
@@ -562,6 +580,11 @@ begin
   FCachedImage := TRpCachedImage(Integer(value));
   exit;
  end;
+ if SameText(propName, 'DMCFlag') then
+ begin
+  FDMCFlag := value;
+  exit;
+ end;
  if SameText(propName, 'streamBase64') then
  begin
   tempStream := TMemoryStream.Create;
@@ -614,6 +637,11 @@ begin
  if SameText(propName, 'sharedImage') then
  begin
   Result := Integer(FCachedImage);
+  exit;
+ end;
+ if SameText(propName, 'DMCFlag') then
+ begin
+  Result := FDMCFlag;
   exit;
  end;
  if SameText(propName, 'streamBase64') then

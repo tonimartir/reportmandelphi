@@ -23,6 +23,7 @@ uses
   rphttpclientfpc, rpnetencodingfpc, rpioutilsfpc, rpsysutilsfpc, 
   rpaireportcontracts, rpreportdesignercontracts, rpauthmanager, rpdatahttp, 
   rpsqldbconnfpc, rpdarwinlibs, rplocalschemas, rpdesignerclientsql, rpinfoprovct, rpsamplesutil, 
+  rpdatamatrix, dmtx, dmtxbytelist, dmtximage, dmtxmatrix3, dmtxmessage, dmtxsymbol, dmtxplacemod, dmtxreedsol, dmtxencode, 
   LazarusPackageIntf;
 
 implementation

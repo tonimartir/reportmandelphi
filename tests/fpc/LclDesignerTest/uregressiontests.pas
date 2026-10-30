@@ -34,16 +34,23 @@ var
 implementation
 
 uses
-  Classes, SysUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
+{$IFDEF MSWINDOWS}
+  Windows,
+{$ENDIF}
+  Classes, SysUtils, StrUtils, Variants, Forms, Controls, StdCtrls, ComCtrls, ExtCtrls,
   Graphics, Menus, Generics.Collections, sqldb, sqlite3conn,
   rptypes, rpmunits, rpmdconsts, rpreport, rpsubreport, rpsection,
   rpprintitem, rplabelitem, rpmdchart, rpmdcharttypes, rpparams, rpdatainfo, rpgraphutilslcl,
-  rpdrawitem, rpmdbarcode, rptranslator,
+  rpdrawitem, rpmdbarcode, rptranslator, rpmetafile,
   rpmdundocuelcl, rpmdfdesignlcl, rpmdfsectionintlcl, rpmdobinsintlcl,
   rpmdflabelintlcl, rpmdfdrawintlcl, rpmdfchartintlcl, rpmdfbarcodeintlcl,
   rpmdobjinsplcl, rpmdfmainlcl, rpmdfparamslcl, rpmdfdinfolcl,
-  rpmdfopenliblcl, rprflclparams, rpmdesignerlcl, rpfrmchatlcl,
-  rplocalschemas, umainform;
+  rpmdfopenliblcl, rprflclparams, rpmdesignerlcl, rpfrmchatlcl, rpmdfgridlcl,
+  rplocalschemas, rpformcenterlcl, umainform
+{$IFDEF MSWINDOWS}
+  , ZDbcOleDBUtils
+{$ENDIF}
+  ;
 
 const
   GUARD_HANDLED_TAG = $5EC7;
@@ -1488,7 +1495,8 @@ begin
     SrpSModul, SRpSCurrency, SrpSRatio, SRpSCurrency, SrpSExpression, SRpSExpression,
     SrpSDisplayFormat, SRpSString, SRpSRotation, SrpSList, SrpSColor, SRpSColor,
     SrpSBackColor, SRpSColor, SrpSTransparent, SRpSBool, SRpECCLevel, SRpSList,
-    SRpNumRows, SRpInteger, SRpNumCols, SRpInteger, SRpTruncatedPDF417, SRpSBool]);
+    SRpNumRows, SRpInteger, SRpNumCols, SRpInteger, SRpTruncatedPDF417, SRpSBool,
+    SrpSAlignment, SRpSList]);
 end;
 
 procedure VCLShapeProps(L: TStringList);
@@ -1924,6 +1932,8 @@ begin
     CheckRoundTrip(aint, SRpECCLevel, PossibleValue(aint, SRpECCLevel, 2), 'Barcode');
     CheckRoundTrip(aint, SRpNumRows, '4', 'Barcode');
     CheckRoundTrip(aint, SRpTruncatedPDF417, BoolToStr(True, True), 'Barcode');
+    CheckRoundTrip(aint, SrpSAlignment, SRpSAlignCenter, 'Barcode');
+    CheckInt(4, TRpBarcode(aint.printitem).Alignment, 'Barcode alignment in the model');
 
     aint := ChildInt(frame, nShape);
     CheckRoundTrip(aint, SrpSShape, StringShapeType[rpsEllipse], 'Shape');
@@ -3110,6 +3120,351 @@ begin
   LogMsg('Schema list of the AI chat verified');
 end;
 
+// Alignment of linear and PDF417 barcodes inside the width of the component:
+// 0 draws as previous versions, a barcode wider than the component does not
+// move, QR is always centered, and the property is saved as text and XML
+type
+  // DoPrint is protected
+  TBarcodeAccess = class(TRpBarcode);
+
+procedure TestBarcodeAlignment;
+const
+  BAR_LEFT = 1000;
+  BAR_TOP = 2000;
+  BAR_WIDTH = 4000;
+var
+  rep, rep2: TRpReport;
+  sec: TRpSection;
+  bar, bar2: TRpBarcode;
+  l0, r0, l1, r1, l2, r2, l4, r4, w: Integer;
+  mem: TMemoryStream;
+  fmt: TRpStreamFormat;
+
+  // The horizontal extent of what the barcode draws with AAlignment
+  procedure DrawBars(AAlignment: Integer; out ALeft, ARight: Integer);
+  var
+    meta: TRpMetafileReport;
+    partial: Boolean;
+    i: Integer;
+    obj: TRpMetaObject;
+  begin
+    bar.Alignment := AAlignment;
+    meta := TRpMetafileReport.Create(nil);
+    try
+      meta.NewPage;
+      meta.CurrentPage := 0;
+      TBarcodeAccess(bar).DoPrint(nil, BAR_LEFT, BAR_TOP, -1, -1, meta, Point(0, 0), partial);
+      ALeft := MaxInt;
+      ARight := -MaxInt;
+      for i := 0 to meta.Pages[0].ObjectCount - 1 do
+      begin
+        obj := meta.Pages[0].Objects[i];
+        if obj.Left < ALeft then
+          ALeft := obj.Left;
+        if obj.Left + obj.Width > ARight then
+          ARight := obj.Left + obj.Width;
+      end;
+    finally
+      meta.Free;
+    end;
+  end;
+
+  // How many times ALIGNMENT is in the XML of the report
+  function XmlAlignmentCount(AAlignment: Integer): Integer;
+  var
+    xml: string;
+    p: Integer;
+  begin
+    bar.Alignment := AAlignment;
+    mem := TMemoryStream.Create;
+    try
+      rep.StreamFormat := rpStreamXML;
+      rep.SaveToStream(mem);
+      SetString(xml, PAnsiChar(mem.Memory), mem.Size);
+    finally
+      mem.Free;
+    end;
+    Result := 0;
+    p := Pos('ALIGNMENT', xml);
+    while p > 0 do
+    begin
+      Inc(Result);
+      p := PosEx('ALIGNMENT', xml, p + 1);
+    end;
+  end;
+
+  procedure CheckAligned(const AWhat: string);
+  begin
+    DrawBars(0, l0, r0);
+    DrawBars(1, l1, r1);
+    DrawBars(2, l2, r2);
+    DrawBars(4, l4, r4);
+    CheckInt(BAR_LEFT, l0, AWhat + ': no alignment starts at the left');
+    Check((l1 = l0) and (r1 = r0), AWhat + ': left alignment draws as no alignment');
+    CheckInt(BAR_LEFT + BAR_WIDTH, r2, AWhat + ': right alignment ends at the right');
+    CheckInt(r0 - l0, r2 - l2, AWhat + ': right alignment keeps the width');
+    CheckInt(BAR_LEFT + (BAR_WIDTH - (r0 - l0)) div 2, l4, AWhat + ': centered');
+    CheckInt(r0 - l0, r4 - l4, AWhat + ': centering keeps the width');
+  end;
+
+begin
+  LogMsg('Barcode alignment: linear and PDF417 barcodes inside their width');
+  rep := NewEngineReport(sec);
+  try
+    rep.InitEvaluator;
+    bar := TRpBarcode.Create(rep);
+    bar.Name := 'BARALIGN';
+    sec.ReportComponents.Add.Component := bar;
+    bar.Expression := QuotedStr('5449000000996');
+    bar.Typ := bcCodeEAN13;
+    bar.Width := BAR_WIDTH;
+    bar.Height := 800;
+    // The white bars are drawn too: the extent is the whole pattern
+    bar.Transparent := False;
+    CheckInt(0, bar.Alignment, 'Barcode alignment defaults to 0');
+    CheckAligned('EAN13');
+
+    // Turned 180 degrees the bars go from the origin to the left: the right
+    // alignment moves them by the same distance, to the left
+    w := r0 - l0;
+    bar.Rotation := 1800;
+    DrawBars(0, l0, r0);
+    DrawBars(2, l2, r2);
+    CheckInt(BAR_WIDTH - w, l0 - l2, 'EAN13 at 180 degrees, right alignment');
+    bar.Rotation := 0;
+
+    // Wider than the component: it stays at the origin
+    bar.Width := 300;
+    DrawBars(4, l4, r4);
+    CheckInt(BAR_LEFT, l4, 'A barcode wider than the component is not moved');
+    bar.Width := BAR_WIDTH;
+
+    bar.Typ := bcCodePDF417;
+    bar.Truncated := False;
+    CheckAligned('PDF417');
+    bar.Truncated := True;
+    CheckAligned('PDF417 truncated');
+    bar.Truncated := False;
+
+    bar.Typ := bcCodeQr;
+    DrawBars(0, l0, r0);
+    DrawBars(2, l2, r2);
+    Check((l0 = l2) and (r0 = r2), 'QR is always centered');
+    Check(not BarcodePropertyApplies(bcCodeQr, SrpSAlignment), 'No alignment in the inspector for QR');
+    Check(not BarcodePropertyApplies(bcCodeDataMatrix, SrpSAlignment),
+      'No alignment in the inspector for DataMatrix');
+    Check(BarcodePropertyApplies(bcCodeEAN13, SrpSAlignment), 'Alignment in the inspector for EAN13');
+
+    // Saved and read back
+    bar.Typ := bcCodeEAN13;
+    bar.Alignment := 4;
+    for fmt in [rpStreamText, rpStreamXML] do
+    begin
+      mem := TMemoryStream.Create;
+      rep2 := TRpReport.Create(nil);
+      try
+        rep.StreamFormat := fmt;
+        rep.SaveToStream(mem);
+        mem.Position := 0;
+        rep2.LoadFromStream(mem);
+        bar2 := TRpBarcode(rep2.FindComponent('BARALIGN'));
+        Check(Assigned(bar2), 'Barcode read back');
+        if Assigned(bar2) then
+          CheckInt(4, bar2.Alignment, 'Barcode alignment read back, format ' + IntToStr(Ord(fmt)));
+      finally
+        rep2.Free;
+        mem.Free;
+      end;
+    end;
+    // Not aligned, the XML of the barcode is the one of previous versions
+    // (the report writes its own ALIGNMENT; a property is an opening and a
+    // closing tag)
+    CheckInt(XmlAlignmentCount(4) - 2, XmlAlignmentCount(0),
+      'A barcode without alignment writes no ALIGNMENT in XML');
+  finally
+    rep.Free;
+  end;
+  LogMsg('Barcode alignment verified');
+end;
+
+{$IFDEF MSWINDOWS}
+var
+  // The form of TestDialogCentering and where its dialog box of Windows
+  // opened
+  NativeDialogOwner: HWND;
+  NativeDialogRect: TRect;
+  NativeDialogSeen: Boolean;
+
+function FindOwnedDialog(wnd: HWND; lp: LPARAM): BOOL; stdcall;
+var
+  cls: array[0..15] of AnsiChar;
+begin
+  Result := True;
+  if IsWindowVisible(wnd) and (GetWindow(wnd, GW_OWNER) = NativeDialogOwner) and
+    (GetClassNameA(wnd, cls, SizeOf(cls)) > 0) and (AnsiString(cls) = '#32770') then
+  begin
+    PHandle(lp)^ := wnd;
+    Result := False;
+  end;
+end;
+
+// Reads the place of the dialog box shown on the form and closes it
+procedure NativeDialogTimer(hwnd: HWND; uMsg: UINT; idEvent: UINT_PTR; dwTime: DWORD); stdcall;
+var
+  dlgwnd: HWND;
+begin
+  dlgwnd := 0;
+  EnumThreadWindows(GetCurrentThreadId, @FindOwnedDialog, LPARAM(@dlgwnd));
+  if dlgwnd = 0 then
+    exit;
+  KillTimer(0, idEvent);
+  NativeDialogSeen := GetWindowRect(dlgwnd, NativeDialogRect);
+  PostMessage(dlgwnd, WM_COMMAND, IDCANCEL, 0);
+end;
+
+procedure CheckNativeDialogCentered(AForm: TForm; const What: string);
+var
+  prect: TRect;
+begin
+  Check(NativeDialogSeen, What + ' was shown');
+  GetWindowRect(AForm.Handle, prect);
+  with NativeDialogRect do
+  begin
+    Check(Abs((Left + Right) div 2 - (prect.Left + prect.Right) div 2) <= 2,
+      Format('%s horizontally centered (%d..%d, form %d..%d)',
+        [What, Left, Right, prect.Left, prect.Right]));
+    Check(Abs((Top + Bottom) div 2 - (prect.Top + prect.Bottom) div 2) <= 2,
+      Format('%s vertically centered (%d..%d, form %d..%d)',
+        [What, Top, Bottom, prect.Top, prect.Bottom]));
+  end;
+end;
+{$ENDIF}
+
+// The Report Manager dialogs open centered on the form they are opened
+// from (rpformcenterlcl), not on the centre of a monitor
+procedure TestDialogCentering;
+var
+  parent, other, used: TForm;
+  dlg: TFRpGridOptionsLCL;
+  area: TRect;
+{$IFDEF MSWINDOWS}
+  i: Integer;
+{$ENDIF}
+
+  procedure CheckCentered(const Context: string);
+  var
+    r, a: TRect;
+  begin
+    CheckInt(Ord(poDesigned), Ord(dlg.Position), Context + ': position taken over');
+    r := used.BoundsRect;
+    a := Screen.MonitorFromRect(r).WorkareaRect;
+    Check((dlg.Left >= a.Left) and (dlg.Top >= a.Top) and
+      (dlg.Left + dlg.Width <= a.Right) and (dlg.Top + dlg.Height <= a.Bottom),
+      Context + ': dialog inside the work area of the monitor of the form');
+    // Not limited by the work area: the centres are the same
+    if (r.Left >= a.Left) and (r.Top >= a.Top) and (r.Right <= a.Right) and
+      (r.Bottom <= a.Bottom) then
+    begin
+      Check(Abs((dlg.Left + dlg.Width div 2) - (r.Left + r.Right) div 2) <= 1,
+        Format('%s: horizontally centered (dialog %d+%d, form %d..%d)',
+          [Context, dlg.Left, dlg.Width, r.Left, r.Right]));
+      Check(Abs((dlg.Top + dlg.Height div 2) - (r.Top + r.Bottom) div 2) <= 1,
+        Format('%s: vertically centered (dialog %d+%d, form %d..%d)',
+          [Context, dlg.Top, dlg.Height, r.Top, r.Bottom]));
+    end;
+  end;
+
+  // The form the dialog is centered on: the active one, else the main form
+  function ExpectedParent: TForm;
+  begin
+    if (Screen.ActiveCustomForm is TForm) and Screen.ActiveCustomForm.Visible then
+      Result := TForm(Screen.ActiveCustomForm)
+    else
+      Result := TForm(Application.MainForm);
+  end;
+
+begin
+  LogMsg('Testing that the dialogs open centered on their form');
+  area := Screen.MonitorFromRect(Application.MainForm.BoundsRect).WorkareaRect;
+  parent := TForm.CreateNew(nil);
+  dlg := TFRpGridOptionsLCL.Create(nil);
+  other := TForm.CreateNew(nil);
+  try
+    parent.Position := poDesigned;
+    parent.SetBounds(area.Left + 40, area.Top + 40, 700, 500);
+    parent.Show;
+    parent.BringToFront;
+    Application.ProcessMessages;
+
+    used := ExpectedParent;
+    LogMsg('Dialogs centered on ' + used.ClassName);
+    dlg.Show;
+    // Centered again with its final size (an AutoSize form)
+    Application.ProcessMessages;
+    CheckCentered('First show');
+    dlg.Hide;
+
+    // Shown again after the form moved: centered again
+    parent.SetBounds(area.Left + 80, area.Top + 60, 640, 480);
+    Application.ProcessMessages;
+    used := ExpectedParent;
+    dlg.Show;
+    Application.ProcessMessages;
+    CheckCentered('Second show');
+    dlg.Hide;
+
+    // The forms of the application keep their own position
+    other.Position := poScreenCenter;
+    other.SetBounds(0, 0, 200, 100);
+    other.Show;
+    CheckInt(Ord(poScreenCenter), Ord(other.Position),
+      'A form that is not of Report Manager keeps its position');
+    other.Hide;
+
+{$IFDEF MSWINDOWS}
+    // A dialog box of Windows (print, Data Link...) after RpBeginCenterDialog
+    NativeDialogOwner := parent.Handle;
+    NativeDialogSeen := False;
+    RpBeginCenterDialog(parent);
+    try
+      SetTimer(0, 0, 100, @NativeDialogTimer);
+      MessageBoxW(parent.Handle, 'Centered', 'RpCenterDialogTest', MB_OK);
+    finally
+      RpEndCenterDialog;
+    end;
+    CheckNativeDialogCentered(parent, 'Message box of Windows');
+
+    // The Data Link of ADO centers itself inside the primary monitor: the
+    // form on another monitor when there is one
+    for i := 0 to Screen.MonitorCount - 1 do
+      if not Screen.Monitors[i].Primary then
+      begin
+        area := Screen.Monitors[i].WorkareaRect;
+        parent.SetBounds(area.Left + 60, area.Top + 60, 800, 600);
+        Break;
+      end;
+    Application.ProcessMessages;
+    LogMsg(Format('Data Link dialog on a form at %d,%d (%d monitors)',
+      [parent.Left, parent.Top, Screen.MonitorCount]));
+    NativeDialogOwner := parent.Handle;
+    NativeDialogSeen := False;
+    RpBeginCenterDialog(parent);
+    try
+      SetTimer(0, 0, 200, @NativeDialogTimer);
+      PromptDataSource(parent.Handle, '');
+    finally
+      RpEndCenterDialog;
+    end;
+    CheckNativeDialogCentered(parent, 'Data Link dialog');
+{$ENDIF}
+  finally
+    other.Free;
+    dlg.Free;
+    parent.Free;
+  end;
+  LogMsg('Dialog centering verified');
+end;
+
 procedure RunRegressionTests(const ASamplePath: string);
 var
   t: TRegressionTests;
@@ -3137,6 +3492,8 @@ begin
     TestDesignerKeepsHistory(ASamplePath);
     // F5: the schema list of the AI chat
     TestChatSchemaList;
+    TestBarcodeAlignment;
+    TestDialogCentering;
   finally
     t.Free;
   end;
