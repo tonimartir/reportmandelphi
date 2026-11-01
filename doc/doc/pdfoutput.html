@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF font embedding implementation - Report Manager Docs</title>
-<meta name="description" content="How native PDF output works: TrueType and Type1 font embedding, Unicode, compression, and FreeType-based font matching on Linux versus Windows.">
+<title>PDF output implementation - Report Manager Docs</title>
+<meta name="description" content="How the PDF output works: font selection, shaping and subsetting on Windows, Linux and macOS, embedded TrueType, OpenType and Type1 fonts, and PDF/A-3 with attached files.">
 <link rel="canonical" href="https://reportman.es/doc/pdfoutput.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -29,7 +29,7 @@
     {
       "@type": "ListItem",
       "position": 3,
-      "name": "PDF font embedding implementation",
+      "name": "PDF output implementation",
       "item": "https://reportman.es/doc/pdfoutput.html"
     }
   ]
@@ -225,44 +225,59 @@
 </nav>
 </div>
 <main class="doc-main">
-<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>PDF font embedding implementation</span></nav>
-<h1>PDF font embedding implementation</h1>
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>PDF output implementation</span></nav>
+<h1>PDF output implementation</h1>
 <h2>Developer</h2>
 <h3>Adobe PDF output</h3>
-<p>Native pdf output is implemented, you may experiment that the pdf output is 
-  lighting fast compared to Acrobat Distiller and other print drivers that output 
-  pdf, this is because the translation is done directly from Report Manager native 
-  format to Adobe PDF format.</p>
-<p>To enable truetype font embedding in a report, at the designer select Edit-&gt;Select 
-  all texts, then at object inspector select Truetype font option in PDF Font 
-  property. </p>
-<p>But you may take consideration the following issues and limitations:</p>
-<ul>
-  <li>Unicode is  supported only if the original font supports unicode </li>
-  <li>True type font linking and embedding is available from version 2.2, but 
-    see bellow details of the implementation.</li>
-  <li>Only Jpeg and Windows Bitmap image formats are supported.</li>
-  <li>Compression is available, and used by default, but some pdf viewers does 
-    not read PDF compressed files, the official Adobe PDF reader does not have 
-    such problems.</li>
-  <li>Composite fonts and CID Fonts are not supported, that is are supported but 
-    PDF output processed as single fonts.</li>
-  <li>The engine is faster and the file is smaller if you use standard Type 1 
-    fonts (Courier/Times/Helvetica)</li>
-  <li>The TrueType font embedding enlarges the file size of the PDF file. Better 
-    optimization is hard to done (remove unused glyphs for example). You can use 
-    TrueType font linking if you know the destination computers have the font 
-    installed. </li>
-</ul>
-<p><strong>Linux and Windows, different technologies, different implementation</strong></p>
+<p>Native PDF output is implemented: the translation goes straight from the Report Manager metafile to the PDF format, which is why it is far faster than printing through Acrobat Distiller or any other PDF print driver.</p>
+<p>To embed the TrueType fonts of a report, in the designer select <em>Edit &rsaquo; Select all texts</em> and then, in the object inspector, set the <strong>PDF Font</strong> property to <em>Truetype font</em>. The property also offers the standard Type&nbsp;1 faces (Courier, Times, Helvetica, Symbol, ZapfDingbats) and <em>Linked</em>, which names the font in the PDF without carrying it. A <a href="#pdfa">PDF/A-3</a> report ignores the choice: there, every font is embedded.</p>
+
+<h3>How a font gets into the PDF</h3>
+<p>The path is the same on the three platforms &mdash; only the libraries underneath change:</p>
+<ol>
+  <li><strong>Selection.</strong> The font name of the report becomes a font of the system, with a sensible substitute when it is not installed: GDI on Windows, Fontconfig on Linux, Core Text on macOS.</li>
+  <li><strong>Measuring and shaping.</strong> The text is laid out with DirectWrite on Windows, HarfBuzz with FreeType and ICU on Linux, and Core Text on macOS, so Arabic, Hebrew, the Indic scripts, bidirectional paragraphs and HTML runs are shaped before they reach the PDF. The driver writes the <em>glyphs</em> and their positions, one by one, and not a string of characters.</li>
+  <li><strong>Subsetting.</strong> Only the glyphs the report uses are embedded. On Linux and macOS the cut is made with <a href="https://harfbuzz.github.io/">hb-subset</a>, which also handles CFF outlines, font collections and variable fonts; on Windows a built-in TrueType subsetter does it. A face that cannot be cut safely &mdash; a CFF face inside a <code>.ttc</code> collection without hb-subset &mdash; is not chosen as a substitute: a gap is better than a PDF carrying something that is not a font.</li>
+  <li><strong>Writing.</strong> The font goes in as a composite (Type&nbsp;0) font with <code>Identity-H</code> encoding and a CIDFontType2 descendant (<code>/FontFile2</code>); an OpenType font with CFF outlines goes as CIDFontType0 (<code>/FontFile3 /OpenType</code>) instead, which is what its glyph data really is. Each glyph carries its own width, and a <code>ToUnicode</code> CMap maps the glyphs back to text, so the PDF can still be searched and copied &mdash; including the glyphs the shaper substituted. A Type&nbsp;1 font goes in whole, as a <code>/FontFile</code> program and without subsetting, because its outlines are not cut by either subsetter.</li>
+</ol>
+
+<h3>Windows</h3>
 <p>Microsoft Windows already has a font cache: any application can query information about the installed fonts, obtain the whole font file (to embed it), and ask the operating system for the closest match when the requested font is not available (font matching). This works for TrueType and OpenType fonts, although a few fonts cannot be embedded because the API does not allow retrieving their font data, perhaps because of distribution-license restrictions.</p>
+<p>Text is measured and shaped with DirectWrite when it is present; on an old Windows without it, the engine falls back to plain GDI measurement, which does not shape complex scripts.</p>
+
+<h3>Linux</h3>
 <p>Linux does not provide a single standard font service in the operating system; instead, fonts are handled through libraries such as Fontconfig and FreeType.</p>
-<p><strong>Font selection on Linux (since version 3.9)</strong></p>
-<p>Since version 3.9 the Report Manager engine uses <a href="https://www.freedesktop.org/wiki/Software/fontconfig/">Fontconfig</a> to select fonts on Linux, providing a sensible fallback when the requested font is not available. The older mechanism &mdash; scanning the font directories listed in <code>/etc/fonts/fonts.conf</code> and matching fonts with a simple built-in algorithm &mdash; is used only when Fontconfig is not present on the system.</p>
-<p><strong>Installing Fontconfig is recommended</strong> for correct font selection. It is available on virtually every Linux distribution (package <code>fontconfig</code>, shared object <code>libfontconfig.so</code>) and is already present on most desktop systems; minimal or console installations may need to add it.</p>
-<p>For the font data itself &mdash; reading glyphs and embedding the font file in the PDF &mdash; Report Manager uses the <a href="https://freetype.org">FreeType</a> library (package <code>freetype2</code>, shared object <code>libfreetype.so</code>), which is also installed by default on most distributions and is needed only when you embed or link TrueType, OpenType or Type1 fonts. Because FreeType exposes Type1 font information, Type1 fonts can be linked in the PDF, while TrueType and OpenType fonts can be fully embedded.</p>
+<p><strong>Font selection</strong> uses <a href="https://www.freedesktop.org/wiki/Software/fontconfig/">Fontconfig</a>, which provides a sensible fallback when the requested font is not available. The older mechanism &mdash; scanning the font directories listed in <code>/etc/fonts/fonts.conf</code> and matching fonts with a simple built-in algorithm &mdash; is used only when Fontconfig is not present on the system. <strong>Installing Fontconfig is recommended</strong> for correct font selection. It is available on virtually every Linux distribution (package <code>fontconfig</code>, shared object <code>libfontconfig.so</code>) and is already present on most desktop systems; minimal or console installations may need to add it.</p>
+<p>For the font data itself &mdash; reading glyphs and embedding the font file in the PDF &mdash; Report Manager uses the <a href="https://freetype.org">FreeType</a> library (package <code>freetype2</code>, shared object <code>libfreetype.so</code>), which is also installed by default on most distributions and is needed only when you embed or link TrueType, OpenType or Type1 fonts. Because FreeType exposes Type1 font information, Type1 fonts can be linked or embedded whole, while TrueType and OpenType fonts are embedded as the subset the report uses. HarfBuzz (<code>libharfbuzz.so</code>) shapes the text and cuts the subset that is embedded.</p>
 <p>Font information is cached the first time a TrueType font is embedded; building that cache means reading the installed font files to obtain their names and styles, so the first run of a single report (for example with the <code>printreptopdf</code> command line tool) carries a one-off cost. It does not appear if you do not embed PDF fonts, and is usually unnoticeable depending on how many fonts are installed.</p>
 <p>The good thing is that <strong>you do not need a running X server</strong> to generate PDFs with TrueType embedding.</p>
+
+<h3>macOS</h3>
+<p>On macOS the text is selected, measured, shaped and painted with <strong>Core Text</strong>, the text engine of the system, so the preview, the printed page and the PDF show the same glyphs. Setting the environment variable <code>RP_TEXT_ENGINE=freetype</code> goes back to the Linux path (HarfBuzz, FreeType and Fontconfig), which is useful to compare one against the other.</p>
+<p>Embedding is the same as on Linux: the subset is cut with HarfBuzz over the font file and the index of the face inside it, so HarfBuzz is loaded even when Core Text is doing the typography. The designer distributed for macOS carries its own FreeType, HarfBuzz and Fontconfig, so nothing has to be installed.</p>
+
+<h3 id="pdfa">PDF/A-3</h3>
+<p>Besides the ordinary PDF&nbsp;1.4 output, the engine writes <strong>PDF/A-3, conformance level B</strong>: a PDF meant to be archived, and the format that lets you carry the machine-readable original of a document &mdash; the XML of an electronic invoice, for example &mdash; <em>inside</em> the PDF a person reads.</p>
+<p>It is chosen per report, in the designer, in <em>Page setup &rsaquo; Conformance</em>, and it is saved in the <code>.rep</code> file, so <code>printreptopdf</code>, the report servers and the components honour it without being told again.</p>
+<p>What the engine writes for it:</p>
+<ul>
+  <li>A PDF&nbsp;1.7 file with the sRGB output intent and its ICC profile embedded, so the colours are defined without depending on the device.</li>
+  <li>XMP metadata declaring <code>pdfaid:part 3</code> and <code>pdfaid:conformance B</code>, with the title, author, subject, keywords and creation date of the document.</li>
+  <li><strong>Every font embedded</strong>: neither font linking nor the standard Type&nbsp;1 faces are allowed, and a font whose data cannot be read stops the export with an error instead of producing a file that is not PDF/A.</li>
+  <li>The attached files, each with its MIME type and its <code>AFRelationship</code> &mdash; <em>Data</em> for the XML a machine reads, <em>Source</em> for the file the document was made from, <em>Alternative</em>, <em>Supplement</em> or unspecified &mdash; listed both in the embedded-files name tree and in the <code>/AF</code> array of the document.</li>
+</ul>
+<p>Attachments are added in the designer, with the file name, the MIME type, the relationship, a description and the ISO dates, or from code with <code>AddEmbeddedFile</code> (also available to the ActiveX and the .NET library). <code>AddMetadata</code> sets the document information, and <code>AddXMPMetadata</code> appends your own XMP: it is written after the metadata the engine generates, so pass a complete <code>&lt;rdf:Description&gt;</code> with the namespaces it uses &mdash; and, if they are not the standard ones, the PDF/A extension schema that describes them.</p>
+<p>Level B covers the visual appearance of the document. Level A, which also requires the document to be tagged for accessibility, is not produced.</p>
+
+<h3>Issues and limitations</h3>
+<ul>
+  <li>Unicode is supported as far as the font goes: a character the font has no glyph for is drawn with the face the system substitutes, and that face is embedded too.</li>
+  <li>JPEG images travel into the PDF as they are (<code>DCTDecode</code>); any other image is written as a bitmap compressed with <code>FlateDecode</code>.</li>
+  <li>Compression is used by default and can be turned off in <em>Page setup</em>. Some very old PDF viewers do not read compressed files; the official Adobe reader has no such problem.</li>
+  <li>The standard Type&nbsp;1 faces (Courier, Times, Helvetica) give the smallest and fastest file, because nothing has to be carried &mdash; but they are not an option in PDF/A.</li>
+  <li>Embedding grows the file even with the subset, and the growth is per font and style. Font linking is the alternative when you know the destination computers have the font installed.</li>
+  <li>A font licence can forbid embedding &mdash; the <code>fsType</code> field of the font says so &mdash; so check the licence of the fonts you embed. Windows may also refuse to hand over the font data of some fonts, and then the font cannot be embedded at all.</li>
+</ul>
 </main>
 </div>
 <footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; REPORTMAN AI, S.L. &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
