@@ -78,6 +78,11 @@ type
 
  TRpTTFontData=class(TObject)
   embedded:Boolean;
+  // Set by GetFontStream: the font program holds only the glyphs used. Its PDF
+  // name then carries a subset tag (ISO 32000-1, 9.6.4), SubsetTag ('ABCDEF+'),
+  // which the PDF writer fills
+  FontProgramIsSubset:Boolean;
+  SubsetTag:String;
   postcriptname:String;
   Encoding:String;
   Ascent,Descent,Leading,CapHeight,Flags,FontWeight, Height:integer;

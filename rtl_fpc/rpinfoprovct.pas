@@ -868,6 +868,7 @@ begin
             Result.SetSize(Int64(outSize));
             Move(outData^, Result.Memory^, outSize);
             Result.Position := 0;
+            AData.FontProgramIsSubset := True;
           end;
         finally
           hb_blob_destroy(outBlob);
