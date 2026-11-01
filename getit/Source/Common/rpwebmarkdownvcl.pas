@@ -19,7 +19,7 @@ uses
   Winapi.WebView2, Winapi.ActiveX, Vcl.Edge,
   System.Zip, System.IOUtils, System.JSON, rpmdshfolder;
 
-    const AssetsVersion = '5';
+    const AssetsVersion = '6';
 
 type
   TRpWebMarkdownView = class(TPanel)

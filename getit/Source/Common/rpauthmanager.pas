@@ -248,6 +248,10 @@ type
     procedure CheckStatus;
     procedure UpdateProfileFromJson(AProfileObj: TJSONObject);
     function UsesFreeCredits: Boolean;
+    // The credit bag (29-10-2026): a paid tier whose day is spent spends its
+    // piggy bank (FreeRemaining, bought credits that never expire); the gauge
+    // then shows the bag, in violet
+    function UsingBag: Boolean;
     function GetCreditsRatio: Double;
     // Credits the Free tier gives on the first sign-in (the login gift), read
     // from the tiers the API sends with the profile; 2000 until they arrive
@@ -774,9 +778,24 @@ begin
   Result := (AProfile.Email = '') or (AProfile.TierId <= 2);
 end;
 
+// The credit bag: a paid tier with the day spent and credits left in its
+// piggy bank, which the API spends after the day
+function ProfileUsingBag(const AProfile: TRpProfile): Boolean;
+begin
+  Result := (AProfile.Email <> '') and (AProfile.TierId > 2) and
+    (AProfile.DailyMax - AProfile.DailyConsumed <= 0) and
+    (AProfile.FreeRemaining > 0);
+end;
+
+// The gauge measures the piggy bank (free credits or the bag) or the day
+function ProfileShowsPiggyBank(const AProfile: TRpProfile): Boolean;
+begin
+  Result := ProfileUsesFreeCredits(AProfile) or ProfileUsingBag(AProfile);
+end;
+
 function ProfileCreditsConsumed(const AProfile: TRpProfile): Int64;
 begin
-  if ProfileUsesFreeCredits(AProfile) then
+  if ProfileShowsPiggyBank(AProfile) then
     Result := AProfile.FreeInitial - AProfile.FreeRemaining
   else
     Result := AProfile.DailyConsumed;
@@ -784,7 +803,7 @@ end;
 
 function ProfileCreditsMax(const AProfile: TRpProfile): Int64;
 begin
-  if ProfileUsesFreeCredits(AProfile) then
+  if ProfileShowsPiggyBank(AProfile) then
     Result := AProfile.FreeInitial
   else
     Result := AProfile.DailyMax;
@@ -793,6 +812,11 @@ end;
 function TRpAuthManager.UsesFreeCredits: Boolean;
 begin
   Result := ProfileUsesFreeCredits(GetProfile);
+end;
+
+function TRpAuthManager.UsingBag: Boolean;
+begin
+  Result := ProfileUsingBag(GetProfile);
 end;
 
 function TRpAuthManager.GetCreditsRatio: Double;
