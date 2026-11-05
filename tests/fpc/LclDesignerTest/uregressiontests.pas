@@ -3465,6 +3465,62 @@ begin
   LogMsg('Dialog centering verified');
 end;
 
+// Moving the splitters of the designer (left panel, structure, column of the
+// property names) only changes the layout: the report must stay unmodified
+// with any component selected. RP_TEST_LAYOUT_REPORT names another report.
+procedure TestLayoutKeepsReportClean(const ASamplePath: string);
+var
+  mf: TFRpMainFLCL;
+  path: string;
+  i, j, w: Integer;
+  secint: TRpSectionInterface;
+  comp: TRpSizePosInterface;
+
+  procedure CheckClean(const AStep: string);
+  begin
+    Application.ProcessMessages;
+    Check(not mf.Report.Modified, 'Layout: report modified after ' + AStep);
+  end;
+
+begin
+  LogMsg('Layout: splitters and the inspector width keep the report clean');
+  path := GetEnvironmentVariable('RP_TEST_LAYOUT_REPORT');
+  if path = '' then
+    path := ASamplePath;
+  mf := TFRpMainFLCL.Create(nil);
+  try
+    mf.OpenReportFile(path);
+    mf.Show;
+    CheckClean('opening ' + ExtractFileName(path));
+    for i := 0 to mf.DesignerFrame.secinterfaces.Count - 1 do
+    begin
+      secint := TRpSectionInterface(mf.DesignerFrame.secinterfaces[i]);
+      mf.DesignerFrame.SelectComponent(secint, False);
+      CheckClean('selecting section ' + IntToStr(i));
+      for j := 0 to secint.childlist.Count - 1 do
+      begin
+        comp := TRpSizePosInterface(secint.childlist[j]);
+        mf.DesignerFrame.SelectComponent(comp, False);
+        CheckClean('selecting ' + comp.printitem.Name);
+        for w in [160, 60, 98] do
+        begin
+          mf.ObjInsp.LabelWidth := w;
+          CheckClean(Format('label width %d with %s', [w, comp.printitem.Name]));
+        end;
+        mf.ObjInsp.Parent.Width := mf.ObjInsp.Parent.Width + 40;
+        CheckClean('widening the left panel with ' + comp.printitem.Name);
+        mf.ObjInsp.Parent.Width := mf.ObjInsp.Parent.Width - 40;
+        CheckClean('narrowing the left panel with ' + comp.printitem.Name);
+      end;
+    end;
+    mf.Structure.Height := mf.Structure.Height + 50;
+    CheckClean('resizing the structure');
+  finally
+    TUndoCue(mf.Report.UndoCue).MarkClean;
+    mf.Free;
+  end;
+end;
+
 procedure RunRegressionTests(const ASamplePath: string);
 var
   t: TRegressionTests;
@@ -3494,6 +3550,7 @@ begin
     TestChatSchemaList;
     TestBarcodeAlignment;
     TestDialogCentering;
+    TestLayoutKeepsReportClean(ASamplePath);
   finally
     t.Free;
   end;
