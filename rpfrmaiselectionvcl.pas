@@ -699,7 +699,10 @@ begin
   else if DisplayValue < 0.9 then IndicatorColor := RGB(255, 152, 0)  // orange
   else IndicatorColor := ClrDanger;
 
-  if DisplayValue > 0 then
+  // The number takes the colour of the arc; at 0 it is grey, except while
+  // spending the credit bag: a violet 0 says the day is spent and the bag
+  // has started
+  if (DisplayValue > 0) or TRpAuthManager.Instance.UsingBag then
     TextColor := IndicatorColor
   else
     TextColor := ClrSubText;

@@ -54,6 +54,8 @@ TTrueTypeFontSubSet = class
     // A face with CFF outlines in a collection: it cannot be subset here, it is extracted
     FExtractFace: Boolean;
     FFaceOffset: Integer;
+    // False when Execute returned the whole font (or face) instead of a subset
+    FSubsetted: Boolean;
 
     procedure AssembleFont;
     function CreateTableDirectory: boolean;
@@ -72,6 +74,7 @@ TTrueTypeFontSubSet = class
   public
     constructor Create(const FontName: string; const RFArray: TBytes; GlyphsUsed: TDictionary<Integer, TArray<Integer>>; DirectoryOffset: Cardinal);
     function Execute: TBytes;
+    property Subsetted: Boolean read FSubsetted;
   end;
 implementation
 
@@ -170,6 +173,7 @@ begin
   LocaToBytes;
   AssembleFont;
   Result := FOutFont;
+  FSubsetted := true;
 end;
 
 procedure TTrueTypeFontSubSet.AssembleFont;

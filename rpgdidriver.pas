@@ -3156,6 +3156,9 @@ begin
         pdfdriver.DestStream := Stream;
       pdfdriver.compressed := compressed;
       pdfdriver.UsePdfFonts := report.PrinterFonts = rppfontsrecalculate;
+      // The conformance of the report, as ExportReportToPDF and the Linux
+      // printreptopdf: printreptopdf on Windows wrote PDF 1.4 for a PDF/A-3 report
+      pdfdriver.PDFConformance := report.PDFConformance;
       if progress then
         report.OnPRogress := pdfdriver.RepProgress;
 {$IFDEF USETEECHART}

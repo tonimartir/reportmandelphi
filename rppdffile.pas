@@ -251,6 +251,10 @@ type
    FOutputIntentObject: integer;
    FColorSpaceObject: integer;
    FInternalFDocCreationDate: TDateTime;
+   // The creation and modification dates of the document, once (ComputeDocDates):
+   // as PDF dates for the Info dictionary and as ISO 8601 for the XMP metadata
+   FInfoCreationDate,FInfoModDate:string;
+   FXMPCreateDate,FXMPModifyDate:string;
    PageObjNum: integer;
    FResolution:integer;
    FBitmapStreams:TList;
@@ -285,8 +289,8 @@ type
 {$IFDEF USEZLIB}
    function CompressStream(stream: TStream): TMemoryStream;
 {$ENDIF}
-   procedure WriteStream(stream, dest: TMemoryStream);
-   function DateToISO(date:TDateTime): string;
+   procedure WriteStream(stream, dest: TMemoryStream; FontProgram: Boolean = false);
+   procedure ComputeDocDates;
    procedure SWriteLine(Stream:TStream;astring:string);
  public
    DestStream:TStream;
@@ -716,21 +720,207 @@ begin
 end;
 
 
-function DateTimeToPDFString(date: TDateTime): string;
+// A date as the report gives it, ISO 8601 (2024-10-02T15:29:15+02:00, the format the
+// designer asks for) or a PDF date (D:20241002152915+02'00'), split into its digits
+// (yyyymmddhhnnss or the first ones of them) and its time zone (Z, +hh:mm, -hh:mm or
+// none). False when the text is neither. The Info dictionary needs the PDF form
+// (ISO 32000-1, 7.9.4) and the XMP metadata the ISO one, of the same date.
+function SplitDocDate(const AText: string; out ADigits, AZone: string): Boolean;
+var
+ s:string;
+ i,n:integer;
+ c:Char;
+ zonedigits:string;
+ sign:Char;
 begin
- Result:=FormatDateTime('yyyyMMddHHmmss',date);
+ Result:=false;
+ ADigits:='';
+ AZone:='';
+ s:=Trim(AText);
+ if Copy(s,1,2)='D:' then
+  s:=Copy(s,3,Length(s));
+ i:=1;
+ sign:=' ';
+ while i<=Length(s) do
+ begin
+  c:=s[i];
+  n:=Length(ADigits);
+  if (c>='0') and (c<='9') then
+  begin
+   if n>=14 then
+    exit;
+   ADigits:=ADigits+c;
+  end
+  else
+  if (c='-') and ((n=4) or (n=6)) then
+   // A date separator of ISO 8601
+  else
+  if ((c='T') or (c=' ')) and (n=8) then
+  else
+  if (c=':') and ((n=10) or (n=12)) then
+  else
+  if ((c='.') or (c=',')) and (n=14) then
+  begin
+   // The fraction of a second: not kept
+   while (i<Length(s)) and (s[i+1]>='0') and (s[i+1]<='9') do
+    inc(i);
+  end
+  else
+  if ((c='Z') or (c='z')) and (n>=8) and (i=Length(s)) then
+   AZone:='Z'
+  else
+  if ((c='+') or (c='-')) and (n>=8) then
+  begin
+   sign:=c;
+   zonedigits:='';
+   inc(i);
+   while i<=Length(s) do
+   begin
+    if (s[i]>='0') and (s[i]<='9') then
+     zonedigits:=zonedigits+s[i]
+    else
+    if (s[i]<>':') and (s[i]<>'''') then
+     exit;
+    inc(i);
+   end;
+   if (Length(zonedigits)<>2) and (Length(zonedigits)<>4) then
+    exit;
+   if Length(zonedigits)=2 then
+    zonedigits:=zonedigits+'00';
+   if (StrToInt(Copy(zonedigits,1,2))>23) or (StrToInt(Copy(zonedigits,3,2))>59) then
+    exit;
+   AZone:=sign+Copy(zonedigits,1,2)+':'+Copy(zonedigits,3,2);
+  end
+  else
+   exit;
+  inc(i);
+ end;
+ n:=Length(ADigits);
+ if not ((n=4) or (n=6) or (n=8) or (n=10) or (n=12) or (n=14)) then
+  exit;
+ // An hour alone: ISO 8601 and XMP ask for its minutes
+ if n=10 then
+  ADigits:=ADigits+'00';
+ if (n>=6) and ((StrToInt(Copy(ADigits,5,2))<1) or (StrToInt(Copy(ADigits,5,2))>12)) then
+  exit;
+ if (n>=8) and ((StrToInt(Copy(ADigits,7,2))<1) or (StrToInt(Copy(ADigits,7,2))>31)) then
+  exit;
+ if (n>=10) and (StrToInt(Copy(ADigits,9,2))>23) then
+  exit;
+ if (n>=12) and (StrToInt(Copy(ADigits,11,2))>59) then
+  exit;
+ if (n>=14) and (StrToInt(Copy(ADigits,13,2))>59) then
+  exit;
+ // A time zone needs a time
+ if Length(ADigits)<10 then
+  AZone:='';
+ Result:=true;
 end;
 
-function TRpPDFFile.DateToISO(date:TDateTime): string;
+// D:yyyymmddhhnnss followed by Z or +hh'mm'
+function PDFDateOf(const ADigits, AZone: string): string;
 begin
- if (FPDFConformance = TPDFConformanceType.PDF_A_3)  then
+ Result:='D:'+ADigits;
+ if AZone='Z' then
+  Result:=Result+'Z'
+ else
+ if Length(AZone)=6 then
+  Result:=Result+AZone[1]+Copy(AZone,2,2)+''''+Copy(AZone,5,2)+'''';
+end;
+
+// yyyy-mm-ddThh:nn:ss followed by Z or +hh:mm (or the first parts of it)
+function ISODateOf(const ADigits, AZone: string): string;
+begin
+ Result:=Copy(ADigits,1,4);
+ if Length(ADigits)>=6 then
+  Result:=Result+'-'+Copy(ADigits,5,2);
+ if Length(ADigits)>=8 then
+  Result:=Result+'-'+Copy(ADigits,7,2);
+ if Length(ADigits)>=12 then
  begin
-  Result:=DateToISO8601(date);
- end
+  Result:=Result+'T'+Copy(ADigits,9,2)+':'+Copy(ADigits,11,2);
+  if Length(ADigits)>=14 then
+   Result:=Result+':'+Copy(ADigits,13,2);
+  Result:=Result+AZone;
+ end;
+end;
+
+// The PDF date of a text date, empty when it is not a date
+function PDFDateOfText(const AText: string): string;
+var
+ digits,zone:string;
+begin
+ if SplitDocDate(AText,digits,zone) then
+  Result:=PDFDateOf(digits,zone)
+ else
+  Result:='';
+end;
+
+// The time zone of the computer at a local date, as Z or +hh:mm
+function LocalZoneOf(ADate: TDateTime): string;
+var
+ minutes:integer;
+begin
+{$IFDEF FPC}
+ minutes:=-GetLocalTimeOffset;
+{$ELSE}
+ minutes:=Round(TTimeZone.Local.GetUtcOffset(ADate).TotalMinutes);
+{$ENDIF}
+ if minutes=0 then
+  Result:='Z'
  else
  begin
-  Result:=DateTimeToPDFString(date);
- end
+  if minutes<0 then
+   Result:='-'
+  else
+   Result:='+';
+  minutes:=Abs(minutes);
+  Result:=Result+FormatFloat('00',minutes div 60)+':'+FormatFloat('00',minutes mod 60);
+ end;
+end;
+
+// The tag of a font subset: six capital letters and + (ISO 32000-1, 9.6.4), from the
+// name of the font and its place in the document (FNV-1a), so that two subsets of a
+// document do not share it and the same document gets the same tags every time
+function SubsetTagOf(const AName: string; AIndex: Integer): string;
+var
+ h:UInt64;
+ i:integer;
+begin
+ h:=2166136261;
+ for i:=1 to Length(AName) do
+  h:=((h xor Ord(AName[i]))*16777619) and $FFFFFFFF;
+ h:=((h xor Cardinal(AIndex))*16777619) and $FFFFFFFF;
+ Result:='';
+ for i:=1 to 6 do
+ begin
+  Result:=Result+Chr(Ord('A')+Integer(h mod 26));
+  h:=h div 26;
+ end;
+ Result:=Result+'+';
+end;
+
+procedure TRpPDFFile.ComputeDocDates;
+var
+ digits,zone,moddigits,modzone:string;
+begin
+ // The local time with its zone: the date of now was written as UTC (Z) before
+ if not SplitDocDate(FDocCreationDate,digits,zone) then
+ begin
+  FInternalFDocCreationDate:=Now;
+  digits:=FormatDateTime('yyyymmddhhnnss',FInternalFDocCreationDate);
+  zone:=LocalZoneOf(FInternalFDocCreationDate);
+ end;
+ // A new document: modified when it was created, unless the report says otherwise
+ if not SplitDocDate(FDocModificationDate,moddigits,modzone) then
+ begin
+  moddigits:=digits;
+  modzone:=zone;
+ end;
+ FInfoCreationDate:=PDFDateOf(digits,zone);
+ FInfoModDate:=PDFDateOf(moddigits,modzone);
+ FXMPCreateDate:=ISODateOf(digits,zone);
+ FXMPModifyDate:=ISODateOf(moddigits,modzone);
 end;
 
 
@@ -764,57 +954,37 @@ begin
  if (FPDFConformance = PDF_A_3) then
  begin
    SWriteLine(FMainPDF,PDF_HEADER_A3);
-   // AddToOffset(Length(PDF_HEADER_A3));
-   //SWriteLine(FMainPDF,'%äüöß');
+   // The comment of binary characters (%äüöß) that PDF/A asks for after the header
    FMainPDF.Write([37,228,252,246,223,13,10],7);
-   AddToOffset(7+Length(PDF_HEADER_A3));
-   //AddToOffset(Length('%äüöß'));
  end
  else
  begin
    SWriteLine(FMainPDF,PDF_HEADER_1_4);
-   AddToOffset(Length(PDF_HEADER_1_4));
  end;
- // Writes Doc info
+ // The first object starts after the header as written: counting its characters
+ // left out the end of line, and every entry of the xref table pointed one byte
+ // (PDF/A-3, LF) or two (PDF 1.4, CR LF) before its object
+ AddToOffset(FMainPDF.Size);
+ ComputeDocDates;
+ // Writes Doc info. Every entry has its XMP twin in PDF/A-3 (SetXMPMetadata):
+ // Title dc:title, Author dc:creator, Subject dc:description, Keywords pdf:Keywords,
+ // Creator xmp:CreatorTool, Producer pdf:Producer, the dates xmp:CreateDate and
+ // xmp:ModifyDate. PDF/A is declared in the XMP only (pdfaid)
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
  SWriteLine(FTempStream,'<<');
- SWriteLine(FTempStream,'/Producer '+EncodePDFText(FDocProducer));
+ if Length(FDocProducer)>0 then
+  SWriteLine(FTempStream,'/Producer '+EncodePDFText(FDocProducer));
  SWriteLine(FTempStream,'/Author '+EncodePDFText(FDocAuthor));
- if Length(FDocCreationDate) = 0 then
- begin
-  SWriteLine(FTempStream,'/CreationDate (D:'+  DateToISO(FInternalFDocCreationDate)+')');
- end
- else
- begin
-  SWriteLine(FTempStream,'/CreationDate (D:'+  FDocCreationDate+')');
- end;
- if (FPDFConformance <> PDF_A_3) then
-   SWriteLine(FTempStream,'/Creator '+EncodePDFText(FDocCreator));
+ SWriteLine(FTempStream,'/CreationDate ('+FInfoCreationDate+')');
+ SWriteLine(FTempStream,'/ModDate ('+FInfoModDate+')');
+ if Length(FDocCreator)>0 then
+  SWriteLine(FTempStream,'/Creator '+EncodePDFText(FDocCreator));
  if (Length(FDocKeywords)>0) then
-  SWriteLine(FTempStream,'/Keywords '+EncodePdfText(FDocKeywords))
- else
- begin
-  if (PDFConformance = TPDFConformanceType.PDF_1_4) then
-    SWriteLine(FTempStream,'/Keywords ()');
- end;
-
+  SWriteLine(FTempStream,'/Keywords '+EncodePdfText(FDocKeywords));
  SWriteLine(FTempStream,'/Subject '+EncodePdfText(FDocSubject));
  SWriteLine(FTempStream,'/Title '+EncodePdfText(FDocTitle));
- if Length(FDocModificationDate) = 0 then
- begin
-  if (PDFConformance = TPDFConformanceType.PDF_1_4) then
-   SWriteLine(FTempStream,'/ModDate ()');
- end
- else
- begin
- // SWriteLine(FTempStream,'/ModDate (D:'+  FDocModificationDate+')');
- end;
- if (FPDFConformance = PDF_A_3) then
- begin
-  SWriteLine(FTempStream,'/GTS_PDFXVersion (PDF/A-3B)');
- end;
  SWriteLine(FTempStream,'>>');
  SWriteLine(FTempStream,'endobj');
  AddToOffset(FTempStream.Size);
@@ -848,19 +1018,25 @@ begin
 end;
 {$ENDIF}
 
-procedure TrpPDFFIle.WriteStream(stream,dest: TMemoryStream);
-{$IFDEF USEZLIB}
+// The rest of a stream object, from its /Length on. /Length1, the length of the
+// decoded program, belongs to the font files only (ISO 32000-1, 9.9, table 125)
+procedure TrpPDFFIle.WriteStream(stream,dest: TMemoryStream; FontProgram: Boolean);
 var
+ length1:string;
+{$IFDEF USEZLIB}
  Fmem: TMemoryStream;
 {$ENDIF}
 begin
+ if FontProgram then
+  length1:=' /Length1 ' + IntToStr(stream.Size)
+ else
+  length1:='';
 {$IFDEF USEZLIB}
  if (FCompressed) then
  begin
   fmem:=CompressStream(stream);
   try
-   SWriteLine(dest,' /Length ' + IntToStr(fmem.Size) + ' /Length1 ' +
-     IntToStr(stream.Size));
+   SWriteLine(dest,' /Length ' + IntToStr(fmem.Size) + length1);
    SWriteLine(dest,'/Filter [/FlateDecode]');
    SWriteLine(dest,'>>');
    SWriteLine(dest,'stream');
@@ -873,7 +1049,7 @@ begin
  else
 {$ENDIF}
  begin
-  SWriteLine(dest,' /Length ' + IntToStr(stream.Size) + ' /Length1 ' + IntToStr(stream.Size));
+  SWriteLine(dest,' /Length ' + IntToStr(stream.Size) + length1);
   SWriteLine(dest,'>>');
   SWriteLine(dest,'stream');
   stream.SaveToStream(dest);
@@ -894,18 +1070,21 @@ begin
   ResourceStream:=FObjectCount;
   FTempStream.Clear;
   SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+  // The embedded file stream (ISO 32000-1, 7.11.4, table 45): its MIME type is the
+  // Subtype, and its parameters (table 46: Size, CreationDate, ModDate) go here, not
+  // in the file specification. The dates are PDF dates
   SWriteLine(FTempStream,'<< /Type /EmbeddedFile ');
   if Length(efile.MimeType)>0 then
   begin
    SWriteLine(FTempStream,'   /Subtype /'+StringReplace(efile.MimeType,'/','#2F',[rfreplaceAll]));
-   SWriteLine(FTempStream,'   /MimeType ' + EncodePDFText(efile.MimeType));
   end;
-  if (efile.ModificationDate.Length>0) then
-  begin
-    SWriteLine(FTempStream,'   /Params <<');
-    SWriteLine(FTempStream,'   /ModDate (D:'+efile.ModificationDate+')');
-    SWriteLine(FTempStream,'   >>');
-  end;
+  SWriteLine(FTempStream,'   /Params <<');
+  SWriteLine(FTempStream,'   /Size '+IntToStr(efile.Stream.Size));
+  if Length(PDFDateOfText(efile.CreationDate))>0 then
+   SWriteLine(FTempStream,'   /CreationDate ('+PDFDateOfText(efile.CreationDate)+')');
+  if Length(PDFDateOfText(efile.ModificationDate))>0 then
+   SWriteLine(FTempStream,'   /ModDate ('+PDFDateOfText(efile.ModificationDate)+')');
+  SWriteLine(FTempStream,'   >>');
   efile.Stream.Position:=0;
   WriteStream(efile.Stream, FTempStream);
   SWriteLine(FTempStream,'endobj');
@@ -922,26 +1101,10 @@ begin
 
   SWriteLine(FTempStream,'   /Desc '+EncodePDFText(efile.Description));
   SWriteLine(FTempStream,'   /UF ' + EncodePDFText(efile.FileName));
-  SWriteLine(FTempStream,'   /EF << /F ' + IntToStr(ResourceStream) + ' 0 R >>');
+  SWriteLine(FTempStream,'   /EF << /F ' + IntToStr(ResourceStream) + ' 0 R /UF ' +
+   IntToStr(ResourceStream) + ' 0 R >>');
 
   SWriteLine(FTempStream,'   /AFRelationship /'+efile.AFRelationShipToString());
-  SWriteLine(FTempStream,'/Params <<');
-  SWriteLine(FTempStream,'  /Size '+IntToStr(efile.Stream.Size));
-  if Length(efile.MimeType)>0 then
-  begin
-   SWriteLine(FTempStream,'  /MIMEType '+EncodePDFText(efile.MimeType));
-  end;
-
-  if Length(efile.CreationDate)>0 then
-  begin
-   SWriteLine(FTempStream,'  /CreationDate (D:'+efile.CreationDate+')');
-  end;
-  if Length(efile.ModificationDate)>0 then
-  begin
-   SWriteLine(FTempStream,'  /ModificationDate (D:'+efile.ModificationDate+')');
-  end;
-
-  SWriteLine(FTempStream,'  >>');
   SWriteLine(FTempStream,'>>');
   SWriteLine(FTempStream,'endobj');
   AddToOffset(FTempStream.Size);
@@ -1062,21 +1225,15 @@ begin
   SWriteLine(FXMPStream, '        <rdf:li xml:lang="x-default">'+EscapeXML(FDocSubject)+'</rdf:li>');
   SWriteLine(FXMPStream, '      </rdf:Alt>');
   SWriteLine(FXMPStream, '    </dc:description>');
-  if Length(FDocCreationDate)= 0 then
-   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+DateToISO8601(FInternalFDocCreationDate) (* 2024-10-02T15:29:15+00:00 *)
-     +'</xmp:CreateDate>')
-  else
-   SWriteLine(FXMPStream, '    <xmp:CreateDate>'+EscapeXML(FDocCreationDate) (* 2024-10-02T15:29:15+00:00 *)
-     +'</xmp:CreateDate>');
-//  if Length(FDocModificationDate) > 0 then
-//  begin
- //  SWriteLine(FXMPStream, '    <xmp:ModifyDate>'+EscapeXML(FDocModificationDate)+'</xmp:ModifyDate>');
- // end;
+  // The same values as the Info dictionary (BeginDoc)
+  SWriteLine(FXMPStream, '    <xmp:CreateDate>'+FXMPCreateDate+'</xmp:CreateDate>');
+  SWriteLine(FXMPStream, '    <xmp:ModifyDate>'+FXMPModifyDate+'</xmp:ModifyDate>');
+  if Length(FDocCreator) > 0 then
+   SWriteLine(FXMPStream, '    <xmp:CreatorTool>'+EscapeXML(FDocCreator)+'</xmp:CreatorTool>');
   if Length(FDocProducer) > 0 then
-  begin
-   SWriteLine(FXMPStream, '    <xmp:CreatorTool>'+EscapeXML(FDocProducer)+'</xmp:CreatorTool>');
-  end;
-  // SWriteLine(FXMPStream, '    <xmp:ModifyDate>2024-10-02T15:29:15+00:00</xmp:ModifyDate>');
+   SWriteLine(FXMPStream, '    <pdf:Producer>'+EscapeXML(FDocProducer)+'</pdf:Producer>');
+  if Length(FDocKeywords) > 0 then
+   SWriteLine(FXMPStream, '    <pdf:Keywords>'+EscapeXML(FDocKeywords)+'</pdf:Keywords>');
   //SWriteLine(FXMPStream, '    <xmpMM:DocumentID>uuid:12345678-1234-1234-1234-1234567890ab</xmpMM:DocumentID>');
   //SWriteLine(FXMPStream, '    <xmpMM:InstanceID>uuid:12345678-1234-1234-1234-1234567890ac</xmpMM:InstanceID>');
   SWriteLine(FXMPStream, '    <pdfaid:part>3</pdfaid:part>');
@@ -1707,7 +1864,9 @@ begin
   guidString:=guidstring.Replace('{','');
   guidString:=guidstring.Replace('}','');
 {$ENDIF}
-  SWriteLine(FTempStream,'/ID [<'+guidstring+'> <1234567890abcdef1234567890abcdef>]');
+  // A new document: the permanent and the changing identifier are the same
+  // (ISO 32000-1, 14.4)
+  SWriteLine(FTempStream,'/ID [<'+guidstring+'> <'+guidstring+'>]');
  end;
  SWriteLine(FTempStream,'>>');
  SWriteLine(FTempStream,'startxref');
@@ -4344,8 +4503,15 @@ begin
    FObjectCount:=FObjectCount+1;
    FTempStream.Clear;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
+    adata.FontProgramIsSubset:=false;
     FontStream:=Canvas.InfoProvider.GetFontStream(adata);
     //FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
+   // A subset carries a tag of six capital letters and + before its name (ISO
+   // 32000-1, 9.6.4) in /FontName and /BaseFont; a whole font program does not
+   if adata.FontProgramIsSubset then
+    adata.SubsetTag:=SubsetTagOf(adata.postcriptname,i)
+   else
+    adata.SubsetTag:='';
    // AN OPENTYPE FONT WITH CFF OUTLINES (12-10-2026) went as a TrueType font program
    // (/FontFile2, CIDFontType2), which only holds glyf outlines: viewers warn of the mismatch
    // and a PDF/A validator rejects it. It goes as /FontFile3 /OpenType with a CIDFontType0
@@ -4353,19 +4519,13 @@ begin
    // charset, or a whole collection, stays as it was.
    adata.CFFOpenType:=(not adata.Type1) and Assigned(FontStream) and
     SfntIsCFF(FontStream,0) and CFFGlyphsAreCIDs(FontStream,0);
+   // A font file stream has no /Type (ISO 32000-1, 9.9)
    if adata.CFFOpenType then
     SWriteLine(FTempStream,'<< /Subtype /OpenType')
    else
-   if (FPDFConformance = PDF_A_3) then
-   begin
-    SWriteLine(FTempStream,'<< /Type /FontFile2');
-   end
-   else
-   begin
-     SWriteLine(FTempStream,'<< ');
-   end;
+    SWriteLine(FTempStream,'<< ');
    try
-    WriteStream(FontStream,FTempStream);
+    WriteStream(FontStream,FTempStream,not adata.CFFOpenType);
    finally
     FontStream.Free;
    end;
@@ -4377,6 +4537,7 @@ begin
   else
   begin
    adata.ObjectIndex:=0;
+   adata.SubsetTag:='';
   end;
   // Writes font descriptor
   FObjectCount:=FObjectCount+1;
@@ -4386,11 +4547,11 @@ begin
   SWriteLine(FTempStream,'<< /Type /FontDescriptor');
   if adata.isunicode then
   begin
-   SWriteLine(FTempStream,'/FontName /'+adata.postcriptname);
+   SWriteLine(FTempStream,'/FontName /'+adata.SubsetTag+adata.postcriptname);
    SWriteLine(FTempStream,'/FontFamily('+adata.familyname+')');
   end
   else
-   SWriteLine(FTempStream,'/FontName /'+adata.postcriptname);
+   SWriteLine(FTempStream,'/FontName /'+adata.SubsetTag+adata.postcriptname);
   SWriteLine(FTempStream,'/Flags '+IntToStr(adata.Flags));
   SWriteLine(FTempStream,'/FontBBox ['+
    IntToStr(adata.FontBBox.Left)+' '+
@@ -4671,7 +4832,7 @@ begin
    SWriteLine(FTempStream,'<< /Type /Font');
    SWriteLine(FTempStream,'/Subtype /Type0');
    SWriteLine(FTempStream,'/Name /F'+adata.ObjectName);
-   SWriteLine(FTempStream,'/BaseFont /'+CONS_UNICODEPREDIX+adata.postcriptname);
+   SWriteLine(FTempStream,'/BaseFont /'+adata.SubsetTag+CONS_UNICODEPREDIX+adata.postcriptname);
    SWriteLine(FTempStream,'/Encoding /Identity-H');
    //SWriteLine(FTempStream,'/Encoding /PDFDocEncoding');
    SWriteLine(FTempStream,'/DescendantFonts [ '+IntToStr(FObjectCount+1)+' 0 R ]');
@@ -4698,7 +4859,7 @@ begin
    begin
     SWriteLine(FTempStream,'/Subtype /CIDFontType2');
    end;
-   SWriteLine(FTempStream,'/BaseFont /'+CONS_UNICODEPREDIX+adata.postcriptname);
+   SWriteLine(FTempStream,'/BaseFont /'+adata.SubsetTag+CONS_UNICODEPREDIX+adata.postcriptname);
 
    SWriteLine(FTempStream,'/FontDescriptor '+
     IntToStr(adata.DescriptorIndex)+' 0 R');
@@ -4818,7 +4979,7 @@ begin
     SWriteLine(FTempStream,'/Subtype /TrueType');
    end;
    SWriteLine(FTempStream,'/Name /F'+adata.ObjectName);
-   SWriteLine(FTempStream,'/BaseFont /'+adata.postcriptname);
+   SWriteLine(FTempStream,'/BaseFont /'+adata.SubsetTag+adata.postcriptname);
    SWriteLine(FTempStream,'/FirstChar '+IntToStr(adata.firstloaded));
    SWriteLine(FTempStream,'/LastChar '+IntToStr(adata.lastloaded));
    awidths:='[';

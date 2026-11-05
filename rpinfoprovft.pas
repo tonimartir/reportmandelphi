@@ -3106,6 +3106,8 @@ begin
         Result.SetSize(Int64(Length(instanceBytes)));
         Move(instanceBytes[0], Result.Memory^, Length(instanceBytes));
         Result.Position := 0;
+        // The instance holds only the glyphs used
+        data.FontProgramIsSubset:=true;
       end
       else
         Result:=GetFontStreamNative(data);
@@ -3135,6 +3137,7 @@ begin
            begin
              Result.SetSize(LongInt(outSize));
              Move(outData^, Result.Memory^, outSize);
+             data.FontProgramIsSubset:=true;
            end;
            Result.Position := 0;
          finally
@@ -3199,6 +3202,7 @@ begin
           subset := TTrueTypeFontSubSet.Create(data.PostcriptName, bytes,
                 GlyphsUsed, data.FontData.DirectoryOffset);
      bytes := subset.Execute();
+     data.FontProgramIsSubset:=subset.Subsetted;
      end;
      Result:=TMemoryStream.Create;
      Result.SetSize(Int64(Length(bytes)));

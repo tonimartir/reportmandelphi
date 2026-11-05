@@ -1689,6 +1689,7 @@ begin
          Result.SetSize(outSize);
          Move(outData^, Result.Memory^, outSize);
          Result.Position := 0;
+         data.FontProgramIsSubset:=true;
 
        finally
          hb_face_destroy(newFace);
@@ -1741,6 +1742,7 @@ begin
      subset := TTrueTypeFontSubSet.Create(data.PostcriptName, bytes,
                 GlyphsUsed, data.FontData.DirectoryOffset);
      bytes := subset.Execute();
+     data.FontProgramIsSubset:=subset.Subsetted;
      Result:=TMemoryStream.Create;
      Result.SetSize(Length(bytes));
      Result.Seek(0,soFromBeginning);

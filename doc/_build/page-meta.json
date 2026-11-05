@@ -185,8 +185,8 @@
     "desc": "Combine multiple datasets side by side with parallel unions to build columnar reports, joining tables on common fields with Q01_ prefixed column names."
   },
   "/doc/pdfoutput.html": {
-    "title": "PDF font embedding implementation",
-    "desc": "How native PDF output works: TrueType and Type1 font embedding, Unicode, compression, and FreeType-based font matching on Linux versus Windows."
+    "title": "PDF output implementation",
+    "desc": "How the PDF output works: font selection, shaping and subsetting on Windows, Linux and macOS, embedded TrueType, OpenType and Type1 fonts, and PDF/A-3 with attached files."
   },
   "/doc/php.html": {
     "title": "Call Report Manager from PHP",
