@@ -55,6 +55,9 @@ type
     FCommonObject: TRpSizePosInterface;
     FClasses: TStringList;
     FClassAncestors: TStringList;
+    FLabelWidth: Integer;
+    function GetLabelWidth: Integer;
+    procedure SetLabelWidth(Value: Integer);
     procedure AddCompItemPos(aitem: TRpSizePosInterface; onlyone: Boolean);
     procedure SetCompItem(Value: TRpSizeInterface);
     function CreatePanel(acompo: TRpSizeInterface): TRpPanelObjLCL;
@@ -85,6 +88,9 @@ type
     property DesignFrame: TObject read FDesignFrame write FDesignFrame;
     property Combo: TComboBox read GetComboBox;
     property SelectedItems: TStringList read FSelectedItems;
+    // Width in screen pixels of the column of the property names, shared by
+    // all the panels; the splitter of any of them changes it in all
+    property LabelWidth: Integer read GetLabelWidth write SetLabelWidth;
   end;
 
   { TRpPageObjLCL }
@@ -120,6 +126,9 @@ type
     FLabelPopup: TPopupMenu;
     FLabelHelpItem: TMenuItem;
     FIsSubReport: Boolean;
+    FLabelPanels: TList;
+    function LabelColumnWidth: Integer;
+    procedure LabelSplitterMoved(Sender: TObject);
     procedure SetHelpLabel(ALabel: TLabel; const APage: string);
     procedure LabelMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure LabelMouseEnter(Sender: TObject);
@@ -244,6 +253,7 @@ begin
   LControls := TStringList.Create;
   LControls2 := TStringList.Create;
   AList := TStringList.Create;
+  FLabelPanels := TList.Create;
   FUpdatingValues := False;
   // The context menu of the labels: help on the property
   FLabelPopup := TPopupMenu.Create(Self);
@@ -264,7 +274,23 @@ begin
   LControls.Free;
   LControls2.Free;
   AList.Free;
+  FLabelPanels.Free;
   inherited Destroy;
+end;
+
+function TRpPanelObjLCL.LabelColumnWidth: Integer;
+begin
+  if Owner is TFRpObjInspLCL then
+    Result := TFRpObjInspLCL(Owner).LabelWidth
+  else
+    Result := ScaleDpi(CONS_CONTROLPOS);
+end;
+
+procedure TRpPanelObjLCL.LabelSplitterMoved(Sender: TObject);
+begin
+  // The label panel starts at 0: the splitter is at its right edge
+  if Owner is TFRpObjInspLCL then
+    TFRpObjInspLCL(Owner).LabelWidth := TSplitter(Sender).Left;
 end;
 
 // THE HELP OF A PROPERTY (12-10-2026). Each property names the page of the documentation that
@@ -413,7 +439,8 @@ begin
   PParent.Parent := AScrollBox;
 
   PLeft := TPanel.Create(Self);
-  PLeft.Width := ScaleDpi(CONS_CONTROLPOS);
+  PLeft.Width := LabelColumnWidth;
+  FLabelPanels.Add(PLeft);
   PLeft.BorderStyle := bsNone;
   PLeft.BevelInner := bvNone;
   PLeft.BevelOuter := bvNone;
@@ -427,6 +454,7 @@ begin
   Psplit.Width := ScaleDpi(4);
   // alLeft controls are ordered by Left: keep the splitter after PLeft
   Psplit.Left := PLeft.Left + PLeft.Width;
+  Psplit.OnMoved := LabelSplitterMoved;
   Psplit.Align := alLeft;
   Psplit.Parent := PParent;
 
@@ -541,7 +569,8 @@ begin
   pageall.PParent := PParent;
 
   PLeft := TPanel.Create(Self);
-  PLeft.Width := ScaleDpi(CONS_CONTROLPOS);
+  PLeft.Width := LabelColumnWidth;
+  FLabelPanels.Add(PLeft);
   PLeft.BorderStyle := bsNone;
   PLeft.BevelInner := bvNone;
   PLeft.BevelOuter := bvNone;
@@ -555,6 +584,7 @@ begin
   Psplit.Width := ScaleDpi(4);
   // alLeft controls are ordered by Left: keep the splitter after PLeft
   Psplit.Left := PLeft.Left + PLeft.Width;
+  Psplit.OnMoved := LabelSplitterMoved;
   Psplit.Align := alLeft;
   Psplit.Parent := PParent;
 
@@ -609,7 +639,8 @@ begin
       apage.PParent.Parent := NScrollBox;
 
       apage.PLeft := TPanel.Create(Self);
-      apage.PLeft.Width := ScaleDpi(CONS_CONTROLPOS);
+      apage.PLeft.Width := LabelColumnWidth;
+      FLabelPanels.Add(apage.PLeft);
       apage.PLeft.BorderStyle := bsNone;
       apage.PLeft.BevelInner := bvNone;
       apage.PLeft.BevelOuter := bvNone;
@@ -622,6 +653,7 @@ begin
       Psplit.MinSize := 10;
       Psplit.Width := ScaleDpi(4);
       Psplit.Left := apage.PLeft.Left + apage.PLeft.Width;
+      Psplit.OnMoved := LabelSplitterMoved;
       Psplit.Align := alLeft;
       Psplit.Parent := apage.PParent;
 
@@ -1823,6 +1855,30 @@ begin
       TRpPanelObjLCL(FPropPanels.Objects[i]).Visible := False;
   end;
   Result.Visible := True;
+end;
+
+function TFRpObjInspLCL.GetLabelWidth: Integer;
+begin
+  if FLabelWidth > 0 then
+    Result := FLabelWidth
+  else
+    Result := ScaleDpi(CONS_CONTROLPOS);
+end;
+
+procedure TFRpObjInspLCL.SetLabelWidth(Value: Integer);
+var
+  i, j: Integer;
+  apanel: TRpPanelObjLCL;
+begin
+  if Value < ScaleDpi(20) then
+    Value := ScaleDpi(20);
+  FLabelWidth := Value;
+  for i := 0 to FPropPanels.Count - 1 do
+  begin
+    apanel := TRpPanelObjLCL(FPropPanels.Objects[i]);
+    for j := 0 to apanel.FLabelPanels.Count - 1 do
+      TPanel(apanel.FLabelPanels[j]).Width := Value;
+  end;
 end;
 
 function TFRpObjInspLCL.CreatePanel(acompo: TRpSizeInterface): TRpPanelObjLCL;
