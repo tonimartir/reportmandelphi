@@ -315,7 +315,7 @@ procedure ExFilterImage(memstream:TMemoryStream);
 implementation
 
 uses
- rplcllayout, rpcocoaprint;
+ rplcllayout, rpcocoaprint, rpformcenterlcl;
 
 {$R *.lfm}
 
@@ -500,7 +500,12 @@ begin
    sheetwait.Free;
   end;
 {$ELSE}
-  executed:=dia.execute;
+  RpBeginCenterDialog;
+  try
+   executed:=dia.execute;
+  finally
+   RpEndCenterDialog;
+  end;
 {$ENDIF}
   if executed then
   begin
@@ -1499,7 +1504,7 @@ begin
          propy:=(rec.Bottom-rec.Top)/bitmap.Height;
          if (propy>propx) then
          begin
-          H:=Round((rec.Right-rec.Left)*propx/propy);
+          H:=Round((rec.Bottom-rec.Top)*propx/propy);
           rec.Top:=rec.Top+((rec.Bottom-rec.Top)-H) div 2;
           rec.Bottom:=rec.Top+H;
          end

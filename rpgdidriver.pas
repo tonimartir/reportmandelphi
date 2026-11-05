@@ -1340,7 +1340,7 @@ begin
                   propy := (rec.Bottom - rec.Top) / bitmap.Height;
                   if (propy > propx) then
                   begin
-                    H := Round((rec.Right - rec.Left) * propx / propy);
+                    H := Round((rec.Bottom - rec.Top) * propx / propy);
                     rec.Top := rec.Top + ((rec.Bottom - rec.Top) - H) div 2;
                     rec.Bottom := rec.Top + H;
                   end

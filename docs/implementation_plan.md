@@ -389,7 +389,8 @@ leyendo el ciclo completo):
   FireDac con `DriverName=FireDac` y `DriverID=SQLite` se rechazaba.
 
 Diferencias que quedan con el VCL (no aplican en FPC): exportar a Excel
-(OLE), controladores ADO, BDE, IBX y .NET, el editor de conexiones de
+(OLE), controladores BDE, IBX y .NET (ADO solo en Windows, con el protocolo
+`OleDB` de Zeos), el editor de conexiones de
 FireDAC, el canal directo WebRTC y Monaco en Linux (decisión de esperar a
 GTK3). La ejecución asíncrona de la vista previa (Preferencias >
 Asíncrono) no se portó.

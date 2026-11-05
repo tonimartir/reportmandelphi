@@ -216,6 +216,13 @@ var
  // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
  // takes precedence when assigned.
  DBXConnectionsFileOverride:string='';
+{$IFDEF USEADOZEOS}
+const
+ // Seconds to wait for an ADO (Zeos OleDB) connection when its string has no
+ // Connect Timeout: an unreachable server fails instead of waiting forever
+ RP_ADO_DEFAULT_CONNECT_TIMEOUT=30;
+var
+{$ENDIF}
 {$IFDEF FPC}
  // Folder of the report open in the designer: a MyBase file that is not found
  // (a relative name, a connection without DATABASE) is looked for there. The
@@ -495,6 +502,9 @@ type
 {$IFDEF USEADO}
    procedure ADOQueryBeforeOpen(dataset: TDataSet);
 {$ENDIF}
+{$IFDEF USEADOZEOS}
+   procedure ZAdoQueryAfterOpen(dataset: TDataSet);
+{$ENDIF}
 {$IFDEF USEBDE}
    procedure SetRangeForTable(lastrange:boolean);
 {$ENDIF}
@@ -616,6 +626,19 @@ function EncodeADOPassword(astring:String):String;
 // The connection string edited over the one of EncodeADOPassword: a masked
 // password (only '*') is the one of the original string
 function RestoreADOPassword(const AEdited,AOriginal:String):String;
+{$IFDEF USEADOZEOS}
+// FPC on Windows opens the ADO connections with the OleDB protocol of Zeos:
+// the OLE DB initialization string of an ADO connection string (a .udl of
+// "File Name" read, the MSDASQL provider when there is none, as ADO) and its
+// user and password, that Zeos writes again in the string
+function AdoToOleDbConnectionString(const AConn:string;
+  out AUser,APassword:string):string;
+// The login timeout in seconds of an ADO connection string: its Connect
+// Timeout (also Connection Timeout), 0 meaning no limit as in ADO, or
+// RP_ADO_DEFAULT_CONNECT_TIMEOUT. Zeos gives the provider no limit unless
+// its timeout property is set, also over the one of the string
+function AdoConnectTimeout(const AConn:string):integer;
+{$ENDIF}
 // A Reportman AI Agent connection (rpdbHttp) is only a name in the report:
 // its Hub database and API key are read from the connections file. The
 // design assistant of the Hub adds connections by name, so the ones that the
@@ -2412,6 +2435,10 @@ var
 {$IFDEF USEADO}
  report:TRpBasereport;
 {$ENDIF}
+{$IFDEF USEADOZEOS}
+ report:TRpBasereport;
+ adoconnstr,adouser,adopassword:string;
+{$ENDIF}
 {$IFDEF USESQLEXPRESS}
  funcname,drivername,vendorlib,libraryname:string;
 {$ENDIF}
@@ -2884,7 +2911,58 @@ begin
       else
        FProvidedADOConnection.Connected:=True;
   {$ELSE}
+  {$IFDEF USEADOZEOS}
+      if Not Assigned(FZConnection) then
+      begin
+       FZInternalDatabase:=TZConnection.Create(nil);
+       FZConnection:=FZInternalDatabase;
+      end;
+      if FZConnection.Connected then
+       exit;
+      adoconnstr:=ADOConnectionString;
+      if (TRpDatabaseInfoList(Collection).FReport is TRpBaseReport) then
+      begin
+       report:=TRpDatabaseInfoList(Collection).FReport As TRpBaseReport;
+       if report.Params.IndexOf(Alias+'_ADOCONNECTIONSTRING')>=0 then
+        adoconnstr:=report.Params.ParamByName(Alias+'_ADOCONNECTIONSTRING').AsString
+       else
+        if report.Params.IndexOf('ADOCONNECTIONSTRING')>=0 then
+         adoconnstr:=report.Params.ParamByName('ADOCONNECTIONSTRING').AsString;
+      end;
+      if Trim(adoconnstr)='' then
+       Raise Exception.Create(SrpDriverADO+' - '+Alias+': the ADO connection string is empty');
+      // COM in the calling thread (the workers of the designer): Zeos
+      // initializes it only in the first thread that opens a connection
+      CoInitialize(nil);
+      FZConnection.LoginPrompt:=FLoginPrompt;
+      // The OleDB protocol of Zeos, not its ado one: with ado, Zeos 8.0
+      // fails executing a query again (detail datasets) and binding date
+      // parameters, and sends sql_variant parameters to SQLOLEDB
+      FZConnection.Protocol:='OleDB';
+      FZConnection.HostName:='';
+      FZConnection.Port:=0;
+      FZConnection.LibraryLocation:='';
+      FZConnection.Properties.Clear;
+      // The parameters are bound with the types of the report, as
+      // TADOQuery does, not with the ones the provider guesses (MSOLEDBSQL
+      // took :P+1 for an integer)
+      FZConnection.Properties.Values['DeferPrepare']:='True';
+      // Login timeout (Zeos sets no limit by default)
+      FZConnection.Properties.Values['timeout']:=IntToStr(AdoConnectTimeout(adoconnstr));
+      // No limit for the queries, as TADOQuery.CommandTimeout:=0 in the VCL
+      // driver (Zeos OleDB stops a statement after 60 seconds by default)
+      FZConnection.Properties.Values['StatementTimeOut']:='0';
+      // The provider keeps its own transaction (as TADOConnection)
+      FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiNone;
+      adoconnstr:=AdoToOleDbConnectionString(adoconnstr,adouser,adopassword);
+      // Zeos writes them again in the string it opens
+      FZConnection.User:=adouser;
+      FZConnection.Password:=adopassword;
+      FZConnection.Database:=adoconnstr;
+      FZConnection.Connected:=true;
+  {$ELSE}
       Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverADO);
+  {$ENDIF}
   {$ENDIF}
      end;
     rpdataibo:
@@ -3280,6 +3358,32 @@ begin
 end;
 {$ENDIF}
 
+{$IFDEF USEADOZEOS}
+procedure TRpDataInfoItem.ZAdoQueryAfterOpen(dataset: TDataSet);
+var
+ i,j:integer;
+ aname:string;
+ numbered:boolean;
+begin
+ // A column without name: Zeos calls it Column, Column_1..., ADO (the VCL
+ // reports) COLUMN and its position, as PLAN.COLUMN1
+ for i:=0 to dataset.Fields.Count-1 do
+ begin
+  aname:=dataset.Fields[i].FieldName;
+  numbered:=(Copy(aname,1,7)='Column_') and (Length(aname)>7);
+  if numbered then
+   for j:=8 to Length(aname) do
+    if not (aname[j] in ['0'..'9']) then
+     numbered:=false;
+  if (aname='Column') or numbered then
+   dataset.Fields[i].FieldName:='COLUMN'+IntToStr(i+1);
+ end;
+ // The AfterOpen of Connect
+ if Cached and Assigned(FOnConnect) then
+  FOnConnect(dataset);
+end;
+{$ENDIF}
+
 procedure TRpDataInfoItem.Connect(databaseinfo:TRpDatabaseInfoList;params:TRpParamList);
 var
  index:integer;
@@ -3422,7 +3526,7 @@ begin
        Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
 {$ENDIF}
       end;
-     rpdatazeos:
+     rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
       begin
 {$IFDEF USEZEOS}
        FSQLInternalQuery:=TZReadOnlyQuery.Create(nil);
@@ -3458,6 +3562,7 @@ begin
        Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverBDE);
 {$ENDIF}
       end;
+{$IFNDEF USEADOZEOS}
      rpdataado:
       begin
 {$IFDEF USEADO}
@@ -3469,6 +3574,7 @@ begin
        Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverADO);
 {$ENDIF}
       end;
+{$ENDIF}
      rpdataibo:
       begin
 {$IFDEF USEIBO}
@@ -3544,7 +3650,7 @@ begin
        end;
 {$ENDIF}
       end;
-     rpdatazeos:
+     rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
       begin
 {$IFDEF USEZEOS}
        if Not (FSQLInternalQuery is TZReadOnlyQuery) then
@@ -3582,6 +3688,7 @@ begin
        end;
 {$ENDIF}
       end;
+{$IFNDEF USEADOZEOS}
      rpdataado:
       begin
 {$IFDEF USEADO}
@@ -3596,6 +3703,7 @@ begin
        end;
 {$ENDIF}
       end;
+{$ENDIF}
      rpdataibo:
       begin
 {$IFDEF USEIBO}
@@ -3677,7 +3785,7 @@ begin
       TIBQuery(FSQLInternalQuery).DataSource:=nil;
 {$ENDIF}
      end;
-    rpdatazeos:
+    rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
      begin
 {$IFDEF USEZEOS}
       TZReadOnlyQuery(FSQLInternalQuery).Connection:=
@@ -3884,6 +3992,7 @@ begin
       end;
 {$ENDIF}
      end;
+{$IFNDEF USEADOZEOS}
     rpdataado:
      begin
 {$IFDEF USEADO}
@@ -3904,6 +4013,7 @@ begin
       end;
 {$ENDIF}
      end;
+{$ENDIF}
     rpdataibo:
      begin
 {$IFDEF USEIBO}
@@ -3993,7 +4103,13 @@ begin
      atype:=VarTypeToDataType(Vartype(avalue));
 {$ENDIF}
 {$IFDEF FPC}
-     Raise Exception.Create('Freepascal does not implement VarTypeToDataType');
+    begin
+     // The type of the value, as VarTypeToDataType of Delphi (a list
+     // parameter, an expression); the unicode strings of FPC too
+     atype:=rpparams.VariantTypeToDataType(avalue);
+     if (atype=ftUnknown) and VarIsStr(avalue) then
+      atype:=ftWideString;
+    end;
 {$ENDIF}
     if (param.ParamType in [rpParamSubst,rpParamSubstE,rpParamSubstList,rpParamMultiple]) then
      continue;
@@ -4015,11 +4131,19 @@ begin
         TIBQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
 {$ENDIF}
        end;
-      rpdatazeos:
+      rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
        begin
 {$IFDEF USEZEOS}
-        TZReadOnlyQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
-        TZReadOnlyQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
+{$IFDEF USEADOZEOS}
+        // ADO assigns only the parameters the SQL has (VCL rpdataado):
+        // a report parameter of the dataset may not be used in its SQL
+        if (baseinfo.Driver<>rpdataado) or
+         Assigned(TZReadOnlyQuery(FSQLInternalQuery).Params.FindParam(param.Name)) then
+{$ENDIF}
+        begin
+         TZReadOnlyQuery(FSQLInternalQuery).ParamByName(param.Name).DataType:=atype;
+         TZReadOnlyQuery(FSQLInternalQuery).ParamByName(param.Name).Value:=avalue;
+        end;
 {$ENDIF}
        end;
       rpdatabde:
@@ -4034,6 +4158,7 @@ begin
          Raise Exception.Create(SrpParamBDENotSupported);
 {$ENDIF}
        end;
+{$IFNDEF USEADOZEOS}
       rpdataado:
        begin
 {$IFDEF USEADO}
@@ -4052,6 +4177,7 @@ begin
 //        TADOQuery(FSQLInternalQuery).Parameters.ParamByName(param.Name).Value:=param.ListValue;
 {$ENDIF}
        end;
+{$ENDIF}
       rpdataibo:
        begin
 {$IFDEF USEIBO}
@@ -4137,7 +4263,7 @@ begin
         AssignParamValuesIBX(TIBQuery(FSQLInternalQuery),datainfosource.Dataset);
 {$ENDIF}
       end;
-     rpdatazeos:
+     rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
       begin
 {$IFDEF USEZEOS}
        FDataLink:=TRpDataLink.Create;
@@ -4194,6 +4320,7 @@ begin
        end;
 {$ENDIF}
       end;
+{$IFNDEF USEADOZEOS}
      rpdataado:
       begin
 {$IFDEF USEADO}
@@ -4207,6 +4334,7 @@ begin
         FMasterSource.DataSet:=datainfosource.Dataset;
 {$ENDIF}
       end;
+{$ENDIF}
      rpdataibo:
       begin
 {$IFDEF USEIBO}
@@ -4273,6 +4401,11 @@ begin
     FSQLInternalQuery.AfterOpen:=nil;
     FSQLInternalQuery.AfterClose:=nil;
    end;
+{$IFDEF USEADOZEOS}
+   // The names of ADO for the columns without name (it calls OnConnect)
+   if (baseinfo.Driver=rpdataado) and (FSQLInternalQuery is TZReadOnlyQuery) then
+    FSQLInternalQuery.AfterOpen:=ZAdoQueryAfterOpen;
+{$ENDIF}
    if Assigned(FDataLink) then
     FDataLink.DoRecordChange;
    FSQLInternalQuery.Active:=true;
@@ -4999,7 +5132,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
 {$ENDIF}
    end;
-  rpdatazeos:
+  rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
    begin
 {$IFDEF USEZEOS}
     res:=FZConnection.DbcConnection.GetMetadata.GetColumns('','',atable,'');
@@ -5033,6 +5166,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverBDE);
 {$ENDIF}
    end;
+{$IFNDEF USEADOZEOS}
   rpdataado:
    begin
 {$IFDEF USEADO}
@@ -5041,6 +5175,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverADO);
 {$ENDIF}
    end;
+{$ENDIF}
   rpdataibo:
    begin
 {$IFDEF USEIBO}
@@ -5086,7 +5221,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
 {$ENDIF}
    end;
-  rpdatazeos:
+  rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
    begin
 {$IFDEF USEZEOS}
     res:=FZConnection.DbcConnection.GetMetadata.GetTables('','','',nil);
@@ -5115,6 +5250,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverBDE);
 {$ENDIF}
    end;
+{$IFNDEF USEADOZEOS}
   rpdataado:
    begin
 {$IFDEF USEADO}
@@ -5123,6 +5259,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverADO);
 {$ENDIF}
    end;
+{$ENDIF}
   rpdataibo:
    begin
 {$IFDEF USEIBO}
@@ -5210,7 +5347,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverIBX);
 {$ENDIF}
    end;
-  rpdatazeos:
+  rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
    begin
 {$IFDEF USEZEOS}
     FSQLInternalQuery:=TZReadOnlyQuery.Create(nil);
@@ -5238,6 +5375,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverBDE);
 {$ENDIF}
    end;
+{$IFNDEF USEADOZEOS}
   rpdataado:
    begin
 {$IFDEF USEADO}
@@ -5249,6 +5387,7 @@ begin
     Raise Exception.Create(SRpDriverNotSupported+' - '+SrpDriverADO);
 {$ENDIF}
    end;
+{$ENDIF}
   rpdataibo:
    begin
 {$IFDEF USEIBO}
@@ -5344,7 +5483,7 @@ begin
       end;
 {$ENDIF}
      end;
-    rpdatazeos:
+    rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
      begin
 {$IFDEF USEZEOS}
       if assigned(astream) then
@@ -5376,6 +5515,7 @@ begin
       end;
 {$ENDIF}
      end;
+{$IFNDEF USEADOZEOS}
     rpdataado:
      begin
 {$IFDEF USEADO}
@@ -5405,6 +5545,7 @@ begin
       end;
 {$ENDIF}
      end;
+{$ENDIF}
     rpdataibo:
      begin
 {$IFDEF USEIBO}
@@ -5438,7 +5579,7 @@ begin
      TIBQuery(FSQLInternalQuery).ExecSQL;
  {$ENDIF}
     end;
-   rpdatazeos:
+   rpdatazeos{$IFDEF USEADOZEOS},rpdataado{$ENDIF}:
     begin
  {$IFDEF USEZEOS}
      TZReadOnlyQuery(FSQLInternalQuery).ExecSQL;
@@ -5454,12 +5595,14 @@ begin
      TQuery(FSQLInternalQuery).ExecSQL;
  {$ENDIF}
     end;
+{$IFNDEF USEADOZEOS}
    rpdataado:
     begin
  {$IFDEF USEADO}
      TADOQuery(FSQLInternalQuery).ExecSQL;
  {$ENDIF}
     end;
+{$ENDIF}
    rpdataibo:
     begin
  {$IFDEF USEIBO}
@@ -6492,6 +6635,10 @@ begin
 
  reopen:=false;
  dtype:=dbinfoitem.driver;
+{$IFDEF USEADOZEOS}
+ if dtype=rpdataado then
+  dtype:=rpdatazeos;
+{$ENDIF}
  // See if the parameters are equal
 {$IFDEF USEZEOS}
  if dtype=rpdatazeos then
@@ -6660,6 +6807,176 @@ begin
  Result:=Copy(AEdited,1,editstart-1)+Copy(AOriginal,origstart,origlength)+
   Copy(AEdited,editstart+editlength,Length(AEdited));
 end;
+
+{$IFDEF USEADOZEOS}
+// The parts name=value of a connection string (';' inside quotes kept)
+procedure SplitConnectionString(const AConn:string;AParts:TStrings);
+var
+ i,start:integer;
+ quote:char;
+begin
+ AParts.Clear;
+ quote:=#0;
+ start:=1;
+ for i:=1 to Length(AConn)+1 do
+ begin
+  if i>Length(AConn) then
+  begin
+   if Trim(Copy(AConn,start,i-start))<>'' then
+    AParts.Add(Trim(Copy(AConn,start,i-start)));
+  end
+  else
+  if quote<>#0 then
+  begin
+   if AConn[i]=quote then
+    quote:=#0;
+  end
+  else
+  if (AConn[i]='"') or (AConn[i]='''') then
+   quote:=AConn[i]
+  else
+  if AConn[i]=';' then
+  begin
+   if Trim(Copy(AConn,start,i-start))<>'' then
+    AParts.Add(Trim(Copy(AConn,start,i-start)));
+   start:=i+1;
+  end;
+ end;
+end;
+
+function ConnectionPartName(const APart:string):string;
+var
+ index:integer;
+begin
+ index:=Pos('=',APart);
+ if index=0 then
+  Result:=Trim(APart)
+ else
+  Result:=Trim(Copy(APart,1,index-1));
+end;
+
+function ConnectionPartValue(const APart:string):string;
+var
+ index:integer;
+begin
+ Result:='';
+ index:=Pos('=',APart);
+ if index=0 then
+  exit;
+ Result:=Trim(Copy(APart,index+1,Length(APart)));
+ if (Length(Result)>=2) and ((Result[1]='"') or (Result[1]='''')) and
+  (Result[Length(Result)]=Result[1]) then
+  Result:=Copy(Result,2,Length(Result)-2);
+end;
+
+// The initialization string of a Microsoft Data Link file (.udl, UTF-16)
+function ReadUdlConnectionString(const AFileName:string):string;
+var
+ stream:TMemoryStream;
+ wide:UnicodeString;
+ text:string;
+ lines:TStringList;
+ i:integer;
+begin
+ Result:='';
+ stream:=TMemoryStream.Create;
+ lines:=TStringList.Create;
+ try
+  stream.LoadFromFile(AFileName);
+  if (stream.Size>=2) and (PByte(stream.Memory)[0]=$FF) and
+   (PByte(stream.Memory)[1]=$FE) then
+  begin
+   SetLength(wide,(stream.Size-2) div 2);
+   if Length(wide)>0 then
+    Move(PByte(stream.Memory)[2],wide[1],Length(wide)*2);
+   text:=UTF8Encode(wide);
+  end
+  else
+   SetString(text,PAnsiChar(stream.Memory),stream.Size);
+  lines.Text:=text;
+  for i:=0 to lines.Count-1 do
+  begin
+   text:=Trim(lines[i]);
+   if (text<>'') and (text[1]<>';') and (text[1]<>'[') then
+    Result:=text;
+  end;
+ finally
+  lines.Free;
+  stream.Free;
+ end;
+end;
+
+function AdoToOleDbConnectionString(const AConn:string;
+  out AUser,APassword:string):string;
+var
+ parts,udlparts:TStringList;
+ i,j:integer;
+ name:string;
+ hasprovider:boolean;
+begin
+ AUser:='';
+ APassword:='';
+ hasprovider:=false;
+ Result:='';
+ parts:=TStringList.Create;
+ udlparts:=TStringList.Create;
+ try
+  SplitConnectionString(AConn,parts);
+  // ADO opens a Data Link file: its string in the place of File Name
+  for i:=parts.Count-1 downto 0 do
+   if SameText(ConnectionPartName(parts[i]),'File Name') then
+   begin
+    SplitConnectionString(ReadUdlConnectionString(ConnectionPartValue(parts[i])),
+     udlparts);
+    parts.Delete(i);
+    for j:=udlparts.Count-1 downto 0 do
+     parts.Insert(i,udlparts[j]);
+   end;
+  for i:=0 to parts.Count-1 do
+  begin
+   name:=ConnectionPartName(parts[i]);
+   if SameText(name,'Provider') then
+    hasprovider:=true
+   else
+   if SameText(name,'User ID') then
+    AUser:=ConnectionPartValue(parts[i])
+   else
+   if SameText(name,'Password') then
+    APassword:=ConnectionPartValue(parts[i]);
+   if Result<>'' then
+    Result:=Result+';';
+   Result:=Result+parts[i];
+  end;
+  // The default provider of ADO: ODBC
+  if not hasprovider then
+   Result:='Provider=MSDASQL;'+Result;
+ finally
+  udlparts.Free;
+  parts.Free;
+ end;
+end;
+
+function AdoConnectTimeout(const AConn:string):integer;
+var
+ parts:TStringList;
+ i:integer;
+ name:string;
+begin
+ Result:=RP_ADO_DEFAULT_CONNECT_TIMEOUT;
+ parts:=TStringList.Create;
+ try
+  SplitConnectionString(AConn,parts);
+  for i:=0 to parts.Count-1 do
+  begin
+   name:=ConnectionPartName(parts[i]);
+   if SameText(name,'Connect Timeout') or SameText(name,'Connection Timeout') then
+    Result:=StrToIntDef(Trim(ConnectionPartValue(parts[i])),Result);
+  end;
+ finally
+  parts.Free;
+ end;
+end;
+{$ENDIF}
 
 procedure GetDotNetDrivers(alist:TStrings);
 begin

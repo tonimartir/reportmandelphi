@@ -851,3 +851,14 @@
 {$IFDEF LINUX}
  {$DEFINE LINUX_USEHARFBUZZ_SUBSETFONT}
 {$ENDIF}
+
+// FPC has no ADODB: on Windows the ADO connections (rpdataado) are opened
+// with the OleDB protocol of Zeos (the ADO connection string is an OLE DB
+// initialization string, see AdoToOleDbConnectionString in rpdatainfo)
+{$IFDEF FPC}
+ {$IFDEF MSWINDOWS}
+  {$IFDEF USEZEOS}
+   {$DEFINE USEADOZEOS}
+  {$ENDIF}
+ {$ENDIF}
+{$ENDIF}

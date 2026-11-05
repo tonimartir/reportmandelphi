@@ -249,6 +249,8 @@ type
     procedure SetShowAIChat(Value: Boolean);
     procedure LoadDesignerPreferences;
     procedure SaveDesignerPreferences;
+    procedure LoadDesignerLayout;
+    procedure SaveDesignerLayout;
     procedure ResolveInitialDesignChatSchemaContext(out AHubDatabaseId,
       AHubSchemaId: Int64; out ASchemaApiKey: string; out ALocalAlias,
       ALocalSchemaName: string);
@@ -294,6 +296,7 @@ type
     function ShouldHandleDesignerUndoShortcut: Boolean;
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
   public
     // Toolbar buttons (those of the VCL toolbar)
     BtnNew: TToolButton;
@@ -481,7 +484,7 @@ uses
   // rpchatdialogvcl CollectAgentSchemaOnlyContext and
   // BuildDesignExpressionContextJson)
   IniFiles, LCLIntf, PrintersDlgs, md5, rpmdsysinfolcl, rpauthmanager, rpxmlstream, rpexpredlglcl,
-  rpmdfnewreportwizardlcl, rplcllayout,
+  rpmdfnewreportwizardlcl, rplcllayout, rpformcenterlcl,
   // Report library: connections editor and tree (rpeditconnvcl, rpmdftreevcl)
   rpeditconnlcl, rpmdftreelcl,
   rplcldriver,
@@ -770,6 +773,9 @@ begin
   // View > AI chat, units, status bar... as the user left them (VCL
   // LoadConfig)
   LoadDesignerPreferences;
+  // Window, left panel, structure, inspector and AI panel as the user left
+  // them
+  LoadDesignerLayout;
   if not MenuViewAIChat.Checked then
     ApplyChatPanelVisibility;
   // The hints of the menus and buttons go to the status bar (VCL AppHint)
@@ -778,6 +784,7 @@ begin
   KeyPreview := True;
   OnKeyDown := FormKeyDown;
   OnCloseQuery := FormCloseQuery;
+  OnClose := FormClose;
 
   // Initialize with a blank report
   NewReport;
@@ -1251,7 +1258,10 @@ begin
   FStructure.Align := alTop;
   FStructure.Height := Scale96ToScreen(280);
 
+  // Aligned controls are ordered by position: the splitters must start
+  // after the panel they resize, or they end up before it and do nothing
   SplitterStruct := TSplitter.Create(PLeft);
+  SplitterStruct.Top := FStructure.Top + FStructure.Height;
   SplitterStruct.Parent := PLeft;
   SplitterStruct.Align := alTop;
   SplitterStruct.Height := Scale96ToScreen(5);
@@ -1265,6 +1275,7 @@ begin
 
   // 5. Main Splitter
   SplitterMain := TSplitter.Create(Self);
+  SplitterMain.Left := PLeft.Left + PLeft.Width;
   SplitterMain.Parent := Self;
   SplitterMain.Align := alLeft;
   SplitterMain.Width := Scale96ToScreen(5);
@@ -1559,6 +1570,123 @@ begin
   except
     // A preference that can not be saved does not stop the designer
   end;
+end;
+
+// THE LAYOUT OF THE DESIGNER (05-11-2026). Own section of the preferences
+// file, the VCL designer does not read it. The window is kept in screen
+// pixels (positions on the desktop); the panels in pixels at 96 DPI, so they
+// keep their size relative to the text when the scale of the screen changes.
+const
+  LAYOUT_SECTION = 'DesignerLCLLayout';
+
+procedure TFRpMainFLCL.LoadDesignerLayout;
+var
+  inif: TIniFile;
+  arect: TRect;
+  w, h, maxw: Integer;
+  maximized: Boolean;
+begin
+  try
+    inif := TIniFile.Create(DesignerConfigFileName);
+    try
+      w := inif.ReadInteger(LAYOUT_SECTION, 'Width', 0);
+      h := inif.ReadInteger(LAYOUT_SECTION, 'Height', 0);
+      maximized := inif.ReadBool(LAYOUT_SECTION, 'Maximized', False);
+      if (w >= 400) and (h >= 300) then
+      begin
+        arect := Bounds(inif.ReadInteger(LAYOUT_SECTION, 'Left', 0),
+          inif.ReadInteger(LAYOUT_SECTION, 'Top', 0), w, h);
+        // A monitor that is no longer there: keep the centered default
+        if Assigned(Screen.MonitorFromRect(arect, mdNull)) then
+        begin
+          Position := poDesigned;
+          BoundsRect := arect;
+        end;
+      end;
+      if maximized then
+        WindowState := wsMaximized;
+
+      maxw := Width - Scale96ToScreen(200);
+      w := inif.ReadInteger(LAYOUT_SECTION, 'LeftPanelWidth', 0);
+      if w > 0 then
+      begin
+        w := Scale96ToScreen(w);
+        if w > maxw then
+          w := maxw;
+        if w >= Scale96ToScreen(100) then
+          PLeft.Width := w;
+      end;
+      h := inif.ReadInteger(LAYOUT_SECTION, 'StructureHeight', 0);
+      if h > 0 then
+      begin
+        h := Scale96ToScreen(h);
+        if h < Scale96ToScreen(60) then
+          h := Scale96ToScreen(60);
+        FStructure.Height := h;
+      end;
+      w := inif.ReadInteger(LAYOUT_SECTION, 'AIPanelWidth', 0);
+      if w > 0 then
+      begin
+        w := Scale96ToScreen(w);
+        if w > maxw then
+          w := maxw;
+        if w >= Scale96ToScreen(150) then
+          PAIPanel.Width := w;
+      end;
+      w := inif.ReadInteger(LAYOUT_SECTION, 'InspectorLabelWidth', 0);
+      if w > 0 then
+        FObjInsp.LabelWidth := Scale96ToScreen(w);
+    finally
+      inif.Free;
+    end;
+  except
+    // An unreadable preferences file keeps the default layout
+  end;
+end;
+
+procedure TFRpMainFLCL.SaveDesignerLayout;
+var
+  inif: TIniFile;
+begin
+  try
+    inif := TIniFile.Create(DesignerConfigFileName);
+    try
+      inif.WriteBool(LAYOUT_SECTION, 'Maximized', WindowState = wsMaximized);
+      // The size to come back to when the window is not maximized
+      if WindowState = wsNormal then
+      begin
+        inif.WriteInteger(LAYOUT_SECTION, 'Left', Left);
+        inif.WriteInteger(LAYOUT_SECTION, 'Top', Top);
+        inif.WriteInteger(LAYOUT_SECTION, 'Width', Width);
+        inif.WriteInteger(LAYOUT_SECTION, 'Height', Height);
+      end
+      else if (RestoredWidth > 0) and (RestoredHeight > 0) then
+      begin
+        inif.WriteInteger(LAYOUT_SECTION, 'Left', RestoredLeft);
+        inif.WriteInteger(LAYOUT_SECTION, 'Top', RestoredTop);
+        inif.WriteInteger(LAYOUT_SECTION, 'Width', RestoredWidth);
+        inif.WriteInteger(LAYOUT_SECTION, 'Height', RestoredHeight);
+      end;
+      inif.WriteInteger(LAYOUT_SECTION, 'LeftPanelWidth',
+        ScaleScreenTo96(PLeft.Width));
+      inif.WriteInteger(LAYOUT_SECTION, 'StructureHeight',
+        ScaleScreenTo96(FStructure.Height));
+      inif.WriteInteger(LAYOUT_SECTION, 'AIPanelWidth',
+        ScaleScreenTo96(PAIPanel.Width));
+      inif.WriteInteger(LAYOUT_SECTION, 'InspectorLabelWidth',
+        ScaleScreenTo96(FObjInsp.LabelWidth));
+      inif.UpdateFile;
+    finally
+      inif.Free;
+    end;
+  except
+    // A layout that can not be saved does not stop the designer
+  end;
+end;
+
+procedure TFRpMainFLCL.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  SaveDesignerLayout;
 end;
 
 procedure TFRpMainFLCL.ApplyChatPanelVisibility;
@@ -4046,7 +4174,12 @@ var
 begin
   psetup := TPrinterSetupDialog.Create(nil);
   try
-    psetup.Execute;
+    RpBeginCenterDialog(Self);
+    try
+      psetup.Execute;
+    finally
+      RpEndCenterDialog;
+    end;
   finally
     psetup.Free;
   end;

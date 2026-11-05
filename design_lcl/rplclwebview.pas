@@ -68,6 +68,9 @@ type
     // Handler objects (not owned); WebView2 may call them after the control
     // is gone, so CloseWebView disconnects them
     FHandlerObjects: TList;
+    // The window handle was destroyed with the browser alive: it waits in
+    // the parking window until CreateWnd gives it the new handle
+    FParked: Boolean;
     procedure DetachHandlers;
     procedure UpdateWebViewBounds;
     procedure DoEnvironmentCreated(errorCode: HResult; const AEnv: ICoreWebView2Environment);
@@ -187,6 +190,19 @@ begin
 end;
 
 { TRpWebViewHandler }
+
+var
+  GParkingWindow: HWND = 0;
+
+// A hidden window of the process for the browsers whose control has no
+// handle for a moment (TRpLCLWebView.DestroyWnd)
+function ParkingWindow: HWND;
+begin
+  if (GParkingWindow = 0) or not IsWindow(GParkingWindow) then
+    GParkingWindow := CreateWindowExW(0, 'STATIC', 'RpWebViewParking', WS_POPUP,
+      0, 0, 0, 0, 0, 0, HInstance, nil);
+  Result := GParkingWindow;
+end;
 
 constructor TRpWebViewHandler.Create(AControl: TRpLCLWebView);
 begin
@@ -599,6 +615,19 @@ end;
 procedure TRpLCLWebView.CreateWnd;
 begin
   inherited CreateWnd;
+{$IFDEF MSWINDOWS}
+  // The browser of the previous handle (a form shown again modally recreates
+  // its windows): back in this one, with its page and its state
+  if FParked and (FController <> nil) then
+  begin
+    FParked := False;
+    FController.Put_ParentWindow(Handle);
+    UpdateWebViewBounds;
+    if Visible then
+      FController.Put_IsVisible(1);
+    FController.NotifyParentWindowPositionChanged;
+  end;
+{$ENDIF}
 {$IF DEFINED(MSWINDOWS) OR DEFINED(RPWEBKIT)}
   if (not FWebViewCreated) and (not FWebViewCreating) and (FPendingUrl <> '') then
     CreateWebView;
@@ -611,6 +640,14 @@ begin
   // If window handle is destroyed while creating, reset state
   if FWebViewCreating and (not FWebViewCreated) then
     FWebViewCreating := False;
+  // The browser window is a child of this handle and would go with it (the
+  // editor stayed grey until the designer was restarted): it waits hidden
+  if (FController <> nil) and (not FIsDestroying) then
+  begin
+    FController.Put_IsVisible(0);
+    if Succeeded(FController.Put_ParentWindow(ParkingWindow)) then
+      FParked := True;
+  end;
 {$ENDIF}
 {$IFDEF RPWEBKIT}
   // The WKWebView is a subview of the handle that goes away
@@ -801,6 +838,7 @@ begin
   FWebMsgReceivedHandler := nil;
   FCtrlHandler := nil;
   FEnvHandler := nil;
+  FParked := False;
 {$ENDIF}
 {$IFDEF RPWEBKIT}
   if FWKView <> nil then
@@ -1145,4 +1183,9 @@ end;
 
 {$ENDIF}
 
+{$IFDEF MSWINDOWS}
+finalization
+  if (GParkingWindow <> 0) and IsWindow(GParkingWindow) then
+    DestroyWindow(GParkingWindow);
+{$ENDIF}
 end.

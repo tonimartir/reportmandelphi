@@ -34,10 +34,10 @@ encontrado en ellas está al final, sin corregir).
 | Esquema (Agente) | Selector de esquemas con la tarjeta de cuenta, primero los de la base elegida; guarda `ApiKey`/`HubDatabaseId` del esquema en la conexión nueva | Igual (`TFRpAISchemaSelectorLCL`, carga en segundo plano) |
 | ¿Tiene esquema? (directa) | Sí / No | Igual |
 | Esquema (directa) | Selector de esquemas | Igual |
-| Controlador | Familia (FireDAC, Zeos, dbExpress, BDE, DAO) y controlador concreto | FireDAC (SQLite) y Zeos, ver abajo |
+| Controlador | Familia (FireDAC, Zeos, dbExpress, BDE, DAO) y controlador concreto | FireDAC (SQLite) y Zeos; DAO solo en Windows; ver abajo |
 | Nombre de la conexión (directa) | Existentes de la familia con el controlador, Probar conexión, o una nueva | Igual |
 | Parámetros | Los del controlador (editor según el tipo), Probar conexión; al seguir se guardan | Igual; la prueba va en un hilo |
-| Cadena ADO | Solo DAO | No existe en FPC (no hay ADO) |
+| Cadena ADO | Solo DAO: la cadena, *Build Connection String* (`PromptDataSource`) y Probar conexión (`TADOConnection`) | Solo en Windows: igual (`PromptDataSource` de Zeos; la prueba abre la cadena con el motor, en un hilo). Conexión `ADO` del informe con su cadena, como el VCL |
 | Finalizar | Ejemplo y petición para la IA; con petición y sin esquema pregunta si seguir sin IA | Igual |
 
 Las páginas de login con conexión existente y de login del esquema directo,
@@ -45,9 +45,11 @@ que el VCL no alcanza nunca (`NextPageFor` no lleva a ellas), se portan
 igual.
 
 El resultado es el del VCL: el informe nuevo (`CreateNew`, grupo `TOTAL`,
-secciones de 275) con la conexión elegida (`rpdbHttp`, `rpfiredac` o
-`rpdatazeos`), y la petición, la base de datos, el esquema y la API key del
-Hub para el chat.
+secciones de 275) con la conexión elegida (`rpdbHttp`, `rpfiredac`,
+`rpdatazeos` o, en Windows, `rpdataado`), y la petición, la base de datos, el
+esquema y la API key del Hub para el chat. El asistente de conexión (*Añadir
+conexión*) devuelve también la cadena ADO, que el diálogo de datos guarda en
+la conexión `ADO`.
 
 ## Conexiones en FPC (`rpdbxadminlcl`)
 
@@ -73,7 +75,10 @@ Familias:
 - **Zeos**: una conexión `ZeosLib` con el protocolo elegido en
   `Database Protocol` (la clave que lee `rpdatainfo`); los protocolos, los
   del VCL (`ado` solo en Windows).
-- **dbExpress, BDE y DAO**: no están en el motor FPC; no se ofrecen.
+- **DAO** (ADO): solo en Windows, donde el motor abre la cadena ADO con el
+  protocolo `OleDB` de Zeos. No usa `dbxconnections`: la cadena va en la
+  conexión del informe.
+- **dbExpress y BDE**: no están en el motor FPC; no se ofrecen.
 - **Agente**: igual que el VCL.
 
 ## Integración en el diseñador

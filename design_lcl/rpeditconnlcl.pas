@@ -354,10 +354,11 @@ begin
   EReportGroupsTable := NewEdit;
   LAdoConnection := NewLabel(TranslateStr(1119, 'ADO Conn.String'));
   EAdoConnection := NewEdit;
-  // ADO is Windows/Delphi only: the string (password masked, as the VCL
-  // shows it) is kept and shown, not edited
-  EAdoConnection.ReadOnly := True;
-  EAdoConnection.OnChange := nil;
+  // ADO only on Windows (the "ado" protocol of Zeos): elsewhere the string
+  // (password masked, as the VCL shows it) is kept and shown, not edited
+  EAdoConnection.ReadOnly := not IsFpcDriverAvailable(rpdataado);
+  if EAdoConnection.ReadOnly then
+    EAdoConnection.OnChange := nil;
   Inc(y, Scale96ToScreen(6));
 
   bw := Max(Scale96ToScreen(170), TextWidthOf([TranslateStr(143, 'Configure'),
@@ -496,7 +497,15 @@ begin
     dbitem.ReportSearchField := EReportSearchField.Text
   else
   if Sender = EReportGroupsTable then
-    dbitem.ReportGroupsTable := EReportGroupsTable.Text;
+    dbitem.ReportGroupsTable := EReportGroupsTable.Text
+  else
+  if Sender = EAdoConnection then
+  begin
+    // A masked password (only '*') is the one of the string
+    dbitem.DisConnect;
+    dbitem.ADOConnectionString := RestoreADOPassword(EAdoConnection.Text,
+      dbitem.ADOConnectionString);
+  end;
 end;
 
 procedure TFRpEditConLCL.NewConnection(const AName: string);

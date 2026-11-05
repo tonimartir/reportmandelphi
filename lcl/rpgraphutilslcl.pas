@@ -114,7 +114,9 @@ procedure DrawBitmap(Destination:TCanvas;Bitmap:TBitmap;Rec,RecSrc:TRect);
 implementation
 
 uses
- LCLIntf, Math, Clipbrd;
+ LCLIntf, Math, Clipbrd,
+ // Links the centering of the dialogs on the form they are opened from
+ rpformcenterlcl;
 
 {$R *.lfm}
 

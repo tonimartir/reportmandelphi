@@ -1840,7 +1840,13 @@ begin
      else
      begin
       apchar:=PWideChar(Integer(potm)+Integer(potm^.otmpFamilyName));
+{$IFDEF FPC}
+      // apchar is an AnsiString (UTF-8) here: reading it as PWideChar
+      // turned "Arial" into garbage on 32-bit Windows
+      data.FamilyName:=apchar;
+{$ELSE}
       data.FamilyName:=StrPas(PWideChar(apchar));
+{$ENDIF}
       apchar:=PWideChar(Integer(potm)+Integer(potm^.otmpFullName));
       data.FullName:=apchar;
       apchar:=PWideChar(Integer(potm)+Integer(potm^.otmpStyleName));

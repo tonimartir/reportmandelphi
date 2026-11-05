@@ -3425,6 +3425,125 @@ end else
   Result[1]:=WideString(UpperCase(Result))[1];
 end;
 
+// Polish: the integer part in words and the hundredths as a fraction, the
+// usual form in Polish documents ("sto dwadziescia trzy 45/100", with accents).
+// The Polish letters are written as character codes: this unit is plain ASCII
+function NumberToTextPolish(Amount:currency;female:boolean):WideString;
+const
+ Units:array[0..19] of WideString=('','jeden','dwa','trzy','cztery',
+  'pi'#$0119#$0107,'sze'#$015B#$0107,'siedem','osiem','dziewi'#$0119#$0107,
+  'dziesi'#$0119#$0107,'jedena'#$015B'cie','dwana'#$015B'cie',
+  'trzyna'#$015B'cie','czterna'#$015B'cie','pi'#$0119'tna'#$015B'cie',
+  'szesna'#$015B'cie','siedemna'#$015B'cie','osiemna'#$015B'cie',
+  'dziewi'#$0119'tna'#$015B'cie');
+ Tens:array[2..9] of WideString=('dwadzie'#$015B'cia','trzydzie'#$015B'ci',
+  'czterdzie'#$015B'ci','pi'#$0119#$0107'dziesi'#$0105't',
+  'sze'#$015B#$0107'dziesi'#$0105't','siedemdziesi'#$0105't',
+  'osiemdziesi'#$0105't','dziewi'#$0119#$0107'dziesi'#$0105't');
+ Hundreds:array[1..9] of WideString=('sto','dwie'#$015B'cie','trzysta',
+  'czterysta','pi'#$0119#$0107'set','sze'#$015B#$0107'set','siedemset',
+  'osiemset','dziewi'#$0119#$0107'set');
+ // Forms for 1, for 2-4 and for 5 or more of each power of a thousand
+ Scales:array[0..11] of WideString=(
+  'tysi'#$0105'c','tysi'#$0105'ce','tysi'#$0119'cy',
+  'milion','miliony','milion'#$00F3'w',
+  'miliard','miliardy','miliard'#$00F3'w',
+  'bilion','biliony','bilion'#$00F3'w');
+var
+ a:currency;
+ Num,Fracture:Int64;
+
+ function Join(const s1,s2:WideString):WideString;
+ begin
+  if (Length(s1)>0) and (Length(s2)>0) then
+   Result:=s1+' '+s2
+  else
+   Result:=s1+s2;
+ end;
+
+ // 0 for 1, 1 for 2-4 (but not 12-14), 2 for the rest
+ function PluralForm(n:integer):integer;
+ begin
+  if n=1 then
+   Result:=0
+  else
+  if ((n mod 10) in [2..4]) and not ((n mod 100) in [12..14]) then
+   Result:=1
+  else
+   Result:=2;
+ end;
+
+ // 0..999, female gives "dwie" (the "jedna" of a single 1 is in IntegerToText)
+ function GroupToText(n:integer;fem:boolean):WideString;
+ var
+  r:integer;
+ begin
+  Result:='';
+  if n>=100 then
+   Result:=Hundreds[n div 100];
+  r:=n mod 100;
+  if r>=20 then
+  begin
+   Result:=Join(Result,Tens[r div 10]);
+   r:=r mod 10;
+  end;
+  if fem and (r=2) then
+   Result:=Join(Result,'dwie')
+  else
+   Result:=Join(Result,Units[r]);
+ end;
+
+ function IntegerToText(n:Int64;fem:boolean):WideString;
+ var
+  scale,g:integer;
+ begin
+  if n=0 then
+  begin
+   Result:='zero';
+   exit;
+  end;
+  if fem and (n=1) then
+  begin
+   Result:='jedna';
+   exit;
+  end;
+  Result:=GroupToText(n mod 1000,fem);
+  n:=n div 1000;
+  scale:=0;
+  while n>0 do
+  begin
+   g:=n mod 1000;
+   // "tysiac", not "jeden tysiac"
+   if g=1 then
+    Result:=Join(Scales[3*scale],Result)
+   else
+   if g>0 then
+    Result:=Join(Join(GroupToText(g,false),Scales[3*scale+PluralForm(g)]),Result);
+   n:=n div 1000;
+   inc(scale);
+  end;
+ end;
+
+begin
+ // A currency is an Int64 scaled by 10000: integer arithmetic is exact, the
+ // floating point one overflows near the limits (Win64 has no Extended)
+ a:=Amount;
+ Num:=PInt64(@a)^;
+ if Num<0 then
+  Num:=-Num;
+ Fracture:=((Num mod 10000)+50) div 100;
+ Num:=Num div 10000;
+ if Fracture>=100 then
+ begin
+  inc(Num);
+  Fracture:=0;
+ end;
+ Result:=IntegerToText(Num,female);
+ if Fracture>0 then
+  Result:=Result+' '+Format('%.2d',[Fracture])+'/100';
+ Result[1]:=WideUpperCase(Copy(Result,1,1))[1];
+end;
+
 
 function NumberToText(FNumero:currency;female:boolean;idiom:integer):WideString;
 begin
@@ -3446,6 +3565,8 @@ begin
 {$ENDIF}
   13:
    Result:=NumberToTextSpanishMex(FNumero,female);
+  23:
+   Result:=NumberToTextPolish(FNumero,female);
  end;
 end;
 

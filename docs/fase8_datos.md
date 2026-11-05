@@ -46,9 +46,21 @@ encontrado en ellas está al final, sin corregir).
   entradas sin `DriverName` no se ofrecen (el VCL no ofrece ninguna para
   MyBase). Una conexión que ya está en el informe no se añade dos veces.
 - **Combo del controlador**: solo los controladores del build; si el informe
-  tiene una conexión con otro (ADO, IBX, BDE, .Net...), ese aparece solo para
-  ella, marcado *(No disponible)*, y se conserva: abrir y aceptar un informe
-  así no cambia nada.
+  tiene una conexión con otro (IBX, BDE, .Net... y ADO fuera de Windows), ese
+  aparece solo para ella, marcado *(No disponible)*, y se conserva: abrir y
+  aceptar un informe así no cambia nada.
+- **ADO en Windows**: es un controlador más del build. El motor abre la cadena
+  ADO con el protocolo `OleDB` de Zeos (`USEADOZEOS` en `rpconf.inc`,
+  `AdoToOleDbConnectionString` en `rpdatainfo`): cualquier proveedor OLE DB
+  instalado (`SQLOLEDB`, `MSOLEDBSQL`, `MSOLEDBSQL19`...), `File Name=*.udl`
+  y `MSDASQL` cuando la cadena no tiene `Provider`, como ADO. No el protocolo
+  `ado` de Zeos 8.0: falla al volver a ejecutar una consulta (detalles) y con
+  parámetros de fecha, y manda `sql_variant` a SQLOLEDB. Los parámetros se
+  enlazan con el tipo del informe (`DeferPrepare`), como `TADOQuery`. Con ADO
+  elegido, la cadena (contraseña enmascarada, `RestoreADOPassword` al
+  guardarla) y *Build...* (el diálogo *Data Link* de Windows,
+  `PromptDataSource` de Zeos) ocupan el lugar del archivo de configuración.
+  *Mostrar datos* abre los datos ADO en el hilo principal (COM).
 - **Cargar parámetros / Cargar parámetros del controlador** (`LoadParams`,
   `LoadDriverParams`), en la copia de trabajo y en el deshacer como el resto.
 - **Conectar** (prueba): en un hilo, sobre una copia de la conexión y de los
@@ -158,8 +170,8 @@ chat ocupa como mucho 2/5 del ancho. Botones de ancho fijo según el texto
 
 ## No portado
 
-- Constructor de cadenas ADO, controladores .Net (`printreport.exe`),
-  pestañas BDE (tabla, índices, rango, filtro): no existen en FPC.
+- Controladores .Net (`printreport.exe`), pestañas BDE (tabla, índices,
+  rango, filtro): no existen en FPC. ADO, solo en Windows (ver arriba).
 - Editor de conexiones FireDAC (FireDAC no está en FPC) y reinicio del pool
   de canales WebRTC al cerrar el diálogo de conexiones (solo Windows/Delphi).
 - Indicador de transporte WebRTC de la ventana de datos (`rpdctransportchip`,
@@ -182,8 +194,9 @@ como allí).
 **`LclDesignerTest --selftest`** (`udataconfigtests.pas`, sin red, sin
 ventanas modales: `Interactive = False` y `OnShowDataset`):
 
-- Pestaña de conexiones: cuatro controladores, Zeos por defecto,
-  descripciones; conexiones ADO y .Net conservadas (*No disponible*) y Aceptar
+- Pestaña de conexiones: cuatro controladores (cinco en Windows, con ADO),
+  Zeos por defecto, descripciones; conexiones .Net (y ADO fuera de Windows)
+  conservadas (*No disponible*) y Aceptar
   sin cambios no graba nada; conexiones del archivo por controlador (FireDAC:
   SQLite y FireDac; Zeos: ZeosLib y MySQL; Agent; ninguna para MyBase);
   el desplegable se rellena sin acumular; añadir una conexión del archivo con

@@ -17,6 +17,8 @@ uses
 {$IFDEF UNIX}
   cthreads,
 {$ENDIF}
+  // First: English texts, before rpmdconsts translates them
+  uenglishui,
   Interfaces, SysUtils, Classes, Forms, process, utestutil, uaichattests,
   uaiexprtests, uaisqltests, uaidesigntests, uaidatatests, uainewreporttests;
 

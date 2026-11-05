@@ -142,6 +142,11 @@ type
     function HubDatabaseOfSchema(AHubSchemaId: Int64): Int64;
     procedure TestAgentExistingConnection;
     procedure TestDirectSqlite;
+{$IFDEF MSWINDOWS}
+    // Microsoft DAO (ADO): the connection string page, new report and
+    // connection wizard
+    procedure TestDirectAdo;
+{$ENDIF}
     procedure TestDirectZeos;
     procedure TestDirectFireDacServer;
     procedure TestDesignerFileNew;
@@ -1368,7 +1373,8 @@ var
 // The connection wizard of RpCheckAgentConnections: writes the connection as
 // the wizard would
 function FakeConnectionWizard(const AFixedName: string; APreferredHubDatabaseId: Int64;
-  out AConnectionName: string; out ADriver: TRpDbDriver): Boolean;
+  out AConnectionName: string; out ADriver: TRpDbDriver;
+  out AAdoConnectionString: string): Boolean;
 var
   LIni: TMemIniFile;
 begin
@@ -1386,6 +1392,7 @@ begin
   end;
   AConnectionName := AFixedName;
   ADriver := rpdbHttp;
+  AAdoConnectionString := '';
   Result := True;
 end;
 
@@ -1396,6 +1403,108 @@ begin
   else
     Result := 0;
 end;
+
+{$IFDEF MSWINDOWS}
+procedure TAINewReportTests.TestDirectAdo;
+const
+  // A provider that is not installed: the test and the schema fail at once,
+  // without a server
+  ADO_STRING = 'Provider=RpNoSuchProvider;Data Source=nowhere;Password=secret';
+var
+  W: TFRpNewReportWizardLCL;
+  LRep: TRpReport;
+
+  function SchemasLoaded: Boolean;
+  begin
+    Result := (W.AISchemaSelector <> nil) and not W.AISchemaSelector.Loading;
+  end;
+
+  function Finished: Boolean;
+  begin
+    Result := W.Committed;
+  end;
+
+begin
+  Section('New report wizard: Microsoft DAO (ADO connection string)');
+  W := NewWizard(LRep);
+  try
+    FAnswerer.Arm(smbOK);
+    W.RbDirect.Checked := True;
+    W.BNextClick(nil);
+    CheckPage(W, wpDriver, 'driver page');
+    CheckEquals('Microsoft DAO', W.CbFamily.Items[2], 'the ADO family (VCL caption)');
+    W.CbFamily.ItemIndex := 2;
+    W.CbFamily.OnChange(W.CbFamily);
+    Check(not W.CbConcrete.Enabled, 'ADO: no driver to choose');
+    CheckEquals(T(2001, 'No driver selection required for Microsoft DAO'),
+      W.LblConcrete.Caption, 'ADO driver label');
+    W.BNextClick(nil);
+    CheckPage(W, wpDaoConn, 'the ADO connection string page');
+    CheckEquals(T(1998, 'ADO Connection String'), W.LStepTitle.Caption, 'page title');
+    CheckEquals(T(933, 'Next'), W.BNext.Caption, 'new report: Next');
+    Check((W.BtnDaoBuild <> nil) and (W.BtnDaoTest <> nil), 'Build and Test buttons');
+    Shot(W, 'newreport_ado');
+    W.EdAdoConnString.Text := '';
+    W.BNextClick(nil);
+    CheckContains(T(2000, 'Please provide an ADO connection string'),
+      FAnswerer.LastText, 'a connection string is required');
+    CheckPage(W, wpDaoConn, 'still the ADO page');
+    W.EdAdoConnString.Text := ADO_STRING;
+    W.BtnDaoTest.Click;
+    Check(W.Operation = woTestAdo, 'ADO test in a worker thread');
+    WaitIdle(W, 'ADO test answered');
+    CheckContains(T(1774, 'Connection failed: '), FAnswerer.LastText,
+      'a provider that is not installed fails');
+    W.BNextClick(nil);
+    CheckPage(W, wpDirectSchema, 'ADO: schema page');
+    CheckEquals(1, LRep.DatabaseInfo.Count, 'the ADO connection in the report');
+    WaitUntil(SchemasLoaded, 20000, 'schemas loaded');
+    Check(W.LblLocalSchemaError.Visible, 'the catalog can not be read: its error shown');
+    // Back keeps the string
+    W.BBackClick(nil);
+    CheckPage(W, wpDaoConn, 'Back: the ADO page');
+    CheckEquals(ADO_STRING, W.EdAdoConnString.Text, 'the string kept');
+    W.BNextClick(nil);
+    CheckPage(W, wpDirectSchema, 'schema page again');
+    WaitUntil(SchemasLoaded, 20000, 'schemas loaded again');
+    W.BNextClick(nil);
+    CheckPage(W, wpFinish, 'finish page');
+    W.BFinishClick(nil);
+    Check(W.Committed, 'finished');
+    CheckEquals('ADO', LRep.DatabaseInfo.Items[0].Alias, 'report connection ADO (VCL)');
+    Check(LRep.DatabaseInfo.Items[0].Driver = rpdataado, 'the ADO driver');
+    CheckEquals(ADO_STRING, LRep.DatabaseInfo.Items[0].ADOConnectionString,
+      'with the connection string');
+  finally
+    FreeWizard(W, LRep);
+  end;
+
+  Section('Connection wizard: Microsoft DAO');
+  W := TFRpNewReportWizardLCL.Create(nil);
+  try
+    W.StartConnectionMode('', 0);
+    W.Show;
+    Pump(150);
+    FAnswerer.Arm(smbOK);
+    W.RbDirect.Checked := True;
+    W.BNextClick(nil);
+    W.CbFamily.ItemIndex := 2;
+    W.CbFamily.OnChange(W.CbFamily);
+    W.BNextClick(nil);
+    CheckPage(W, wpDaoConn, 'the ADO connection string page');
+    CheckEquals(T(935, 'Finish'), W.BNext.Caption, 'the last step: Finish');
+    W.EdAdoConnString.Text := ADO_STRING;
+    W.BNextClick(nil);
+    WaitUntil(Finished, 5000, 'wizard finished');
+    Check(W.ResultDriver = rpdataado, 'result: the ADO driver');
+    CheckEquals('ADO', W.ResultConnection, 'result: the ADO connection (VCL)');
+    CheckEquals(ADO_STRING, W.State.AdoConnectionString, 'result: the connection string');
+  finally
+    W.Free;
+  end;
+  Check(RpAsyncWaitIdle(15000), 'workers of the wizard finished');
+end;
+{$ENDIF}
 
 procedure TAINewReportTests.TestCheckAgentConnections;
 var
@@ -1512,7 +1621,8 @@ begin
     W.BNextClick(nil);
     // F8: no schema question; the schema comes once the connection is known
     CheckPage(W, wpDriver, 'direct route: driver page');
-    CheckEquals(2, W.CbFamily.Items.Count, 'families of the FPC engine: FireDAC / SQLdb and Zeos');
+    CheckEquals({$IFDEF MSWINDOWS}3{$ELSE}2{$ENDIF}, W.CbFamily.Items.Count,
+      'families of the FPC engine: FireDAC / SQLdb and Zeos (and ADO on Windows)');
     CheckEquals(T(1740, 'FireDAC / SQLdb (Cross-platform) - Recommended'), W.CbFamily.Items[0],
       'FireDAC / SQLdb: the FireDAC connections open with SQLdb');
     CheckEquals(0, W.CbFamily.ItemIndex, 'FireDAC by default');
@@ -2067,6 +2177,9 @@ begin
       TestAgentNewConnection;
       TestAgentExistingConnection;
       TestDirectSqlite;
+{$IFDEF MSWINDOWS}
+      TestDirectAdo;
+{$ENDIF}
       TestDirectZeos;
       TestDirectFireDacServer;
       TestDesignerFileNew;
