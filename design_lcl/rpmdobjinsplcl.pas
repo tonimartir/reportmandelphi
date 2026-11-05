@@ -425,6 +425,8 @@ begin
   Psplit.Cursor := crHSplit;
   Psplit.MinSize := 10;
   Psplit.Width := ScaleDpi(4);
+  // alLeft controls are ordered by Left: keep the splitter after PLeft
+  Psplit.Left := PLeft.Left + PLeft.Width;
   Psplit.Align := alLeft;
   Psplit.Parent := PParent;
 
@@ -551,6 +553,8 @@ begin
   Psplit.Cursor := crHSplit;
   Psplit.MinSize := 10;
   Psplit.Width := ScaleDpi(4);
+  // alLeft controls are ordered by Left: keep the splitter after PLeft
+  Psplit.Left := PLeft.Left + PLeft.Width;
   Psplit.Align := alLeft;
   Psplit.Parent := PParent;
 
@@ -617,6 +621,7 @@ begin
       Psplit.Cursor := crHSplit;
       Psplit.MinSize := 10;
       Psplit.Width := ScaleDpi(4);
+      Psplit.Left := apage.PLeft.Left + apage.PLeft.Width;
       Psplit.Align := alLeft;
       Psplit.Parent := apage.PParent;
 

@@ -1251,7 +1251,10 @@ begin
   FStructure.Align := alTop;
   FStructure.Height := Scale96ToScreen(280);
 
+  // Aligned controls are ordered by position: the splitters must start
+  // after the panel they resize, or they end up before it and do nothing
   SplitterStruct := TSplitter.Create(PLeft);
+  SplitterStruct.Top := FStructure.Top + FStructure.Height;
   SplitterStruct.Parent := PLeft;
   SplitterStruct.Align := alTop;
   SplitterStruct.Height := Scale96ToScreen(5);
@@ -1265,6 +1268,7 @@ begin
 
   // 5. Main Splitter
   SplitterMain := TSplitter.Create(Self);
+  SplitterMain.Left := PLeft.Left + PLeft.Width;
   SplitterMain.Parent := Self;
   SplitterMain.Align := alLeft;
   SplitterMain.Width := Scale96ToScreen(5);
