@@ -216,6 +216,13 @@ var
  // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
  // takes precedence when assigned.
  DBXConnectionsFileOverride:string='';
+{$IFDEF USEADOZEOS}
+const
+ // Seconds to wait for an ADO (Zeos OleDB) connection when its string has no
+ // Connect Timeout: an unreachable server fails instead of waiting forever
+ RP_ADO_DEFAULT_CONNECT_TIMEOUT=30;
+var
+{$ENDIF}
 {$IFDEF FPC}
  // Folder of the report open in the designer: a MyBase file that is not found
  // (a relative name, a connection without DATABASE) is looked for there. The
@@ -626,6 +633,11 @@ function RestoreADOPassword(const AEdited,AOriginal:String):String;
 // user and password, that Zeos writes again in the string
 function AdoToOleDbConnectionString(const AConn:string;
   out AUser,APassword:string):string;
+// The login timeout in seconds of an ADO connection string: its Connect
+// Timeout (also Connection Timeout), 0 meaning no limit as in ADO, or
+// RP_ADO_DEFAULT_CONNECT_TIMEOUT. Zeos gives the provider no limit unless
+// its timeout property is set, also over the one of the string
+function AdoConnectTimeout(const AConn:string):integer;
 {$ENDIF}
 // A Reportman AI Agent connection (rpdbHttp) is only a name in the report:
 // its Hub database and API key are read from the connections file. The
@@ -2935,6 +2947,11 @@ begin
       // TADOQuery does, not with the ones the provider guesses (MSOLEDBSQL
       // took :P+1 for an integer)
       FZConnection.Properties.Values['DeferPrepare']:='True';
+      // Login timeout (Zeos sets no limit by default)
+      FZConnection.Properties.Values['timeout']:=IntToStr(AdoConnectTimeout(adoconnstr));
+      // No limit for the queries, as TADOQuery.CommandTimeout:=0 in the VCL
+      // driver (Zeos OleDB stops a statement after 60 seconds by default)
+      FZConnection.Properties.Values['StatementTimeOut']:='0';
       // The provider keeps its own transaction (as TADOConnection)
       FZConnection.TransactIsolationLevel:=ZDbcIntfs.tiNone;
       adoconnstr:=AdoToOleDbConnectionString(adoconnstr,adouser,adopassword);
@@ -6935,6 +6952,27 @@ begin
    Result:='Provider=MSDASQL;'+Result;
  finally
   udlparts.Free;
+  parts.Free;
+ end;
+end;
+
+function AdoConnectTimeout(const AConn:string):integer;
+var
+ parts:TStringList;
+ i:integer;
+ name:string;
+begin
+ Result:=RP_ADO_DEFAULT_CONNECT_TIMEOUT;
+ parts:=TStringList.Create;
+ try
+  SplitConnectionString(AConn,parts);
+  for i:=0 to parts.Count-1 do
+  begin
+   name:=ConnectionPartName(parts[i]);
+   if SameText(name,'Connect Timeout') or SameText(name,'Connection Timeout') then
+    Result:=StrToIntDef(Trim(ConnectionPartValue(parts[i])),Result);
+  end;
+ finally
   parts.Free;
  end;
 end;
