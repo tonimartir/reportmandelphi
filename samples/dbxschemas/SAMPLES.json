@@ -688,7 +688,7 @@
     },
     {
       "name": "Fishes",
-      "description": "The classic fishes sample, without the pictures.",
+      "description": "The classic fishes sample; GRAPHIC is the picture of each fish, printed by the report.",
       "tables": [
         "FISHES"
       ],
@@ -700,7 +700,8 @@
           "SPECIES_NAME",
           "LENGTH_CM",
           "LENGTH_IN",
-          "NOTES"
+          "NOTES",
+          "GRAPHIC"
         ]
       }
     },

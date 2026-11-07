@@ -285,7 +285,9 @@ begin
   BuildControls;
   Height := PreferredHeight;
   ComboAIProvider.ItemIndex := 0; // Standard
-  ComboAIMode.ItemIndex := 0;     // Fast
+  // Reasoning by default: with Fast the AI laid out the columns it added
+  // over the next ones (the samples of the welcome window, 07-11-2026)
+  ComboAIMode.ItemIndex := 1;
   SpinnerTimer.Enabled := False;
   ApplyModernStyling;
   UpdateGaugeVisibility;

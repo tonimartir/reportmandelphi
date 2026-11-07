@@ -488,7 +488,7 @@ uses
   // The local schema of the direct connections for the design assistant
   rplocalschemas, rpfrmlocalschemaslcl,
   // The welcome window with the sample reports
-  rpfrmwelcomelcl;
+  rpfrmwelcomelcl, rpsamplesutil;
 
 const
   // Width of the recent file names in the File menu (VCL C_FILENAME_WIDTH)
@@ -3503,7 +3503,13 @@ begin
   end;
   case action of
     rwaOpenSample:
-      OpenReportFile(samplePath);
+      begin
+        OpenReportFile(samplePath);
+        // A change of its dataset and its report for the copilot, checked
+        // with the AI: the user sends it as it is or changes it
+        if Assigned(FChatFrame) then
+          FChatFrame.SetPromptText(RpSamplePrompt(samplePath));
+      end;
     rwaNewReport:
       BtnNewClick(Self);
     rwaOpenReport:

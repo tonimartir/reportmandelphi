@@ -334,6 +334,9 @@ type
     // A subschema of a direct connection: '' selects the one chosen before in
     // this session, else the first one of the connection, else none
     procedure SelectLocalSchema(const AAlias, ASchemaName: string);
+    // A request written in the input, not sent (the sample of the welcome
+    // window: a change the user can send as it is)
+    procedure SetPromptText(const AText: string);
     // The direct connection selected ('' = a Hub schema) and its subschema
     // ('' = none)
     function GetLocalSchemaAlias: string;
@@ -1433,6 +1436,13 @@ begin
   if not LKnown then
     FLocalSchemaName := '';
   RebuildSchemaItems;
+end;
+
+procedure TFRpChatFrame.SetPromptText(const AText: string);
+begin
+  MemoPrompt.Text := AText;
+  MemoPrompt.SelStart := Length(MemoPrompt.Text);
+  UpdateButtons;
 end;
 
 procedure TFRpChatFrame.SelectLocalSchema(const AAlias, ASchemaName: string);

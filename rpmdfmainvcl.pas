@@ -2955,6 +2955,10 @@ begin
    begin
     DoOpen(samplepath,false);
     FormResize(Self);
+    // A change of its dataset and its report for the copilot, checked with
+    // the AI: the user sends it as it is or changes it
+    if Assigned(fchatframe) then
+     fchatframe.SetPromptText(RpSamplePrompt(samplepath));
    end;
   rwaNewReport:
    ANewExecute(Self);

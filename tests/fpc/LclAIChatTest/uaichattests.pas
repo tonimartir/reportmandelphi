@@ -1159,7 +1159,7 @@ begin
     LForm.Show;
     Pump(50);
     CheckEquals('Standard', LSel.AITier, 'default provider');
-    CheckEquals('Fast', LSel.AIMode, 'default mode');
+    CheckEquals('Reasoning', LSel.AIMode, 'default mode: Reasoning');
     Check(LSel.PGaugeHost.Visible, 'credit gauge for the Hub models');
     LSel.RefreshState;
     CheckContains(T(1525, 'Daily Credit Usage'), LSel.PaintBoxGauge.Hint, 'gauge hint (paid tier)');
@@ -1210,6 +1210,8 @@ begin
     LSel.ComboAIProvider.ItemIndex := 1;
     LSel.ComboAIProviderChange(nil);
     CheckEquals('Precision', LSel.AITier, 'precision provider');
+    LSel.ComboAIMode.ItemIndex := 0;
+    CheckEquals('Fast', LSel.AIMode, 'fast mode');
     LSel.ComboAIMode.ItemIndex := 1;
     CheckEquals('Reasoning', LSel.AIMode, 'reasoning mode');
 
