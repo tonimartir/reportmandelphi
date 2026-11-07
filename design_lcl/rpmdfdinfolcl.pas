@@ -2152,7 +2152,23 @@ begin
       item.SchemaName));
   end
   else
-    FMonacoEditor.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+  begin
+    // A Reportman AI Agent connection: the local subschema of the dataset
+    // while it is in the file, else its Hub schema
+    schemaName := '';
+    if RpCanHaveLocalSchema(dbinfo) then
+      schemaName := RpExistingLocalSubSchema(dbinfo, item.SchemaName);
+    if schemaName <> '' then
+    begin
+      FMonacoEditor.SetHubContext(hubDatabaseId, 0, schemaApiKey);
+      FMonacoEditor.SelectLocalSchema(schemaName);
+    end
+    else
+    begin
+      FMonacoEditor.SelectLocalSchema('');
+      FMonacoEditor.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+    end;
+  end;
   FMonacoEditor.RuntimeDb := runtimeDb;
   if ASyncSqlFromDataInfo then
     FMonacoEditor.AuditText := item.SQLExplanation;
@@ -2176,7 +2192,20 @@ begin
         FChat.SelectLocalSchema(dbinfo.Alias, schemaName);
     end
     else
-      FChat.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+    begin
+      // A Reportman AI Agent connection: the local subschema of the dataset
+      // while it is in the file, else its Hub schema
+      schemaName := '';
+      if RpCanHaveLocalSchema(dbinfo) then
+        schemaName := RpExistingLocalSubSchema(dbinfo, item.SchemaName);
+      if schemaName <> '' then
+      begin
+        FChat.SetHubContext(hubDatabaseId, 0, schemaApiKey);
+        FChat.SelectLocalSchema(dbinfo.Alias, schemaName);
+      end
+      else
+        FChat.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+    end;
   end;
 end;
 
@@ -2204,7 +2233,7 @@ begin
   if FMonacoEditor = nil then
     Exit;
   alias := '';
-  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+  if RpCanHaveLocalSchema(ADatabaseInfo) then
     alias := ADatabaseInfo.Alias;
   if (not AForce) and SameText(alias, FMonacoLocalAlias) then
     Exit;
@@ -2275,7 +2304,7 @@ begin
   if FChat = nil then
     Exit;
   alias := '';
-  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+  if RpCanHaveLocalSchema(ADatabaseInfo) then
     alias := ADatabaseInfo.Alias;
   if (not AForce) and SameText(alias, FChatLocalAlias) then
     Exit;
@@ -2405,6 +2434,30 @@ begin
     end;
     Exit;
   end;
+  // An Agent connection: a local subschema chosen is the one of the dataset,
+  // without its Hub schema; a cloud schema chosen, the other way round
+  if RpCanHaveLocalSchema(dbinfo) and (item <> nil) then
+  begin
+    schemaName := FMonacoEditor.GetLocalSchemaName;
+    if schemaName <> '' then
+    begin
+      // Kept in the working copy: OK records it (schemaName)
+      item.SchemaName := schemaName;
+      item.HubSchemaId := 0;
+      if (FChat <> nil) and not (SameText(FChat.GetLocalSchemaAlias, dbinfo.Alias) and
+        SameText(FChat.GetLocalSchemaName, schemaName)) then
+      begin
+        FSyncingSchemaContext := True;
+        try
+          FChat.SelectLocalSchema(dbinfo.Alias, schemaName);
+        finally
+          FSyncingSchemaContext := False;
+        end;
+      end;
+      Exit;
+    end;
+    item.SchemaName := '';
+  end;
   SyncActiveSchemaContext(FMonacoEditor.HubDatabaseId, FMonacoEditor.HubSchemaId,
     FMonacoEditor.GetSchemaApiKey);
 end;
@@ -2435,6 +2488,26 @@ begin
       FMonacoEditor.SelectLocalSchema(FChat.GetLocalSchemaName);
     Exit;
   end;
+  // An Agent connection: a local subschema chosen is the one of the dataset,
+  // without its Hub schema; a cloud schema chosen, the other way round
+  if RpCanHaveLocalSchema(dbinfo) and (item <> nil) and
+    SameText(FChat.GetLocalSchemaAlias, dbinfo.Alias) and
+    (FChat.GetLocalSchemaName <> '') then
+  begin
+    if not FChat.SchemaChangeFromLoad then
+    begin
+      // Kept in the working copy: OK records it (schemaName)
+      item.SchemaName := FChat.GetLocalSchemaName;
+      item.HubSchemaId := 0;
+    end;
+    if (FMonacoEditor <> nil) and
+      not SameText(FMonacoEditor.GetLocalSchemaName, FChat.GetLocalSchemaName) then
+      FMonacoEditor.SelectLocalSchema(FChat.GetLocalSchemaName);
+    Exit;
+  end;
+  if (not FChat.SchemaChangeFromLoad) and (item <> nil) and
+    RpCanHaveLocalSchema(dbinfo) then
+    item.SchemaName := '';
   // The chat also calls this after loading its list; an empty list (not
   // logged in, no network) is not a choice of the user and must not reset
   // the schema of the dataset (the VCL does)
@@ -3067,8 +3140,9 @@ begin
   item := nil;
   if (FActiveConnIndex >= 0) and (FActiveConnIndex < FWork.DatabaseInfo.Count) then
     item := FWork.DatabaseInfo[FActiveConnIndex];
-  // The local schema only for a connection that runs SQL on this computer
-  MLocalSchemas.Enabled := RpIsLocalSqlDatabase(item);
+  // The local schema for a connection that runs SQL on this computer or a
+  // Reportman AI Agent one (the Agent reads its catalog through the API)
+  MLocalSchemas.Enabled := RpCanHaveLocalSchema(item);
   pt := BSchemas.ClientToScreen(Point(0, BSchemas.Height));
   PopSchemas.PopUp(pt.X, pt.Y);
 end;
@@ -3082,7 +3156,7 @@ begin
   if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
     Exit;
   item := FWork.DatabaseInfo[FActiveConnIndex];
-  if not RpIsLocalSqlDatabase(item) then
+  if not RpCanHaveLocalSchema(item) then
     Exit;
   schemaName := '';
   // On the working copy: the connections being edited, with the parameters

@@ -779,6 +779,12 @@ begin
       LRect := Rect(AX + LTextHeight div 2, LTop,
         AX + LTextHeight div 2 + ACanvas.TextWidth(ABadge) + 2 * LPad,
         LTop + LHeight);
+      // A narrow combo: against its right edge, over the end of the text
+      if LRect.Right > ARect.Right - 2 then
+      begin
+        LRect.Left := LRect.Left - (LRect.Right - (ARect.Right - 2));
+        LRect.Right := ARect.Right - 2;
+      end;
       LRadius := LHeight div 3;
       ACanvas.Brush.Style := bsSolid;
       ACanvas.Brush.Color := ClrDemoBg;

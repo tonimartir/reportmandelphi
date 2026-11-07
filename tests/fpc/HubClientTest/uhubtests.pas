@@ -16,7 +16,8 @@ implementation
 uses
   SysUtils, Classes, DB, DateUtils, IniFiles, fphttpserver, httpdefs, ssockets, rpjsonfpc, rphttpclientfpc,
   rpnetencodingfpc, rptypes, rpparams, rpdatainfo, rpdatahttp, rpauthmanager, rpmdconsts,
-  rpreportdesignercontracts, rpaireportcontracts, utestutil, ufakeserver, ujsoncases;
+  rpreportdesignercontracts, rpaireportcontracts, rplocalschemas, utestutil,
+  ufakeserver, ujsoncases;
 
 const
   BS = #92; // backslash, so that no tool turns \u escapes into characters
@@ -195,6 +196,39 @@ begin
       else
         SendJson(AResponse, 404, '{"success":false,"message":"Unknown database"}');
     end
+    // The catalog of the Hub database through its Agent (what database-config
+    // of app.reportman.es reads): the local schema of an Agent connection
+    else if P = '/api/agent/readtables' then
+      SendJson(AResponse, 200, '{"success":true,"data":{"tables":' +
+        '["CUSTOMERS","SALES"]},"error":null}')
+    else if P = '/api/agent/readcolumns' then
+    begin
+      if JsonText(LBody, 'tableName') = 'CUSTOMERS' then
+        SendJson(AResponse, 200, '{"success":true,"data":{"columns":[' +
+          '{"name":"CUSTOMERID","detectedNetType":"System.Int32","declaredDbType":"INTEGER",' +
+          '"isPrimaryKey":true,"isNullable":false,"size":4,"numericPrecision":0,"numericScale":0},' +
+          '{"name":"CUSTOMERNAME","detectedNetType":"System.String","declaredDbType":"VARCHAR",' +
+          '"isPrimaryKey":false,"isNullable":false,"size":100,"numericPrecision":0,"numericScale":0}' +
+          ']},"error":null}')
+      else if JsonText(LBody, 'tableName') = 'SALES' then
+        SendJson(AResponse, 200, '{"success":true,"data":{"columns":[' +
+          '{"name":"SALEID","declaredDbType":"INTEGER","isPrimaryKey":true,"size":4},' +
+          '{"name":"CUSTOMERID","declaredDbType":"INTEGER","isPrimaryKey":false,"size":4},' +
+          '{"name":"AMOUNT","declaredDbType":"DECIMAL","isPrimaryKey":false,"size":0,' +
+          '"numericPrecision":18,"numericScale":2}]},"error":null}')
+      else
+        SendJson(AResponse, 200, '{"success":false,"data":null,"error":"Unknown table"}');
+    end
+    else if P = '/api/agent/readforeignkeys' then
+    begin
+      if JsonText(LBody, 'tableName') = 'SALES' then
+        SendJson(AResponse, 200, '{"success":true,"data":{"foreignKeys":[' +
+          '{"constraintName":"FK_SALES_CUST","sourceTable":"SALES",' +
+          '"sourceColumns":["CUSTOMERID"],"targetTable":"CUSTOMERS",' +
+          '"targetColumns":["CUSTOMERID"]}]},"error":null}')
+      else
+        SendJson(AResponse, 200, '{"success":true,"data":{"foreignKeys":[]},"error":null}');
+    end
     else if P = '/api/agent/execute' then
     begin
       LSql := JsonText(LBody, 'sql');
@@ -213,7 +247,7 @@ begin
       // an Agent that is not connected, and a connected one without a name
       SendJson(AResponse, 200, '{"databases":[' +
         '{"displayName":"Sales - Main","name":"sales","hubDatabaseId":77,"hubSchemaId":5,' +
-        '"schemaTables":[{"name":"CLIENTS","columns":[{"name":"ID"},{"name":"NAME"}]},' +
+        '"dialect":"PostgreSQL","schemaTables":[{"name":"CLIENTS","columns":[{"name":"ID"},{"name":"NAME"}]},' +
         '{"name":"ORDERS","columns":[{"name":"ID"},{"name":"CLIENT"},{"name":"TOTAL"}]}]},' +
         '{"displayName":"","name":"stock","hubDatabaseId":78,"hubSchemaId":6},' +
         '{"displayName":"Stock - Shop","name":"Shop","hubDatabaseId":79,"hubSchemaId":7,' +
@@ -719,8 +753,36 @@ var
   LDesigned, LPartial, LConfigured, LNoKey, LExample: TRpDatabaseInfoItem;
   LParams: TRpParamList;
   LIni: TMemIniFile;
-  LMessage: string;
-  LBody: TJSONObject;
+  LMessage, LDialect: string;
+  LBody, LTable, LColumn: TJSONObject;
+  LCatalog, LKeys: TJSONArray;
+
+  // A table of a catalog of RpReadLocalSchemaCatalog, and a column of it
+  function CatalogTable(ACatalog: TJSONArray; const AName: string): TJSONObject;
+  var
+    I: Integer;
+  begin
+    Result := nil;
+    for I := 0 to ACatalog.Count - 1 do
+      if (ACatalog.Items[I] is TJSONObject) and
+        (JsonText(ACatalog.Items[I] as TJSONObject, 'name') = AName) then
+        Exit(ACatalog.Items[I] as TJSONObject);
+  end;
+
+  function CatalogColumn(ATable: TJSONObject; const AName: string): TJSONObject;
+  var
+    I: Integer;
+    LColumns: TJSONArray;
+  begin
+    Result := nil;
+    if not (ATable.GetValue('columns') is TJSONArray) then
+      Exit;
+    LColumns := ATable.GetValue('columns') as TJSONArray;
+    for I := 0 to LColumns.Count - 1 do
+      if (LColumns.Items[I] is TJSONObject) and
+        (JsonText(LColumns.Items[I] as TJSONObject, 'name') = AName) then
+        Exit(LColumns.Items[I] as TJSONObject);
+  end;
 
   function AddAgentDatabase(const AAlias: string): TRpDatabaseInfoItem;
   begin
@@ -842,6 +904,61 @@ begin
     CheckEquals('', GHub.LastHeader('X-Reportman-ApiKey'), 'with the session: no API key sent');
     CheckEquals('Bearer tok123', GHub.LastHeader('Authorization'), 'the session token is sent');
     LNoKey.DisConnect;
+    // The local schema of an Agent connection: its catalog read through the
+    // API, with the dialect of its Hub database
+    Check(RpCanHaveLocalSchema(LConfigured), 'an Agent connection has local schemas');
+    Check(not RpIsLocalSqlDatabase(LConfigured), 'but its SQL does not run here');
+    GHub.ClearLog;
+    LCatalog := RpReadLocalSchemaCatalog(LConfigured, LParams, LDialect, nil, nil);
+    try
+      CheckEquals('PostgreSQL', LDialect, 'the dialect of the Hub database');
+      CheckEquals(2, LCatalog.Count, 'the tables of the Agent');
+      CheckContains('POST /api/agent/readtables', GHub.RequestLog, 'the tables through the API');
+      CheckContains('POST /api/agent/readcolumns', GHub.RequestLog, 'the columns through the API');
+      CheckContains('POST /api/agent/readforeignkeys', GHub.RequestLog,
+        'the foreign keys through the API');
+      CheckEquals('test-key', GHub.LastHeader('X-Reportman-ApiKey'),
+        'with the API key of the connection');
+      LTable := CatalogTable(LCatalog, 'SALES');
+      Check(LTable <> nil, 'the table SALES');
+      if LTable <> nil then
+      begin
+        LColumn := CatalogColumn(LTable, 'SALEID');
+        Check((LColumn <> nil) and (LColumn.GetValue('isPrimaryKey') is TJSONBool) and
+          TJSONBool(LColumn.GetValue('isPrimaryKey')).AsBoolean, 'its primary key');
+        LColumn := CatalogColumn(LTable, 'AMOUNT');
+        Check(LColumn <> nil, 'the column AMOUNT');
+        if LColumn <> nil then
+        begin
+          CheckEquals('Numeric', JsonText(LColumn, 'dataType'), 'a DECIMAL is Numeric');
+          CheckEquals('DECIMAL(18,2)', JsonText(LColumn, 'detectedType'),
+            'the declared type of the database');
+        end;
+        LKeys := LTable.GetValue('foreignKeys') as TJSONArray;
+        CheckEquals(1, LKeys.Count, 'its foreign key');
+        if LKeys.Count > 0 then
+        begin
+          CheckEquals('CUSTOMERS', JsonText(LKeys.Items[0] as TJSONObject, 'targetTable'),
+            'the foreign key to CUSTOMERS');
+          CheckEquals('CUSTOMERID', ((LKeys.Items[0] as TJSONObject).GetValue(
+            'sourceColumns') as TJSONArray).Items[0].Value, 'its column');
+        end;
+      end;
+      LTable := CatalogTable(LCatalog, 'CUSTOMERS');
+      Check(LTable <> nil, 'the table CUSTOMERS');
+      if LTable <> nil then
+      begin
+        LColumn := CatalogColumn(LTable, 'CUSTOMERNAME');
+        Check(LColumn <> nil, 'the column CUSTOMERNAME');
+        if LColumn <> nil then
+        begin
+          CheckEquals('String', JsonText(LColumn, 'dataType'), 'a VARCHAR is String');
+          CheckEquals('VARCHAR(100)', JsonText(LColumn, 'detectedType'), 'with its size');
+        end;
+      end;
+    finally
+      LCatalog.Free;
+    end;
   finally
     LParams.Free;
     LDatabases.Free;

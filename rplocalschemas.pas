@@ -343,6 +343,11 @@ type
 // A connection whose SQL this computer runs (not the Reportman AI Agent,
 // MyBase files or the .Net drivers)
 function RpIsLocalSqlDatabase(ADatabase: TRpDatabaseInfoItem): Boolean;
+// A connection with local schemas: one whose SQL this computer runs, or a
+// Reportman AI Agent connection, whose catalog the Agent reads through the
+// API. The schema only describes the tables to the AI (with the dialect of
+// the file): it does not depend on the way the data come
+function RpCanHaveLocalSchema(ADatabase: TRpDatabaseInfoItem): Boolean;
 // dbxschemas/<ALIAS>.json in the folder of the connections file the
 // connection reads (the DBXCONNECTIONS parameter of the report included)
 function RpLocalSchemaFileName(ADatabase: TRpDatabaseInfoItem): string;
@@ -667,11 +672,13 @@ uses
   Winapi.ActiveX,
 {$ENDIF}
 {$ENDIF}
-  rpmdconsts, rpbasereport;
+  rpmdconsts, rpbasereport, rpdatahttp, rpauthmanager;
 
 type
+  // rcfHub: a Reportman AI Agent connection, its catalog read through the
+  // API (readtables, readcolumns, readforeignkeys)
   TRpCatalogFamily = (rcfGeneric, rcfFirebird, rcfPostgreSQL, rcfMySQL,
-    rcfSQLServer, rcfSQLite, rcfOracle);
+    rcfSQLServer, rcfSQLite, rcfOracle, rcfHub);
 
   TRpCatColumn = class(TObject)
   public
@@ -2705,6 +2712,12 @@ begin
     rpdataibx, rpdatabde, rpdataado, rpdataibo, rpdatazeos, rpfiredac]);
 end;
 
+function RpCanHaveLocalSchema(ADatabase: TRpDatabaseInfoItem): Boolean;
+begin
+  Result := RpIsLocalSqlDatabase(ADatabase) or
+    ((ADatabase <> nil) and (ADatabase.Driver = rpdbHttp));
+end;
+
 function RpLocalSchemaFileName(ADatabase: TRpDatabaseInfoItem): string;
 var
   LFolder: string;
@@ -2787,6 +2800,8 @@ begin
   try
     GetDatabaseParams(ADatabase, LParams, AReportParams);
     case ADatabase.Driver of
+      rpdbHttp:
+        Result := rcfHub;
       rpdataibx, rpdataibo:
         Result := rcfFirebird;
       rpfiredac:
@@ -2898,6 +2913,13 @@ type
     // ' IN (...)' of the tables whose columns are read now ('': all)
     FIn: string;
     FProgress: TRpReadProgress;
+    // rcfHub: the Hub database of the connection, through the API
+    FHub: TRpDatabaseHttp;
+    function HubConnection: TRpDatabaseHttp;
+    procedure HubRequestStarts;
+    procedure HubRequestEnds;
+    procedure ReadHubTables;
+    procedure ReadHubColumns(ANames: TStrings);
     function Open(const ASql: string): TDataSet;
     // Next of a dataset of the catalog: a row more, and the cancel checked
     procedure NextRow(AData: TDataSet);
@@ -2944,6 +2966,7 @@ end;
 
 destructor TRpCatalogReader.Destroy;
 begin
+  FHub.Free;
   FCatalog.Free;
   inherited Destroy;
 end;
@@ -3088,6 +3111,172 @@ begin
     Result := Result + '(' + IntToStr(ALength) + ')'
   else if (APrecision > 0) and (AScale > 0) then
     Result := Result + '(' + IntToStr(APrecision) + ',' + IntToStr(AScale) + ')';
+end;
+
+// The Hub database of the Agent connection, with its API key or, without
+// one, the session (as TRpDatabaseInfoItem.Connect): without either the
+// example databases still answer
+function TRpCatalogReader.HubConnection: TRpDatabaseHttp;
+var
+  LParams: TStringList;
+begin
+  if FHub = nil then
+  begin
+    LParams := TStringList.Create;
+    try
+      GetDatabaseParams(FDatabase, LParams, FParams);
+      FHub := TRpDatabaseHttp.Create;
+      FHub.ConnectionName := FDatabase.Alias;
+      FHub.ApiKey := Trim(LParams.Values['ApiKey']);
+      FHub.HubDatabaseId := StrToInt64Def(Trim(LParams.Values['HubDatabaseId']), 0);
+      if FHub.ApiKey = '' then
+        FHub.Token := TRpAuthManager.Instance.Token;
+    finally
+      LParams.Free;
+    end;
+  end;
+  if FHub.HubDatabaseId <= 0 then
+    raise ERpAgentConnectionError.CreateFor(Format(SRpAgentNotConfigured,
+      [FDatabase.Alias]), FDatabase.Alias);
+  Result := FHub;
+end;
+
+// A request of the catalog through the Agent: the phases and the cancel of
+// a query
+procedure TRpCatalogReader.HubRequestStarts;
+begin
+  if FProgress <> nil then
+  begin
+    FProgress.Check;
+    FProgress.SetPhase(rrpExecuting);
+  end;
+end;
+
+procedure TRpCatalogReader.HubRequestEnds;
+begin
+  if FProgress <> nil then
+  begin
+    FProgress.SetPhase(rrpFetching);
+    FProgress.AddRow;
+    FProgress.Check;
+  end;
+end;
+
+procedure TRpCatalogReader.ReadHubTables;
+var
+  I: Integer;
+  LNames: TStringList;
+begin
+  LNames := TStringList.Create;
+  FCatalog.BeginAdding;
+  try
+    HubRequestStarts;
+    HubConnection.ReadHubTables(LNames);
+    HubRequestEnds;
+    for I := 0 to LNames.Count - 1 do
+      FCatalog.Add(LNames[I]);
+  finally
+    FCatalog.EndAdding;
+    LNames.Free;
+  end;
+end;
+
+function HubText(AObject: TJSONObject; const AName: string): string;
+var
+  LField: TJSONValue;
+begin
+  Result := '';
+  LField := AObject.Values[AName];
+  if (LField <> nil) and not (LField is TJSONNull) then
+    Result := Trim(LField.Value);
+end;
+
+function HubFlag(AObject: TJSONObject; const AName: string): Boolean;
+var
+  LField: TJSONValue;
+begin
+  LField := AObject.Values[AName];
+  if LField is TJSONBool then
+    Result := TJSONBool(LField).AsBoolean
+  else
+    Result := SameText(HubText(AObject, AName), 'true');
+end;
+
+// The columns, primary keys and foreign keys of the tables of ANames (all
+// of them when it is nil), a request of each per table: what the Agent
+// answers to database-config of app.reportman.es
+procedure TRpCatalogReader.ReadHubColumns(ANames: TStrings);
+var
+  I, J, K, LCount, LScale: Integer;
+  LTable: TRpCatTable;
+  LColumns, LKeys, LSource, LTarget: TJSONArray;
+  LItem: TJSONObject;
+  LColumn: TRpCatColumn;
+  LValue: TJSONValue;
+begin
+  if ANames = nil then
+    LCount := FCatalog.List.Count
+  else
+    LCount := ANames.Count;
+  for I := 0 to LCount - 1 do
+  begin
+    if ANames = nil then
+      LTable := TRpCatTable(FCatalog.List.Objects[I])
+    else
+      LTable := FCatalog.Find(ANames[I]);
+    if LTable = nil then
+      Continue;
+    HubRequestStarts;
+    LColumns := HubConnection.ReadHubColumns(LTable.Name);
+    try
+      HubRequestEnds;
+      for J := 0 to LColumns.Count - 1 do
+      begin
+        if not (LColumns.Items[J] is TJSONObject) then
+          Continue;
+        LItem := TJSONObject(LColumns.Items[J]);
+        if HubText(LItem, 'name') = '' then
+          Continue;
+        LColumn := LTable.AddColumn(HubText(LItem, 'name'));
+        LScale := StrToIntDef(HubText(LItem, 'numericScale'), 0);
+        // As the information schema: the declared type of the database
+        LColumn.DataType := CloudTypeOfSqlType(HubText(LItem, 'declaredDbType'),
+          LScale);
+        LColumn.DetectedType := SqlTypeText(HubText(LItem, 'declaredDbType'),
+          StrToIntDef(HubText(LItem, 'size'), 0),
+          StrToIntDef(HubText(LItem, 'numericPrecision'), 0), LScale);
+        LColumn.IsPrimaryKey := HubFlag(LItem, 'isPrimaryKey');
+      end;
+    finally
+      LColumns.Free;
+    end;
+    HubRequestStarts;
+    LKeys := HubConnection.ReadHubForeignKeys(LTable.Name);
+    try
+      HubRequestEnds;
+      for J := 0 to LKeys.Count - 1 do
+      begin
+        if not (LKeys.Items[J] is TJSONObject) then
+          Continue;
+        LItem := TJSONObject(LKeys.Items[J]);
+        LValue := LItem.Values['sourceColumns'];
+        if not (LValue is TJSONArray) then
+          Continue;
+        LSource := TJSONArray(LValue);
+        LValue := LItem.Values['targetColumns'];
+        if not (LValue is TJSONArray) then
+          Continue;
+        LTarget := TJSONArray(LValue);
+        for K := 0 to LSource.Count - 1 do
+          if K < LTarget.Count then
+            AddForeignKey(LTable.Name, HubText(LItem, 'constraintName'),
+              HubText(LItem, 'targetTable'), Trim(LSource.Items[K].Value),
+              Trim(LTarget.Items[K].Value));
+      end;
+    finally
+      LKeys.Free;
+    end;
+  end;
 end;
 
 function TRpCatalogReader.FirebirdDialect: string;
@@ -3775,6 +3964,8 @@ end;
 procedure TRpCatalogReader.ReadTables;
 begin
   case FFamily of
+    rcfHub:
+      ReadHubTables;
     rcfFirebird:
       ReadFirebirdTables;
     rcfPostgreSQL, rcfMySQL, rcfSQLServer:
@@ -3798,6 +3989,8 @@ var
   I, LFirst: Integer;
 begin
   case FFamily of
+    rcfHub:
+      ReadHubColumns(ANames);
     rcfSQLite:
       ReadSQLiteColumns(ANames);
     rcfFirebird, rcfPostgreSQL, rcfMySQL, rcfSQLServer, rcfOracle:
@@ -3873,7 +4066,14 @@ begin
   end;
   FDatabase.Connect(FParams);
   if FFamily = rcfFirebird then
-    ADialect := FirebirdDialect;
+    ADialect := FirebirdDialect
+  else if FFamily = rcfHub then
+  begin
+    // The dialect of the Hub database: the Agent knows its database
+    ADialect := HubConnection.GetHubDatabaseDialect;
+    if ADialect = '' then
+      ADialect := DialectOfFamily(rcfGeneric);
+  end;
 end;
 
 function TRpCatalogReader.Read(out ADialect: string;
@@ -3890,8 +4090,9 @@ begin
       ReadColumns(LNames);
     except
       // A catalog that can not be read (permissions, an older server): the
-      // tables the driver lists. A cancel is a cancel
-      if (FFamily = rcfGeneric) or (ExceptObject is EAbort) then
+      // tables the driver lists. A cancel is a cancel, and the Hub is read
+      // only through the API
+      if (FFamily in [rcfGeneric, rcfHub]) or (ExceptObject is EAbort) then
         raise;
       FCatalog.List.Clear;
       FFamily := rcfGeneric;
@@ -3921,7 +4122,7 @@ begin
     try
       ReadColumns(LNames);
     except
-      if (FFamily = rcfGeneric) or (ExceptObject is EAbort) then
+      if (FFamily in [rcfGeneric, rcfHub]) or (ExceptObject is EAbort) then
         raise;
       for I := 0 to FCatalog.List.Count - 1 do
       begin
@@ -3945,7 +4146,7 @@ var
 begin
   if ADatabase = nil then
     raise Exception.Create('No connection');
-  if not RpIsLocalSqlDatabase(ADatabase) then
+  if not RpCanHaveLocalSchema(ADatabase) then
     raise Exception.Create('The connection ' + ADatabase.Alias +
       ' does not run SQL on this computer');
   LReader := TRpCatalogReader.Create(ADatabase, AParams);
@@ -3965,7 +4166,7 @@ var
 begin
   if ADatabase = nil then
     raise Exception.Create('No connection');
-  if not RpIsLocalSqlDatabase(ADatabase) then
+  if not RpCanHaveLocalSchema(ADatabase) then
     raise Exception.Create('The connection ' + ADatabase.Alias +
       ' does not run SQL on this computer');
   LReader := TRpCatalogReader.Create(ADatabase, AParams);
@@ -4337,7 +4538,7 @@ var
   LFile: TRpLocalSchemaFile;
 begin
   AList.Clear;
-  if not RpIsLocalSqlDatabase(ADatabase) then
+  if not RpCanHaveLocalSchema(ADatabase) then
     Exit;
   try
     LFile := RpLoadLocalSchema(ADatabase, nil, False, False);
@@ -4397,7 +4598,7 @@ var
   I: Integer;
   LFile: TRpLocalSchemaFile;
 begin
-  if not RpIsLocalSqlDatabase(ADatabase) then
+  if not RpCanHaveLocalSchema(ADatabase) then
     Exit;
   try
     LFile := RpLoadLocalSchema(ADatabase, nil, False, False);

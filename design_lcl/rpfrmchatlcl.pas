@@ -1540,10 +1540,11 @@ begin
     Result := FLocalSchemas.Names[0];
 end;
 
-// "New cloud schema...": not with a direct connection (it is not in the Hub)
+// "New cloud schema...": not with a direct connection (it is not in the Hub);
+// a local subschema of an Agent connection is of a Hub database
 function TFRpChatFrame.NewCloudSchemaEnabled: Boolean;
 begin
-  Result := FLocalAlias = '';
+  Result := (FLocalAlias = '') or (FContextHubDatabaseId <> 0);
 end;
 
 procedure TFRpChatFrame.RunConfigureLocalSchemas(const AAlias,

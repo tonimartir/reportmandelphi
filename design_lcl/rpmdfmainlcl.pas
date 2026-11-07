@@ -1622,6 +1622,21 @@ begin
         end;
       Exit;
     end;
+    // A Reportman AI Agent connection with the local subschema of one of its
+    // datasets in the file: that one; else its Hub schema (below)
+    if RpCanHaveLocalSchema(LDatabaseInfo) then
+      for I := 0 to FReport.DataInfo.Count - 1 do
+        if SameText(FReport.DataInfo.Items[I].DatabaseAlias, LDatabaseInfo.Alias) and
+          (Trim(FReport.DataInfo.Items[I].SchemaName) <> '') then
+        begin
+          ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+            FReport.DataInfo.Items[I].SchemaName);
+          if ALocalSchemaName <> '' then
+          begin
+            ALocalAlias := LDatabaseInfo.Alias;
+            Exit;
+          end;
+        end;
   end;
   if FReport.DataInfo.Count > 0 then
   begin
@@ -1708,18 +1723,18 @@ begin
       for I := 0 to FReport.DatabaseInfo.Count - 1 do
       begin
         LDatabase := FReport.DatabaseInfo.Items[I];
-        if not RpIsLocalSqlDatabase(LDatabase) then
+        if not RpCanHaveLocalSchema(LDatabase) then
           Continue;
         // The subschemas, with their sizes (never all the tables)
         RpListLocalSchemaEntries(LDatabase, LEntries, LSizes);
         if LPreferred = '' then
           LPreferred := LDatabase.Alias;
       end;
-      // The connection of the first dataset, when it is a direct one
+      // The connection of the first dataset, when it has local schemas
       if FReport.DataInfo.Count > 0 then
       begin
         LDatabase := FindDatabaseInfo(FReport, FReport.DataInfo.Items[0].DatabaseAlias);
-        if RpIsLocalSqlDatabase(LDatabase) then
+        if RpCanHaveLocalSchema(LDatabase) then
           LPreferred := LDatabase.Alias;
       end;
     end;

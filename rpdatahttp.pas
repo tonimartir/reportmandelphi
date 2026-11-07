@@ -202,6 +202,19 @@ type
     // schemaTables: 'hubSchemaId=<tables>,<columns of the widest table>'
     function GetUserSchemas(AList, ASizes: TStrings): Boolean; overload;
     function GetUserAgents(AList: TStrings): Boolean;
+    // The catalog of the Hub database through its Agent, as database-config
+    // of app.reportman.es reads it (api/agent/readtables, readcolumns,
+    // readforeignkeys): the names of its tables; the columns of a table
+    // ({name, declaredDbType, isPrimaryKey, size, numericPrecision,
+    // numericScale...}); its foreign keys ({constraintName, targetTable,
+    // sourceColumns, targetColumns}). The caller frees the arrays; a refusal
+    // of the Hub raises
+    procedure ReadHubTables(ANames: TStrings);
+    function ReadHubColumns(const ATable: string): TJSONArray;
+    function ReadHubForeignKeys(const ATable: string): TJSONArray;
+    // The dialect of the Hub database ("dialect" of api/agent/databases:
+    // Firebird5, PostgreSQL...), '' when the Hub does not say it
+    function GetHubDatabaseDialect: string;
     // The schema library of Reportman AI (the wizard of database-config):
     // GET api/schema/list, the categories with their schemas,
     // [{ id, name, description, schemas: [{ id, name, version, categoryId }] }]
@@ -2588,6 +2601,125 @@ end;
 function TRpDatabaseHttp.GetUserSchemas(AList: TStrings): Boolean;
 begin
   Result := GetUserSchemas(AList, nil);
+end;
+
+// The array AField of the data of a catalog request of the Agent
+// ({"success":true,"data":{AField:[...]}}), a copy the caller frees
+function HubCatalogArray(ADatabase: TRpDatabaseHttp; const AAction,
+  ATable, AField: string): TJSONArray;
+var
+  LRequest, LRoot, LData: TJSONObject;
+  LValue: TJSONValue;
+  LStream: TStringStream;
+  LError: string;
+begin
+  Result := nil;
+  LRequest := TJSONObject.Create;
+  try
+    LRequest.AddPair('hubDatabaseId', TJSONNumber.Create(ADatabase.HubDatabaseId));
+    if ATable <> '' then
+      LRequest.AddPair('tableName', ATable);
+    LStream := TStringStream.Create('', TEncoding.UTF8);
+    try
+      ADatabase.InternalRequest(AAction, LRequest, LStream);
+      LValue := TJSONObject.ParseJSONValue(LStream.DataString);
+    finally
+      LStream.Free;
+    end;
+  finally
+    LRequest.Free;
+  end;
+  try
+    if not (LValue is TJSONObject) then
+      raise Exception.Create('The answer of ' + AAction + ' is not an object');
+    LRoot := TJSONObject(LValue);
+    if (LRoot.Values['success'] is TJSONBool) and
+      not TJSONBool(LRoot.Values['success']).AsBoolean then
+    begin
+      LError := '';
+      if (LRoot.Values['error'] <> nil) and not (LRoot.Values['error'] is TJSONNull) then
+        LError := LRoot.Values['error'].Value;
+      if LError = '' then
+        LError := AAction + ' failed';
+      raise Exception.Create(LError);
+    end;
+    // The envelope of the API, or the data alone
+    LData := LRoot;
+    if LRoot.Values['data'] is TJSONObject then
+      LData := TJSONObject(LRoot.Values['data']);
+    if LData.Values[AField] is TJSONArray then
+      Result := TJSONArray(LData.Values[AField].Clone)
+    else
+      Result := TJSONArray.Create;
+  finally
+    LValue.Free;
+  end;
+end;
+
+procedure TRpDatabaseHttp.ReadHubTables(ANames: TStrings);
+var
+  LTables: TJSONArray;
+  I: Integer;
+begin
+  ANames.Clear;
+  LTables := HubCatalogArray(Self, 'api/agent/readtables', '', 'tables');
+  try
+    for I := 0 to LTables.Count - 1 do
+      if Trim(LTables.Items[I].Value) <> '' then
+        ANames.Add(Trim(LTables.Items[I].Value));
+  finally
+    LTables.Free;
+  end;
+end;
+
+function TRpDatabaseHttp.ReadHubColumns(const ATable: string): TJSONArray;
+begin
+  Result := HubCatalogArray(Self, 'api/agent/readcolumns', ATable, 'columns');
+end;
+
+function TRpDatabaseHttp.ReadHubForeignKeys(const ATable: string): TJSONArray;
+begin
+  Result := HubCatalogArray(Self, 'api/agent/readforeignkeys', ATable,
+    'foreignKeys');
+end;
+
+function TRpDatabaseHttp.GetHubDatabaseDialect: string;
+var
+  LStream: TStringStream;
+  LValue: TJSONValue;
+  LDatabases: TJSONValue;
+  LItem: TJSONObject;
+  I: Integer;
+begin
+  Result := '';
+  LStream := TStringStream.Create('', TEncoding.UTF8);
+  try
+    if not InternalGetRequest('api/agent/databases', LStream) then
+      Exit;
+    LValue := TJSONObject.ParseJSONValue(LStream.DataString);
+  finally
+    LStream.Free;
+  end;
+  try
+    if not (LValue is TJSONObject) then
+      Exit;
+    LDatabases := TJSONObject(LValue).Values['databases'];
+    if not (LDatabases is TJSONArray) then
+      Exit;
+    for I := 0 to TJSONArray(LDatabases).Count - 1 do
+    begin
+      if not (TJSONArray(LDatabases).Items[I] is TJSONObject) then
+        Continue;
+      LItem := TJSONObject(TJSONArray(LDatabases).Items[I]);
+      if StrToInt64Def(HubItemText(LItem, 'hubDatabaseId'), 0) <> FHubDatabaseId then
+        Continue;
+      Result := Trim(HubItemText(LItem, 'dialect'));
+      if Result <> '' then
+        Exit;
+    end;
+  finally
+    LValue.Free;
+  end;
 end;
 
 // The tables of the schemaTables of a schema of the list and the columns of

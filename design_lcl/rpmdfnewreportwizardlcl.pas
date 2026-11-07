@@ -1892,7 +1892,7 @@ begin
   LDatabase := nil;
   if (FDestReport <> nil) and (FDestReport.DatabaseInfo.Count > 0) then
     LDatabase := FDestReport.DatabaseInfo.Items[0];
-  if not RpIsLocalSqlDatabase(LDatabase) then
+  if not RpCanHaveLocalSchema(LDatabase) then
   begin
     AISchemaSelector.SetLocalSchemas('', nil, nil);
     Exit;
@@ -1906,13 +1906,17 @@ begin
       LblLocalSchemaError.Visible := False;
     try
       // A copy that reads the same connections file; generated from the
-      // catalog the first time, as the copilot does
+      // catalog the first time, as the copilot does. Not the one of an Agent
+      // connection: its catalog is a request per table through the API, so
+      // it is read in the local schema screen, with its progress
       LDatabases := RpCopyDatabaseInfo(LDatabase);
       try
         Screen.Cursor := crHourGlass;
         LFile := RpLoadLocalSchema(LDatabases.Items[0], FDestReport.Params,
-          True, False);
+          RpIsLocalSqlDatabase(LDatabase), False);
         try
+          // nil: an Agent connection without schema file yet
+          if LFile <> nil then
           for I := 0 to LFile.SchemaCount - 1 do
           begin
             LNames.Add(LFile.Schemas[I].Name);

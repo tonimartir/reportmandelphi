@@ -654,7 +654,9 @@ begin
       AddItem(string(TranslateStr(1838, 'New local schema...')),
         TSchemaComboItem.CreateKind(sikNewLocal));
     // A direct connection is not in the Hub: no cloud schema to make for it
-    if FLocalAlias <> '' then
+    // (an Agent connection with local schemas is: its Hub database)
+    if (FLocalAlias <> '') and (FPreferredHubDatabaseId = 0) and
+      (FCloudDatabaseFilter = 0) then
       AddItem(string(TranslateStr(1839, 'New cloud schema...')) + ' (' +
         string(TranslateStr(1842, 'This connection is not in the Hub')) + ')',
         TSchemaComboItem.CreateKind(sikNewCloud))

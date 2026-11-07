@@ -243,8 +243,9 @@ procedure TFRpConnectionVCL.BSchemasClick(Sender: TObject);
 var
  LPoint:TPoint;
 begin
- // The local schema only for a connection that runs SQL on this computer
- MLocalSchemas.Enabled:=RpIsLocalSqlDatabase(FindDatabaseInfoItem);
+ // The local schema for a connection that runs SQL on this computer or a
+ // Reportman AI Agent one (the Agent reads its catalog through the API)
+ MLocalSchemas.Enabled:=RpCanHaveLocalSchema(FindDatabaseInfoItem);
  LPoint:=BSchemas.ClientToScreen(Point(0,BSchemas.Height));
  PopSchemas.Popup(LPoint.X,LPoint.Y);
 end;
@@ -255,7 +256,7 @@ var
  LSchemaName:string;
 begin
  LItem:=FindDatabaseInfoItem;
- if not RpIsLocalSqlDatabase(LItem) then
+ if not RpCanHaveLocalSchema(LItem) then
   exit;
  LSchemaName:='';
  // On the connections being edited: the copy of the report the frame
