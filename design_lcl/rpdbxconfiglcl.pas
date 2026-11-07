@@ -1205,7 +1205,9 @@ var
   LWorker: TRpHubDiscoveryWorker;
 begin
   LApiKey := Trim(GetParamValue('ApiKey'));
-  if Length(LApiKey) < 5 then
+  // Without a key the Hub lists the example databases, for everybody, and
+  // those of the user signed in: only a key too short to be one is refused
+  if (LApiKey <> '') and (Length(LApiKey) < 5) then
   begin
     ShowInfo(TranslateStr(1673, 'Please enter a valid API Key first.'));
     Exit;

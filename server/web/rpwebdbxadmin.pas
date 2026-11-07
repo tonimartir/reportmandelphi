@@ -1173,8 +1173,7 @@ begin
   if AConnections = nil then
     Exit;
   AConnections.Clear;
-  if Length(Trim(AApiKey)) = 0 then
-    Exit;
+  // An empty key too: the Hub lists the example databases for everybody
   if not TRpDatabaseHttp.GetHubDatabases(Trim(AApiKey), AConnections) then
     raise Exception.Create('Failed to connect to Hub for discovery. Check your API Key and internet connection.');
   // name=id: the page offers the id (the line may end with the state of the

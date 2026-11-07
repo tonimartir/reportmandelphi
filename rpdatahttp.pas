@@ -2389,7 +2389,9 @@ begin
   LResponseStream := TMemoryStream.Create;
   try
     TRpAuthManager.Instance.ConfigureDebugHttpClient(LHttpClient);
-    LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AApiKey;
+    // Without a key: the example databases and, signed in, those of the user
+    if AApiKey <> '' then
+      LHttpClient.CustomHeaders['X-Reportman-ApiKey'] := AApiKey;
     if TRpAuthManager.Instance.Token <> '' then
       LHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + TRpAuthManager.Instance.Token;
     if TRpAuthManager.Instance.InstallId <> '' then

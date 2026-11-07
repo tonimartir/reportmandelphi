@@ -715,7 +715,10 @@ begin
     end;
   end;
 
-  if Length(LApiKey) < 5 then
+  // Without a key the Hub lists the example databases, for everybody, and
+  // those of the user signed in: only a key too short to be one is refused
+  LApiKey := Trim(LApiKey);
+  if (LApiKey <> '') and (Length(LApiKey) < 5) then
   begin
     RpShowMessage('Please enter a valid API Key first.');
     Exit;

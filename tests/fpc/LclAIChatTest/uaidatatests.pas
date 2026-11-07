@@ -146,6 +146,11 @@ begin
         '"aiEndpoints":[]}')
     else if LApiKey = 'fail-key' then
       SendJson(AResponse, 500, '{"message":"Internal error"}')
+    else if LApiKey = '' then
+      // As the API: the example databases, for everybody
+      SendJson(AResponse, 200, '{"databases":[' +
+        '{"isExample":true,"displayName":"Example - Example","name":"Example",' +
+        '"hubDatabaseId":7,"hubSchemaId":21}],"aiEndpoints":[]}')
     else
       SendJson(AResponse, 200, '{"databases":[],"aiEndpoints":[]}');
   end
@@ -359,14 +364,24 @@ begin
     Check(LDlg.HubButton.Width >= RpCaptionWidth(LDlg.HubButton,
       [LDlg.HubButton.Caption, TranslateStr(1672, 'Loading...')]),
       'the captions fit the button');
-    // Without API key: a message and no request
+    // A key too short to be one: a message and no request
     LCalls := FHubHandler.DatabasesCalls;
-    LDlg.SetParamValue('ApiKey', '');
+    LDlg.SetParamValue('ApiKey', 'abc');
     LDlg.StartHubDiscovery;
     CheckEquals(string(TranslateStr(1673, 'Please enter a valid API Key first.')),
-      LDlg.LastMessage, 'an API key is needed');
-    Check(not LDlg.HubDiscoveryRunning, 'no discovery without API key');
-    CheckEquals(LCalls, FHubHandler.DatabasesCalls, 'no request without API key');
+      LDlg.LastMessage, 'a short API key is refused');
+    Check(not LDlg.HubDiscoveryRunning, 'no discovery with a short API key');
+    CheckEquals(LCalls, FHubHandler.DatabasesCalls, 'no request with a short API key');
+    // Without API key: the example databases, which the Hub lists for everybody
+    LDlg.SetParamValue('ApiKey', '');
+    LDlg.StartHubDiscovery;
+    Check(LDlg.HubDiscoveryRunning, 'discovery without API key');
+    WaitUntil(DiscoveryDone, 15000, 'example databases received');
+    CheckEquals(LCalls + 1, FHubHandler.DatabasesCalls, 'a request without API key');
+    CheckEquals(1, LDlg.HubMenu.Items.Count, 'the example database');
+    CheckEquals('Example - Example', LDlg.HubMenu.Items[0].Caption, 'example database name');
+    LDlg.HubMenu.Items[0].Click;
+    CheckEquals('7', TEdit(LDlg.ParamEditor('HubDatabaseId')).Text, 'example HubDatabaseId set');
     // The databases of the key
     LDlg.SetParamValue('ApiKey', 'hub-key');
     CheckEquals('hub-key', IniValue('HUBCONN', 'ApiKey'), 'API key written');
