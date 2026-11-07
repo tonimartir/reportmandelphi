@@ -216,13 +216,15 @@ var
  // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
  // takes precedence when assigned.
  DBXConnectionsFileOverride:string='';
-{$IFDEF FPC}
- // Folder of the report open in the designer: a MyBase file that is not found
- // (a relative name, a connection without DATABASE) is looked for there. The
- // Windows designer finds it because the open dialog and the Explorer set the
- // current folder to the folder of the report; macOS and the Linux launchers
- // start the application in / or $HOME.
+ // Folder of the report open in the designer: a relative SQLite database (the
+ // samples) and, in Lazarus, a MyBase file that is not found are looked for
+ // there, also by the copies of the report the AI works on (they are loaded
+ // from its XML, without a folder: RpLoadReportDocument). The open dialog and
+ // the Explorer set the current folder to the folder of the report, but the
+ // welcome window does not, and macOS and the Linux launchers start the
+ // application in / or $HOME.
  RpReportFolder:string='';
+{$IFDEF FPC}
  // Folder of the samples of the application (the designer sets it): a
  // sample saved in another folder without its MyBase file (sample4.rep and
  // biolife.cds) still finds it there
@@ -2360,10 +2362,8 @@ begin
  try
   if folder<>'' then
    AddCandidate(IncludeTrailingPathDelimiter(folder)+dbName);
-{$IFDEF FPC}
   if RpReportFolder<>'' then
    AddCandidate(IncludeTrailingPathDelimiter(RpReportFolder)+dbName);
-{$ENDIF}
   AddCandidate(dbName);
 {$IFDEF FPC}
   if RpSamplesFolder<>'' then

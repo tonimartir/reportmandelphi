@@ -3222,8 +3222,11 @@ begin
    filename:=oldfilename;
    raise;
   end;
-  // A relative SQLite database of the report is looked for in its folder
+  // A relative SQLite database of the report is looked for in its folder,
+  // also by the copies of the report the AI works on (RpReportFolder): the
+  // welcome window opens a sample without changing the current folder
   report.ReportFolder:=ExtractFilePath(ExpandFileName(filename));
+  RpReportFolder:=report.ReportFolder;
   alibrary:='';
   areportname:='';
   Savedialog1.filename:=filename;

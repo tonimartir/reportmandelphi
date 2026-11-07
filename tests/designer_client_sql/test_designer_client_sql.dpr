@@ -24,6 +24,20 @@ program test_designer_client_sql;
 {     [-installid <id>] [-url <api>] [-prompt <text>]   }
 {     [-schema <subschema>]                             }
 {                                                       }
+{   A sample report of the onboarding (the welcome      }
+{   window opens it from its file, its connection and   }
+{   its SQLite database inside the report):             }
+{                                                       }
+{   test_designer_client_sql -report <file.rep>         }
+{     [-dataset CUST] [-schema Sales] [-guest]           }
+{     [-prompt <text>] [-expect EMAIL]                  }
+{                                                       }
+{   checks the local schema of its connection, runs a   }
+{   SQL as the copilot does and, with -guest (no        }
+{   session: the credits of a new installation) or      }
+{   -tokenfile, asks the AI to change the dataset. The  }
+{   schema file is never written in this mode.          }
+{                                                       }
 {   The connections file must define the alias with a   }
 {   FireDAC (SQLdb in Lazarus) connection, e.g.         }
 {   DriverName=FireDac DriverID=FB Server Port Database }
@@ -474,10 +488,173 @@ begin
   end;
 end;
 
+// The onboarding: a sample report opened from its file, as the welcome
+// window does (its folder: the SQLite database of the sample is relative)
+procedure TestSampleReport(const AFileName, AToken, AInstallId: string;
+  ARunAI: Boolean);
 var
-  GAlias, GConnections, GDocument, GInstallId, GPrompt, GToken, GTokenFile,
-    GUrl: string;
+  I: Integer;
+  LAlias, LDatasetAlias, LDocument, LExpect, LPrompt, LSchema, LSql: string;
+  LDataset, LFound: TRpDataInfoItem;
+  LDatabase: TRpDatabaseInfoItem;
+  LHttp: TRpDatabaseHttp;
+  LReport, LModified: TRpReport;
+  LRequest: TRpApiModifyReportRequest;
+  LResult: TRpApiModifyReportResult;
+  LRunner: TRunner;
+  LProbe: TRpClientSqlRequest;
+  LProbeResult: TRpClientSqlResult;
+  LNames: TStringList;
+begin
+  Log('--- Sample report ' + AFileName);
+  Log('  current folder: ' + GetCurrentDir);
+  LReport := TRpReport.Create(nil);
+  try
+    LReport.LoadFromFile(AFileName);
+    // As the designer opens it (TFRpMainFVCL.DoOpen, SetReport of the LCL)
+    RpReportFolder := LReport.ReportFolder;
+    Check(LReport.ReportFolder <> '', 'the report knows its folder (' +
+      LReport.ReportFolder + ')');
+    LDatasetAlias := UpperCase(Arg('dataset', 'CUST'));
+    I := LReport.DataInfo.IndexOf(LDatasetAlias);
+    Check(I >= 0, 'the dataset ' + LDatasetAlias);
+    if I < 0 then
+      Exit;
+    LDataset := LReport.DataInfo.Items[I];
+    LAlias := LDataset.DatabaseAlias;
+    I := LReport.DatabaseInfo.IndexOf(LAlias);
+    Check(I >= 0, 'its connection ' + LAlias + ' is in the report');
+    if I < 0 then
+      Exit;
+    LDatabase := LReport.DatabaseInfo.Items[I];
+    Check(RpIsLocalSqlDatabase(LDatabase), 'a direct connection');
+    Log('  schema file: ' + RpLocalSchemaFileName(LDatabase));
+    Check(FileExists(RpLocalSchemaFileName(LDatabase)),
+      'the local schema of the samples is installed');
+    LNames := TStringList.Create;
+    try
+      RpListLocalSubSchemas(LDatabase, LNames);
+      Log('  subschemas: ' + LNames.CommaText);
+    finally
+      LNames.Free;
+    end;
+    Log('  SCHEMANAME of the dataset: ' + LDataset.SchemaName);
+    LSchema := Arg('schema', LDataset.SchemaName);
+    Check(RpExistingLocalSubSchema(LDatabase, LSchema) <> '',
+      'the subschema ' + LSchema + ' is in the file');
+    LSql := LDataset.SQL;
+    Log('  SQL before: ' + OneLine(LSql));
+    // What the copilot sends: the report of the designer as XML
+    LDocument := ReportXml(LReport);
+  finally
+    LReport.Free;
+  end;
+
+  // A SQL of the AI runs as one more dataset of that document
+  LProbe := TRpClientSqlRequest.Create;
+  try
+    LProbe.Id := 'p1';
+    LProbe.DatabaseAlias := LAlias;
+    LProbe.Sql := 'SELECT COUNT(*) AS N FROM CUSTOMERS';
+    LProbeResult := RpProbeClientSql(LDocument, LProbe);
+    try
+      Log('  probe: ' + IntToStr(LProbeResult.Columns.Count) + ' columns ' +
+        OneLine(LProbeResult.ErrorMessage));
+      Check(LProbeResult.Success, 'the SQL of the AI runs on the database of the sample');
+    finally
+      LProbeResult.Free;
+    end;
+  finally
+    LProbe.Free;
+  end;
+  if not ARunAI then
+  begin
+    Log('--- AI skipped: neither -guest nor -tokenfile');
+    Exit;
+  end;
+
+  LPrompt := Arg('prompt', 'In the dataset ' + LDatasetAlias +
+    ' add the email of each customer');
+  LExpect := UpperCase(Arg('expect', 'EMAIL'));
+  Log('--- ModifyReport on the sample');
+  Log('  prompt: ' + LPrompt);
+  LRunner := TRunner.Create;
+  LHttp := TRpDatabaseHttp.Create;
+  LRequest := TRpApiModifyReportRequest.Create;
+  LResult := nil;
+  try
+    LHttp.Token := AToken;
+    LHttp.InstallId := AInstallId;
+    LRequest.AITier := ratStandard;
+    LRequest.Mode := rdmFast;
+    LRequest.ReportDocument := LDocument;
+    LRequest.ReportFormat := rdfXml;
+    LRequest.ReturnModifiedDocument := True;
+    LRequest.UserLanguage := 'English';
+    LRequest.UserInstructions.Add(LPrompt);
+    LRequest.Config.LocalAlias := LAlias;
+    LRequest.Config.LocalSchemaName := LSchema;
+    try
+      LResult := RpModifyReportWithClientSql(LHttp, LRequest, nil, LRunner.Progress, nil);
+    except
+      on E: Exception do
+        Log('  exception: ' + OneLine(E.Message));
+    end;
+    Check(LRequest.Config.HasInlineSchema, 'the request carries the local schema inline');
+    Check(LResult <> nil, 'the API answers');
+    if LResult = nil then
+      Exit;
+    Log('  client SQL turns: ' + IntToStr(LRunner.Turns) + ', steps: ' +
+      IntToStr(LResult.Steps.Count));
+    if LResult.ErrorMessage <> '' then
+      Log('  error: ' + OneLine(RpComposeApiErrorMessage(LResult.ErrorMessage,
+        LResult.DebugDetails)));
+    if LResult.ResultData.ErrorMessage <> '' then
+      Log('  result error: ' + OneLine(LResult.ResultData.ErrorMessage));
+    Log('  explanation: ' + OneLine(Copy(LResult.ResultData.Explanation, 1, 400)));
+    Check((LResult.ErrorMessage = '') and LResult.ResultData.Success, 'no error');
+    Check(LResult.ResultData.ModifiedReportDocument <> '', 'a document to apply');
+    if LResult.ResultData.ModifiedReportDocument = '' then
+      Exit;
+    // -out: the document of the AI, to look at it in the designer
+    if Arg('out', '') <> '' then
+      with TStringList.Create do
+      try
+        Text := LResult.ResultData.ModifiedReportDocument;
+        SaveToFile(Arg('out', ''), TEncoding.UTF8);
+      finally
+        Free;
+      end;
+    LModified := RpLoadReportDocument(LResult.ResultData.ModifiedReportDocument);
+    try
+      LFound := nil;
+      for I := 0 to LModified.DataInfo.Count - 1 do
+        if SameText(LModified.DataInfo.Items[I].Alias, LDatasetAlias) then
+          LFound := LModified.DataInfo.Items[I];
+      Check(LFound <> nil, 'the dataset ' + LDatasetAlias + ' is still there');
+      if LFound <> nil then
+      begin
+        Log('  SQL after: ' + OneLine(LFound.SQL));
+        Check(Pos(LExpect, UpperCase(LFound.SQL)) > 0, 'its SQL has ' + LExpect);
+        Check(SameText(LFound.DatabaseAlias, LAlias), 'on the connection ' + LAlias);
+      end;
+    finally
+      LModified.Free;
+    end;
+  finally
+    LResult.Free;
+    LRequest.Free;
+    LHttp.Free;
+    LRunner.Free;
+  end;
+end;
+
+var
+  GAlias, GConnections, GDocument, GInstallId, GPrompt, GReportFile, GToken,
+    GTokenFile, GUrl: string;
+  GGuest: Boolean;
   GReport: TRpReport;
+  I: Integer;
 begin
   try
     GConnections := Arg('connections', '');
@@ -499,6 +676,21 @@ begin
     end;
 {$ENDIF}
     Log('API: ' + HUB_API_URL);
+    GReportFile := Arg('report', '');
+    if GReportFile <> '' then
+    begin
+      GGuest := False;
+      for I := 1 to ParamCount do
+        if SameText(ParamStr(I), '-guest') then
+          GGuest := True;
+      GToken := '';
+      if GTokenFile <> '' then
+        GToken := ReadTokenFile(GTokenFile);
+      TestSampleReport(ExpandFileName(GReportFile), GToken, GInstallId,
+        GGuest or (GToken <> ''));
+    end
+    else
+    begin
     TestSqlGuard;
     GReport := NewReport(GAlias);
     try
@@ -514,6 +706,7 @@ begin
         Log('--- 3. skipped: no -tokenfile');
     finally
       GReport.Free;
+    end;
     end;
   except
     on E: Exception do

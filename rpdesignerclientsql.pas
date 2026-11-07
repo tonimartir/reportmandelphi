@@ -168,6 +168,9 @@ begin
     raise Exception.Create('The report document is empty');
   Result := TRpReport.Create(nil);
   try
+    // The folder of the report of the designer: the relative SQLite database
+    // of a sample is next to it (the XML does not carry it)
+    Result.ReportFolder := RpReportFolder;
     Result.FailIfLoadExternalError := False;
     Result.OnReadError := GReadErrorIgnorer.ReadError;
 {$IFDEF FPC}
