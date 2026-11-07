@@ -93,6 +93,8 @@ type
     Route: TRpWizardRoute;
     HubApiKey: string;
     HubLoggedIn: Boolean;
+    // The list was loaded without key nor session: the example databases
+    HubListAnonymous: Boolean;
     HubDatabaseId: Int64;
     HubDatabaseName: string;
     HubSchemaId: Int64;
@@ -140,6 +142,7 @@ type
     // The Hub databases load of the API key page on entering it: without
     // the "Logged in" message
     FQuietHubLoad: Boolean;
+    FAnonymousHubLoad: Boolean;
 
     procedure BuildControls;
     procedure HandleAsyncMessage(AMessage: TRpAsyncMessage);
@@ -200,6 +203,7 @@ type
     procedure ApplyHubDatabases(AOk: Boolean; ADatabases: TStrings);
     // A Reportman AI session: the API key of an Agent connection is optional
     function HasHubSession: Boolean;
+    function HubKeyNote: string;
     procedure FillHubDatabaseCombo;
     // The Hub databases whose Agent is not connected: a red dot (the text
     // "(not connected)" where it can not be drawn) and a hint
@@ -255,7 +259,7 @@ type
     LnkAgentDownload: TLabel;
     EdHubApiKey: TEdit;
     BtnHubLogin: TButton;
-    // Under the API key: optional with a session, required without one
+    // Under the API key: optional with a session; without, the example list
     LblHubKeyNote: TLabel;
     BtnHubRefresh: TButton;
     CbHubDatabase: TComboBox;
@@ -356,7 +360,7 @@ implementation
 
 uses
   rpauthmanager, rpdatahttp, rpjsonfpc, rplcllayout, rpsqldbconnfpc,
-  rplocalschemas, rpfrmlocalschemaslcl, rpchatmodernstylelcl;
+  rplocalschemas, rpfrmlocalschemaslcl, rpchatmodernstylelcl, rpfrmloginlcl;
 
 const
   SExamplePrompt = 'Sales by customer with a group total and a grand total';
@@ -1334,15 +1338,13 @@ begin
     wpAgentLogin:
       begin
         // The key as it is typed (also without "Log in"): the connection
-        // test validates it. Without a session it is required.
+        // test validates it. Without key nor session the list has the
+        // example databases, which need neither
         if Assigned(EdHubApiKey) then
           FState.HubApiKey := Trim(EdHubApiKey.Text);
-        if (FState.HubApiKey = '') and not HasHubSession then
-        begin
-          ShowInfo(TR(1777, 'Please enter your Reportman AI API key.'));
-          Exit;
-        end;
-        if not FState.HubLoggedIn then
+        // A key typed after the example list: its databases first
+        if (not FState.HubLoggedIn) or
+          (FState.HubListAnonymous and (FState.HubApiKey <> '')) then
         begin
           ShowInfo(TR(1754, 'Please log in to Reportman AI before continuing.'));
           Exit;
@@ -1791,16 +1793,7 @@ begin
   EdHubApiKey := NewRowEdit(LRow);
   EdHubApiKey.Text := FState.HubApiKey;
   EdHubApiKey.PasswordChar := '*';
-  // With a session the key is optional, but the report needs it to run
-  // unattended (printreptopdf, server): the engine uses the session otherwise
-  if HasHubSession then
-    LblHubKeyNote := NewLabel(TR(1831, 'You are signed in to Reportman AI: the API ' +
-      'key is optional. Without it the connection uses your session, and the ' +
-      'report cannot run unattended on this computer (printreptopdf, server, ' +
-      'scheduled tasks).'), 0, 6)
-  else
-    LblHubKeyNote := NewLabel(TR(1832, 'You are not signed in to Reportman AI: ' +
-      'the API key is required.'), 0, 6);
+  LblHubKeyNote := NewLabel(HubKeyNote, 0, 6);
   LblHubKeyNote.Font.Color := clGrayText;
 
   NewLabel(TR(1712, 'Reportman AI Connection'), 0, 16);
@@ -1812,9 +1805,25 @@ begin
   CbHubDatabase.OnChange := DoHubDatabaseChange;
   FillHubDatabaseCombo;
 
-  // The databases of the session, or of the key of a previous visit
-  if HasHubSession or (FState.HubLoggedIn and (Trim(FState.HubApiKey) <> '')) then
-    LoadHubDatabases(True);
+  // Always: without key nor session the Hub lists the example databases, for
+  // everybody; with them, those of the account or of the key too
+  LoadHubDatabases(True);
+end;
+
+// The note under the API key: with a session the key is optional, but the
+// report needs it to run unattended (printreptopdf, server); without, the list
+// has the example connections only
+function TFRpNewReportWizardLCL.HubKeyNote: string;
+begin
+  if HasHubSession then
+    Result := TR(1831, 'You are signed in to Reportman AI: the API ' +
+      'key is optional. Without it the connection uses your session, and the ' +
+      'report cannot run unattended on this computer (printreptopdf, server, ' +
+      'scheduled tasks).')
+  else
+    Result := TR(2055, 'You are not signed in to Reportman AI: the list ' +
+      'has the example connections. To use your own, log in or enter the ' +
+      'API key.');
 end;
 
 procedure TFRpNewReportWizardLCL.BuildPageSchema;
@@ -2468,13 +2477,16 @@ begin
   if FOperation <> woNone then
     Exit;
   FState.HubApiKey := Trim(EdHubApiKey.Text);
-  // With a session, no key: the databases of the account
+  // Without key nor session: the login of Reportman AI, then the note and
+  // the databases of the account
   if (FState.HubApiKey = '') and not HasHubSession then
   begin
-    RpMessageBox(WideString(TR(1777, 'Please enter your Reportman AI API key.')),
-      WideString(TR(1778, 'Reportman AI')), [smbOK], smsInformation, smbOK, smbOK);
-    Exit;
+    if not (ShowLoginDialog(Self) and HasHubSession) then
+      Exit;
+    if Assigned(LblHubKeyNote) then
+      LblHubKeyNote.Caption := HubKeyNote;
   end;
+  // With a session, no key: the databases of the account
   LoadHubDatabases;
 end;
 
@@ -2486,7 +2498,12 @@ end;
 
 procedure TFRpNewReportWizardLCL.DoHubRefresh(Sender: TObject);
 begin
-  DoHubLogin(Sender);
+  // The list again, also without key nor session (the example databases):
+  // only "Log in" asks for a login
+  if FOperation <> woNone then
+    Exit;
+  FState.HubApiKey := Trim(EdHubApiKey.Text);
+  LoadHubDatabases((FState.HubApiKey = '') and not HasHubSession);
 end;
 
 procedure TFRpNewReportWizardLCL.LoadHubDatabases(AQuiet: Boolean);
@@ -2494,6 +2511,7 @@ var
   LWorker: TRpWizardHubWorker;
 begin
   FQuietHubLoad := AQuiet;
+  FAnonymousHubLoad := (FState.HubApiKey = '') and not HasHubSession;
   BeginOperation(woHubLogin, TR(1782, 'Contacting Reportman AI...'));
   LWorker := TRpWizardHubWorker.Create(FMailboxRef);
   LWorker.Version := FOperationVersion;
@@ -2575,6 +2593,7 @@ begin
     Exit;
   end;
   FState.HubLoggedIn := True;
+  FState.HubListAnonymous := FAnonymousHubLoad;
   FHubDatabases.Assign(ADatabases);
   FillHubDatabaseCombo;
   // Connection wizard: the Hub database of the report connection

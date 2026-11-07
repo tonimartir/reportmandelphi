@@ -180,9 +180,17 @@ begin
   P := ARequest.PathInfo;
   LBody := BodyJson(ARequest);
   try
-    if P = '/api/agent/testconnection' then
+    // As the API: without API key nor session only the example database (7)
+    // answers
+    if ((P = '/api/agent/testconnection') or (P = '/api/agent/execute')) and
+      (AServer.LastHeader('X-Reportman-ApiKey') = '') and
+      (ARequest.Authorization = '') and (JsonText(LBody, 'hubDatabaseId') <> '7') then
+      SendText(AResponse, 403, 'text/plain',
+        'No access to this database. Valid API Key or Login required.')
+    else if P = '/api/agent/testconnection' then
     begin
-      if JsonText(LBody, 'hubDatabaseId') = '77' then
+      if (JsonText(LBody, 'hubDatabaseId') = '77') or
+        (JsonText(LBody, 'hubDatabaseId') = '7') then
         SendJson(AResponse, 200, '{"success":true,"message":"Connected"}')
       else
         SendJson(AResponse, 404, '{"success":false,"message":"Unknown database"}');
@@ -708,7 +716,7 @@ end;
 procedure AgentConnectionsTest;
 var
   LDatabases: TRpDatabaseInfoList;
-  LDesigned, LPartial, LConfigured, LNoKey: TRpDatabaseInfoItem;
+  LDesigned, LPartial, LConfigured, LNoKey, LExample: TRpDatabaseInfoItem;
   LParams: TRpParamList;
   LIni: TMemIniFile;
   LMessage: string;
@@ -791,17 +799,21 @@ begin
     LDesigned.DisConnect;
     LConfigured.DisConnect;
     LPartial.DisConnect;
-    // No API key: the session of the user in the designer; without session
-    // (printreptopdf, a server) a clear error, without calling the Hub
+    // No API key: the session of the user in the designer. Without session
+    // (printreptopdf, a server) the request goes: the example database
+    // answers, the Hub refuses the others and the error says why
     LIni := TMemIniFile.Create(GConnectionsFile);
     try
       LIni.WriteString('NOKEY', 'DriverName', 'Reportman AI Agent');
       LIni.WriteString('NOKEY', 'HubDatabaseId', '77');
+      LIni.WriteString('EXAMPLE', 'DriverName', 'Reportman AI Agent');
+      LIni.WriteString('EXAMPLE', 'HubDatabaseId', '7');
       LIni.UpdateFile;
     finally
       LIni.Free;
     end;
     LNoKey := AddAgentDatabase('NOKEY');
+    LExample := AddAgentDatabase('EXAMPLE');
     TRpAuthManager.Instance.Logout;
     try
       GHub.ClearLog;
@@ -810,11 +822,17 @@ begin
         LNoKey.Connect(LParams);
       except
         on E: ERpAgentConnectionError do
-          LMessage := E.Message;
+          LMessage := E.Message + '|' + E.ConnectionName;
       end;
-      CheckEquals(Format(SRpAgentNoCredentials, ['NOKEY']), LMessage,
-        'no API key and no session: clear error');
-      CheckEquals('', GHub.RequestLog, 'the Hub is not called');
+      CheckEquals(Format(SRpAgentNoCredentials, ['NOKEY']) + '|NOKEY', LMessage,
+        'no API key and no session, refused by the Hub: clear error');
+      CheckEquals('POST /api/agent/testconnection', GHub.RequestLog, 'the Hub decides');
+      GHub.ClearLog;
+      LExample.Connect(LParams);
+      CheckEquals('', GHub.LastHeader('X-Reportman-ApiKey'), 'the example: no API key');
+      CheckEquals('', GHub.LastHeader('Authorization'), 'the example: no session');
+      CheckEquals('POST /api/agent/testconnection', GHub.RequestLog, 'the example opens');
+      LExample.DisConnect;
     finally
       Check(TRpAuthManager.Instance.LoginWithCode('ana@example.com', '123456'),
         'logged in again');

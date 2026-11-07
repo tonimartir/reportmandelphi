@@ -102,7 +102,8 @@ type
 {$ENDIF}
 
   // A Reportman AI Agent connection that can not be opened: no Hub database
-  // in the connections file, or neither API key nor Reportman AI session.
+  // in the connections file, or neither API key nor Reportman AI session for
+  // a database that is not one of the examples (the Hub refuses it).
   // The designer offers to configure the connection when it catches it.
   ERpAgentConnectionError = class(Exception)
   private
@@ -133,7 +134,11 @@ type
     FAgentAiId: Int64;
     FConnected: Boolean;
     FInlineConfigJson: string;
+    FConnectionName: string;
     procedure SetConnected(Value: Boolean);
+    // An Agent request refused (403) without API key nor session: the
+    // database is not one of the examples, which need neither
+    procedure CheckNoCredentialsRefusal(const AAction: string; AStatusCode: Integer);
     // The config of a request: the inline one (InlineConfigJson) or the Hub ids
     function RequestConfig: TJSONObject;
   public
@@ -157,6 +162,8 @@ type
     // Hub ids
     property InlineConfigJson: string read FInlineConfigJson write FInlineConfigJson;
     property Connected: Boolean read FConnected write SetConnected;
+    // The connection (alias) of the report, for the errors
+    property ConnectionName: string read FConnectionName write FConnectionName;
     function SuggestSql(const ASql: string; ACursorPosition: Integer; AMode: string;
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
@@ -1776,6 +1783,15 @@ begin
     LResponseStream.Free;
   end;
 end;
+procedure TRpDatabaseHttp.CheckNoCredentialsRefusal(const AAction: string;
+  AStatusCode: Integer);
+begin
+  if (AStatusCode = 403) and (FApiKey = '') and (FToken = '') and
+    StartsText('api/agent/', AAction) then
+    raise ERpAgentConnectionError.CreateFor(
+      Format(SRpAgentNoCredentials, [FConnectionName]), FConnectionName);
+end;
+
 function TRpDatabaseHttp.InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean;
 begin
   Result := InternalRequest(AAction, RequestBody, ResponseStream, 0);
@@ -1848,6 +1864,7 @@ begin
              TRpAuthManager.Instance.Log('Unauthorized (401) detected in InternalRequest. Logging out.');
              TRpAuthManager.Instance.Logout;
            end;
+           CheckNoCredentialsRefusal(AAction, LResponse.StatusCode);
 
            raise Exception.CreateFmt('HTTP Error %d: %s'#13#10'%s', [LResponse.StatusCode, LResponse.StatusText, LErrorStream.DataString]);
          finally
@@ -1899,7 +1916,15 @@ begin
       if not LUrl.EndsWith('/') then LUrl := LUrl + '/';
       LUrl := LUrl + AAction;
       ConfigureIdHttpClientForUrl(LIdHttp, LUrl);
-      LIdHttp.Post(LUrl, LSourceStream, ResponseStream);
+      try
+        LIdHttp.Post(LUrl, LSourceStream, ResponseStream);
+      except
+        on E: EIdHTTPProtocolException do
+        begin
+          CheckNoCredentialsRefusal(AAction, E.ErrorCode);
+          raise;
+        end;
+      end;
       
       if (LIdHttp.ResponseCode >= 200) and (LIdHttp.ResponseCode < 300) then
          Result := True
@@ -1909,6 +1934,7 @@ begin
          try
            ResponseStream.Position := 0;
            LErrorStream.CopyFrom(ResponseStream, 0);
+           CheckNoCredentialsRefusal(AAction, LIdHttp.ResponseCode);
            raise Exception.CreateFmt('HTTP Error %d: %s'#13#10'%s', [LIdHttp.ResponseCode, LIdHttp.ResponseText, LErrorStream.DataString]);
          finally
            LErrorStream.Free;
