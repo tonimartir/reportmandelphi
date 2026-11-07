@@ -1586,6 +1586,10 @@ procedure TFRpChatFrame.ClearSchemaItems;
 var
   I: Integer;
 begin
+  // Also from the destructor of a frame whose constructor failed: an access
+  // violation here hid the error of the constructor
+  if ComboSchema = nil then
+    Exit;
   for I := 0 to ComboSchema.Items.Count - 1 do
     ComboSchema.Items.Objects[I].Free;
   ComboSchema.Clear;
