@@ -37,6 +37,9 @@ type
     // A cloud schema whose Agent the cloud says is not connected: a red dot
     // before its name and a hint; it can still be chosen
     Offline: Boolean;
+    // A schema of an example database of the Hub (for everybody, without
+    // login, read-only): the DEMO chip after its name and a hint
+    Example: Boolean;
     constructor Create(AHubDatabaseId, AHubSchemaId: Int64;
       const AApiKey: string);
     constructor CreateKind(AKind: TRpSchemaSelectorItemKind);
@@ -241,12 +244,25 @@ type
       write SetOnNewLocalSchema;
   end;
 
+// The schemas in the cloud of the lists of the designer (the copilot, the SQL
+// editor of the datasets, the new report wizard), the same in all of them:
+// 'Name=db|schema|apikey' and the rest of the line (RpHubSchemaLineWithApiKey),
+// a schema once by its Hub database and schema, and their sizes. Those
+// visible with APreferredApiKey (the connection) first, then those of the
+// session (without one, the example databases, for everybody) and those of
+// every API key of the connections file. False when no request answered
+function RpLoadDesignerHubSchemas(const AToken, AInstallId,
+  APreferredApiKey: string; ASchemas, ASizes: TStrings): Boolean;
+// What an example database of the Hub is (the hint of its DEMO items, the
+// note of the wizard)
+function RpHubExampleNote: string;
+
 implementation
 
 {$R *.dfm}
 
 uses
-  rpmdconsts;
+  rpmdconsts, rpdatainfo;
 
 const
   // The text of the list (UTF-16), as the selector of the copilot
@@ -310,64 +326,105 @@ begin
   end;
 end;
 
-// The schemas of the account and the ones visible with the API key of the
-// preferred connection, merged ('Name=db|schema|apikey'), and their sizes;
-// False when no request answered
-function LoadMergedSchemas(const AToken, AInstallId, APreferredApiKey: string;
-  ASchemas, ASizes: TStrings): Boolean;
+function RpLoadDesignerHubSchemas(const AToken, AInstallId,
+  APreferredApiKey: string; ASchemas, ASizes: TStrings): Boolean;
 var
-  LUserSchemas, LApiKeySchemas, LSeenKeys, LRawSizes: TStringList;
-  LHttp: TRpDatabaseHttp;
+  LRaw, LRawSizes, LSeenKeys, LApiKeys, LNames, LParams: TStringList;
+  LConAdmin: TRpConnAdmin;
+  I: Integer;
+  LApiKey: string;
+
+  function LoadWith(const AKey: string): Boolean;
+  var
+    LHttp: TRpDatabaseHttp;
+  begin
+    LRaw.Clear;
+    LRawSizes.Clear;
+    LHttp := TRpDatabaseHttp.Create;
+    try
+      try
+        LHttp.ApiKey := AKey;
+        LHttp.Token := AToken;
+        LHttp.InstallId := AInstallId;
+        Result := LHttp.GetUserSchemas(LRaw, LRawSizes);
+      except
+        Result := False;
+      end;
+    finally
+      LHttp.Free;
+    end;
+    if Result then
+    begin
+      ASizes.AddStrings(LRawSizes);
+      AddMergedSchemas(LRaw, ASchemas, LSeenKeys, AKey);
+    end;
+  end;
+
 begin
   Result := False;
-  LUserSchemas := TStringList.Create;
-  LApiKeySchemas := TStringList.Create;
-  LSeenKeys := TStringList.Create;
+  LRaw := TStringList.Create;
   LRawSizes := TStringList.Create;
+  LSeenKeys := TStringList.Create;
+  LApiKeys := TStringList.Create;
+  LNames := TStringList.Create;
+  LParams := TStringList.Create;
   try
     LSeenKeys.Sorted := True;
     LSeenKeys.Duplicates := dupIgnore;
-    if Trim(APreferredApiKey) <> '' then
+    LApiKeys.Sorted := True;
+    LApiKeys.Duplicates := dupIgnore;
+    LApiKey := Trim(APreferredApiKey);
+    if LApiKey <> '' then
     begin
-      LHttp := TRpDatabaseHttp.Create;
+      LApiKeys.Add(LApiKey);
+      Result := LoadWith(LApiKey) or Result;
+    end;
+    // The session, or nobody: the example databases
+    Result := LoadWith('') or Result;
+    // The API keys of the connections, as the copilot always did
+    try
+      LConAdmin := TRpConnAdmin.Create;
       try
-        try
-          LHttp.ApiKey := Trim(APreferredApiKey);
-          LHttp.Token := AToken;
-          LHttp.InstallId := AInstallId;
-          Result := LHttp.GetUserSchemas(LApiKeySchemas, LRawSizes) or Result;
-          ASizes.AddStrings(LRawSizes);
-        except
-          LApiKeySchemas.Clear;
+        LConAdmin.GetConnectionNames(LNames, '');
+        for I := 0 to LNames.Count - 1 do
+        begin
+          LParams.Clear;
+          LConAdmin.GetConnectionParams(LNames[I], LParams);
+          LApiKey := Trim(LParams.Values['ApiKey']);
+          if (LApiKey = '') or (LApiKeys.IndexOf(LApiKey) >= 0) then
+            Continue;
+          LApiKeys.Add(LApiKey);
+          Result := LoadWith(LApiKey) or Result;
         end;
       finally
-        LHttp.Free;
+        LConAdmin.Free;
       end;
+    except
+      // No connections file: the schemas read so far
     end;
-    if Trim(AToken) <> '' then
-    begin
-      LHttp := TRpDatabaseHttp.Create;
-      try
-        try
-          LHttp.Token := AToken;
-          LHttp.InstallId := AInstallId;
-          Result := LHttp.GetUserSchemas(LUserSchemas, LRawSizes) or Result;
-          ASizes.AddStrings(LRawSizes);
-        except
-          LUserSchemas.Clear;
-        end;
-      finally
-        LHttp.Free;
-      end;
-    end;
-    AddMergedSchemas(LApiKeySchemas, ASchemas, LSeenKeys, APreferredApiKey);
-    AddMergedSchemas(LUserSchemas, ASchemas, LSeenKeys, '');
   finally
-    LRawSizes.Free;
+    LParams.Free;
+    LNames.Free;
+    LApiKeys.Free;
     LSeenKeys.Free;
-    LApiKeySchemas.Free;
-    LUserSchemas.Free;
+    LRawSizes.Free;
+    LRaw.Free;
   end;
+end;
+
+function RpHubExampleNote: string;
+begin
+  Result := string(TranslateStr(2056, 'Example connection, read-only: it is ' +
+    'there to try Reportman AI without signing in. Its schema cannot be ' +
+    'changed.'));
+end;
+
+// The schemas of the cloud of the lists (RpLoadDesignerHubSchemas)
+function LoadMergedSchemas(const AToken, AInstallId, APreferredApiKey: string;
+  ASchemas, ASizes: TStrings): Boolean;
+begin
+  Result := RpLoadDesignerHubSchemas(AToken, AInstallId, APreferredApiKey,
+    ASchemas, ASizes);
 end;
 
 constructor TSchemaComboItem.Create(AHubDatabaseId, AHubSchemaId: Int64;
@@ -531,6 +588,8 @@ var
       // The state of its Agent after the API key (RpHubSchemaLineWithApiKey)
       LCloudItem.Offline := RpHubOnlineState(
         RpHubLineField(ALines.ValueFromIndex[J], 3)) = hosOffline;
+      LCloudItem.Example := RpHubLineIsExample(ALines.ValueFromIndex[J],
+        RpHubSchemaKeyExampleField);
       AddItem(CSchemaCloudIcon + ALines.Names[J] +
         SizeSuffix(FCloudSizes.Values[IntToStr(LSchemaId)]), LCloudItem);
     end;
@@ -595,7 +654,9 @@ begin
       AddItem(string(TranslateStr(1838, 'New local schema...')),
         TSchemaComboItem.CreateKind(sikNewLocal));
     // A direct connection is not in the Hub: no cloud schema to make for it
-    if FLocalAlias <> '' then
+    // (an Agent connection with local schemas is: its Hub database)
+    if (FLocalAlias <> '') and (FPreferredHubDatabaseId = 0) and
+      (FCloudDatabaseFilter = 0) then
       AddItem(string(TranslateStr(1839, 'New cloud schema...')) + ' (' +
         string(TranslateStr(1842, 'This connection is not in the Hub')) + ')',
         TSchemaComboItem.CreateKind(sikNewCloud))
@@ -624,8 +685,12 @@ begin
   LDotAt := -1;
   if (LItem <> nil) and LItem.Offline then
     LDotAt := Length(CSchemaCloudIcon);
-  TRpChatStyle.DrawComboItem(FCombo.Canvas, Rect, State,
-    FCombo.Items[Index], LDotAt);
+  if (LItem <> nil) and LItem.Example then
+    TRpChatStyle.DrawComboItem(FCombo.Canvas, Rect, State,
+      FCombo.Items[Index], LDotAt, RpHubExampleBadge)
+  else
+    TRpChatStyle.DrawComboItem(FCombo.Canvas, Rect, State,
+      FCombo.Items[Index], LDotAt);
 end;
 
 procedure TRpSchemaListController.ComboSchemaDropDown(Sender: TObject);
@@ -727,6 +792,8 @@ begin
     FCombo.Hint := string(TranslateStr(2004, 'The Agent of this ' +
       'database is not connected: the AI can design with its schema, but the ' +
       'data cannot be opened until it comes back.'))
+  else if (LItem <> nil) and LItem.Example then
+    FCombo.Hint := RpHubExampleNote
   else
     FCombo.Hint := '';
 end;

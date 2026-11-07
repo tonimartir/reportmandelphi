@@ -502,7 +502,24 @@ begin
         LDataInfo.SchemaName));
     end
     else
-      FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+    begin
+      // A Reportman AI Agent connection: the local subschema of the dataset
+      // while it is in the file, else its Hub schema
+      LSchemaName := '';
+      if RpCanHaveLocalSchema(LDatabaseInfo) then
+        LSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+          LDataInfo.SchemaName);
+      if LSchemaName <> '' then
+      begin
+        FMonaco.SetHubContext(LHubDatabaseId, 0, LSchemaApiKey);
+        FMonaco.SelectLocalSchema(LSchemaName);
+      end
+      else
+      begin
+        FMonaco.SelectLocalSchema('');
+        FMonaco.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+      end;
+    end;
     FMonaco.RuntimeDb := LRuntimeDb;
     if ASyncSqlFromDataInfo then
     begin
@@ -527,7 +544,21 @@ begin
         FChat.SelectLocalSchema(LDatabaseInfo.Alias, LSchemaName);
     end
     else
-      FChat.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+    begin
+      // A Reportman AI Agent connection: the local subschema of the dataset
+      // while it is in the file, else its Hub schema
+      LSchemaName := '';
+      if RpCanHaveLocalSchema(LDatabaseInfo) then
+        LSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+          LDataInfo.SchemaName);
+      if LSchemaName <> '' then
+      begin
+        FChat.SetHubContext(LHubDatabaseId, 0, LSchemaApiKey);
+        FChat.SelectLocalSchema(LDatabaseInfo.Alias, LSchemaName);
+      end
+      else
+        FChat.SetHubContext(LHubDatabaseId, LHubSchemaId, LSchemaApiKey);
+    end;
   end;
 end;
 
@@ -557,7 +588,7 @@ begin
   if FMonaco = nil then
     Exit;
   LAlias := '';
-  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+  if RpCanHaveLocalSchema(ADatabaseInfo) then
     LAlias := ADatabaseInfo.Alias;
   if (not AForce) and SameText(LAlias, FMonacoLocalAlias) then
     Exit;
@@ -629,7 +660,7 @@ begin
   if FChat = nil then
     Exit;
   LAlias := '';
-  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+  if RpCanHaveLocalSchema(ADatabaseInfo) then
     LAlias := ADatabaseInfo.Alias;
   if (not AForce) and SameText(LAlias, FChatLocalAlias) then
     Exit;
@@ -1104,6 +1135,29 @@ begin
   end;
   Exit;
  end;
+ // An Agent connection: a local subschema chosen is the one of the dataset,
+ // without its Hub schema; a cloud schema chosen, the other way round
+ if RpCanHaveLocalSchema(LDatabaseInfo) and (LDataInfo <> nil) then
+ begin
+  LSchemaName := FMonaco.GetLocalSchemaName;
+  if LSchemaName <> '' then
+  begin
+   LDataInfo.SchemaName := LSchemaName;
+   LDataInfo.HubSchemaId := 0;
+   if (FChat <> nil) and not (SameText(FChat.GetLocalSchemaAlias,
+     LDatabaseInfo.Alias) and SameText(FChat.GetLocalSchemaName, LSchemaName)) then
+   begin
+    FSyncingSchemaContext := True;
+    try
+     FChat.SelectLocalSchema(LDatabaseInfo.Alias, LSchemaName);
+    finally
+     FSyncingSchemaContext := False;
+    end;
+   end;
+   Exit;
+  end;
+  LDataInfo.SchemaName := '';
+ end;
  SyncActiveSchemaContext(FMonaco.HubDatabaseId, FMonaco.HubSchemaId,
    FMonaco.GetSchemaApiKey);
 end;
@@ -1135,6 +1189,24 @@ begin
       FMonaco.SelectLocalSchema(FChat.GetLocalSchemaName);
     Exit;
   end;
+  // An Agent connection: a local subschema chosen is the one of the dataset,
+  // without its Hub schema; a cloud schema chosen, the other way round
+  if RpCanHaveLocalSchema(LDatabaseInfo) and
+    SameText(FChat.GetLocalSchemaAlias, LDatabaseInfo.Alias) and
+    (FChat.GetLocalSchemaName <> '') then
+  begin
+    if not FChat.SchemaChangeFromLoad then
+    begin
+      LDataInfo.SchemaName := FChat.GetLocalSchemaName;
+      LDataInfo.HubSchemaId := 0;
+    end;
+    if (FMonaco <> nil) and
+      not SameText(FMonaco.GetLocalSchemaName, FChat.GetLocalSchemaName) then
+      FMonaco.SelectLocalSchema(FChat.GetLocalSchemaName);
+    Exit;
+  end;
+  if (not FChat.SchemaChangeFromLoad) and RpCanHaveLocalSchema(LDatabaseInfo) then
+    LDataInfo.SchemaName := '';
   // The chat also calls this after loading its list; an empty list (not
   // logged in, logged out, no network) is not a choice of the user and must
   // not reset the schema of the dataset

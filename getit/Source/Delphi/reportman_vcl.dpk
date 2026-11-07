@@ -66,6 +66,7 @@ contains
   rpfrmloginvcl in '..\Common\rpfrmloginvcl.pas',
   rpfrmaiselectionvcl in '..\Common\rpfrmaiselectionvcl.pas',
   rpfrmaireportvcl in '..\Common\rpfrmaireportvcl.pas',
+  rpfrmaischemaselectorvcl in '..\Common\rpfrmaischemaselectorvcl.pas',
   rpfrmchatvcl in '..\Common\rpfrmchatvcl.pas';
 
 end.

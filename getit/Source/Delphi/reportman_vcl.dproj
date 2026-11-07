@@ -235,6 +235,7 @@
         <DCCReference Include="..\Common\rpfrmloginvcl.pas"/>
         <DCCReference Include="..\Common\rpfrmaiselectionvcl.pas"/>
         <DCCReference Include="..\Common\rpfrmaireportvcl.pas"/>
+        <DCCReference Include="..\Common\rpfrmaischemaselectorvcl.pas"/>
         <DCCReference Include="..\Common\rpfrmchatvcl.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

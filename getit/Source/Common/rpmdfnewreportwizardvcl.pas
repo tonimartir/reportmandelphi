@@ -79,6 +79,8 @@ type
     Route: TRpWizardRoute;
     HubApiKey: string;
     HubLoggedIn: Boolean;
+    // The list was loaded without key nor session: the example databases
+    HubListAnonymous: Boolean;
     HubDatabaseId: Int64;
     HubDatabaseName: string;
     HubSchemaId: Int64;
@@ -139,6 +141,8 @@ type
     FBtnHubLogin: TButton;
     FBtnHubRefresh: TButton;
     FCbHubDatabase: TComboBox;
+    // Under the Hub connection, with an example database chosen: what it is
+    FLblHubExampleNote: TLabel;
     // schema page: why the subschemas of the direct connection could not be
     // read
     FLblLocalSchemaError: TLabel;
@@ -202,11 +206,13 @@ type
     procedure DoHubDatabaseDrawItem(Control: TWinControl; Index: Integer;
       Rect: TRect; State: TOwnerDrawState);
     function HubDatabaseOffline(AIndex: Integer): Boolean;
+    function HubDatabaseExample(AIndex: Integer): Boolean;
 
     // AQuiet: without the "Logged in" message (entering the page)
     procedure LoadHubDatabases(AQuiet: Boolean = False);
     // A Reportman AI session: the API key of an Agent connection is optional
     function HasHubSession: Boolean;
+    function HubKeyNote: string;
     procedure RefreshConcreteDriver;
     procedure RefreshExistingConnections;
     procedure UpdateExistingConnDriverHint;
@@ -297,7 +303,8 @@ implementation
 {$R *.dfm}
 
 uses
-  rpdatahttp, rplocalschemas, rpfrmlocalschemasvcl, rpchatmodernstyle;
+  rpdatahttp, rplocalschemas, rpfrmlocalschemasvcl, rpchatmodernstyle,
+  rpfrmloginvcl;
 
 const
   // The pages only the VCL has (no key in the Lazarus twin)
@@ -638,6 +645,7 @@ begin
   FEdHubApiKey := nil; FBtnHubLogin := nil;
   FBtnHubRefresh := nil;
   FCbHubDatabase := nil;
+  FLblHubExampleNote := nil;
   FLblLocalSchemaError := nil;
   FCbFamily := nil; FCbConcrete := nil; FLblConcrete := nil;
   FRbExisting := nil; FRbNew := nil; FCbExistingConn := nil;
@@ -868,15 +876,13 @@ begin
     wpAgentLogin:
       begin
         // The key as it is typed (also without "Log in"): the connection
-        // test validates it. Without a session it is required.
+        // test validates it. Without key nor session the list has the
+        // example databases, which need neither
         if Assigned(FEdHubApiKey) then
           FState.HubApiKey := Trim(FEdHubApiKey.Text);
-        if (FState.HubApiKey = '') and not HasHubSession then
-        begin
-          Info(TR(1777, 'Please enter your Reportman AI API key.'));
-          Exit;
-        end;
-        if not FState.HubLoggedIn then
+        // A key typed after the example list: its databases first
+        if (not FState.HubLoggedIn) or
+          (FState.HubListAnonymous and (FState.HubApiKey <> '')) then
         begin
           Info(TR(1754, 'Please log in to Reportman AI before continuing.'));
           Exit;
@@ -1428,16 +1434,7 @@ begin
   FBtnHubLogin.Caption := TR(1783, 'Log in');
   FBtnHubLogin.OnClick := DoHubLogin;
 
-  // With a session the key is optional, but the report needs it to run
-  // unattended (printreptopdf, server): the engine uses the session otherwise
-  if HasHubSession then
-    L := CreateLabel(PContent, TR(1831, 'You are signed in to Reportman AI: ' +
-      'the API key is optional. Without it the connection uses your session, ' +
-      'and the report cannot run unattended on this computer (printreptopdf, ' +
-      'server, scheduled tasks).'), 24, 76)
-  else
-    L := CreateLabel(PContent, TR(1832, 'You are not signed in to Reportman ' +
-      'AI: the API key is required.'), 24, 76);
+  L := CreateLabel(PContent, HubKeyNote, 24, 76);
   L.Font.Color := clGrayText;
   L.Width := 620;
   L.WordWrap := True;
@@ -1461,9 +1458,33 @@ begin
   FBtnHubRefresh.Caption := TR(1149, 'Refresh');
   FBtnHubRefresh.OnClick := DoHubRefresh;
 
-  // The databases of the session, or of the key of a previous visit
-  if HasHubSession or (FState.HubLoggedIn and (Trim(FState.HubApiKey) <> '')) then
-    LoadHubDatabases(True);
+  // An example database: for everybody, read-only (DoHubDatabaseChange)
+  FLblHubExampleNote := CreateLabel(PContent, RpHubExampleNote, 24,
+    FCbHubDatabase.Top + FCbHubDatabase.Height + 8);
+  FLblHubExampleNote.Font.Color := clGrayText;
+  FLblHubExampleNote.Width := 620;
+  FLblHubExampleNote.WordWrap := True;
+  FLblHubExampleNote.Visible := False;
+
+  // Always: without key nor session the Hub lists the example databases, for
+  // everybody; with them, those of the account or of the key too
+  LoadHubDatabases(True);
+end;
+
+// The note under the API key: with a session the key is optional, but the
+// report needs it to run unattended (printreptopdf, server); without, the list
+// has the example connections only
+function TFRpNewReportWizardVCL.HubKeyNote: string;
+begin
+  if HasHubSession then
+    Result := TR(1831, 'You are signed in to Reportman AI: ' +
+      'the API key is optional. Without it the connection uses your session, ' +
+      'and the report cannot run unattended on this computer (printreptopdf, ' +
+      'server, scheduled tasks).')
+  else
+    Result := TR(2055, 'You are not signed in to Reportman AI: the list ' +
+      'has the example connections. To use your own, log in or enter the ' +
+      'API key.');
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageSchema;
@@ -1543,7 +1564,7 @@ begin
   LDatabase := nil;
   if (FDestReport <> nil) and (FDestReport.DatabaseInfo.Count > 0) then
     LDatabase := FDestReport.DatabaseInfo.Items[0];
-  if not RpIsLocalSqlDatabase(LDatabase) then
+  if not RpCanHaveLocalSchema(LDatabase) then
   begin
     FAISchemaSelector.SetLocalSchemas('', nil, nil);
     Exit;
@@ -1557,13 +1578,17 @@ begin
       FLblLocalSchemaError.Visible := False;
     try
       // A copy that reads the same connections file; generated from the
-      // catalog the first time, as the copilot does
+      // catalog the first time, as the copilot does. Not the one of an Agent
+      // connection: its catalog is a request per table through the API, so
+      // it is read in the local schema screen, with its progress
       LDatabases := RpCopyDatabaseInfo(LDatabase);
       try
         Screen.Cursor := crHourGlass;
         LFile := RpLoadLocalSchema(LDatabases.Items[0], FDestReport.Params,
-          True, False);
+          RpIsLocalSqlDatabase(LDatabase), False);
         try
+          // nil: an Agent connection without schema file yet
+          if LFile <> nil then
           for I := 0 to LFile.SchemaCount - 1 do
           begin
             LNames.Add(LFile.Schemas[I].Name);
@@ -2204,13 +2229,21 @@ end;
 procedure TFRpNewReportWizardVCL.DoHubLogin(Sender: TObject);
 begin
   FState.HubApiKey := Trim(FEdHubApiKey.Text);
-  // With a session, no key: the databases of the account
+  // Without key nor session: the login of Reportman AI. Signed in, the page is
+  // built again (its note, the databases of the account), after this click:
+  // the button is one of the controls it frees
   if (FState.HubApiKey = '') and not HasHubSession then
   begin
-    RpMessageBox(TR(1777, 'Please enter your Reportman AI API key.'),
-      TR(1778, 'Reportman AI'), [smbOK], smsInformation, smbOK, smbOK);
+    if ShowLoginDialog(Self) and HasHubSession then
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          if FCurrentPage = wpAgentLogin then
+            GoTo_Page(wpAgentLogin, False);
+        end);
     Exit;
   end;
+  // With a session, no key: the databases of the account
   LoadHubDatabases;
 end;
 
@@ -2222,7 +2255,10 @@ end;
 
 procedure TFRpNewReportWizardVCL.DoHubRefresh(Sender: TObject);
 begin
-  DoHubLogin(Sender);
+  // The list again, also without key nor session (the example databases):
+  // only "Log in" asks for a login
+  FState.HubApiKey := Trim(FEdHubApiKey.Text);
+  LoadHubDatabases((FState.HubApiKey = '') and not HasHubSession);
 end;
 
 procedure TFRpNewReportWizardVCL.LoadHubDatabases(AQuiet: Boolean);
@@ -2245,6 +2281,7 @@ begin
       Screen.Cursor := crDefault;
     end;
     FState.HubLoggedIn := True;
+    FState.HubListAnonymous := (FState.HubApiKey = '') and not HasHubSession;
     FHubDatabases.Assign(list);
     if Assigned(FCbHubDatabase) then
     begin
@@ -2281,14 +2318,26 @@ begin
     hosOffline);
 end;
 
+// An example database of the Hub (RpHubDatabaseLine)
+function TFRpNewReportWizardVCL.HubDatabaseExample(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex < FHubDatabases.Count) and
+    RpHubLineIsExample(FHubDatabases.ValueFromIndex[AIndex],
+    RpHubDatabaseExampleField);
+end;
+
 procedure TFRpNewReportWizardVCL.DoHubDatabaseChange(Sender: TObject);
 begin
   if HubDatabaseOffline(FCbHubDatabase.ItemIndex) then
     FCbHubDatabase.Hint := TR(2004, 'The Agent of this database is not ' +
       'connected: the AI can design with its schema, but the data cannot be ' +
       'opened until it comes back.')
+  else if HubDatabaseExample(FCbHubDatabase.ItemIndex) then
+    FCbHubDatabase.Hint := RpHubExampleNote
   else
     FCbHubDatabase.Hint := '';
+  if Assigned(FLblHubExampleNote) then
+    FLblHubExampleNote.Visible := HubDatabaseExample(FCbHubDatabase.ItemIndex);
 end;
 
 procedure TFRpNewReportWizardVCL.DoHubDatabaseDropDown(Sender: TObject);
@@ -2304,8 +2353,12 @@ begin
   LDotAt := -1;
   if HubDatabaseOffline(Index) then
     LDotAt := 0;
-  TRpChatStyle.DrawComboItem(FCbHubDatabase.Canvas, Rect, State,
-    FCbHubDatabase.Items[Index], LDotAt);
+  if HubDatabaseExample(Index) then
+    TRpChatStyle.DrawComboItem(FCbHubDatabase.Canvas, Rect, State,
+      FCbHubDatabase.Items[Index], LDotAt, RpHubExampleBadge)
+  else
+    TRpChatStyle.DrawComboItem(FCbHubDatabase.Canvas, Rect, State,
+      FCbHubDatabase.Items[Index], LDotAt);
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageFinish;

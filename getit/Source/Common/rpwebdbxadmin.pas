@@ -1173,15 +1173,20 @@ begin
   if AConnections = nil then
     Exit;
   AConnections.Clear;
-  if Length(Trim(AApiKey)) = 0 then
-    Exit;
+  // An empty key too: the Hub lists the example databases for everybody
   if not TRpDatabaseHttp.GetHubDatabases(Trim(AApiKey), AConnections) then
     raise Exception.Create('Failed to connect to Hub for discovery. Check your API Key and internet connection.');
   // name=id: the page offers the id (the line may end with the state of the
   // Agent, RpHubDatabaseLine)
   for I := 0 to AConnections.Count - 1 do
-    AConnections[I] := AConnections.Names[I] + '=' +
-      RpHubLineField(AConnections.ValueFromIndex[I], 0);
+    if RpHubLineIsExample(AConnections.ValueFromIndex[I],
+      RpHubDatabaseExampleField) then
+      // An example database: for everybody, read-only
+      AConnections[I] := AConnections.Names[I] + ' (' + RpHubExampleBadge +
+        ')=' + RpHubLineField(AConnections.ValueFromIndex[I], 0)
+    else
+      AConnections[I] := AConnections.Names[I] + '=' +
+        RpHubLineField(AConnections.ValueFromIndex[I], 0);
 end;
 
 procedure TRpWebDbxAdminService.UpdateConnectionParams(const AConnectionName: string;
