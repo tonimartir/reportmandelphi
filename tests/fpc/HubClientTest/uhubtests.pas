@@ -1290,6 +1290,38 @@ begin
       'RpHubSchemaLine: a | in the name of the Agent');
     CheckEquals('Db - a/b=1|0|a/b', RpHubDatabaseLine(LJson as TJSONObject),
       'RpHubDatabaseLine: a | in the name of the Agent');
+    Check(not RpHubLineIsExample('1|0|a/b', RpHubDatabaseExampleField),
+      'RpHubLineIsExample: not an example');
+  finally
+    LJson.Free;
+  end;
+  // An example database of the Hub (isExample, for everybody): '|1' after the
+  // fields of the Agent, even when the cloud says nothing of it
+  LJson := TJSONObject.ParseJSONValue('{"displayName":"Example - Example",' +
+    '"name":"Example","hubDatabaseId":7,"hubSchemaId":21,"isExample":true}');
+  try
+    CheckEquals('Example / Example=7|21|||1', RpHubSchemaLine(LJson as TJSONObject),
+      'RpHubSchemaLine: an example database');
+    CheckEquals('Example - Example=7|||1', RpHubDatabaseLine(LJson as TJSONObject),
+      'RpHubDatabaseLine: an example database');
+    Check(RpHubLineIsExample('7|||1', RpHubDatabaseExampleField),
+      'RpHubLineIsExample: a database line');
+    Check(RpHubLineIsExample('7|21|||1', RpHubSchemaExampleField),
+      'RpHubLineIsExample: a schema line');
+    CheckEquals('Example / Example=7|21||||1',
+      RpHubSchemaLineWithApiKey('Example / Example=7|21|||1', ''),
+      'RpHubSchemaLineWithApiKey: the mark of an example kept');
+    Check(RpHubLineIsExample('7|21||||1', RpHubSchemaKeyExampleField),
+      'RpHubLineIsExample: a schema line with its API key');
+  finally
+    LJson.Free;
+  end;
+  LJson := TJSONObject.ParseJSONValue('{"displayName":"Sales - Main",' +
+    '"name":"Main","hubDatabaseId":77,"hubSchemaId":5,"isExample":false,' +
+    '"isOnline":true,"agentName":"pc1"}');
+  try
+    CheckEquals('Main - pc1=77|5|1|pc1', RpHubSchemaLine(LJson as TJSONObject),
+      'RpHubSchemaLine: isExample false, the line of before');
   finally
     LJson.Free;
   end;

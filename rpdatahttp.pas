@@ -309,6 +309,18 @@ function RpHubDatabaseLine(AItem: TJSONObject): string;
 // The field AIndex (from 0) of the value of such a line ('' when it has
 // fewer)
 function RpHubLineField(const AValue: string; AIndex: Integer): string;
+// An example database of the Hub (isExample: public, for everybody, without
+// login nor API key, read-only) ends its lines with '|1' after the fields of
+// the Agent: the field RpHubDatabaseExampleField of a database line,
+// RpHubSchemaExampleField of a schema line and RpHubSchemaKeyExampleField
+// of a schema line with its API key (RpHubSchemaLineWithApiKey)
+const
+  RpHubDatabaseExampleField = 3;
+  RpHubSchemaExampleField = 4;
+  RpHubSchemaKeyExampleField = 5;
+  // The mark of the example databases in the lists (as Reportman.Web)
+  RpHubExampleBadge = 'DEMO';
+function RpHubLineIsExample(const AValue: string; AField: Integer): Boolean;
 // The state of an <online> field
 function RpHubOnlineState(const AField: string): TRpHubOnlineState;
 // The Hub database and schema of the value of a schema line,
@@ -2292,17 +2304,35 @@ begin
     [rfReplaceAll]);
 end;
 
-// '|<online>|<agentName>' when the cloud says either of them; nothing
-// otherwise, so the line of an older cloud is the one of before
+// An example database (isExample)
+function HubItemExample(AItem: TJSONObject): Boolean;
+var
+  LValue: TJSONValue;
+begin
+  LValue := AItem.Values['isExample'];
+  if LValue is TJSONBool then
+    Result := TJSONBool(LValue).AsBoolean
+  else
+    Result := (LValue <> nil) and not (LValue is TJSONNull) and
+      SameText(LValue.Value, 'true');
+end;
+
+// '|<online>|<agentName>' when the cloud says either of them, and '|1' after
+// them for an example database; nothing otherwise, so the line of an older
+// cloud is the one of before
 function HubItemAgentFields(AItem: TJSONObject): string;
 var
   LOnline, LAgentName: string;
+  LExample: Boolean;
 begin
   Result := '';
   LOnline := HubItemOnline(AItem);
   LAgentName := HubItemAgentName(AItem);
-  if (LOnline <> '') or (LAgentName <> '') then
+  LExample := HubItemExample(AItem);
+  if (LOnline <> '') or (LAgentName <> '') or LExample then
     Result := '|' + LOnline + '|' + LAgentName;
+  if LExample then
+    Result := Result + '|1';
 end;
 
 function RpHubSchemaLine(AItem: TJSONObject): string;
@@ -2365,6 +2395,11 @@ begin
     Result := Copy(AValue, LStart, MaxInt)
   else
     Result := Copy(AValue, LStart, LPos - LStart);
+end;
+
+function RpHubLineIsExample(const AValue: string; AField: Integer): Boolean;
+begin
+  Result := RpHubLineField(AValue, AField) = '1';
 end;
 
 function RpHubOnlineState(const AField: string): TRpHubOnlineState;

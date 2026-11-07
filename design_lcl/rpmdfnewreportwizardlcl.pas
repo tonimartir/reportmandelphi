@@ -211,6 +211,7 @@ type
     procedure DoHubDatabaseDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
     function HubDatabaseOffline(AIndex: Integer): Boolean;
+    function HubDatabaseExample(AIndex: Integer): Boolean;
     procedure RefreshConcreteDriver;
     procedure RefreshExistingConnections;
     procedure UpdateExistingConnDriverHint;
@@ -263,6 +264,8 @@ type
     LblHubKeyNote: TLabel;
     BtnHubRefresh: TButton;
     CbHubDatabase: TComboBox;
+    // Under the Hub connection, with an example database chosen: what it is
+    LblHubExampleNote: TLabel;
     // Why the subschemas of the direct connection could not be read
     LblLocalSchemaError: TLabel;
     CbFamily: TComboBox;
@@ -1113,6 +1116,7 @@ begin
   EdHubApiKey := nil; BtnHubLogin := nil; LblHubKeyNote := nil;
   BtnHubRefresh := nil;
   CbHubDatabase := nil;
+  LblHubExampleNote := nil;
   LblLocalSchemaError := nil;
   CbFamily := nil; CbConcrete := nil; LblConcrete := nil;
   RbExisting := nil; RbNew := nil; CbExistingConn := nil;
@@ -1803,6 +1807,10 @@ begin
   // The red dot of the databases whose Agent is not connected
   TRpChatStyle.SetupDotCombo(CbHubDatabase, DoHubDatabaseDrawItem);
   CbHubDatabase.OnChange := DoHubDatabaseChange;
+  // An example database: for everybody, read-only (DoHubDatabaseChange)
+  LblHubExampleNote := NewLabel(RpHubExampleNote, 0, 6);
+  LblHubExampleNote.Font.Color := clGrayText;
+  LblHubExampleNote.Visible := False;
   FillHubDatabaseCombo;
 
   // Always: without key nor session the Hub lists the example databases, for
@@ -2532,8 +2540,13 @@ begin
   try
     CbHubDatabase.Items.Clear;
     for I := 0 to FHubDatabases.Count - 1 do
-      CbHubDatabase.Items.Add(FHubDatabases.Names[I] +
-        TRpChatStyle.OfflineText(HubDatabaseOffline(I)));
+      if HubDatabaseExample(I) then
+        CbHubDatabase.Items.Add(FHubDatabases.Names[I] +
+          TRpChatStyle.OfflineText(HubDatabaseOffline(I)) +
+          TRpChatStyle.BadgeText(RpHubExampleBadge))
+      else
+        CbHubDatabase.Items.Add(FHubDatabases.Names[I] +
+          TRpChatStyle.OfflineText(HubDatabaseOffline(I)));
   finally
     CbHubDatabase.Items.EndUpdate;
   end;
@@ -2552,6 +2565,14 @@ begin
     hosOffline);
 end;
 
+// An example database of the Hub (RpHubDatabaseLine)
+function TFRpNewReportWizardLCL.HubDatabaseExample(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex < FHubDatabases.Count) and
+    RpHubLineIsExample(FHubDatabases.ValueFromIndex[AIndex],
+    RpHubDatabaseExampleField);
+end;
+
 procedure TFRpNewReportWizardLCL.DoHubDatabaseChange(Sender: TObject);
 begin
   if CbHubDatabase = nil then
@@ -2560,8 +2581,12 @@ begin
     CbHubDatabase.Hint := TR(2004, 'The Agent of this database is not ' +
       'connected: the AI can design with its schema, but the data cannot be ' +
       'opened until it comes back.')
+  else if HubDatabaseExample(CbHubDatabase.ItemIndex) then
+    CbHubDatabase.Hint := RpHubExampleNote
   else
     CbHubDatabase.Hint := '';
+  if Assigned(LblHubExampleNote) then
+    LblHubExampleNote.Visible := HubDatabaseExample(CbHubDatabase.ItemIndex);
 end;
 
 procedure TFRpNewReportWizardLCL.DoHubDatabaseDrawItem(Control: TWinControl;
@@ -2577,7 +2602,11 @@ begin
   LDotAt := -1;
   if HubDatabaseOffline(Index) then
     LDotAt := 0;
-  TRpChatStyle.DrawComboItem(CbHubDatabase.Canvas, ARect, State, LText, LDotAt);
+  if HubDatabaseExample(Index) then
+    TRpChatStyle.DrawComboItem(CbHubDatabase.Canvas, ARect, State, LText,
+      LDotAt, RpHubExampleBadge)
+  else
+    TRpChatStyle.DrawComboItem(CbHubDatabase.Canvas, ARect, State, LText, LDotAt);
 end;
 
 procedure TFRpNewReportWizardLCL.ApplyHubDatabases(AOk: Boolean;

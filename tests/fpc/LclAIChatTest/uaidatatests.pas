@@ -379,7 +379,8 @@ begin
     WaitUntil(DiscoveryDone, 15000, 'example databases received');
     CheckEquals(LCalls + 1, FHubHandler.DatabasesCalls, 'a request without API key');
     CheckEquals(1, LDlg.HubMenu.Items.Count, 'the example database');
-    CheckEquals('Example - Example', LDlg.HubMenu.Items[0].Caption, 'example database name');
+    CheckEquals('Example - Example (DEMO)', LDlg.HubMenu.Items[0].Caption,
+      'example database name, marked as in Reportman.Web');
     LDlg.HubMenu.Items[0].Click;
     CheckEquals('7', TEdit(LDlg.ParamEditor('HubDatabaseId')).Text, 'example HubDatabaseId set');
     // The databases of the key

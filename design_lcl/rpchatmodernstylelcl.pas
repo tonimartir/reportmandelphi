@@ -41,6 +41,10 @@ const
   ClrHover         : TColor = $F4F3F3; // F3F4F6
   ClrActive        : TColor = $EBE7E4; // E4E7EB
   ClrAccent        : TColor = $EB6F1F; // 1F6FEB
+  // The DEMO chip of the example databases (Reportman.Web: #FF9800 on
+  // #FF980022, that is #FFF1DD over white)
+  ClrDemoText      : TColor = $0098FF;
+  ClrDemoBg        : TColor = $DDF1FF;
   ClrAccentHover   : TColor = $C45818; // 1858C4
   ClrAccentSoft    : TColor = $FFEBDD; // DDEBFF
   ClrDanger        : TColor = $2E22CF; // CF222E
@@ -117,12 +121,17 @@ type
     // ' (not connected)' after the name of an Agent that is not connected
     // where the dot can not be drawn, '' otherwise
     class function OfflineText(AOffline: Boolean): string; static;
+    // ' [ABadge]' after the name of an example database where the chip of
+    // DrawComboItem can not be drawn, '' otherwise
+    class function BadgeText(const ABadge: string): string; static;
     // An item of such a combo as the LCL draws it (the combo sets the
     // colours of its state): AText, with the red dot after its first ADotAt
     // characters (the icons, so the dot is right before the name); -1 = no
-    // dot
+    // dot. ABadge: a chip after the text (the DEMO of the example databases,
+    // as Reportman.Web)
     class procedure DrawComboItem(ACanvas: TCanvas; const ARect: TRect;
-      AState: TOwnerDrawState; const AText: string; ADotAt: Integer); static;
+      AState: TOwnerDrawState; const AText: string; ADotAt: Integer;
+      const ABadge: string = ''); static;
     // The open list as wide as its longest text and the dot: at least the
     // combo, at most 600 pixels or the screen (ItemWidth, CB_SETDROPPEDWIDTH
     // of the Windows widgetset; the others size their lists themselves)
@@ -728,14 +737,76 @@ begin
     Result := ' ' + string(TranslateStr(2005, '(not connected)'));
 end;
 
+class function TRpChatStyle.BadgeText(const ABadge: string): string;
+begin
+  Result := '';
+  if (ABadge <> '') and not CanDrawComboDot then
+    Result := ' [' + ABadge + ']';
+end;
+
+// The chip of DrawComboItem (the DEMO of the example databases) at AX:
+// bold and smaller, orange on light orange as the badge of Reportman.Web
+procedure DrawComboBadge(ACanvas: TCanvas; const ARect: TRect; AX: Integer;
+  const ABadge: string);
+var
+  LFont: TFont;
+  LBrushColor, LPenColor: TColor;
+  LBrushStyle: TBrushStyle;
+  LTextHeight, LPad, LHeight, LTop, LRadius: Integer;
+  LRect: TRect;
+begin
+  if ABadge = '' then
+    Exit;
+  LFont := TFont.Create;
+  try
+    LFont.Assign(ACanvas.Font);
+    LBrushColor := ACanvas.Brush.Color;
+    LBrushStyle := ACanvas.Brush.Style;
+    LPenColor := ACanvas.Pen.Color;
+    try
+      LTextHeight := ACanvas.TextHeight('Mg');
+      if LFont.Size > 8 then
+        ACanvas.Font.Size := LFont.Size - 2
+      else if LFont.Size > 6 then
+        ACanvas.Font.Size := LFont.Size - 1;
+      ACanvas.Font.Style := [fsBold];
+      ACanvas.Font.Color := ClrDemoText;
+      LPad := ACanvas.TextHeight('M') div 2;
+      LHeight := ACanvas.TextHeight('M') + 2;
+      if LHeight > ARect.Bottom - ARect.Top then
+        LHeight := ARect.Bottom - ARect.Top;
+      LTop := ARect.Top + (ARect.Bottom - ARect.Top - LHeight) div 2;
+      LRect := Rect(AX + LTextHeight div 2, LTop,
+        AX + LTextHeight div 2 + ACanvas.TextWidth(ABadge) + 2 * LPad,
+        LTop + LHeight);
+      LRadius := LHeight div 3;
+      ACanvas.Brush.Style := bsSolid;
+      ACanvas.Brush.Color := ClrDemoBg;
+      ACanvas.Pen.Color := ClrDemoBg;
+      ACanvas.RoundRect(LRect.Left, LRect.Top, LRect.Right, LRect.Bottom,
+        LRadius, LRadius);
+      ACanvas.Brush.Style := bsClear;
+      ACanvas.TextOut(LRect.Left + LPad,
+        LRect.Top + (LHeight - ACanvas.TextHeight('M')) div 2, ABadge);
+    finally
+      ACanvas.Font.Assign(LFont);
+      ACanvas.Brush.Color := LBrushColor;
+      ACanvas.Brush.Style := LBrushStyle;
+      ACanvas.Pen.Color := LPenColor;
+    end;
+  finally
+    LFont.Free;
+  end;
+end;
+
 class procedure TRpChatStyle.DrawComboItem(ACanvas: TCanvas;
   const ARect: TRect; AState: TOwnerDrawState; const AText: string;
-  ADotAt: Integer);
+  ADotAt: Integer; const ABadge: string);
 var
   LRect: TRect;
   LTextHeight, LSize, LDotTop: Integer;
   LBrushColor, LPenColor: TColor;
-  LPrefix: string;
+  LPrefix, LRest: string;
 begin
   if not (odBackgroundPainted in AState) then
     ACanvas.FillRect(ARect);
@@ -745,6 +816,7 @@ begin
   if ADotAt < 0 then
   begin
     DrawTextIn(ACanvas, LRect, AText, taLeftJustify, tlCenter);
+    DrawComboBadge(ACanvas, ARect, LRect.Left + ACanvas.TextWidth(AText), ABadge);
     Exit;
   end;
   LPrefix := Copy(AText, 1, ADotAt);
@@ -764,8 +836,9 @@ begin
   ACanvas.Brush.Color := LBrushColor;
   ACanvas.Pen.Color := LPenColor;
   Inc(LRect.Left, ComboDotRoom(LTextHeight));
-  DrawTextIn(ACanvas, LRect, Copy(AText, ADotAt + 1, MaxInt), taLeftJustify,
-    tlCenter);
+  LRest := Copy(AText, ADotAt + 1, MaxInt);
+  DrawTextIn(ACanvas, LRect, LRest, taLeftJustify, tlCenter);
+  DrawComboBadge(ACanvas, ARect, LRect.Left + ACanvas.TextWidth(LRest), ABadge);
 end;
 
 class procedure TRpChatStyle.FitComboDropDownWidth(ACombo: TComboBox);
@@ -778,8 +851,10 @@ begin
   for I := 0 to ACombo.Items.Count - 1 do
     if TextWidthOf(ACombo.Font, ACombo.Items[I]) > LWidth then
       LWidth := TextWidthOf(ACombo.Font, ACombo.Items[I]);
-  // The margins, the dot and the scroll bar
-  Inc(LWidth, Scale(8) + ComboDotRoom(TextHeightOf(ACombo.Font)));
+  // The margins, the dot, the DEMO chip of an example database and the
+  // scroll bar
+  Inc(LWidth, Scale(8) + ComboDotRoom(TextHeightOf(ACombo.Font)) +
+    TextWidthOf(ACombo.Font, 'DEMO') + 2 * TextHeightOf(ACombo.Font));
   if ACombo.Items.Count > ACombo.DropDownCount then
     Inc(LWidth, GetSystemMetrics(SM_CXVSCROLL));
   LMaxWidth := Scale(600);

@@ -805,6 +805,10 @@ begin
     begin
       LMenuItem := TMenuItem.Create(LPopupMenu);
       LMenuItem.Caption := LPayload.Databases.Names[I];
+      // An example database: for everybody, read-only
+      if RpHubLineIsExample(LPayload.Databases.ValueFromIndex[I],
+        RpHubDatabaseExampleField) then
+        LMenuItem.Caption := LMenuItem.Caption + ' (' + RpHubExampleBadge + ')';
       // The id, before the state of the Agent (RpHubDatabaseLine)
       LMenuItem.Hint := RpHubLineField(LPayload.Databases.ValueFromIndex[I], 0);
       LMenuItem.Tag := StrToIntDef(LMenuItem.Hint, 0);

@@ -45,6 +45,9 @@ type
     // before its name and a hint; it can still be chosen (the AI designs
     // with the schema, the data can not be opened)
     Offline: Boolean;
+    // A schema of an example database of the Hub (for everybody, without
+    // login, read-only): the DEMO chip after its name and a hint
+    Example: Boolean;
     constructor Create(AHubDatabaseId, AHubSchemaId: Int64; const AApiKey: string);
     constructor CreateLocal(const ALocalAlias, ALocalSchemaName: string);
     constructor CreateKind(AKind: TSchemaComboItemKind; const ACaption: string);
@@ -241,9 +244,7 @@ type
     procedure AppendMessage(const ATitle, AText: string);
     procedure ClearSchemaItems;
     procedure ComboSchemaChange(Sender: TObject);
-    function LoadConfiguredApiKeySchemas(AList, ASizes: TStrings): Boolean;
     procedure LoadSchemas(ADelayBeforeRequestMs: Cardinal = 0);
-    function LoadUserSchemas(AList, ASizes: TStrings): Boolean;
     procedure LoadUserAgents(ADelayBeforeRequestMs: Cardinal = 0);
     function GetDesignPrefillPercent(const AStage, AChunkType: string): Integer;
     procedure PostDesignChatPayload(APayload: TObject);
@@ -375,7 +376,7 @@ implementation
 
 uses
   System.Contnrs, System.Types, rpdatainfo, rpdesignerclientsql, rpmdconsts,
-  rplocalschemas;
+  rplocalschemas, rpfrmaischemaselectorvcl;
 
 const
   // The text of the schema list (UTF-16)
@@ -1263,6 +1264,12 @@ begin
   if SchemaItemExceedsPlan(SelectedSchemaItem) then
     LText := TranslateStr(1844, 'More than your plan allows with ' +
       'the AI in the cloud: choose a smaller schema or use the AI on your Agent.');
+  if (SelectedSchemaItem <> nil) and SelectedSchemaItem.Example then
+  begin
+    if LText <> '' then
+      LText := LText + sLineBreak;
+    LText := LText + RpHubExampleNote;
+  end;
   if (SelectedSchemaItem <> nil) and SelectedSchemaItem.Offline then
   begin
     if LText <> '' then
@@ -1290,7 +1297,11 @@ begin
   if (LItem <> nil) and LItem.Offline and
     (Copy(LText, Length(LText) - Length(LItem.Caption) + 1, MaxInt) = LItem.Caption) then
     LDotAt := Length(LText) - Length(LItem.Caption);
-  TRpChatStyle.DrawComboItem(ComboSchema.Canvas, Rect, State, LText, LDotAt);
+  if (LItem <> nil) and LItem.Example then
+    TRpChatStyle.DrawComboItem(ComboSchema.Canvas, Rect, State, LText, LDotAt,
+      RpHubExampleBadge)
+  else
+    TRpChatStyle.DrawComboItem(ComboSchema.Canvas, Rect, State, LText, LDotAt);
 end;
 
 // The list: the local subschemas, the schemas in the cloud and the two
@@ -1359,6 +1370,7 @@ begin
           LItem := TSchemaComboItem.Create(LHubDatabaseId, LHubSchemaId, '');
         // The state of its Agent after the API key (RpHubSchemaLineWithApiKey)
         LItem.Offline := RpHubOnlineState(RpHubLineField(LValue, 3)) = hosOffline;
+        LItem.Example := RpHubLineIsExample(LValue, RpHubSchemaKeyExampleField);
         if ParseSchemaSize(FHubSizes.Values[IntToStr(LHubSchemaId)], LTables,
           LWidest) then
         begin
@@ -1578,176 +1590,46 @@ begin
   ComboSchema.Clear;
 end;
 
-function TFRpChatFrame.LoadUserSchemas(AList, ASizes: TStrings): Boolean;
-var
-  LHttp: TRpDatabaseHttp;
-begin
-  Result := False;
-  if TRpAuthManager.Instance.Token = '' then
-    Exit;
-
-  LHttp := TRpDatabaseHttp.Create;
-  try
-    LHttp.Token := TRpAuthManager.Instance.Token;
-    LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-    Result := LHttp.GetUserSchemas(AList, ASizes);
-  finally
-    LHttp.Free;
-  end;
-end;
-
-function TFRpChatFrame.LoadConfiguredApiKeySchemas(AList, ASizes: TStrings): Boolean;
-var
-  I, J, LPosSep: Integer;
-  LApiKey: string;
-  LConAdmin: TRpConnAdmin;
-  LConnectionNames: TStringList;
-  LParams: TStringList;
-  LRawSchemas: TStringList;
-  LRawSizes: TStringList;
-  LSeenApiKeys: TStringList;
-  LHttp: TRpDatabaseHttp;
-  LSchemaDisplayName: string;
-  LSchemaValue: string;
-  LSchemaKey: string;
-begin
-  Result := False;
-  AList.Clear;
-  LConAdmin := TRpConnAdmin.Create;
-  LConnectionNames := TStringList.Create;
-  LParams := TStringList.Create;
-  LRawSchemas := TStringList.Create;
-  LRawSizes := TStringList.Create;
-  LSeenApiKeys := TStringList.Create;
-  try
-    LSeenApiKeys.Sorted := True;
-    LSeenApiKeys.Duplicates := dupIgnore;
-    LConAdmin.GetConnectionNames(LConnectionNames, '');
-    for I := 0 to LConnectionNames.Count - 1 do
-    begin
-      LParams.Clear;
-      LConAdmin.GetConnectionParams(LConnectionNames[I], LParams);
-      LApiKey := Trim(LParams.Values['ApiKey']);
-      if LApiKey = '' then
-        Continue;
-      if LSeenApiKeys.IndexOf(LApiKey) >= 0 then
-        Continue;
-      LSeenApiKeys.Add(LApiKey);
-
-      LHttp := TRpDatabaseHttp.Create;
-      try
-        LHttp.ApiKey := LApiKey;
-        LHttp.Token := TRpAuthManager.Instance.Token;
-        LHttp.InstallId := TRpAuthManager.Instance.InstallId;
-        LRawSchemas.Clear;
-        if LHttp.GetUserSchemas(LRawSchemas, LRawSizes) then
-        begin
-          Result := True;
-          if ASizes <> nil then
-            ASizes.AddStrings(LRawSizes);
-          for J := 0 to LRawSchemas.Count - 1 do
-          begin
-            LSchemaDisplayName := LRawSchemas.Names[J];
-            LSchemaValue := LRawSchemas.ValueFromIndex[J];
-            LPosSep := Pos('|', LSchemaValue);
-            if LPosSep > 0 then
-              LSchemaKey := LSchemaValue
-            else
-              LSchemaKey := '0|' + LSchemaValue;
-            // The API key after the ids, then the state of the Agent
-            AList.Add(RpHubSchemaLineWithApiKey(LSchemaDisplayName + '=' +
-              LSchemaKey, LApiKey));
-          end;
-        end;
-      finally
-        LHttp.Free;
-      end;
-    end;
-  finally
-    LSeenApiKeys.Free;
-    LRawSizes.Free;
-    LRawSchemas.Free;
-    LParams.Free;
-    LConnectionNames.Free;
-    LConAdmin.Free;
-  end;
-end;
-
 procedure TFRpChatFrame.LoadSchemas(ADelayBeforeRequestMs: Cardinal = 0);
 var
   LReloadVersion: Integer;
+  LToken, LInstallId: string;
   LWorker: TThread;
 begin
   Inc(FUserSchemasReloadVersion);
   LReloadVersion := FUserSchemasReloadVersion;
   FLoadingSchemas := True;
   UpdateButtons;
+  LToken := TRpAuthManager.Instance.Token;
+  LInstallId := TRpAuthManager.Instance.InstallId;
 
   LWorker := TThread.CreateAnonymousThread(
     procedure
     var
-      I: Integer;
       LPayload: TRpQueuedSchemasPayload;
-      LUserSchemas: TStringList;
-      LApiKeySchemas: TStringList;
-      LSeenSchemaKeys: TStringList;
-      LSchemaKey: string;
     begin
       LPayload := TRpQueuedSchemasPayload.Create;
-      LUserSchemas := TStringList.Create;
-      LApiKeySchemas := TStringList.Create;
-      LSeenSchemaKeys := TStringList.Create;
-      try
-        LSeenSchemaKeys.Sorted := True;
-        LSeenSchemaKeys.Duplicates := dupIgnore;
-        if ADelayBeforeRequestMs > 0 then
-        begin
-          TRpAuthManager.Instance.Log(
-            'LoadSchemas: delaying startup schema request by ' +
-            IntToStr(ADelayBeforeRequestMs) + ' ms for testing.');
-          Sleep(ADelayBeforeRequestMs);
-        end;
-        try
-          LoadUserSchemas(LUserSchemas, LPayload.Sizes);
-        except
-          LUserSchemas.Clear;
-        end;
-        try
-          LoadConfiguredApiKeySchemas(LApiKeySchemas, LPayload.Sizes);
-        except
-          LApiKeySchemas.Clear;
-        end;
-
-        // 'Name=db|schema|apikey' and the state of the Agent; the session has
-        // no API key. A schema once: by its Hub database and schema
-        for I := 0 to LUserSchemas.Count - 1 do
-        begin
-          LSchemaKey := RpHubSchemaKey(LUserSchemas.ValueFromIndex[I]);
-          if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
-            Continue;
-          LSeenSchemaKeys.Add(LSchemaKey);
-          LPayload.Schemas.Add(RpHubSchemaLineWithApiKey(LUserSchemas[I], ''));
-        end;
-
-        for I := 0 to LApiKeySchemas.Count - 1 do
-        begin
-          LSchemaKey := RpHubSchemaKey(LApiKeySchemas.ValueFromIndex[I]);
-          if LSeenSchemaKeys.IndexOf(LSchemaKey) >= 0 then
-            Continue;
-          LSeenSchemaKeys.Add(LSchemaKey);
-          LPayload.Schemas.Add(LApiKeySchemas[I]);
-        end;
-
-        LPayload.ReloadVersion := LReloadVersion;
-        if HandleAllocated then
-          PostMessage(Handle, WM_USER + 203, WPARAM(LPayload), 0)
-        else
-          LPayload.Free;
-      finally
-        LSeenSchemaKeys.Free;
-        LApiKeySchemas.Free;
-        LUserSchemas.Free;
+      if ADelayBeforeRequestMs > 0 then
+      begin
+        TRpAuthManager.Instance.Log(
+          'LoadSchemas: delaying startup schema request by ' +
+          IntToStr(ADelayBeforeRequestMs) + ' ms for testing.');
+        Sleep(ADelayBeforeRequestMs);
       end;
+      // The list of the SQL editor of the datasets too: the session (or,
+      // without one, the example databases) and the API keys of the
+      // connections, a schema once by its Hub database and schema
+      try
+        RpLoadDesignerHubSchemas(LToken, LInstallId, '', LPayload.Schemas,
+          LPayload.Sizes);
+      except
+        LPayload.Schemas.Clear;
+      end;
+      LPayload.ReloadVersion := LReloadVersion;
+      if HandleAllocated then
+        PostMessage(Handle, WM_USER + 203, WPARAM(LPayload), 0)
+      else
+        LPayload.Free;
     end);
   LWorker.FreeOnTerminate := True;
   LWorker.Start;

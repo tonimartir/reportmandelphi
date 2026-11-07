@@ -109,11 +109,11 @@ type
     CheckLoadDriverParams: TCheckBox;
     BTestConn: TButton;
     OpenDialog1: TOpenDialog;
-    // Connection wizard: "Add connection" above the toolbar, the same button
-    // in the middle of the tab while the report has no connections, and
+    // Connection wizard: "Add connection" at the end of the toolbar, the
+    // same button in the middle of the tab while the report has no connections, and
     // "Configure with the wizard" for a Reportman AI Agent connection that
     // can not be opened on this computer
-    PConnWizard: TPanel;
+    SepWizardConn: TToolButton;
     BWizardConn: TBitBtn;
     PConnEmpty: TPanel;
     BWizardConnEmpty: TBitBtn;
@@ -1100,21 +1100,6 @@ begin
   TabConnections.Caption := TranslateStr(142, 'Database connections');
   TabConnections.ImageIndex := 0;
 
-  // "Add connection" (the connection wizard) above the toolbar
-  PConnWizard := TPanel.Create(TabConnections);
-  PConnWizard.Parent := TabConnections;
-  PConnWizard.BevelOuter := bvNone;
-  PConnWizard.Align := alTop;
-  PConnWizard.AutoSize := True;
-  PConnWizard.Top := 0;
-  BWizardConn := TBitBtn.Create(PConnWizard);
-  BWizardConn.Parent := PConnWizard;
-  BWizardConn.Caption := TranslateStr(1826, 'Add connection') + '...';
-  BWizardConn.AutoSize := True;
-  BWizardConn.BorderSpacing.Around := Scale96ToScreen(6);
-  BWizardConn.Align := alLeft;
-  BWizardConn.OnClick := BWizardConnClick;
-
   ToolBarConn := TToolBar.Create(TabConnections);
   ToolBarConn.Parent := TabConnections;
   ToolBarConn.Top := Scale96ToScreen(60);
@@ -1167,6 +1152,19 @@ begin
   BSchemas.Hint := TranslateStr(1496, 'Configure DB Schemas');
   BSchemas.ShowHint := True;
   BSchemas.OnClick := BSchemasClick;
+
+  // "Add connection" (the connection wizard) at the end of the toolbar,
+  // after a separator (a row of its own above it took the room of the list)
+  SepWizardConn := TToolButton.Create(ToolBarConn);
+  SepWizardConn.Parent := ToolBarConn;
+  SepWizardConn.Style := tbsSeparator;
+  SepWizardConn.Width := Scale96ToScreen(12);
+  BWizardConn := TBitBtn.Create(ToolBarConn);
+  BWizardConn.Parent := ToolBarConn;
+  BWizardConn.Caption := TranslateStr(1826, 'Add connection') + '...';
+  BWizardConn.AutoSize := True;
+  BWizardConn.Constraints.MaxHeight := ToolBarConn.ButtonHeight;
+  BWizardConn.OnClick := BWizardConnClick;
   PopSchemas := TPopupMenu.Create(Self);
   MLocalSchemas := TMenuItem.Create(PopSchemas);
   MLocalSchemas.Caption := TranslateStr(1840, 'Local schemas...');

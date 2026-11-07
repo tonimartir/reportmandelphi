@@ -32,6 +32,7 @@ uses
   IniFiles, Generics.Collections, fphttpserver, httpdefs, rpjsonfpc, rphttpclientfpc, rptypes, rpreport, rpsubreport, rpsection,
   rpdatainfo, rpauthmanager, rpaithreadslcl, rpwebmarkdownlcl, rpmdfmainlcl,
   rpgraphutilslcl, rpmdconsts, rpdbxadminlcl, rpmdfnewreportwizardlcl,
+  rpdatahttp, rpchatmodernstylelcl, rpfrmaischemaselectorlcl,
   utestutil, ufakeserver;
 
 const
@@ -46,6 +47,9 @@ const
     'unattended on this computer (printreptopdf, server, scheduled tasks).';
   NOTE_NOT_SIGNED_IN = 'You are not signed in to Reportman AI: the list has the ' +
     'example connections. To use your own, log in or enter the API key.';
+  // Under the Hub connection, with an example database chosen
+  NOTE_EXAMPLE = 'Example connection, read-only: it is there to try Reportman ' +
+    'AI without signing in. Its schema cannot be changed.';
   PROMPT_DESIGNER = 'Add a title with the report name';
   // The icon of a schema in the cloud in the list of the schema page (F8)
   U_CLOUD = #$E2#$98#$81' ';
@@ -307,7 +311,9 @@ begin
       SendJson(AResponse, 200, DatabasesJson(['Account DB', '51', '61']))
     else
       // As the API: without key nor session, the public example databases
-      SendJson(AResponse, 200, DatabasesJson(['Example - Example', '7', '21']));
+      SendJson(AResponse, 200, '{"databases":[{"displayName":"Example - Example",' +
+        '"name":"example - example","hubDatabaseId":7,"hubSchemaId":21,' +
+        '"isExample":true}],"aiEndpoints":[]}');
   end
   else if P = '/api/agent/testconnection' then
   begin
@@ -1167,7 +1173,8 @@ procedure TAINewReportTests.TestConnectionWizard;
 var
   W: TFRpNewReportWizardLCL;
   LIni: TMemIniFile;
-  LAnswered: Integer;
+  LAnswered, LIndex: Integer;
+  LSchemas, LSizes: TStringList;
 
   function Finished: Boolean;
   begin
@@ -1268,9 +1275,15 @@ begin
       CheckEquals(T(2055, NOTE_NOT_SIGNED_IN), W.LblHubKeyNote.Caption,
         'no session: the list has the example connections');
       CheckEquals(1, W.CbHubDatabase.Items.Count, 'no session: the example database');
-      CheckEquals('Example - Example', W.CbHubDatabase.Items[W.CbHubDatabase.ItemIndex],
+      // The DEMO chip is drawn on Windows, and is text elsewhere
+      CheckEquals('Example - Example' + TRpChatStyle.BadgeText(RpHubExampleBadge),
+        W.CbHubDatabase.Items[W.CbHubDatabase.ItemIndex],
         'no session: the example selected');
       Check(W.State.HubListAnonymous, 'the list of nobody');
+      Check(W.LblHubExampleNote.Visible, 'the example: the note under it');
+      CheckEquals(T(2056, NOTE_EXAMPLE), W.LblHubExampleNote.Caption,
+        'the example is read-only');
+      CheckEquals(T(2056, NOTE_EXAMPLE), W.CbHubDatabase.Hint, 'and its hint');
       Shot(W, 'connwizard_agent_nosession');
       // Refresh without key nor session: the list again, without messages
       LAnswered := FAnswerer.Answered;
@@ -1288,6 +1301,27 @@ begin
       CheckEquals('', IniValue('WIZ_EXAMPLE', 'ApiKey'), 'and without an API key');
     finally
       W.Free;
+    end;
+
+    // The lists of schemas (the copilot, the SQL editor of the datasets, the
+    // wizard): the example databases too, for everybody, marked
+    LSchemas := TStringList.Create;
+    LSizes := TStringList.Create;
+    try
+      Check(RpLoadDesignerHubSchemas('', '', '', LSchemas, LSizes),
+        'the schemas without a session');
+      LIndex := LSchemas.IndexOfName('Example / Example');
+      Check(LIndex >= 0, 'without a session: the example schema');
+      if LIndex >= 0 then
+      begin
+        CheckEquals('7|21||||1', LSchemas.ValueFromIndex[LIndex],
+          'its ids, without an API key, and the mark of an example');
+        Check(RpHubLineIsExample(LSchemas.ValueFromIndex[LIndex],
+          RpHubSchemaKeyExampleField), 'the example schema is marked');
+      end;
+    finally
+      LSizes.Free;
+      LSchemas.Free;
     end;
 
     W := TFRpNewReportWizardLCL.Create(nil);
@@ -1314,6 +1348,7 @@ begin
       W.BtnHubLogin.Click;
       WaitIdle(W, 'Hub databases of the API key');
       CheckEquals(2, W.CbHubDatabase.Items.Count, 'the databases of the key');
+      Check(not W.LblHubExampleNote.Visible, 'not an example: no note');
       FHubHandler.ClearRequests;
       W.BNextClick(nil);
       WaitUntil(Finished, 20000, 'connection tested with the key and wizard finished');

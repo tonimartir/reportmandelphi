@@ -1273,6 +1273,10 @@ begin
     begin
       LItem := TMenuItem.Create(FHubMenu);
       LItem.Caption := LDiscovery.Databases.Names[i];
+      // An example database: for everybody, read-only
+      if RpHubLineIsExample(LDiscovery.Databases.ValueFromIndex[i],
+        RpHubDatabaseExampleField) then
+        LItem.Caption := LItem.Caption + ' (' + RpHubExampleBadge + ')';
       // The id, before the state of the Agent (RpHubDatabaseLine)
       LItem.Hint := RpHubLineField(LDiscovery.Databases.ValueFromIndex[i], 0);
       LItem.OnClick := HubConnectionMenuItemClick;

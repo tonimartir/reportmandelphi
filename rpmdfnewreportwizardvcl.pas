@@ -141,6 +141,8 @@ type
     FBtnHubLogin: TButton;
     FBtnHubRefresh: TButton;
     FCbHubDatabase: TComboBox;
+    // Under the Hub connection, with an example database chosen: what it is
+    FLblHubExampleNote: TLabel;
     // schema page: why the subschemas of the direct connection could not be
     // read
     FLblLocalSchemaError: TLabel;
@@ -204,6 +206,7 @@ type
     procedure DoHubDatabaseDrawItem(Control: TWinControl; Index: Integer;
       Rect: TRect; State: TOwnerDrawState);
     function HubDatabaseOffline(AIndex: Integer): Boolean;
+    function HubDatabaseExample(AIndex: Integer): Boolean;
 
     // AQuiet: without the "Logged in" message (entering the page)
     procedure LoadHubDatabases(AQuiet: Boolean = False);
@@ -642,6 +645,7 @@ begin
   FEdHubApiKey := nil; FBtnHubLogin := nil;
   FBtnHubRefresh := nil;
   FCbHubDatabase := nil;
+  FLblHubExampleNote := nil;
   FLblLocalSchemaError := nil;
   FCbFamily := nil; FCbConcrete := nil; FLblConcrete := nil;
   FRbExisting := nil; FRbNew := nil; FCbExistingConn := nil;
@@ -1453,6 +1457,14 @@ begin
   FBtnHubRefresh.Width := 130; FBtnHubRefresh.Height := 28;
   FBtnHubRefresh.Caption := TR(1149, 'Refresh');
   FBtnHubRefresh.OnClick := DoHubRefresh;
+
+  // An example database: for everybody, read-only (DoHubDatabaseChange)
+  FLblHubExampleNote := CreateLabel(PContent, RpHubExampleNote, 24,
+    FCbHubDatabase.Top + FCbHubDatabase.Height + 8);
+  FLblHubExampleNote.Font.Color := clGrayText;
+  FLblHubExampleNote.Width := 620;
+  FLblHubExampleNote.WordWrap := True;
+  FLblHubExampleNote.Visible := False;
 
   // Always: without key nor session the Hub lists the example databases, for
   // everybody; with them, those of the account or of the key too
@@ -2302,14 +2314,26 @@ begin
     hosOffline);
 end;
 
+// An example database of the Hub (RpHubDatabaseLine)
+function TFRpNewReportWizardVCL.HubDatabaseExample(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex < FHubDatabases.Count) and
+    RpHubLineIsExample(FHubDatabases.ValueFromIndex[AIndex],
+    RpHubDatabaseExampleField);
+end;
+
 procedure TFRpNewReportWizardVCL.DoHubDatabaseChange(Sender: TObject);
 begin
   if HubDatabaseOffline(FCbHubDatabase.ItemIndex) then
     FCbHubDatabase.Hint := TR(2004, 'The Agent of this database is not ' +
       'connected: the AI can design with its schema, but the data cannot be ' +
       'opened until it comes back.')
+  else if HubDatabaseExample(FCbHubDatabase.ItemIndex) then
+    FCbHubDatabase.Hint := RpHubExampleNote
   else
     FCbHubDatabase.Hint := '';
+  if Assigned(FLblHubExampleNote) then
+    FLblHubExampleNote.Visible := HubDatabaseExample(FCbHubDatabase.ItemIndex);
 end;
 
 procedure TFRpNewReportWizardVCL.DoHubDatabaseDropDown(Sender: TObject);
@@ -2325,8 +2349,12 @@ begin
   LDotAt := -1;
   if HubDatabaseOffline(Index) then
     LDotAt := 0;
-  TRpChatStyle.DrawComboItem(FCbHubDatabase.Canvas, Rect, State,
-    FCbHubDatabase.Items[Index], LDotAt);
+  if HubDatabaseExample(Index) then
+    TRpChatStyle.DrawComboItem(FCbHubDatabase.Canvas, Rect, State,
+      FCbHubDatabase.Items[Index], LDotAt, RpHubExampleBadge)
+  else
+    TRpChatStyle.DrawComboItem(FCbHubDatabase.Canvas, Rect, State,
+      FCbHubDatabase.Items[Index], LDotAt);
 end;
 
 procedure TFRpNewReportWizardVCL.BuildPageFinish;
