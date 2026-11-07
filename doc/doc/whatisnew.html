@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Release notes and version history - Report Manager Docs</title>
-<meta name="description" content="Version 4.0.22 release notes: sample reports on SQLite with a welcome window, and local schemas for the AI copilot, plus version history.">
+<meta name="description" content="Version 4.0.23 release notes: the example database of Reportman AI without signing in, local schemas for Agent connections and a ready request for the copilot in every sample, plus version history.">
 <link rel="canonical" href="https://reportman.es/doc/whatisnew.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -229,6 +229,38 @@
 <h1>Release notes and version history</h1>
 <h2>Release notes</h2>
     <h3><b>What is new</b></h3>
+
+    <p>Version 4.0.23 (November 2026)</p>
+    <ul>
+      <li><b>The example database of Reportman AI without signing in</b>: the public
+        example database of the Hub works in the designers without an API key and
+        without a Reportman AI session, as on the web. The connection assistant lists
+        it when nobody is signed in, and its connection opens and shows data. It is
+        marked <b>DEMO</b> in every list of databases and schemas, with a note that it
+        is read-only and there to try Reportman AI. A database that is not an example
+        and is opened without key nor session gives a clear message.</li>
+      <li><b>One list of schemas</b> in the copilot, the SQL editor of the datasets and
+        the new report assistant: the schemas of the session (or, without one, the
+        example ones), those of the API key of the connection and those of every API
+        key in the connections file, plus <i>New local schema&hellip;</i> and <i>New cloud
+        schema&hellip;</i>. The list is read again when you sign in or out.</li>
+      <li><b>Local schemas for Reportman AI Agent connections</b> too, not only for
+        direct ones: the catalog of the database is read through the Agent (tables,
+        columns, keys and the SQL dialect of the database), and the local subschemas
+        are offered next to the cloud schemas.</li>
+      <li><b>The sample reports and the copilot</b>: opening a sample from the welcome
+        window writes in the copilot a request that changes its dataset and its report
+        (checked with the AI), ready to be sent as it is or changed. The SQL that the AI
+        asks the designer to run now finds the SQLite database of the samples, and the
+        AI starts in <i>Reasoning</i> mode, which lays out the report better.</li>
+      <li><i>Add connection&hellip;</i> is now in the toolbar of the connections, and
+        the AI credits gauge shows the credit bag of the paid plans.</li>
+      <li><b>PDF</b>: a correct cross-reference table, Info and XMP metadata that match,
+        and subset tags on the embedded fonts (PDF/A-3 checked with veraPDF).</li>
+      <li>Fixes: an HTML answer of the AI chat is shown as text and <i>Copy all</i>
+        copies what the model wrote; the designer structure frame and the copilot no
+        longer end in an access violation when they fail to start.</li>
+    </ul>
 
     <p>Version 4.0.22 (October 2026)</p>
     <ul>
