@@ -389,6 +389,21 @@ El JSON publicado es el que genera el script: su `CommunityDescription` por
 defecto ya es la que escribió Toni para el primer envío (con la IA y los
 ejemplos).
 
+### 4.0.23 (08-11-2026, commit b336ffd6)
+
+Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.22 quedan en la
+VM, en `~/webs/opm-anteriores/4.0.22`. Novedades para quien lo instala: la base
+de datos de ejemplo de Reportman AI funciona sin iniciar sesión y se marca DEMO
+en todas las listas, una sola lista de esquemas en el copiloto, el editor SQL y
+el asistente, esquemas locales también para las conexiones Agent, y cada
+ejemplo de la bienvenida deja en el copiloto una petición ya probada, con el
+modo Reasoning por omisión. Sin ficheros nuevos: zip de 200 ficheros, 5.755.235
+bytes, MD5 `827f602fbfcdd2bacf52868432f705ad`.
+
+Validado en Linux con la imagen `reportman-linux-builder` (`--ws=gtk2` y
+`--ws=qt6`, los tres paquetes desde el zip). macOS y Windows no se validaron
+con el zip (el diseñador de macOS se compiló y se notarizó en GitHub Actions).
+
 ### 4.0.22 (19-10-2026, commit 2332bed5)
 
 Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.21 quedan en la
