@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Common properties for TRpBarcode - Report Manager Docs</title>
-<meta name="description" content="TRpBarcode properties: barcode types (2of5, Code39, Code128, EAN, MSI, PDF417, QR), checksum, module width, ratio, value expression and rotation.">
+<meta name="description" content="TRpBarcode properties: barcode types (2of5, Code39, Code128, EAN, MSI, PDF417, QR), checksum, module width, ratio, value expression, rotation and the error correction level of PDF417 and QR.">
 <link rel="canonical" href="https://reportman.es/doc/refbarcode.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -291,13 +291,13 @@
           <td>European EAN barcodes, the last digit is a checksum and can be calculated 
             if CalcChecksum property is set</td>
         </tr>
-        <tr> 
+        <tr>
           <td>PDF417</td>
-          <td>2D Barcode, not implemented in .Net engine</td>
+          <td>PDF417 2D barcode, see ECC Level, Row count, Column count and Truncate PDF417</td>
         </tr>
-        <tr> 
+        <tr>
           <td>QR</td>
-          <td>QR 2D Barcode</td>
+          <td>QR 2D barcode, see ECC Level</td>
         </tr>
       </table>
       <p>&nbsp;</p>
@@ -366,6 +366,89 @@
     <td>Truncated</td>
     <td>Integer</td>
     <td>PDF417, truncate data if needed</td>
+  </tr>
+  <tr>
+    <td>ECC Level</td>
+    <td>ECCLevel</td>
+    <td>Integer</td>
+    <td><p>Error correction level of the 2D barcodes, PDF417 and QR; the other
+        types ignore it. The designer offers Auto (stored as -1, the default)
+        and Level 0 to Level 8 (stored as 0 to 8). A higher error correction
+        lets the code be read with more damage or dirt, but makes the symbol
+        larger or denser for the same data.</p>
+      <p><b>PDF417</b>, the same in every engine:</p>
+      <table border="1">
+        <tr>
+          <td bgcolor="#FFFFCC">Value</td>
+          <td bgcolor="#FFFFCC">Error correction</td>
+        </tr>
+        <tr>
+          <td>Auto</td>
+          <td>Chosen by the amount of data: level 2 below 41 data codewords,
+            level 3 below 161, level 4 below 321 and level 5 above.</td>
+        </tr>
+        <tr>
+          <td>Level 0 to Level 8</td>
+          <td>That PDF417 level, which adds 2<sup>level+1</sup> error correction
+            codewords: 2 at level 0, 8 at level 2, 64 at level 5, 512 at level 8.</td>
+        </tr>
+      </table>
+      <p>In the .NET engine, a receipt printer that draws the PDF417 itself
+        (ESC/POS text driver) gets the level as it is, and level 2 for Auto.</p>
+      <p><b>QR</b>: the QR standard has four levels, L (about 7% of the symbol
+        can be restored), M (15%), Q (25%) and H (30%). <b>The two engines read the
+        value differently</b>:</p>
+      <table border="1">
+        <tr>
+          <td bgcolor="#FFFFCC">Value</td>
+          <td bgcolor="#FFFFCC">Delphi and Lazarus engine<br>(VCL and LCL designers, printreptopdf, repweb, ActiveX)</td>
+          <td bgcolor="#FFFFCC">.NET engine<br>(.NET designer, web designer, Reportman Server)</td>
+        </tr>
+        <tr>
+          <td>Auto</td>
+          <td>L</td>
+          <td>L</td>
+        </tr>
+        <tr>
+          <td>Level 0</td>
+          <td>L</td>
+          <td>L</td>
+        </tr>
+        <tr>
+          <td>Level 1</td>
+          <td>M</td>
+          <td>L</td>
+        </tr>
+        <tr>
+          <td>Level 2</td>
+          <td>Q</td>
+          <td>L</td>
+        </tr>
+        <tr>
+          <td>Level 3</td>
+          <td>H</td>
+          <td>M</td>
+        </tr>
+        <tr>
+          <td>Level 4</td>
+          <td>L</td>
+          <td>Q</td>
+        </tr>
+        <tr>
+          <td>Level 5</td>
+          <td>L</td>
+          <td>H</td>
+        </tr>
+        <tr>
+          <td>Level 6 to Level 8</td>
+          <td>L</td>
+          <td>L</td>
+        </tr>
+      </table>
+      <p>So a report printed by both engines gets the same QR only with L (Auto,
+        Level 0, or Level 6 to 8); for M, Q or H choose the value of the engine
+        that prints it. In the .NET engine a receipt printer that draws the QR
+        itself (ESC/POS text driver) gets the same level as the drawn code.</p></td>
   </tr>
   <tr>
     <td>Background color</td>

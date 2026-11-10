@@ -1260,7 +1260,7 @@ var
   SRpBarcodeCodeTooLarge:WideString='Bar code too large';
   SRpGLIOutOfRangeBarcode:WideString='GLI Out of range in PDF417 barcode';
   SRpInvalidCodeword:WideString='Invalid codeword in PDF417 barcode';
-  SRpECCLevel:WideString='PDF417 ECC';
+  SRpECCLevel:WideString='ECC Level';
   SRpNumRows:WideString='Num. Rows';
   SRpNumCols:WideString='Num. Cols';
   SRpTruncatedPDF417:WideString='Truncate PDF417';
