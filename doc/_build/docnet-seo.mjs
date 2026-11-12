@@ -1,8 +1,8 @@
-// Report Manager - canonical URLs and a crawlable index for the .NET reference (docnet/).
+// Report Manager - canonical URLs, descriptions and a crawlable index for the .NET reference.
 //
 // WHY. On 12-11-2026 Search Console reported 306 pages «Crawled, currently not indexed» and 44
 // «Discovered, currently not indexed» for reportman.es, and almost all of them are docnet/api/:
-// 498 generated pages. Two things were missing, and both are ours:
+// 498 generated pages. Three things were missing, and all three are ours:
 //
 //   * NOT ONE of the 498 carried a <link rel="canonical">. Every other URL that lands on the same
 //     page --the directory form, a stray query string, the old host-- is then a page of its own to
@@ -11,17 +11,22 @@
 //     crawler that does not run it saw 13 links from /docnet/ reaching into 498 pages: 163 of them
 //     had one or two inbound links in the static HTML, and /docnet/api/ itself answered 403.
 //     A page that almost nothing links to is exactly what Google crawls and decides not to index.
+//   * 20 pages carried NO <meta name="description">: the 13 namespace pages, 6 types whose XML
+//     documentation was never written, and the landing page of the reference. DocFX takes the
+//     description from the <summary>, and where there is no summary it writes nothing, so the
+//     snippet is made up out of whatever the page has --here, the inherited members of object--.
 //
-// So this writes api/index.html --the same list, in plain HTML, in DocFX's own layout-- and the
-// canonical of every page. It does NOT promise that Google will index 500 generated pages: a
-// reference like this is thin by nature and part of it will stay out. What it fixes is the part
-// that was our doing.
+// So this writes api/index.html --the same list, in plain HTML, in DocFX's own layout--, the
+// canonical of every page, and a description for the pages that have none. It does NOT promise
+// that Google will index 500 generated pages: a reference like this is thin by nature and part of
+// it will stay out. What it fixes is the part that was our doing.
 //
 // Re-run after regenerating the reference, like docnet-namespaces.mjs:
 //   node doc/_build/docnet-seo.mjs
-// Idempotent: the canonical is added only where there is none, and index.html is rewritten only
-// while it carries this script's marker, so a page DocFX writes later is never overwritten.
-
+// Idempotent: the canonical and the description are added only where there is none --so the day
+// the <summary> gets written in the C# source, DocFX's own description wins--, and index.html is
+// rewritten only while it carries this script's marker, so a page DocFX writes later is never
+// overwritten.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -87,6 +92,9 @@ if (!suyo) {
     // and it names the template page, which would trip the guard below. The index gets its own in
     // the canonical pass further down.
     .replace(/[ \t]*<link rel="canonical"[^>]*>\r?\n/, '')
+    // And ITS description, for the same reason --the description pass at the end of this script
+    // wrote one naming the template page--. The index gets its own, two lines below.
+    .replace(/[ \t]*<meta name="description"[^>]*>\r?\n/, '')
     .split(`Namespace ${tplName}`).join(titulo)
     .replace(/(<meta name="title"[^>]*>)/, `$1${EOL}      <meta name="description" content="${desc}">`)
     .replace('<html>', `<html>${EOL}${MARKER}`);
@@ -134,3 +142,97 @@ for (const [fichero, url] of paginas) {
   puestos++;
 }
 console.log(`canonical: ${puestos} added, ${ya} already had one.`);
+
+// ---------------------------------------------------------------- meta description
+// DocFX copies the <summary> of the type into <meta name="description">. Where the source has no
+// summary the page goes out with no description at all: the 13 namespace pages, which have no
+// summary anywhere to take one from, and 6 types whose XML documentation was never written. Google
+// then builds the snippet from whatever it can scrape off the page, which for a page like these is
+// the inherited members of object.
+//
+// This invents no prose. It writes the line out of what the page already says --the declaration,
+// the namespace, the assembly, the fields of the enum, the types of the namespace--, which is what
+// tells one of these pages apart from the other 497 in a list of results. The day someone writes
+// the <summary> in the C# source, DocFX emits its own description and this pass leaves the page
+// alone: it only ever fills in what is missing.
+
+const LIMITE = 160; // what Google shows of a snippet; past that it is cut mid-word
+
+const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' };
+const texto = html => html.replace(/<[^>]+>/g, '')
+  .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ENTIDADES[e])
+  .replace(/\s+/g, ' ').trim();
+const escapar = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Adds names one by one while they fit, and says so with an ellipsis when they do not. Cutting a
+// snippet at 160 characters is Google's job; doing it here is the difference between ending on a
+// whole name and ending in the middle of one.
+const enumerar = (base, titulo, nombres) => {
+  let out = base, puestos = 0;
+  for (const n of nombres) {
+    const sep = puestos === 0 ? ` ${titulo}: ` : ', ';
+    if ((out + sep + n + '.').length > LIMITE) { if (puestos) out += ', …'; break; }
+    out += sep + n;
+    puestos++;
+  }
+  return puestos && !out.endsWith('…') ? out + '.' : out;
+};
+
+const recortar = s => s.length <= LIMITE ? s
+  : s.slice(0, LIMITE - 1).replace(/[\s,:;(.-]+$/, '') + '…';
+
+const descripcion = (fichero, html) => {
+  const art = html.match(/<article class="content wrap"[\s\S]*?<\/article>/);
+  const cuerpo = art ? art[0] : html;
+
+  // The landing page of the whole reference: DocFX writes it from the README of the C# repository,
+  // which carries no front matter, so it comes out with no description either.
+  if (path.resolve(fichero) === path.join(DOCNET, 'index.html')) {
+    return `Report Manager .NET API documentation: ${namespaces.length} assemblies and `
+      + `${namespaces.reduce((n, ns) => n + ns.items.length, 0)} types — reporting engine, drawing, `
+      + 'Windows Forms and WPF preview, designer, Excel export.';
+  }
+
+  // A namespace page has no summary of its own anywhere: what it is, is what it contains, and
+  // toc.json says that better than the page does.
+  const espacio = namespaces.find(n => n.href === path.basename(fichero));
+  if (espacio) {
+    return enumerar(`The ${espacio.name} namespace of the Report Manager .NET libraries — `
+      + resumen(espacio.items), 'Types', espacio.items.map(t => t.name));
+  }
+
+  const parte = re => { const m = cuerpo.match(re); return m ? texto(m[1]) : ''; };
+  const titulo = parte(/<h1[^>]*>([\s\S]*?)<\/h1>/);                       // «Class CueHelper»
+  const ns = parte(/<h6><strong>Namespace<\/strong>:([\s\S]*?)<\/h6>/);
+  const asm = parte(/<h6><strong>Assembly<\/strong>:([\s\S]*?)<\/h6>/);
+  const decl = parte(/<pre><code class="lang-csharp[^"]*">([\s\S]*?)<\/code><\/pre>/);
+  if (!titulo || !ns) return null;
+
+  // Reportman.Drawing.Forms in Reportman.Drawing.Forms.dll says the same thing twice.
+  const donde = asm && asm !== `${ns}.dll` ? `${ns} namespace, ${asm}` : `${ns} namespace`;
+  const base = `${titulo} — ${donde}.${decl ? ` ${decl}.` : ''}`;
+
+  // «protected enum TabControlAdvanced.PositionIndex» says nothing the title did not; the fields do.
+  if (/^Enum /.test(titulo)) {
+    const tabla = cuerpo.match(/<h3 id="fields">[\s\S]*?<\/table>/);
+    const campos = tabla ? [...tabla[0].matchAll(/<td id="[^"]*">([^<]+)<\/td>/g)].map(m => texto(m[1])) : [];
+    return enumerar(base, 'Fields', campos);
+  }
+  return recortar(base);
+};
+
+let descritas = 0, tenian = 0;
+for (const [fichero] of paginas) {
+  if (!fs.existsSync(fichero)) continue;
+  const html = fs.readFileSync(fichero, 'utf-8');
+  if (/<meta name="description"/.test(html)) { tenian++; continue; }
+  const m = html.match(/^([ \t]*)<meta name="title"[^>]*>[ \t]*$/m);
+  if (!m) { console.log(`  no <meta name="title"> to hang it from, skipped: ${path.basename(fichero)}`); continue; }
+  const desc = descripcion(fichero, html);
+  if (!desc) { console.log(`  nothing to describe it with, skipped: ${path.basename(fichero)}`); continue; }
+  const EOL = html.includes('\r\n') ? '\r\n' : '\n';
+  fs.writeFileSync(fichero, html.replace(m[0], `${m[0]}${EOL}${m[1]}<meta name="description" content="${escapar(desc)}">`));
+  console.log(`  description: ${path.basename(fichero)}`);
+  descritas++;
+}
+console.log(`description: ${descritas} added, ${tenian} already had one.`);
