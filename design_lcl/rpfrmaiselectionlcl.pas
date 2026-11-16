@@ -643,7 +643,7 @@ begin
       if LAuth.UsingBag then
         LHint := TranslateStr(2054, 'Credit bag')
       else
-        LHint := TranslateStr(1524, 'Free Credits');
+        LHint := TranslateStr(2054, 'Credit bag');
       LHint := LHint + LineEnding +
         Format(TranslateStr(1835, 'Left: %s of %s'),
         [FormatFloat('#,##0', LLeft), FormatFloat('#,##0', LMax)]);
@@ -660,7 +660,7 @@ begin
   end
   else
   begin
-    LHint := TranslateStr(1524, 'Free Credits') + LineEnding +
+    LHint := TranslateStr(2054, 'Credit bag') + LineEnding +
       TranslateStr(1526, 'Used') + ': 0 (0%)' + LineEnding +
       TranslateStr(1527, 'Max') + ': 0';
     FGaugeValue := 0.0;
