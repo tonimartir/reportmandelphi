@@ -63,8 +63,10 @@ What belongs here is the site itself: the web root is **`doc/`** (`index.html`, 
 generated at deploy time.** `doc/_build/build-docs.mjs` is an *authoring* tool: it rewrites the
 pages **in place**, inside the repository, when the navigation changes, and it is run by hand.
 
-`doc/robots.txt` marks `/_build/` as «not part of the published site», and the deployment honours
-that: it is excluded.
+`_build/` is **not published**: the deployment excludes it and checks that
+`/_build/build-docs.mjs` answers 404. That 404 is the whole mechanism — `doc/robots.txt` carries no
+`Disallow` at all, on purpose, because blocking the crawl is what keeps a URL in the index instead
+of taking it out (the file explains it).
 
 ## Source layout (important)
 
