@@ -51,8 +51,9 @@
 {         flags bits 16..23 = scale (0..28)             }
 {         flags bit 31      = sign (negative if set)    }
 {       In this Pascal port we represent decimals as    }
-{       Currency (Int64 * 10000). Values that overflow  }
-{       Currency raise an exception on read.            }
+{       Currency (Int64 * 10000). Extra decimals are    }
+{       rounded half away from zero; values that do     }
+{       not fit in Currency raise an exception.         }
 {                                                       }
 {       TimeSpan: 8 bytes Int64 ticks (100-ns units),   }
 {       same as the .NET TimeSpan.Ticks raw value.      }
@@ -79,6 +80,14 @@
 {       trailing whitespace on Get. SQL data rarely     }
 {       relies on trailing space being significant, so  }
 {       this usually does not matter.                   }
+{                                                       }
+{       4) String columns: the size is measured in a    }
+{       first pass over the rows (UTF-8 bytes, never    }
+{       less than the text length), so TClientDataSet   }
+{       reserves no more than needed on every record.   }
+{       Longer than RP_FAST_MAX_STRING_SIZE becomes     }
+{       ftWideMemo. Streams that are not memory or      }
+{       file streams are copied to memory first.        }
 {                                                       }
 {       Copyright (c) 2026 Toni Martir                  }
 {       toni@reportman.es                               }
@@ -351,13 +360,33 @@ begin
   WriteInt32LE(AStream, Integer(flags));
 end;
 
+type
+  // 96-bit unsigned integer, most significant word first (hi, mid, lo).
+  TRpUInt96 = array[0..2] of Cardinal;
+
+// Divides AValue by 10 in place and returns the remainder.
+function DivMod96By10(var AValue: TRpUInt96): Cardinal;
+var
+  i: Integer;
+  cur: UInt64;
+begin
+  Result := 0;
+  for i := 0 to 2 do
+  begin
+    cur := (UInt64(Result) shl 32) or AValue[i];
+    AValue[i] := Cardinal(cur div 10);
+    Result := Cardinal(cur mod 10);
+  end;
+end;
+
 function ReadDotnetDecimalAsCurrency(AStream: TStream): Currency;
 var
   lo, mid, hi, flags: Cardinal;
+  value: TRpUInt96;
   mantissa: UInt64;
   scale: Integer;
   isNegative: Boolean;
-  divisor, multiplier: Int64;
+  lastDigit: Cardinal;
   i: Integer;
   raw: Int64;
 begin
@@ -366,33 +395,43 @@ begin
   hi    := Cardinal(ReadInt32LE(AStream));
   flags := Cardinal(ReadInt32LE(AStream));
 
-  if hi <> 0 then
-    raise ERpFastSerializer.Create(
-      'Decimal value exceeds 64-bit mantissa, cannot fit in Currency');
-
-  mantissa   := UInt64(lo) or (UInt64(mid) shl 32);
-  scale      := (flags shr 16) and $1F;
+  scale      := (flags shr 16) and $FF;
   isNegative := (flags and $80000000) <> 0;
 
   if scale > 28 then
     raise ERpFastSerializer.CreateFmt('Invalid decimal scale %d', [scale]);
 
-  // Bring mantissa to scale=4 (Currency convention).
-  if scale > 4 then
+  // Bring the mantissa to scale=4 (Currency convention).
+  // Too many decimals: drop the extra digits from the whole 96-bit mantissa,
+  // so a value such as 1/3 (28 decimals, wider than 64 bits) still fits once
+  // scaled, and round half away from zero on the most significant digit
+  // dropped, like Math.Round(x, 4, MidpointRounding.AwayFromZero).
+  value[0] := hi;
+  value[1] := mid;
+  value[2] := lo;
+  lastDigit := 0;
+  for i := 1 to scale - 4 do
+    lastDigit := DivMod96By10(value);
+  if value[0] <> 0 then
+    raise ERpFastSerializer.Create(
+      'Decimal value too large to fit in Currency');
+  mantissa := (UInt64(value[1]) shl 32) or value[2];
+  if lastDigit >= 5 then
   begin
-    // Too many decimals: divide. We lose precision beyond 4 places.
-    divisor := 1;
-    for i := 1 to scale - 4 do
-      divisor := divisor * 10;
-    mantissa := mantissa div UInt64(divisor);
-  end
-  else if scale < 4 then
+    if mantissa = High(UInt64) then
+      raise ERpFastSerializer.Create(
+        'Decimal value too large to fit in Currency');
+    Inc(mantissa);
+  end;
+
+  // Fewer decimals: multiply, checking every step. An unchecked product
+  // wrapped around 64 bits and gave a wrong value without any error.
+  for i := 1 to 4 - scale do
   begin
-    // Fewer decimals: multiply.
-    multiplier := 1;
-    for i := 1 to 4 - scale do
-      multiplier := multiplier * 10;
-    mantissa := mantissa * UInt64(multiplier);
+    if mantissa > High(UInt64) div 10 then
+      raise ERpFastSerializer.Create(
+        'Decimal value too large to fit in Currency');
+    mantissa := mantissa * 10;
   end;
 
   if mantissa > UInt64(High(Int64)) then
@@ -728,6 +767,10 @@ begin
       end;
     fdtChar:
       begin
+        // The writers emit 1..2 bytes; a longer length would overrun shortBytes.
+        if nlen > 2 then
+          raise ERpFastSerializer.CreateFmt(
+            'Char payload too long (%d bytes)', [nlen]);
         shortBytes[0] := 0; shortBytes[1] := 0;
         AStream.ReadBuffer(shortBytes[0], nlen);
         ch := WideChar(Word(shortBytes[0]) or (Word(shortBytes[1]) shl 8));
@@ -746,6 +789,86 @@ begin
     raise ERpFastSerializer.CreateFmt(
       'ReadValue: unsupported type %d', [Ord(AType)]);
   end;
+end;
+
+// ------------------------------------------------------------
+// Sizing pass helpers
+// ------------------------------------------------------------
+
+const
+  // Longest string column kept as ftWideString; longer ones become
+  // ftWideMemo. TClientDataSet reserves Size characters (2 bytes each) on
+  // every record whatever the value holds, and rejects ftWideString sizes
+  // over 16384.
+  RP_FAST_MAX_STRING_SIZE = 4096;
+
+// Moves the stream past one value without decoding it. Returns the UTF-8
+// byte length for a non-null string (an upper bound of its UTF-16 length)
+// and -1 for any other value.
+function SkipValue(AStream: TStream; AType: TRpFastTypeData): Integer;
+var
+  nlen: Byte;
+  len: Integer;
+begin
+  Result := -1;
+  nlen := ReadByteRaw(AStream);
+  if nlen = 0 then
+    Exit;
+  case AType of
+    fdtInt32, fdtFloat, fdtSingle:
+      AStream.Seek(Int64(4), soCurrent);
+    fdtInt64, fdtDouble, fdtTimeSpan:
+      AStream.Seek(Int64(8), soCurrent);
+    fdtInt16:
+      AStream.Seek(Int64(2), soCurrent);
+    fdtBoolean, fdtByte:
+      AStream.Seek(Int64(1), soCurrent);
+    fdtDecimal:
+      AStream.Seek(Int64(16), soCurrent);
+    fdtString:
+      begin
+        Result := ReadInt32LE(AStream);
+        if Result < 0 then
+          raise ERpFastSerializer.CreateFmt(
+            'Negative string length %d', [Result]);
+        AStream.Seek(Int64(Result), soCurrent);
+      end;
+    fdtByteArray:
+      begin
+        len := ReadInt32LE(AStream);
+        if len < 0 then
+          raise ERpFastSerializer.CreateFmt(
+            'Negative byte array length %d', [len]);
+        AStream.Seek(Int64(len), soCurrent);
+      end;
+    fdtChar, fdtDateTime:
+      AStream.Seek(Int64(nlen), soCurrent);
+  else
+    raise ERpFastSerializer.CreateFmt(
+      'SkipValue: unsupported type %d', [Ord(AType)]);
+  end;
+end;
+
+// Row state appended to every row when versionFormat > 0. C# writes it
+// as a TypeData.Byte value: a length byte (0 = null, else 1) and the byte.
+procedure SkipRowState(AStream: TStream);
+begin
+  if ReadByteRaw(AStream) <> 0 then
+    ReadByteRaw(AStream);
+end;
+
+procedure CopyRemaining(ASource, ADest: TStream);
+var
+  buf: TBytes;
+  n: Integer;
+begin
+  SetLength(buf, 65536);
+  repeat
+    n := ASource.Read(buf[0], Length(buf));
+    if n > 0 then
+      ADest.WriteBuffer(buf[0], n);
+  until n <= 0;
+  ADest.Position := 0;
 end;
 
 // ------------------------------------------------------------
@@ -849,100 +972,159 @@ var
   sig: array[0..3] of Byte;
   tableCount, colCount, rowCount, primCount: Integer;
   versionFormat: Integer;
-  i, j: Integer;
+  i, j, len: Integer;
   colTypes: array of TRpFastTypeData;
   colNames: array of string;
+  maxLens: array of Integer;
   rawType: Integer;
   pkName: string;
+  hasStrings: Boolean;
+  data: TStream;
+  ownsData: Boolean;
+  rowsStart: Int64;
 begin
   if ADs = nil then
     raise ERpFastSerializer.Create('Dataset is nil');
 
-  // Header.
-  AStream.ReadBuffer(sig[0], 4);
-  if (sig[0] <> RP_FAST_SIGNATURE[0]) or
-     (sig[1] <> RP_FAST_SIGNATURE[1]) or
-     (sig[2] <> RP_FAST_SIGNATURE[2]) then
-    raise ERpFastSerializer.Create('Bad FastSerializer signature');
-  versionFormat := sig[3] - RP_FAST_SIGNATURE[3];
-  if versionFormat < 0 then
-    raise ERpFastSerializer.Create('Unsupported FastSerializer version');
-
-  tableCount := ReadInt32LE(AStream);
-  if tableCount <> 1 then
-    raise ERpFastSerializer.CreateFmt(
-      'Only one-table datasets supported, got %d', [tableCount]);
-
-  ATableName := ReadFastString(AStream);
-
-  // Columns.
-  colCount := ReadInt32LE(AStream);
-  if colCount < 0 then
-    raise ERpFastSerializer.CreateFmt(
-      'Negative column count %d', [colCount]);
-  SetLength(colTypes, colCount);
-  SetLength(colNames, colCount);
-
-  ADs.Close;
-  ADs.FieldDefs.Clear;
-
-  for i := 0 to colCount - 1 do
+  // String columns are sized from their longest value, which takes a first
+  // pass over the rows; use a seekable copy unless the stream already is one.
+  ownsData := not ((AStream is TCustomMemoryStream) or
+                   (AStream is TFileStream));
+  if ownsData then
   begin
-    rawType := ReadInt32LE(AStream);
-    if (rawType < 0) or (rawType > Ord(High(TRpFastTypeData))) then
-      raise ERpFastSerializer.CreateFmt(
-        'Unknown column type code %d at column %d', [rawType, i]);
-    colTypes[i] := TRpFastTypeData(rawType);
-    colNames[i] := ReadFastString(AStream);
-    with ADs.FieldDefs.AddFieldDef do
-    begin
-      Name := colNames[i];
-      DataType := FastTypeToFieldType(colTypes[i]);
-      // Strings need an explicit size or TClientDataSet rejects them.
-      if DataType in [ftString, ftWideString, ftFixedChar, ftFixedWideChar] then
-        Size := 1024;
+    data := TMemoryStream.Create;
+    try
+      CopyRemaining(AStream, data);
+    except
+      data.Free;
+      raise;
     end;
-  end;
-
-  // Primary key columns - we read and ignore (TClientDataSet would need
-  // an explicit IndexDef, out of scope for this codec).
-  primCount := ReadInt32LE(AStream);
-  if primCount < 0 then
-    raise ERpFastSerializer.Create('Negative primary key count');
-  for i := 0 to primCount - 1 do
-    pkName := ReadFastString(AStream);  // unused
-
-  ADs.CreateDataSet;
-
-  // Stash the original wire type into each Field.Tag so a subsequent
-  // re-serialization can emit the exact same type code (see comment in
-  // FastSerializeDataSet). Tag uses Ord+1 to keep 0 as "unset".
-  for i := 0 to colCount - 1 do
-    ADs.Fields[i].Tag := Ord(colTypes[i]) + 1;
-
-  ADs.DisableControls;
+  end
+  else
+    data := AStream;
   try
-    rowCount := ReadInt32LE(AStream);
+    // Header.
+    data.ReadBuffer(sig[0], 4);
+    if (sig[0] <> RP_FAST_SIGNATURE[0]) or
+       (sig[1] <> RP_FAST_SIGNATURE[1]) or
+       (sig[2] <> RP_FAST_SIGNATURE[2]) then
+      raise ERpFastSerializer.Create('Bad FastSerializer signature');
+    versionFormat := sig[3] - RP_FAST_SIGNATURE[3];
+    if versionFormat < 0 then
+      raise ERpFastSerializer.Create('Unsupported FastSerializer version');
+
+    tableCount := ReadInt32LE(data);
+    if tableCount <> 1 then
+      raise ERpFastSerializer.CreateFmt(
+        'Only one-table datasets supported, got %d', [tableCount]);
+
+    ATableName := ReadFastString(data);
+
+    // Columns.
+    colCount := ReadInt32LE(data);
+    if colCount < 0 then
+      raise ERpFastSerializer.CreateFmt(
+        'Negative column count %d', [colCount]);
+    SetLength(colTypes, colCount);
+    SetLength(colNames, colCount);
+    SetLength(maxLens, colCount);
+    hasStrings := False;
+    for i := 0 to colCount - 1 do
+    begin
+      rawType := ReadInt32LE(data);
+      if (rawType < 0) or (rawType > Ord(High(TRpFastTypeData))) then
+        raise ERpFastSerializer.CreateFmt(
+          'Unknown column type code %d at column %d', [rawType, i]);
+      colTypes[i] := TRpFastTypeData(rawType);
+      colNames[i] := ReadFastString(data);
+      maxLens[i] := 0;
+      if colTypes[i] = fdtString then
+        hasStrings := True;
+    end;
+
+    // Primary key columns - we read and ignore (TClientDataSet would need
+    // an explicit IndexDef, out of scope for this codec).
+    primCount := ReadInt32LE(data);
+    if primCount < 0 then
+      raise ERpFastSerializer.Create('Negative primary key count');
+    for i := 0 to primCount - 1 do
+      pkName := ReadFastString(data);  // unused
+
+    rowCount := ReadInt32LE(data);
     if rowCount < 0 then
       raise ERpFastSerializer.CreateFmt(
         'Negative row count %d', [rowCount]);
 
-    for i := 0 to rowCount - 1 do
+    // Sizing pass. A fixed generous size (it used to be 1024) both cut
+    // longer texts and cost 2 KB per string field on every record, which
+    // ran a 32-bit process out of memory at around 100,000 rows.
+    if hasStrings and (rowCount > 0) then
     begin
-      ADs.Append;
-      for j := 0 to colCount - 1 do
-        ReadValue(AStream, ADs.Fields[j], colTypes[j]);
-      ADs.Post;
-      // If a future version of the wire format added a per-row state
-      // byte (versionFormat > 0), consume it here. The C# code does
-      // ReadValue(.., TypeData.Byte) and ignores the value.
-      if versionFormat > 0 then
-        ReadByteRaw(AStream);
+      rowsStart := data.Position;
+      for i := 0 to rowCount - 1 do
+      begin
+        for j := 0 to colCount - 1 do
+        begin
+          len := SkipValue(data, colTypes[j]);
+          if len > maxLens[j] then
+            maxLens[j] := len;
+        end;
+        if versionFormat > 0 then
+          SkipRowState(data);
+      end;
+      data.Position := rowsStart;
     end;
+
+    ADs.Close;
+    ADs.FieldDefs.Clear;
+    for i := 0 to colCount - 1 do
+      with ADs.FieldDefs.AddFieldDef do
+      begin
+        Name := colNames[i];
+        DataType := FastTypeToFieldType(colTypes[i]);
+        if colTypes[i] = fdtString then
+        begin
+          if maxLens[i] > RP_FAST_MAX_STRING_SIZE then
+            DataType := ftWideMemo
+          else if maxLens[i] > 0 then
+            Size := maxLens[i]
+          else
+            Size := 1;  // only nulls or empty strings
+        end
+        else
+        // Strings need an explicit size or TClientDataSet rejects them.
+        if DataType in [ftString, ftWideString, ftFixedChar, ftFixedWideChar] then
+          Size := 1024;
+      end;
+
+    ADs.CreateDataSet;
+
+    // Stash the original wire type into each Field.Tag so a subsequent
+    // re-serialization can emit the exact same type code (see comment in
+    // FastSerializeDataSet). Tag uses Ord+1 to keep 0 as "unset".
+    for i := 0 to colCount - 1 do
+      ADs.Fields[i].Tag := Ord(colTypes[i]) + 1;
+
+    ADs.DisableControls;
+    try
+      for i := 0 to rowCount - 1 do
+      begin
+        ADs.Append;
+        for j := 0 to colCount - 1 do
+          ReadValue(data, ADs.Fields[j], colTypes[j]);
+        ADs.Post;
+        // versionFormat > 0 appends the row state, which this codec ignores.
+        if versionFormat > 0 then
+          SkipRowState(data);
+      end;
+    finally
+      ADs.EnableControls;
+    end;
+    ADs.First;
   finally
-    ADs.EnableControls;
+    if ownsData then
+      data.Free;
   end;
-  ADs.First;
 end;
 
 end.
