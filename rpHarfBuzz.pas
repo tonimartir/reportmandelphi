@@ -414,6 +414,8 @@ const
   // conformacion sobre la fuente ENTERA; si el subset los renumera -que es lo que hace por
   // omision- cada <gid> Tj del contenido acaba apuntando a otro glifo.
   HB_SUBSET_FLAGS_RETAIN_GIDS = 2;
+  // hb_subset_sets_t: the set of the tables the subset leaves out
+  HB_SUBSET_SETS_DROP_TABLE_TAG = 3;
 
   type
 
@@ -487,6 +489,7 @@ const
     t_hb_subset_or_fail = function (source: THBFace; input: Phb_subset_input_t): THBFace; cdecl;
     t_hb_face_reference_blob = function (face: THBFace): Phb_blob_t; cdecl;
     t_hb_blob_get_length = function (blob: Phb_blob_t): Cardinal; cdecl;
+    t_hb_subset_input_set = function (input: Phb_subset_input_t; set_type: Cardinal): Phb_set_t; cdecl;
 
 var
 {$IFDEF FPC}
@@ -547,10 +550,15 @@ var
     hb_subset_or_fail:t_hb_subset_or_fail = nil;
     hb_face_reference_blob: t_hb_face_reference_blob= nil;
     hb_blob_get_length: t_hb_blob_get_length = nil;
+    // Optional (HarfBuzz 2.9.1): nil keeps every table, as before
+    hb_subset_input_set: t_hb_subset_input_set = nil;
 
    HarfBuzzSubSetImplementation:boolean = false;
 
 procedure InitHarfBuzz;
+
+// Leaves out of a subset the tables of AFace that a PDF does not read: see the implementation
+procedure RpHBDropTablesForPDF(AInput: Phb_subset_input_t; AFace: THBFace; AKeepCmap: Boolean);
 
 // The glyphs of a variable TrueType font as a static font, for a PDF (which has no variable
 // fonts): see the implementation. False when it cannot be made.
@@ -755,6 +763,105 @@ Function THBFont.GetPTEM: Single;
 Begin
    Result := hb_font_get_ptem(Self);
 End;
+
+// A function of HarfBuzz that may be missing (nil, not an exception)
+function HBOptionalProc(ASubset: Boolean; const AName: string): Pointer;
+begin
+  Result := nil;
+{$IFDEF MSWINDOWS}
+  if ASubset then
+    Result := GetProcAddress(HarfBuzzlibSubset, {$IFDEF FPC}PAnsiChar(AnsiString(AName)){$ELSE}PWideChar(AName){$ENDIF})
+  else
+    Result := GetProcAddress(HarfBuzzlib, {$IFDEF FPC}PAnsiChar(AnsiString(AName)){$ELSE}PWideChar(AName){$ENDIF});
+{$ENDIF}
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
+{$IFDEF FPC}
+  if ASubset then
+    Result := Dynlibs.GetProcAddress(HarfBuzzlibSubset, AName)
+  else
+    Result := Dynlibs.GetProcAddress(HarfBuzzlib, AName);
+{$ELSE}
+  if ASubset then
+    Result := SysUtils.GetProcAddress(HarfBuzzlibSubset, PWideChar(AName))
+  else
+    Result := SysUtils.GetProcAddress(HarfBuzzlib, PWideChar(AName));
+{$ENDIF}
+{$IFEND}
+end;
+
+// ONLY THE TABLES A PDF READS (18-11-2026). hb-subset keeps every table of the font it knows how
+// to subset: GSUB, GPOS, GDEF, name, post, OS/2, cmap, hdmx, VDMX, vhea/vmtx, MATH... A PDF
+// shapes nothing and reads none of them, and they took a quarter to a half of every embedded
+// font (Arial: hdmx alone, 83 KB of 160 KB). A TrueType font program keeps the tables of ISO
+// 32000-1, 9.9 (glyf, loca, head, hhea, hmtx, maxp, cvt, fpgm, prep), the same ones the
+// subsetter of rptruetype.pas writes on Windows, plus cmap for a simple font (AKeepCmap),
+// which selects its glyphs through it. A font with CFF outlines goes as an OpenType font
+// (/FontFile3 /OpenType, or its CFF alone when its glyphs were renumbered): it keeps the CFF
+// and the tables every OpenType font has. Nothing changes with a HarfBuzz without
+// hb_subset_input_set (before 2.9.1).
+procedure RpHBDropTablesForPDF(AInput: Phb_subset_input_t; AFace: THBFace; AKeepCmap: Boolean);
+const
+  TAG_CFF  = $43464620;  // 'CFF '
+  TAG_CMAP = $636D6170;  // 'cmap'
+  KeepTrueType: array[0..8] of Cardinal = (
+    $676C7966,   // 'glyf'
+    $6C6F6361,   // 'loca'
+    $68656164,   // 'head'
+    $68686561,   // 'hhea'
+    $686D7478,   // 'hmtx'
+    $6D617870,   // 'maxp'
+    $63767420,   // 'cvt '
+    $6670676D,   // 'fpgm'
+    $70726570);  // 'prep'
+  KeepCFF: array[0..8] of Cardinal = (
+    $43464620,   // 'CFF '
+    $68656164,   // 'head'
+    $68686561,   // 'hhea'
+    $686D7478,   // 'hmtx'
+    $6D617870,   // 'maxp'
+    $636D6170,   // 'cmap'
+    $6E616D65,   // 'name'
+    $4F532F32,   // 'OS/2'
+    $706F7374);  // 'post'
+var
+  tags: array[0..255] of Cardinal;
+  tagCount, i, j: Cardinal;
+  drop: Phb_set_t;
+  isCFF, keep: Boolean;
+begin
+  if (not Assigned(hb_subset_input_set)) or (not Assigned(hb_face_get_table_tags)) or
+     (AInput = nil) then
+    Exit;
+  tagCount := Length(tags);
+  hb_face_get_table_tags(AFace, 0, tagCount, Phb_tag_t(@tags[0]));
+  if tagCount = 0 then
+    Exit;
+  drop := hb_subset_input_set(AInput, HB_SUBSET_SETS_DROP_TABLE_TAG);
+  if drop = nil then
+    Exit;
+  isCFF := False;
+  for i := 0 to tagCount - 1 do
+    if tags[i] = TAG_CFF then
+      isCFF := True;
+  for i := 0 to tagCount - 1 do
+  begin
+    keep := AKeepCmap and (tags[i] = TAG_CMAP);
+    if isCFF then
+    begin
+      for j := 0 to High(KeepCFF) do
+        if tags[i] = KeepCFF[j] then
+          keep := True;
+    end
+    else
+    begin
+      for j := 0 to High(KeepTrueType) do
+        if tags[i] = KeepTrueType[j] then
+          keep := True;
+    end;
+    if not keep then
+      hb_set_add(drop, tags[i]);
+  end;
+end;
 
 procedure InitHarfBuzz;
 var
@@ -1068,6 +1175,7 @@ begin
   hb_subset_or_fail:= GetProcAddrSubSet(ProcName);
   if not Assigned(hb_subset_or_fail) then
     raise Exception.CreateFmt('Falta funci�n: %s', [ProcName]);
+  hb_subset_input_set:= t_hb_subset_input_set(HBOptionalProc(True, 'hb_subset_input_set'));
   end;
   end;
 end;
@@ -1112,40 +1220,14 @@ var
   hasFvar, hasGlyf, hasCFF2: Boolean;
   outData: PByte;
   outSize: Cardinal;
-
-  // A function of HarfBuzz that may be missing (nil, not an exception)
-  function OptionalProc(ASubset: Boolean; const AName: string): Pointer;
-  begin
-    Result := nil;
-{$IFDEF MSWINDOWS}
-    if ASubset then
-      Result := GetProcAddress(HarfBuzzlibSubset, {$IFDEF FPC}PAnsiChar(AnsiString(AName)){$ELSE}PWideChar(AName){$ENDIF})
-    else
-      Result := GetProcAddress(HarfBuzzlib, {$IFDEF FPC}PAnsiChar(AnsiString(AName)){$ELSE}PWideChar(AName){$ENDIF});
-{$ENDIF}
-{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
-{$IFDEF FPC}
-    if ASubset then
-      Result := Dynlibs.GetProcAddress(HarfBuzzlibSubset, AName)
-    else
-      Result := Dynlibs.GetProcAddress(HarfBuzzlib, AName);
-{$ELSE}
-    if ASubset then
-      Result := SysUtils.GetProcAddress(HarfBuzzlibSubset, PWideChar(AName))
-    else
-      Result := SysUtils.GetProcAddress(HarfBuzzlib, PWideChar(AName));
-{$ENDIF}
-{$IFEND}
-  end;
-
 begin
   Result := False;
   SetLength(AFont, 0);
   if (not HarfBuzzSubSetImplementation) or (AData = nil) or (ASize = 0) then
     Exit;
-  pin := TPinAxis(OptionalProc(True, 'hb_subset_input_pin_axis_location'));
-  getAxisInfos := TGetAxisInfos(OptionalProc(False, 'hb_ot_var_get_axis_infos'));
-  getCoords := TGetInstanceCoords(OptionalProc(False, 'hb_ot_var_named_instance_get_design_coords'));
+  pin := TPinAxis(HBOptionalProc(True, 'hb_subset_input_pin_axis_location'));
+  getAxisInfos := TGetAxisInfos(HBOptionalProc(False, 'hb_ot_var_get_axis_infos'));
+  getCoords := TGetInstanceCoords(HBOptionalProc(False, 'hb_ot_var_named_instance_get_design_coords'));
   if (not Assigned(pin)) or (not Assigned(getAxisInfos)) or (not Assigned(getCoords)) then
     Exit;
   // A HarfBuzz whose loading stopped half way (an old library without some function)
@@ -1216,6 +1298,8 @@ begin
         for i := 0 to axisCount - 1 do
           if not pin(input, face, axes[i].Tag, coords[i]) then
             Exit;
+        // The instance is embedded in a CID font (a Type0 of the PDF): no cmap
+        RpHBDropTablesForPDF(input, face, False);
         newFace := hb_subset_or_fail(face, input);
         // THBFace wraps the pointer hb_subset_or_fail returns (nil: it failed)
         if PPointer(@newFace)^ = nil then
