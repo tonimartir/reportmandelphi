@@ -1166,6 +1166,21 @@ begin
         end;
       Exit;
     end;
+    // A Reportman AI Agent connection with the local subschema of one of its
+    // datasets in the file: that one; else its Hub schema (below)
+    if RpCanHaveLocalSchema(LDatabaseInfo) then
+      for I := 0 to report.DataInfo.Count - 1 do
+        if SameText(report.DataInfo.Items[I].DatabaseAlias, LDatabaseInfo.Alias) and
+          (Trim(report.DataInfo.Items[I].SchemaName) <> '') then
+        begin
+          ALocalSchemaName := RpExistingLocalSubSchema(LDatabaseInfo,
+            report.DataInfo.Items[I].SchemaName);
+          if ALocalSchemaName <> '' then
+          begin
+            ALocalAlias := LDatabaseInfo.Alias;
+            Exit;
+          end;
+        end;
   end;
 
   // Try to find context from the first DataInfo if it has a schema
@@ -1255,19 +1270,19 @@ begin
       for I := 0 to report.DatabaseInfo.Count - 1 do
       begin
         LDatabase := report.DatabaseInfo.Items[I];
-        if not RpIsLocalSqlDatabase(LDatabase) then
+        if not RpCanHaveLocalSchema(LDatabase) then
           Continue;
         // The subschemas, with their sizes (never all the tables)
         RpListLocalSchemaEntries(LDatabase, LEntries, LSizes);
         if LPreferred = '' then
           LPreferred := LDatabase.Alias;
       end;
-      // The connection of the first dataset, when it is a direct one
+      // The connection of the first dataset, when it has local schemas
       if report.DataInfo.Count > 0 then
       begin
         LDatabase := FindDatabaseInfo(report.DatabaseInfo,
           report.DataInfo.Items[0].DatabaseAlias);
-        if RpIsLocalSqlDatabase(LDatabase) then
+        if RpCanHaveLocalSchema(LDatabase) then
           LPreferred := LDatabase.Alias;
       end;
     end;
@@ -2940,6 +2955,10 @@ begin
    begin
     DoOpen(samplepath,false);
     FormResize(Self);
+    // A change of its dataset and its report for the copilot, checked with
+    // the AI: the user sends it as it is or changes it
+    if Assigned(fchatframe) then
+     fchatframe.SetPromptText(RpSamplePrompt(samplepath));
    end;
   rwaNewReport:
    ANewExecute(Self);
@@ -3207,8 +3226,11 @@ begin
    filename:=oldfilename;
    raise;
   end;
-  // A relative SQLite database of the report is looked for in its folder
+  // A relative SQLite database of the report is looked for in its folder,
+  // also by the copies of the report the AI works on (RpReportFolder): the
+  // welcome window opens a sample without changing the current folder
   report.ReportFolder:=ExtractFilePath(ExpandFileName(filename));
+  RpReportFolder:=report.ReportFolder;
   alibrary:='';
   areportname:='';
   Savedialog1.filename:=filename;

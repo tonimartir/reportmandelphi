@@ -119,12 +119,12 @@ type
     PopSchemas: TPopupMenu;
     MLocalSchemas: TMenuItem;
     MCloudSchemas: TMenuItem;
-    // Connection wizard: "Add connection" above the toolbar, the same button
-    // in the middle while there are no connections, and "Configure with the
-    // wizard" for a Reportman AI Agent connection not configured here
+    // Connection wizard: "Add connection" at the end of the toolbar, the same
+    // button in the middle while there are no connections, and "Configure
+    // with the wizard" for a Reportman AI Agent connection not configured here
     FWandImages: TVirtualImageList;
     FWandImagesLarge: TVirtualImageList;
-    PWizard: TPanel;
+    BWizardSeparator: TToolButton;
     BWizard: TButton;
     PEmpty: TPanel;
     BWizardEmpty: TButton;
@@ -243,8 +243,9 @@ procedure TFRpConnectionVCL.BSchemasClick(Sender: TObject);
 var
  LPoint:TPoint;
 begin
- // The local schema only for a connection that runs SQL on this computer
- MLocalSchemas.Enabled:=RpIsLocalSqlDatabase(FindDatabaseInfoItem);
+ // The local schema for a connection that runs SQL on this computer or a
+ // Reportman AI Agent one (the Agent reads its catalog through the API)
+ MLocalSchemas.Enabled:=RpCanHaveLocalSchema(FindDatabaseInfoItem);
  LPoint:=BSchemas.ClientToScreen(Point(0,BSchemas.Height));
  PopSchemas.Popup(LPoint.X,LPoint.Y);
 end;
@@ -255,7 +256,7 @@ var
  LSchemaName:string;
 begin
  LItem:=FindDatabaseInfoItem;
- if not RpIsLocalSqlDatabase(LItem) then
+ if not RpCanHaveLocalSchema(LItem) then
   exit;
  LSchemaName:='';
  // On the connections being edited: the copy of the report the frame
@@ -829,19 +830,20 @@ begin
  FWandImages:=NewImages(20);
  FWandImagesLarge:=NewImages(32);
 
- // "Add connection" above the toolbar
- PWizard:=TPanel.Create(Self);
- PWizard.Parent:=Self;
- PWizard.BevelOuter:=bvNone;
- PWizard.Caption:='';
- PWizard.Align:=alTop;
- PWizard.Top:=0;
- BWizard:=NewWandButton(PWizard,FWandImages,BWizardClick);
+ // "Add connection" at the end of the toolbar, after a separator (a row of
+ // its own above it took the room of the list). The toolbar places its
+ // controls by their Left when they come in
+ BWizardSeparator:=TToolButton.Create(Self);
+ BWizardSeparator.Style:=tbsSeparator;
+ BWizardSeparator.Width:=ScaleDpi(16);
+ BWizardSeparator.Left:=BSchemas.Left+BSchemas.Width;
+ BWizardSeparator.Parent:=ToolBar1;
+ BWizard:=NewWandButton(nil,FWandImages,BWizardClick);
  BWizard.Caption:=TranslateStr(1826,'Add connection')+'...';
- BWizard.SetBounds(ScaleDpi(6),ScaleDpi(4),ScaleDpi(160),ScaleDpi(32));
+ BWizard.Left:=BWizardSeparator.Left+BWizardSeparator.Width;
+ BWizard.Parent:=ToolBar1;
  FitWidth(BWizard,20);
- PWizard.Height:=BWizard.Height+ScaleDpi(8);
- ToolBar1.Top:=PWizard.Top+PWizard.Height+1;
+ BWizard.Height:=ToolBar1.ButtonHeight;
 
  // No connections: the wizard in the place of the connection properties
  PEmpty:=TPanel.Create(Self);

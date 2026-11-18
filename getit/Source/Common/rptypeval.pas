@@ -348,6 +348,13 @@ begin
 end;
 
 // Math Functions
+
+// A number of any kind but a Boolean (a Boolean is ordinal for VarIsNumeric)
+function IsNumberValue(const Value:TRpValue):Boolean;
+begin
+ Result:=VarIsNumeric(Value) and (VarType(Value)<>varBoolean);
+end;
+
 function SumTRpValue(Value1,Value2:TRpValue):TRpValue;
 var
  atype1,atype2:TVarType;
@@ -379,7 +386,24 @@ begin
      if atype2=varOleStr then
       Result:=WideString(Value1)+Value2
      else
-      Result:=Value1+Value2
+     begin
+      try
+       Result:=Value1+Value2
+      except
+       // A number plus a text that is not a number gives both texts joined,
+       // the number written as STR() writes it: POSTEN+UPOS gives '10a', as
+       // STR(POSTEN)+UPOS. A text that is a number is still added (10+'7'
+       // is 17), so no expression that gave a value before changes it
+       on EVariantError do
+       begin
+        if (IsNumberValue(Value1) and VarIsStr(Value2)) or
+         (VarIsStr(Value1) and IsNumberValue(Value2)) then
+         Result:=String(Value1)+String(Value2)
+        else
+         raise;
+       end;
+      end;
+     end;
    end;
   end;
 end;

@@ -44,7 +44,7 @@ interface
 {$I rpconf.inc}
 
 uses
-  Classes, SysUtils, IniFiles, rpdatainfo
+  Classes, SysUtils, IniFiles, rpdatainfo, rplocalschemas
 {$IFDEF MSWINDOWS}
   , Windows, rpmdshfolder
 {$ENDIF}
@@ -70,6 +70,9 @@ type
     Title: string;
     Description: string;
     Thumbnail: string;
+    // A request to the copilot that changes the dataset and the report of
+    // the sample, checked with the AI (English, the Prompt key of the index)
+    Prompt: string;
   end;
 
 // The installed samples folder, with the path delimiter: the samples
@@ -90,11 +93,17 @@ procedure RpUpdateSamplesWorkingCopy(const AInstalled, AWorking: string);
 // computer, where the copilot and the local schema editor look for it, when
 // it is not there yet: a new installation asks the copilot for a report on
 // the samples at once. An existing file is never replaced (the user may have
-// changed it). The file installed, or '' when nothing was copied.
+// changed it): only a subschema of an older version that the user did not
+// change is brought up to date. The file installed, or '' when nothing was
+// copied.
 function RpInstallSamplesSchema(const AInstalled: string): string;
 // The samples of the index of AFolder, in its order (AList owns them)
 procedure RpLoadSamples(const AFolder: string; AList: TList);
 procedure RpFreeSamples(AList: TList);
+// The Prompt of a sample report of the index of its folder (the welcome
+// window writes it in the copilot when it opens the sample); '' when the
+// report is not a sample or has none
+function RpSamplePrompt(const AReportFile: string): string;
 // Two letter code of the language of the user (es, ca, de...): the texts
 // of the index in that language, as the translations of the designer
 function RpSamplesLanguage: string;
@@ -275,6 +284,49 @@ begin
   UpdateFolder(IncludeTrailingPathDelimiter(AInstalled), IncludeTrailingPathDelimiter(AWorking));
 end;
 
+// The subschema Fishes of the samples of 4.0.22 left the picture GRAPHIC
+// out, and the AI then dropped it from the dataset of fishes.rep when it
+// changed it (the report did not print any more). The file of an existing
+// installation gets it while that subschema is still the one shipped: its
+// description and its columns as they were
+procedure UpgradeSamplesSchema(const AFileName: string);
+const
+  COldFishes = 'The classic fishes sample, without the pictures.';
+  CNewFishes = 'The classic fishes sample; GRAPHIC is the picture of each ' +
+    'fish, printed by the report.';
+var
+  LFile: TRpLocalSchemaFile;
+  LColumns: TStringList;
+  I: Integer;
+  LSchema: TRpLocalSubSchema;
+begin
+  LFile := TRpLocalSchemaFile.Create;
+  LColumns := TStringList.Create;
+  try
+    if not LFile.LoadFromFile(AFileName) then
+      Exit;
+    for I := 0 to LFile.SchemaCount - 1 do
+    begin
+      LSchema := LFile.Schemas[I];
+      if (not SameText(LSchema.Name, 'Fishes')) or
+        (LSchema.Description <> COldFishes) then
+        Continue;
+      if not LSchema.GetColumns('FISHES', LColumns) then
+        Continue;
+      if LColumns.IndexOf('GRAPHIC') >= 0 then
+        Continue;
+      LColumns.Add('GRAPHIC');
+      LSchema.SetColumns('FISHES', LColumns);
+      LSchema.Description := CNewFishes;
+      LFile.SaveToFile(AFileName);
+      Exit;
+    end;
+  finally
+    LColumns.Free;
+    LFile.Free;
+  end;
+end;
+
 function RpInstallSamplesSchema(const AInstalled: string): string;
 var
   LAdmin: TRpConnAdmin;
@@ -298,7 +350,10 @@ begin
     LTarget := IncludeTrailingPathDelimiter(LTarget + RP_SAMPLES_SCHEMAS) +
       RP_SAMPLES_ALIAS + '.json';
     if FileExists(LTarget) then
+    begin
+      UpgradeSamplesSchema(LTarget);
       Exit;
+    end;
     ForceDirectories(ExtractFilePath(LTarget));
     CopyFileTo(LSource, LTarget);
     if FileExists(LTarget) then
@@ -348,6 +403,29 @@ begin
   AList.Clear;
 end;
 
+function RpSamplePrompt(const AReportFile: string): string;
+var
+  ini: TMemIniFile;
+  index: string;
+begin
+  Result := '';
+  if AReportFile = '' then
+    Exit;
+  index := ExtractFilePath(ExpandFileName(AReportFile)) + RP_SAMPLES_INDEX;
+  if not FileExists(index) then
+    Exit;
+{$IFDEF FPC}
+  ini := TMemIniFile.Create(index);
+{$ELSE}
+  ini := TMemIniFile.Create(index, TEncoding.UTF8);
+{$ENDIF}
+  try
+    Result := Trim(ini.ReadString(ExtractFileName(AReportFile), 'Prompt', ''));
+  finally
+    ini.Free;
+  end;
+end;
+
 procedure RpLoadSamples(const AFolder: string; AList: TList);
 var
   ini: TMemIniFile;
@@ -390,6 +468,7 @@ begin
       sample.Description := Localized(sections[i], 'Description', '');
       sample.Thumbnail := StringReplace(ini.ReadString(sections[i], 'Thumbnail', ''),
         '/', PathDelim, [rfReplaceAll]);
+      sample.Prompt := ini.ReadString(sections[i], 'Prompt', '');
       AList.Add(sample);
     end;
   finally

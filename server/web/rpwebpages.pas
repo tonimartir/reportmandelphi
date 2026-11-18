@@ -2279,7 +2279,9 @@ begin
  try
   CollectConnectionParamValues(Request,LValues);
   LApiKey:=Trim(LValues.Values['ApiKey']);
-  if Length(LApiKey)<5 then
+  // Without a key the Hub lists the example databases, for everybody: only a
+  // key too short to be one is refused
+  if (LApiKey<>'') and (Length(LApiKey)<5) then
    LMessage:='Please enter a valid API Key first.'
   else
   begin

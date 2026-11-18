@@ -32,6 +32,7 @@ uses
   IniFiles, Generics.Collections, fphttpserver, httpdefs, rpjsonfpc, rphttpclientfpc, rptypes, rpreport, rpsubreport, rpsection,
   rpdatainfo, rpauthmanager, rpaithreadslcl, rpwebmarkdownlcl, rpmdfmainlcl,
   rpgraphutilslcl, rpmdconsts, rpdbxadminlcl, rpmdfnewreportwizardlcl,
+  rpdatahttp, rpchatmodernstylelcl, rpfrmaischemaselectorlcl,
   utestutil, ufakeserver;
 
 const
@@ -44,7 +45,11 @@ const
   NOTE_SIGNED_IN = 'You are signed in to Reportman AI: the API key is optional. ' +
     'Without it the connection uses your session, and the report cannot run ' +
     'unattended on this computer (printreptopdf, server, scheduled tasks).';
-  NOTE_NOT_SIGNED_IN = 'You are not signed in to Reportman AI: the API key is required.';
+  NOTE_NOT_SIGNED_IN = 'You are not signed in to Reportman AI: the list has the ' +
+    'example connections. To use your own, log in or enter the API key.';
+  // Under the Hub connection, with an example database chosen
+  NOTE_EXAMPLE = 'Example connection, read-only: it is there to try Reportman ' +
+    'AI without signing in. Its schema cannot be changed.';
   PROMPT_DESIGNER = 'Add a title with the report name';
   // The icon of a schema in the cloud in the list of the schema page (F8)
   U_CLOUD = #$E2#$98#$81' ';
@@ -310,7 +315,10 @@ begin
     else if Pos('Bearer tok', ARequest.Authorization) = 1 then
       SendJson(AResponse, 200, DatabasesJson(['Account DB', '51', '61']))
     else
-      SendJson(AResponse, 200, '{"databases":[],"aiEndpoints":[]}');
+      // As the API: without key nor session, the public example databases
+      SendJson(AResponse, 200, '{"databases":[{"displayName":"Example - Example",' +
+        '"name":"example - example","hubDatabaseId":7,"hubSchemaId":21,' +
+        '"isExample":true}],"aiEndpoints":[]}');
   end
   else if P = '/api/agent/testconnection' then
   begin
@@ -322,7 +330,10 @@ begin
     finally
       LeaveCriticalSection(FLock);
     end;
-    if LId = '22' then
+    if (LKey = '') and (ARequest.Authorization = '') and (LId <> '7') then
+      SendJson(AResponse, 403, '{"message":"No access to this database. ' +
+        'Valid API Key or Login required."}')
+    else if LId = '22' then
       SendJson(AResponse, 500, '{"message":"Database offline"}')
     else
       SendJson(AResponse, 200, '{"success":true,"data":{"message":' +
@@ -1167,7 +1178,8 @@ procedure TAINewReportTests.TestConnectionWizard;
 var
   W: TFRpNewReportWizardLCL;
   LIni: TMemIniFile;
-  LAnswered: Integer;
+  LAnswered, LIndex: Integer;
+  LSchemas, LSizes: TStringList;
 
   function Finished: Boolean;
   begin
@@ -1246,7 +1258,7 @@ begin
     W.Free;
   end;
 
-  Section('Connection wizard: not signed in, the API key is required');
+  Section('Connection wizard: not signed in, the example databases');
   TRpAuthManager.Instance.Logout;
   Pump(50);
   try
@@ -1259,34 +1271,89 @@ begin
       W.RbAgent.Checked := True;
       W.BNextClick(nil);
       W.RbNew.Checked := True;
+      W.EdNewConnName.Text := 'WIZ_EXAMPLE';
+      LAnswered := FAnswerer.Answered;
+      W.BNextClick(nil);
+      CheckPage(W, wpAgentLogin, 'the API key page');
+      WaitIdle(W, 'the example databases');
+      CheckEquals(LAnswered, FAnswerer.Answered, 'no session: no message on entering');
+      CheckEquals(T(2055, NOTE_NOT_SIGNED_IN), W.LblHubKeyNote.Caption,
+        'no session: the list has the example connections');
+      CheckEquals(1, W.CbHubDatabase.Items.Count, 'no session: the example database');
+      // The DEMO chip is drawn on Windows, and is text elsewhere
+      CheckEquals('Example - Example' + TRpChatStyle.BadgeText(RpHubExampleBadge),
+        W.CbHubDatabase.Items[W.CbHubDatabase.ItemIndex],
+        'no session: the example selected');
+      Check(W.State.HubListAnonymous, 'the list of nobody');
+      Check(W.LblHubExampleNote.Visible, 'the example: the note under it');
+      CheckEquals(T(2056, NOTE_EXAMPLE), W.LblHubExampleNote.Caption,
+        'the example is read-only');
+      CheckEquals(T(2056, NOTE_EXAMPLE), W.CbHubDatabase.Hint, 'and its hint');
+      Shot(W, 'connwizard_agent_nosession');
+      // Refresh without key nor session: the list again, without messages
+      LAnswered := FAnswerer.Answered;
+      W.BtnHubRefresh.Click;
+      WaitIdle(W, 'the example databases again');
+      CheckEquals(LAnswered, FAnswerer.Answered, 'Refresh without a key: no message');
+      CheckEquals(1, W.CbHubDatabase.Items.Count, 'Refresh: the example database');
+      // Finish without a key: the example needs neither key nor session
+      FHubHandler.ClearRequests;
+      W.BNextClick(nil);
+      WaitUntil(Finished, 20000, 'the example tested and wizard finished');
+      CheckEquals('7|', FHubHandler.LastTestRequest, 'tested without an API key');
+      CheckEquals('', FHubHandler.LastTestAuthorization, 'and without a session');
+      CheckEquals('7', IniValue('WIZ_EXAMPLE', 'HubDatabaseId'), 'written with the example');
+      CheckEquals('', IniValue('WIZ_EXAMPLE', 'ApiKey'), 'and without an API key');
+    finally
+      W.Free;
+    end;
+
+    // The lists of schemas (the copilot, the SQL editor of the datasets, the
+    // wizard): the example databases too, for everybody, marked
+    LSchemas := TStringList.Create;
+    LSizes := TStringList.Create;
+    try
+      Check(RpLoadDesignerHubSchemas('', '', '', LSchemas, LSizes),
+        'the schemas without a session');
+      LIndex := LSchemas.IndexOfName('Example / Example');
+      Check(LIndex >= 0, 'without a session: the example schema');
+      if LIndex >= 0 then
+      begin
+        CheckEquals('7|21||||1', LSchemas.ValueFromIndex[LIndex],
+          'its ids, without an API key, and the mark of an example');
+        Check(RpHubLineIsExample(LSchemas.ValueFromIndex[LIndex],
+          RpHubSchemaKeyExampleField), 'the example schema is marked');
+      end;
+    finally
+      LSizes.Free;
+      LSchemas.Free;
+    end;
+
+    W := TFRpNewReportWizardLCL.Create(nil);
+    try
+      W.StartConnectionMode('', 0);
+      W.Show;
+      Pump(150);
+      FAnswerer.Arm(smbOK);
+      W.RbAgent.Checked := True;
+      W.BNextClick(nil);
+      W.RbNew.Checked := True;
       W.EdNewConnName.Text := 'WIZ_NOSESSION';
       W.BNextClick(nil);
       CheckPage(W, wpAgentLogin, 'the API key page');
-      Check(W.Operation = woNone, 'no session: nothing loads by itself');
-      CheckEquals(T(1832, NOTE_NOT_SIGNED_IN), W.LblHubKeyNote.Caption,
-        'no session: the key is required');
-      CheckEquals(0, W.CbHubDatabase.Items.Count, 'no databases');
-      Shot(W, 'connwizard_agent_nosession');
-      LAnswered := FAnswerer.Answered;
-      W.BNextClick(nil);
-      CheckEquals(LAnswered + 1, FAnswerer.Answered, 'Next without a key: a message');
-      CheckContains(T(1777, 'Please enter your Reportman AI API key.'), FAnswerer.LastText,
-        'Next without a key: the key is required');
-      CheckPage(W, wpAgentLogin, 'still on the API key page');
-      LAnswered := FAnswerer.Answered;
-      W.BtnHubLogin.Click;
-      CheckEquals(LAnswered + 1, FAnswerer.Answered, 'Log in without a key: a message');
-      CheckContains(T(1777, 'Please enter your Reportman AI API key.'), FAnswerer.LastText,
-        'Log in without a key: the key is required');
-      Check(W.Operation = woNone, 'Log in without a key: no request');
-      // A key typed but not used yet: its databases first
+      WaitIdle(W, 'the example databases');
+      // A key typed after the example list: its databases first
       W.EdHubApiKey.Text := KEY_OK;
+      LAnswered := FAnswerer.Answered;
       W.BNextClick(nil);
+      CheckEquals(LAnswered + 1, FAnswerer.Answered, 'Next with a new key: a message');
       CheckContains(T(1754, 'Please log in to Reportman AI'), FAnswerer.LastText,
         'the key loads its databases before continuing');
+      CheckPage(W, wpAgentLogin, 'still on the API key page');
       W.BtnHubLogin.Click;
       WaitIdle(W, 'Hub databases of the API key');
       CheckEquals(2, W.CbHubDatabase.Items.Count, 'the databases of the key');
+      Check(not W.LblHubExampleNote.Visible, 'not an example: no note');
       FHubHandler.ClearRequests;
       W.BNextClick(nil);
       WaitUntil(Finished, 20000, 'connection tested with the key and wizard finished');

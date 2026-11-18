@@ -211,7 +211,9 @@ begin
   ComboAIMode.Items[1] := TranslateStr(1521, 'Reasoning');
   BStopInference.Caption := TranslateStr(1522, 'Stop');
   ComboAIProvider.ItemIndex := 0; // Standard
-  ComboAIMode.ItemIndex := 0;    // Fast
+  // Reasoning by default: with Fast the AI laid out the columns it added
+  // over the next ones (the samples of the welcome window, 07-11-2026)
+  ComboAIMode.ItemIndex := 1;
   SpinnerTimer.Enabled := False;
   ApplyModernStyling;
   UpdateGaugeVisibility;
@@ -502,7 +504,7 @@ begin
       if LAuth.UsingBag then
         LHint := TranslateStr(2054, 'Credit bag')
       else
-        LHint := TranslateStr(1524, 'Free Credits');
+        LHint := TranslateStr(2054, 'Credit bag');
       LHint := LHint + #13#10 +
         Format(TranslateStr(1835, 'Left: %s of %s'),
         [FormatFloat('#,##0', LLeft), FormatFloat('#,##0', LMax)]);
@@ -519,7 +521,7 @@ begin
   end
   else
   begin
-    LHint := TranslateStr(1524, 'Free Credits') + #13#10 +
+    LHint := TranslateStr(2054, 'Credit bag') + #13#10 +
       TranslateStr(1526, 'Used') + ': 0 (0%)' + #13#10 +
       TranslateStr(1527, 'Max') + ': 0';
     FGaugeValue := 0.0;

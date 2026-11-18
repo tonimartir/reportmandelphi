@@ -1159,7 +1159,7 @@ begin
     LForm.Show;
     Pump(50);
     CheckEquals('Standard', LSel.AITier, 'default provider');
-    CheckEquals('Fast', LSel.AIMode, 'default mode');
+    CheckEquals('Reasoning', LSel.AIMode, 'default mode: Reasoning');
     Check(LSel.PGaugeHost.Visible, 'credit gauge for the Hub models');
     LSel.RefreshState;
     CheckContains(T(1525, 'Daily Credit Usage'), LSel.PaintBoxGauge.Hint, 'gauge hint (paid tier)');
@@ -1184,8 +1184,10 @@ begin
     Pump(2500);
     Check(not LSel.GaugeHintVisible, 'gauge hint hidden by itself after 3 s');
 
-    // Free credits (the Free tier, a guest) do not renew: the hint says what is
-    // left of them; then the Pro profile of the session again
+    // Free credits (the Free tier, a guest) do not renew: the hint, titled as
+    // the credit bag (the guest credits, the login gift and the bought credits
+    // are the same bag), says what is left of them; then the Pro profile of
+    // the session again
     LJson := TJSONObject.ParseJSONValue('{"userId":7,"email":"ana@example.com","tierId":2,' +
       '"tierName":"Free","dailyMax":0,"dailyConsumed":0,"freeInitial":2000,"freeRemaining":1250}');
     try
@@ -1194,7 +1196,7 @@ begin
       LJson.Free;
     end;
     LSel.RefreshState;
-    CheckContains(T(1524, 'Free Credits'), LSel.PaintBoxGauge.Hint, 'gauge hint (free credits)');
+    CheckContains(T(2054, 'Credit bag'), LSel.PaintBoxGauge.Hint, 'gauge hint (credit bag)');
     CheckContains(Format(T(1835, 'Left: %s of %s'),
       [FormatFloat('#,##0', 1250), FormatFloat('#,##0', 2000)]), LSel.PaintBoxGauge.Hint,
       'free credits left');
@@ -1210,6 +1212,8 @@ begin
     LSel.ComboAIProvider.ItemIndex := 1;
     LSel.ComboAIProviderChange(nil);
     CheckEquals('Precision', LSel.AITier, 'precision provider');
+    LSel.ComboAIMode.ItemIndex := 0;
+    CheckEquals('Fast', LSel.AIMode, 'fast mode');
     LSel.ComboAIMode.ItemIndex := 1;
     CheckEquals('Reasoning', LSel.AIMode, 'reasoning mode');
 

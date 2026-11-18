@@ -72,7 +72,6 @@ contains
   rppanel in '..\Common\rppanel.pas',
   rpdctransportchip in '..\Common\rpdctransportchip.pas',
   rpfrmlocalschemasvcl in '..\Common\rpfrmlocalschemasvcl.pas',
-  rpfrmaischemaselectorvcl in '..\Common\rpfrmaischemaselectorvcl.pas',
   rpfrmmonacoeditorvcl in '..\Common\rpfrmmonacoeditorvcl.pas',
   rpfrmwelcomevcl in '..\Common\rpfrmwelcomevcl.pas',
   rpmdcueviewvcl in '..\Common\rpmdcueviewvcl.pas',

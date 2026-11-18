@@ -1210,7 +1210,9 @@ var
   LWorker: TRpHubDiscoveryWorker;
 begin
   LApiKey := Trim(GetParamValue('ApiKey'));
-  if Length(LApiKey) < 5 then
+  // Without a key the Hub lists the example databases, for everybody, and
+  // those of the user signed in: only a key too short to be one is refused
+  if (LApiKey <> '') and (Length(LApiKey) < 5) then
   begin
     ShowInfo(TranslateStr(1673, 'Please enter a valid API Key first.'));
     Exit;
@@ -1276,6 +1278,10 @@ begin
     begin
       LItem := TMenuItem.Create(FHubMenu);
       LItem.Caption := LDiscovery.Databases.Names[i];
+      // An example database: for everybody, read-only
+      if RpHubLineIsExample(LDiscovery.Databases.ValueFromIndex[i],
+        RpHubDatabaseExampleField) then
+        LItem.Caption := LItem.Caption + ' (' + RpHubExampleBadge + ')';
       // The id, before the state of the Agent (RpHubDatabaseLine)
       LItem.Hint := RpHubLineField(LDiscovery.Databases.ValueFromIndex[i], 0);
       LItem.OnClick := HubConnectionMenuItemClick;

@@ -21,8 +21,8 @@ en `build\opm\out\`.
 | Paquete (`.lpk`) | Ruta en el zip | Contenido | Requiere |
 |---|---|---|---|
 | `reportman_rtl` | `packages/fpc/` | Motor no visual: modelo de informe, evaluador, datos (Zeos, SQLdb para las conexiones FireDAC: SQLite, PostgreSQL, MySQL/MariaDB, Firebird, SQL Server, Oracle, ODBC; texto) y exportación PDF/SVG/HTML/CSV/texto/metafile. Unidades de la raíz + `rtl_fpc/`. | `FCL(1.0)`, `zcomponent(8.0)` |
-| `reportman_lcl` | `packages/fpc_lcl/` | Runtime LCL: `TLCLReport`, vista previa, configuración de página, parámetros, impresión (`lcl/`). | `reportman_rtl(4.0.22)`, LCL, Printer4Lazarus, `FCL(1.0)`, DateTimeCtrls |
-| `reportman_designlcl` | `packages/fpc_lcl/` | Diseñador visual embebible `TRpDesignerLCL` (`design_lcl/`). | `reportman_rtl(4.0.22)`, `reportman_lcl(4.0.22)`, LCL, `FCL(1.0)`, TurboPowerIPro, SynEdit |
+| `reportman_lcl` | `packages/fpc_lcl/` | Runtime LCL: `TLCLReport`, vista previa, configuración de página, parámetros, impresión (`lcl/`). | `reportman_rtl(4.0.24)`, LCL, Printer4Lazarus, `FCL(1.0)`, DateTimeCtrls |
+| `reportman_designlcl` | `packages/fpc_lcl/` | Diseñador visual embebible `TRpDesignerLCL` (`design_lcl/`). | `reportman_rtl(4.0.24)`, `reportman_lcl(4.0.24)`, LCL, `FCL(1.0)`, TurboPowerIPro, SynEdit |
 
 Los tres son **RunAndDesignTime**: cada uno registra componentes en la paleta
 *Reportman* (`Register` en `rpmreg.pas`, `lcl/rpreglcl.pas` y
@@ -35,7 +35,7 @@ IDE se recompila.
 Metadatos que viven en los `.lpk` (OPM los lee de ahí al crear el paquete):
 `Author` (Toni Martir), `Description` (inglés), `License` (MPL 1.1, con la GPL
 como alternativa; ver `LICENSE.TXT`), `Version` = `RM_VERSION` de
-`rpmdconsts.pas` (4.0.22 → Major 4, Release 22) y las dependencias con su
+`rpmdconsts.pas` (4.0.24 → Major 4, Release 24) y las dependencias con su
 versión mínima. Las versiones mínimas entre los tres paquetes de Report Manager
 son la propia versión del producto, para no mezclar paquetes de versiones
 distintas; `zcomponent(8.0)` es la versión de Zeos probada y la que ofrece OPM
@@ -388,6 +388,35 @@ Linux).
 El JSON publicado es el que genera el script: su `CommunityDescription` por
 defecto ya es la que escribió Toni para el primer envío (con la IA y los
 ejemplos).
+
+### 4.0.24 (18-11-2026, commit cf417dd2)
+
+Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.23 quedan en la
+VM, en `~/webs/opm-anteriores/4.0.23`. Novedades para quien lo instala: en una
+expresión, un número más un texto que no es un número junta los dos textos
+(`POSTEN+UPOS` da `10a`, como `Str(POSTEN)+UPOS`; un texto que es un número se
+sigue sumando), y la propiedad de los códigos de barras se llama ECC Level. Sin
+ficheros nuevos: zip de 200 ficheros, 5.755.622 bytes, MD5
+`ae84cc4e2e2d5d387a7df4169d8e27e9`.
+
+Validado en Linux con la imagen `reportman-linux-builder` (`--ws=gtk2` y
+`--ws=qt6`, los tres paquetes desde el zip). macOS y Windows no se validaron
+con el zip.
+
+### 4.0.23 (08-11-2026, commit b336ffd6)
+
+Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.22 quedan en la
+VM, en `~/webs/opm-anteriores/4.0.22`. Novedades para quien lo instala: la base
+de datos de ejemplo de Reportman AI funciona sin iniciar sesión y se marca DEMO
+en todas las listas, una sola lista de esquemas en el copiloto, el editor SQL y
+el asistente, esquemas locales también para las conexiones Agent, y cada
+ejemplo de la bienvenida deja en el copiloto una petición ya probada, con el
+modo Reasoning por omisión. Sin ficheros nuevos: zip de 200 ficheros, 5.755.235
+bytes, MD5 `827f602fbfcdd2bacf52868432f705ad`.
+
+Validado en Linux con la imagen `reportman-linux-builder` (`--ws=gtk2` y
+`--ws=qt6`, los tres paquetes desde el zip). macOS y Windows no se validaron
+con el zip (el diseñador de macOS se compiló y se notarizó en GitHub Actions).
 
 ### 4.0.22 (19-10-2026, commit 2332bed5)
 

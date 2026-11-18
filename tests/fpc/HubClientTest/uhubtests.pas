@@ -16,7 +16,8 @@ implementation
 uses
   SysUtils, Classes, DB, DateUtils, IniFiles, fphttpserver, httpdefs, ssockets, rpjsonfpc, rphttpclientfpc,
   rpnetencodingfpc, rptypes, rpparams, rpdatainfo, rpdatahttp, rpauthmanager, rpmdconsts,
-  rpreportdesignercontracts, rpaireportcontracts, utestutil, ufakeserver, ujsoncases;
+  rpreportdesignercontracts, rpaireportcontracts, rplocalschemas, utestutil,
+  ufakeserver, ujsoncases;
 
 const
   BS = #92; // backslash, so that no tool turns \u escapes into characters
@@ -180,12 +181,53 @@ begin
   P := ARequest.PathInfo;
   LBody := BodyJson(ARequest);
   try
-    if P = '/api/agent/testconnection' then
+    // As the API: without API key nor session only the example database (7)
+    // answers
+    if ((P = '/api/agent/testconnection') or (P = '/api/agent/execute')) and
+      (AServer.LastHeader('X-Reportman-ApiKey') = '') and
+      (ARequest.Authorization = '') and (JsonText(LBody, 'hubDatabaseId') <> '7') then
+      SendText(AResponse, 403, 'text/plain',
+        'No access to this database. Valid API Key or Login required.')
+    else if P = '/api/agent/testconnection' then
     begin
-      if JsonText(LBody, 'hubDatabaseId') = '77' then
+      if (JsonText(LBody, 'hubDatabaseId') = '77') or
+        (JsonText(LBody, 'hubDatabaseId') = '7') then
         SendJson(AResponse, 200, '{"success":true,"message":"Connected"}')
       else
         SendJson(AResponse, 404, '{"success":false,"message":"Unknown database"}');
+    end
+    // The catalog of the Hub database through its Agent (what database-config
+    // of app.reportman.es reads): the local schema of an Agent connection
+    else if P = '/api/agent/readtables' then
+      SendJson(AResponse, 200, '{"success":true,"data":{"tables":' +
+        '["CUSTOMERS","SALES"]},"error":null}')
+    else if P = '/api/agent/readcolumns' then
+    begin
+      if JsonText(LBody, 'tableName') = 'CUSTOMERS' then
+        SendJson(AResponse, 200, '{"success":true,"data":{"columns":[' +
+          '{"name":"CUSTOMERID","detectedNetType":"System.Int32","declaredDbType":"INTEGER",' +
+          '"isPrimaryKey":true,"isNullable":false,"size":4,"numericPrecision":0,"numericScale":0},' +
+          '{"name":"CUSTOMERNAME","detectedNetType":"System.String","declaredDbType":"VARCHAR",' +
+          '"isPrimaryKey":false,"isNullable":false,"size":100,"numericPrecision":0,"numericScale":0}' +
+          ']},"error":null}')
+      else if JsonText(LBody, 'tableName') = 'SALES' then
+        SendJson(AResponse, 200, '{"success":true,"data":{"columns":[' +
+          '{"name":"SALEID","declaredDbType":"INTEGER","isPrimaryKey":true,"size":4},' +
+          '{"name":"CUSTOMERID","declaredDbType":"INTEGER","isPrimaryKey":false,"size":4},' +
+          '{"name":"AMOUNT","declaredDbType":"DECIMAL","isPrimaryKey":false,"size":0,' +
+          '"numericPrecision":18,"numericScale":2}]},"error":null}')
+      else
+        SendJson(AResponse, 200, '{"success":false,"data":null,"error":"Unknown table"}');
+    end
+    else if P = '/api/agent/readforeignkeys' then
+    begin
+      if JsonText(LBody, 'tableName') = 'SALES' then
+        SendJson(AResponse, 200, '{"success":true,"data":{"foreignKeys":[' +
+          '{"constraintName":"FK_SALES_CUST","sourceTable":"SALES",' +
+          '"sourceColumns":["CUSTOMERID"],"targetTable":"CUSTOMERS",' +
+          '"targetColumns":["CUSTOMERID"]}]},"error":null}')
+      else
+        SendJson(AResponse, 200, '{"success":true,"data":{"foreignKeys":[]},"error":null}');
     end
     else if P = '/api/agent/execute' then
     begin
@@ -205,7 +247,7 @@ begin
       // an Agent that is not connected, and a connected one without a name
       SendJson(AResponse, 200, '{"databases":[' +
         '{"displayName":"Sales - Main","name":"sales","hubDatabaseId":77,"hubSchemaId":5,' +
-        '"schemaTables":[{"name":"CLIENTS","columns":[{"name":"ID"},{"name":"NAME"}]},' +
+        '"dialect":"PostgreSQL","schemaTables":[{"name":"CLIENTS","columns":[{"name":"ID"},{"name":"NAME"}]},' +
         '{"name":"ORDERS","columns":[{"name":"ID"},{"name":"CLIENT"},{"name":"TOTAL"}]}]},' +
         '{"displayName":"","name":"stock","hubDatabaseId":78,"hubSchemaId":6},' +
         '{"displayName":"Stock - Shop","name":"Shop","hubDatabaseId":79,"hubSchemaId":7,' +
@@ -708,11 +750,39 @@ end;
 procedure AgentConnectionsTest;
 var
   LDatabases: TRpDatabaseInfoList;
-  LDesigned, LPartial, LConfigured, LNoKey: TRpDatabaseInfoItem;
+  LDesigned, LPartial, LConfigured, LNoKey, LExample: TRpDatabaseInfoItem;
   LParams: TRpParamList;
   LIni: TMemIniFile;
-  LMessage: string;
-  LBody: TJSONObject;
+  LMessage, LDialect: string;
+  LBody, LTable, LColumn: TJSONObject;
+  LCatalog, LKeys: TJSONArray;
+
+  // A table of a catalog of RpReadLocalSchemaCatalog, and a column of it
+  function CatalogTable(ACatalog: TJSONArray; const AName: string): TJSONObject;
+  var
+    I: Integer;
+  begin
+    Result := nil;
+    for I := 0 to ACatalog.Count - 1 do
+      if (ACatalog.Items[I] is TJSONObject) and
+        (JsonText(ACatalog.Items[I] as TJSONObject, 'name') = AName) then
+        Exit(ACatalog.Items[I] as TJSONObject);
+  end;
+
+  function CatalogColumn(ATable: TJSONObject; const AName: string): TJSONObject;
+  var
+    I: Integer;
+    LColumns: TJSONArray;
+  begin
+    Result := nil;
+    if not (ATable.GetValue('columns') is TJSONArray) then
+      Exit;
+    LColumns := ATable.GetValue('columns') as TJSONArray;
+    for I := 0 to LColumns.Count - 1 do
+      if (LColumns.Items[I] is TJSONObject) and
+        (JsonText(LColumns.Items[I] as TJSONObject, 'name') = AName) then
+        Exit(LColumns.Items[I] as TJSONObject);
+  end;
 
   function AddAgentDatabase(const AAlias: string): TRpDatabaseInfoItem;
   begin
@@ -791,17 +861,21 @@ begin
     LDesigned.DisConnect;
     LConfigured.DisConnect;
     LPartial.DisConnect;
-    // No API key: the session of the user in the designer; without session
-    // (printreptopdf, a server) a clear error, without calling the Hub
+    // No API key: the session of the user in the designer. Without session
+    // (printreptopdf, a server) the request goes: the example database
+    // answers, the Hub refuses the others and the error says why
     LIni := TMemIniFile.Create(GConnectionsFile);
     try
       LIni.WriteString('NOKEY', 'DriverName', 'Reportman AI Agent');
       LIni.WriteString('NOKEY', 'HubDatabaseId', '77');
+      LIni.WriteString('EXAMPLE', 'DriverName', 'Reportman AI Agent');
+      LIni.WriteString('EXAMPLE', 'HubDatabaseId', '7');
       LIni.UpdateFile;
     finally
       LIni.Free;
     end;
     LNoKey := AddAgentDatabase('NOKEY');
+    LExample := AddAgentDatabase('EXAMPLE');
     TRpAuthManager.Instance.Logout;
     try
       GHub.ClearLog;
@@ -810,11 +884,17 @@ begin
         LNoKey.Connect(LParams);
       except
         on E: ERpAgentConnectionError do
-          LMessage := E.Message;
+          LMessage := E.Message + '|' + E.ConnectionName;
       end;
-      CheckEquals(Format(SRpAgentNoCredentials, ['NOKEY']), LMessage,
-        'no API key and no session: clear error');
-      CheckEquals('', GHub.RequestLog, 'the Hub is not called');
+      CheckEquals(Format(SRpAgentNoCredentials, ['NOKEY']) + '|NOKEY', LMessage,
+        'no API key and no session, refused by the Hub: clear error');
+      CheckEquals('POST /api/agent/testconnection', GHub.RequestLog, 'the Hub decides');
+      GHub.ClearLog;
+      LExample.Connect(LParams);
+      CheckEquals('', GHub.LastHeader('X-Reportman-ApiKey'), 'the example: no API key');
+      CheckEquals('', GHub.LastHeader('Authorization'), 'the example: no session');
+      CheckEquals('POST /api/agent/testconnection', GHub.RequestLog, 'the example opens');
+      LExample.DisConnect;
     finally
       Check(TRpAuthManager.Instance.LoginWithCode('ana@example.com', '123456'),
         'logged in again');
@@ -824,6 +904,61 @@ begin
     CheckEquals('', GHub.LastHeader('X-Reportman-ApiKey'), 'with the session: no API key sent');
     CheckEquals('Bearer tok123', GHub.LastHeader('Authorization'), 'the session token is sent');
     LNoKey.DisConnect;
+    // The local schema of an Agent connection: its catalog read through the
+    // API, with the dialect of its Hub database
+    Check(RpCanHaveLocalSchema(LConfigured), 'an Agent connection has local schemas');
+    Check(not RpIsLocalSqlDatabase(LConfigured), 'but its SQL does not run here');
+    GHub.ClearLog;
+    LCatalog := RpReadLocalSchemaCatalog(LConfigured, LParams, LDialect, nil, nil);
+    try
+      CheckEquals('PostgreSQL', LDialect, 'the dialect of the Hub database');
+      CheckEquals(2, LCatalog.Count, 'the tables of the Agent');
+      CheckContains('POST /api/agent/readtables', GHub.RequestLog, 'the tables through the API');
+      CheckContains('POST /api/agent/readcolumns', GHub.RequestLog, 'the columns through the API');
+      CheckContains('POST /api/agent/readforeignkeys', GHub.RequestLog,
+        'the foreign keys through the API');
+      CheckEquals('test-key', GHub.LastHeader('X-Reportman-ApiKey'),
+        'with the API key of the connection');
+      LTable := CatalogTable(LCatalog, 'SALES');
+      Check(LTable <> nil, 'the table SALES');
+      if LTable <> nil then
+      begin
+        LColumn := CatalogColumn(LTable, 'SALEID');
+        Check((LColumn <> nil) and (LColumn.GetValue('isPrimaryKey') is TJSONBool) and
+          TJSONBool(LColumn.GetValue('isPrimaryKey')).AsBoolean, 'its primary key');
+        LColumn := CatalogColumn(LTable, 'AMOUNT');
+        Check(LColumn <> nil, 'the column AMOUNT');
+        if LColumn <> nil then
+        begin
+          CheckEquals('Numeric', JsonText(LColumn, 'dataType'), 'a DECIMAL is Numeric');
+          CheckEquals('DECIMAL(18,2)', JsonText(LColumn, 'detectedType'),
+            'the declared type of the database');
+        end;
+        LKeys := LTable.GetValue('foreignKeys') as TJSONArray;
+        CheckEquals(1, LKeys.Count, 'its foreign key');
+        if LKeys.Count > 0 then
+        begin
+          CheckEquals('CUSTOMERS', JsonText(LKeys.Items[0] as TJSONObject, 'targetTable'),
+            'the foreign key to CUSTOMERS');
+          CheckEquals('CUSTOMERID', ((LKeys.Items[0] as TJSONObject).GetValue(
+            'sourceColumns') as TJSONArray).Items[0].Value, 'its column');
+        end;
+      end;
+      LTable := CatalogTable(LCatalog, 'CUSTOMERS');
+      Check(LTable <> nil, 'the table CUSTOMERS');
+      if LTable <> nil then
+      begin
+        LColumn := CatalogColumn(LTable, 'CUSTOMERNAME');
+        Check(LColumn <> nil, 'the column CUSTOMERNAME');
+        if LColumn <> nil then
+        begin
+          CheckEquals('String', JsonText(LColumn, 'dataType'), 'a VARCHAR is String');
+          CheckEquals('VARCHAR(100)', JsonText(LColumn, 'detectedType'), 'with its size');
+        end;
+      end;
+    finally
+      LCatalog.Free;
+    end;
   finally
     LParams.Free;
     LDatabases.Free;
@@ -1272,6 +1407,38 @@ begin
       'RpHubSchemaLine: a | in the name of the Agent');
     CheckEquals('Db - a/b=1|0|a/b', RpHubDatabaseLine(LJson as TJSONObject),
       'RpHubDatabaseLine: a | in the name of the Agent');
+    Check(not RpHubLineIsExample('1|0|a/b', RpHubDatabaseExampleField),
+      'RpHubLineIsExample: not an example');
+  finally
+    LJson.Free;
+  end;
+  // An example database of the Hub (isExample, for everybody): '|1' after the
+  // fields of the Agent, even when the cloud says nothing of it
+  LJson := TJSONObject.ParseJSONValue('{"displayName":"Example - Example",' +
+    '"name":"Example","hubDatabaseId":7,"hubSchemaId":21,"isExample":true}');
+  try
+    CheckEquals('Example / Example=7|21|||1', RpHubSchemaLine(LJson as TJSONObject),
+      'RpHubSchemaLine: an example database');
+    CheckEquals('Example - Example=7|||1', RpHubDatabaseLine(LJson as TJSONObject),
+      'RpHubDatabaseLine: an example database');
+    Check(RpHubLineIsExample('7|||1', RpHubDatabaseExampleField),
+      'RpHubLineIsExample: a database line');
+    Check(RpHubLineIsExample('7|21|||1', RpHubSchemaExampleField),
+      'RpHubLineIsExample: a schema line');
+    CheckEquals('Example / Example=7|21||||1',
+      RpHubSchemaLineWithApiKey('Example / Example=7|21|||1', ''),
+      'RpHubSchemaLineWithApiKey: the mark of an example kept');
+    Check(RpHubLineIsExample('7|21||||1', RpHubSchemaKeyExampleField),
+      'RpHubLineIsExample: a schema line with its API key');
+  finally
+    LJson.Free;
+  end;
+  LJson := TJSONObject.ParseJSONValue('{"displayName":"Sales - Main",' +
+    '"name":"Main","hubDatabaseId":77,"hubSchemaId":5,"isExample":false,' +
+    '"isOnline":true,"agentName":"pc1"}');
+  try
+    CheckEquals('Main - pc1=77|5|1|pc1', RpHubSchemaLine(LJson as TJSONObject),
+      'RpHubSchemaLine: isExample false, the line of before');
   finally
     LJson.Free;
   end;

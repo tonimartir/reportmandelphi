@@ -279,7 +279,6 @@
         <DCCReference Include="..\Common\rppanel.pas"/>
         <DCCReference Include="..\Common\rpdctransportchip.pas"/>
         <DCCReference Include="..\Common\rpfrmlocalschemasvcl.pas"/>
-        <DCCReference Include="..\Common\rpfrmaischemaselectorvcl.pas"/>
         <DCCReference Include="..\Common\rpfrmmonacoeditorvcl.pas"/>
         <DCCReference Include="..\Common\rpfrmwelcomevcl.pas"/>
         <DCCReference Include="..\Common\rpmdcueviewvcl.pas"/>

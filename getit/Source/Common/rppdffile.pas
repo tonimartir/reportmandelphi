@@ -728,7 +728,7 @@ end;
 function SplitDocDate(const AText: string; out ADigits, AZone: string): Boolean;
 var
  s:string;
- i,n:integer;
+ i,n,zeros:integer;
  c:Char;
  zonedigits:string;
  sign:Char;
@@ -766,8 +766,25 @@ begin
     inc(i);
   end
   else
-  if ((c='Z') or (c='z')) and (n>=8) and (i=Length(s)) then
-   AZone:='Z'
+  if ((c='Z') or (c='z')) and (n>=8) then
+  begin
+   // A PDF date may follow the Z with its offset, which can only be zero:
+   // D:20261106102628Z00'00' (ISO 32000-1, 7.9.4)
+   zeros:=0;
+   inc(i);
+   while i<=Length(s) do
+   begin
+    if s[i]='0' then
+     inc(zeros)
+    else
+    if (s[i]<>':') and (s[i]<>'''') then
+     exit;
+    inc(i);
+   end;
+   if (zeros<>0) and (zeros<>2) and (zeros<>4) then
+    exit;
+   AZone:='Z';
+  end
   else
   if ((c='+') or (c='-')) and (n>=8) then
   begin

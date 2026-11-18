@@ -1,9 +1,15 @@
+# NOT ONE Disallow, AND THAT IS DELIBERATE. Blocking the crawl does not take anything out of the
+# index: it does the opposite. Google only drops a URL when it asks for it again and finds it gone
+# --a 404-- or marked noindex; if robots.txt stops it from asking, it never finds out, and the URL
+# stays in the Search Console report forever. What must not be indexed is marked in the page itself
+# (`<meta name="robots" content="noindex">`, as redirect.html does) or answers 404 (as /_build/
+# does: the deployment does not publish it and checks that it 404s).
+#
+# This file used to carry `Disallow: /_build/` and `Disallow: /redirect.html`, and that is why on
+# 12-11-2026 Search Console counted one page «Blocked by robots.txt» that nothing could remove
+# while they were here.
+
 User-agent: *
 Allow: /
-
-# Build tooling (not part of the published site)
-Disallow: /_build/
-# Meta-refresh redirect stub
-Disallow: /redirect.html
 
 Sitemap: https://reportman.es/sitemap.xml

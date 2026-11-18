@@ -216,13 +216,15 @@ var
  // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
  // takes precedence when assigned.
  DBXConnectionsFileOverride:string='';
-{$IFDEF FPC}
- // Folder of the report open in the designer: a MyBase file that is not found
- // (a relative name, a connection without DATABASE) is looked for there. The
- // Windows designer finds it because the open dialog and the Explorer set the
- // current folder to the folder of the report; macOS and the Linux launchers
- // start the application in / or $HOME.
+ // Folder of the report open in the designer: a relative SQLite database (the
+ // samples) and, in Lazarus, a MyBase file that is not found are looked for
+ // there, also by the copies of the report the AI works on (they are loaded
+ // from its XML, without a folder: RpLoadReportDocument). The open dialog and
+ // the Explorer set the current folder to the folder of the report, but the
+ // welcome window does not, and macOS and the Linux launchers start the
+ // application in / or $HOME.
  RpReportFolder:string='';
+{$IFDEF FPC}
  // Folder of the samples of the application (the designer sets it): a
  // sample saved in another folder without its MyBase file (sample4.rep and
  // biolife.cds) still finds it there
@@ -626,9 +628,11 @@ function RpEnsureAgentConnections(ADatabases:TRpDatabaseInfoList;
   AHubDatabaseId:Int64;const AApiKey:string):Integer;
 // Whether a Reportman AI Agent connection can not be opened on this computer,
 // without opening it (the check of TRpDatabaseInfoItem.Connect, with its
-// message): no Hub database in the connections file, or neither API key nor
-// Reportman AI session. The connections file is read again. The designer
-// offers to configure the connection before opening the data.
+// message): no Hub database in the connections file. Having neither API key
+// nor Reportman AI session is not one: the example databases need neither,
+// and the Hub refuses the others when they are opened (SRpAgentNoCredentials).
+// The connections file is read again. The designer offers to configure the
+// connection before opening the data.
 function RpAgentConnectionProblem(ADatabase:TRpDatabaseInfoItem;
   out AMessage:string):Boolean;
 procedure GetDotNetDrivers(alist:TStrings);
@@ -2243,10 +2247,7 @@ begin
    ADatabase.LoadConnectionParams(params);
   end;
   if StrToInt64Def(params.Values['HubDatabaseId'],0)<=0 then
-   AMessage:=Format(SRpAgentNotConfigured,[ADatabase.Alias])
-  else
-  if (Trim(params.Values['ApiKey'])='') and (TRpAuthManager.Instance.Token='') then
-   AMessage:=Format(SRpAgentNoCredentials,[ADatabase.Alias]);
+   AMessage:=Format(SRpAgentNotConfigured,[ADatabase.Alias]);
   Result:=AMessage<>'';
   // The next Connect reads the connections file again
   if Result then
@@ -2361,10 +2362,8 @@ begin
  try
   if folder<>'' then
    AddCandidate(IncludeTrailingPathDelimiter(folder)+dbName);
-{$IFDEF FPC}
   if RpReportFolder<>'' then
    AddCandidate(IncludeTrailingPathDelimiter(RpReportFolder)+dbName);
-{$ENDIF}
   AddCandidate(dbName);
 {$IFDEF FPC}
   if RpSamplesFolder<>'' then
@@ -3099,14 +3098,14 @@ begin
            alist2.Free;
          end;
        end;
-       // Without them the Hub can not route the request (it answered with an
-       // internal error): say what is missing
+       // Without it the Hub can not route the request (it answered with an
+       // internal error): say what is missing. Without API key nor session
+       // the request goes: the example databases need neither, and the Hub
+       // refuses the others (403, SRpAgentNoCredentials in TRpDatabaseHttp)
        if FHttpDatabase.HubDatabaseId <= 0 then
          raise ERpAgentConnectionError.CreateFor(
            Format(SRpAgentNotConfigured, [Alias]), Alias);
-       if (FHttpDatabase.ApiKey = '') and (FHttpDatabase.Token = '') then
-         raise ERpAgentConnectionError.CreateFor(
-           Format(SRpAgentNoCredentials, [Alias]), Alias);
+       FHttpDatabase.ConnectionName := Alias;
        FHttpDatabase.Connected := True;
      end;
        end;

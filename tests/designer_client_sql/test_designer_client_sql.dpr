@@ -24,6 +24,21 @@ program test_designer_client_sql;
 {     [-installid <id>] [-url <api>] [-prompt <text>]   }
 {     [-schema <subschema>]                             }
 {                                                       }
+{   A sample report of the onboarding (the welcome      }
+{   window opens it from its file, its connection and   }
+{   its SQLite database inside the report):             }
+{                                                       }
+{   test_designer_client_sql -report <file.rep>         }
+{     [-dataset CUST] [-schema Sales] [-guest]           }
+{     [-prompt <text>] [-expect EMAIL] [-out <file>]    }
+{     [-mode fast|reasoning]                            }
+{                                                       }
+{   checks the local schema of its connection, runs a   }
+{   SQL as the copilot does and, with -guest (no        }
+{   session: the credits of a new installation) or      }
+{   -tokenfile, asks the AI to change the dataset. The  }
+{   schema file is never written in this mode.          }
+{                                                       }
 {   The connections file must define the alias with a   }
 {   FireDAC (SQLdb in Lazarus) connection, e.g.         }
 {   DriverName=FireDac DriverID=FB Server Port Database }
@@ -49,7 +64,13 @@ uses
   System.SysUtils, System.Classes, System.Contnrs, System.Variants, System.JSON,
 {$ENDIF}
   rptypes, rpdatainfo, rpreport, rpxmlstream, rpdatahttp,
-  rpreportdesignercontracts, rplocalschemas, rpdesignerclientsql;
+  rpreportdesignercontracts, rplocalschemas, rpdesignerclientsql
+{$IFNDEF FPC}
+  // The context of the copilot of the Windows designer (its dialog has a
+  // chat frame with WebView2: COM in a single threaded apartment)
+  , Winapi.ActiveX, Vcl.Forms, rpchatdialogvcl
+{$ENDIF}
+  ;
 
 type
   TRunner = class
@@ -67,6 +88,8 @@ var
 procedure Log(const AText: string);
 begin
   WriteLn(AText);
+  // Each line at once: a long request of the AI is followed as it goes
+  Flush(Output);
 end;
 
 procedure Check(ACondition: Boolean; const AWhat: string);
@@ -474,10 +497,364 @@ begin
   end;
 end;
 
+function HasFlag(const AName: string): Boolean;
 var
-  GAlias, GConnections, GDocument, GInstallId, GPrompt, GToken, GTokenFile,
-    GUrl: string;
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if SameText(ParamStr(I), '-' + AName) then
+      Exit(True);
+end;
+
+{$IFNDEF FPC}
+// The context the copilot of the designer sends with the request
+// (TFRpMainFVCL.BeginDesignChatContextRefresh): the datasets opened, their
+// live columns. Without it the AI takes the datasets for broken
+// (runtimeSchema.refreshRequired) and only changes the dataset
+function DesignerContextJson(AReport: TRpReport): string;
+var
+  LOpenErrors, LFields, LErrors: TStringList;
+  LError: string;
+begin
+  LOpenErrors := TStringList.Create;
+  LFields := TStringList.Create;
+  LErrors := TStringList.Create;
+  try
+    Log('  context: opening the datasets');
+    AReport.PrepareLiveContext(LOpenErrors);
+    CollectAgentSchemaOnlyContext(AReport, LFields, LErrors);
+    if HasFlag('debugdialog') then
+    begin
+      Log('  debug: creating the expression dialog');
+      with TFRpExpredialogVCL.Create(nil) do
+      try
+        Log('  debug: created');
+      finally
+        Free;
+      end;
+      Log('  debug: freed');
+    end;
+    Log('  context: the expression context');
+    Result := BuildDesignExpressionContextJson(AReport, nil, LOpenErrors, LFields,
+      LErrors, LError);
+    if LOpenErrors.Count > 0 then
+      Log('  datasets not opened: ' + OneLine(LOpenErrors.Text));
+    if LError <> '' then
+      Log('  context error: ' + OneLine(LError));
+  finally
+    LErrors.Free;
+    LFields.Free;
+    LOpenErrors.Free;
+  end;
+end;
+
+// PreprocessSqlContext as the copilot does before ModifyReport
+// (BuildPreprocessSqlContextRequest and ApplyPreprocessSqlContextResult of
+// TFRpMainFVCL): the explanation of the datasets that have none
+procedure PreprocessDatasets(AHttp: TRpDatabaseHttp; AReport: TRpReport;
+  AConfig: TRpApiDatabaseConfig; AMode: TRpReportDesignerMode);
+var
+  I, J: Integer;
+  LData: TRpDataInfoItem;
+  LItem: TRpApiPreprocessSqlContextDataSourceResult;
+  LName: string;
+  LRequest: TRpApiPreprocessSqlContextRequest;
+  LResult: TRpApiPreprocessSqlContextResult;
+  LSource: TRpApiPreprocessSqlContextDataSource;
+begin
+  LRequest := TRpApiPreprocessSqlContextRequest.Create;
+  try
+    LRequest.AITier := ratStandard;
+    LRequest.Mode := AMode;
+    LRequest.UserLanguage := 'English';
+    for I := 0 to AReport.DataInfo.Count - 1 do
+    begin
+      LData := AReport.DataInfo.Items[I];
+      if (Trim(LData.SQL) = '') or (Trim(LData.SQLExplanation) <> '') or
+        (Trim(LData.SQLExplanationError) <> '') then
+        Continue;
+      LSource := TRpApiPreprocessSqlContextDataSource.Create;
+      LName := Trim(LData.Name);
+      if LName = '' then
+        LName := Trim(LData.Alias);
+      LSource.DataInfoName := LName;
+      LSource.DatabaseAlias := LData.DatabaseAlias;
+      LSource.Sql := LData.SQL;
+      LRequest.DataSources.Add(LSource);
+    end;
+    if LRequest.DataSources.Count = 0 then
+    begin
+      Log('  preprocess: every dataset has its explanation');
+      Exit;
+    end;
+    LRequest.Config.Assign(AConfig);
+    LResult := AHttp.PreprocessSqlContext(LRequest);
+    try
+      Check(LResult <> nil, 'PreprocessSqlContext answers');
+      if LResult = nil then
+        Exit;
+      if LResult.ErrorMessage <> '' then
+        Log('  preprocess error: ' + OneLine(LResult.ErrorMessage));
+      for I := 0 to LResult.DataSources.Count - 1 do
+      begin
+        if not (LResult.DataSources[I] is TRpApiPreprocessSqlContextDataSourceResult) then
+          Continue;
+        LItem := TRpApiPreprocessSqlContextDataSourceResult(LResult.DataSources[I]);
+        Log('  explained ' + LItem.DataInfoName + ': ' +
+          Copy(OneLine(LItem.SqlExplanation), 1, 160) + LItem.ErrorMessage);
+        for J := 0 to AReport.DataInfo.Count - 1 do
+        begin
+          LData := AReport.DataInfo.Items[J];
+          LName := Trim(LData.Name);
+          if LName = '' then
+            LName := Trim(LData.Alias);
+          if not SameText(LName, LItem.DataInfoName) then
+            Continue;
+          if Trim(LItem.SqlExplanation) <> '' then
+          begin
+            LData.SQLExplanation := LItem.SqlExplanation;
+            LData.SQLExplanationError := '';
+          end
+          else
+          begin
+            LData.SQLExplanation := '';
+            LData.SQLExplanationError := LItem.ErrorMessage;
+          end;
+          Break;
+        end;
+      end;
+    finally
+      LResult.Free;
+    end;
+  finally
+    LRequest.Free;
+  end;
+end;
+{$ENDIF}
+
+// The onboarding: a sample report opened from its file, as the welcome
+// window does (its folder: the SQLite database of the sample is relative)
+procedure TestSampleReport(const AFileName, AToken, AInstallId: string;
+  ARunAI: Boolean);
+var
+  I: Integer;
+  LAlias, LDatasetAlias, LDocument, LExpect, LPrompt, LSchema, LSql: string;
+  LDataset, LFound: TRpDataInfoItem;
+  LDatabase: TRpDatabaseInfoItem;
+  LHttp: TRpDatabaseHttp;
+  LReport, LModified: TRpReport;
+  LRequest: TRpApiModifyReportRequest;
+  LResult: TRpApiModifyReportResult;
+  LRunner: TRunner;
+  LProbe: TRpClientSqlRequest;
+  LProbeResult: TRpClientSqlResult;
+  LNames: TStringList;
+  LContext, LExpectExpr, LModifiedText: string;
+begin
+  Log('--- Sample report ' + AFileName);
+  Log('  current folder: ' + GetCurrentDir);
+  LReport := TRpReport.Create(nil);
+  try
+    LReport.LoadFromFile(AFileName);
+    // As the designer opens it (TFRpMainFVCL.DoOpen, SetReport of the LCL)
+    RpReportFolder := LReport.ReportFolder;
+    Check(LReport.ReportFolder <> '', 'the report knows its folder (' +
+      LReport.ReportFolder + ')');
+    LDatasetAlias := UpperCase(Arg('dataset', 'CUST'));
+    I := LReport.DataInfo.IndexOf(LDatasetAlias);
+    Check(I >= 0, 'the dataset ' + LDatasetAlias);
+    if I < 0 then
+      Exit;
+    LDataset := LReport.DataInfo.Items[I];
+    LAlias := LDataset.DatabaseAlias;
+    I := LReport.DatabaseInfo.IndexOf(LAlias);
+    Check(I >= 0, 'its connection ' + LAlias + ' is in the report');
+    if I < 0 then
+      Exit;
+    LDatabase := LReport.DatabaseInfo.Items[I];
+    Check(RpIsLocalSqlDatabase(LDatabase), 'a direct connection');
+    Log('  schema file: ' + RpLocalSchemaFileName(LDatabase));
+    Check(FileExists(RpLocalSchemaFileName(LDatabase)),
+      'the local schema of the samples is installed');
+    LNames := TStringList.Create;
+    try
+      RpListLocalSubSchemas(LDatabase, LNames);
+      Log('  subschemas: ' + LNames.CommaText);
+    finally
+      LNames.Free;
+    end;
+    Log('  SCHEMANAME of the dataset: ' + LDataset.SchemaName);
+    LSchema := Arg('schema', LDataset.SchemaName);
+    Check(RpExistingLocalSubSchema(LDatabase, LSchema) <> '',
+      'the subschema ' + LSchema + ' is in the file');
+    LSql := LDataset.SQL;
+    Log('  SQL before: ' + OneLine(LSql));
+    // What the copilot sends: the report of the designer as XML
+    LDocument := ReportXml(LReport);
+  finally
+    LReport.Free;
+  end;
+
+  // A SQL of the AI runs as one more dataset of that document
+  LProbe := TRpClientSqlRequest.Create;
+  try
+    LProbe.Id := 'p1';
+    LProbe.DatabaseAlias := LAlias;
+    LProbe.Sql := 'SELECT COUNT(*) AS N FROM CUSTOMERS';
+    LProbeResult := RpProbeClientSql(LDocument, LProbe);
+    try
+      Log('  probe: ' + IntToStr(LProbeResult.Columns.Count) + ' columns ' +
+        OneLine(LProbeResult.ErrorMessage));
+      Check(LProbeResult.Success, 'the SQL of the AI runs on the database of the sample');
+    finally
+      LProbeResult.Free;
+    end;
+  finally
+    LProbe.Free;
+  end;
+{$IFNDEF FPC}
+  // -contextonly: the context of the copilot alone, without the AI
+  if HasFlag('contextonly') then
+  begin
+    LReport := TRpReport.Create(nil);
+    try
+      LReport.LoadFromFile(AFileName);
+      RpReportFolder := LReport.ReportFolder;
+      LContext := DesignerContextJson(LReport);
+      Log('  context: ' + IntToStr(Length(LContext)) + ' characters');
+      Check(Pos('EMAIL', UpperCase(LContext)) = 0, 'the context has the columns of the dataset, not EMAIL yet');
+      Check(Pos('COMPANY_NAME', UpperCase(LContext)) > 0, 'the context has the columns of CUST');
+    finally
+      LReport.Free;
+    end;
+    Exit;
+  end;
+{$ENDIF}
+  if not ARunAI then
+  begin
+    Log('--- AI skipped: neither -guest nor -tokenfile');
+    Exit;
+  end;
+
+  // Both things asked: the field in the dataset and in the report
+  LPrompt := Arg('prompt', 'Add the email of each customer to the dataset ' +
+    LDatasetAlias + ' and show it in the report as a new column after the phone');
+  LExpect := UpperCase(Arg('expect', 'EMAIL'));
+  LExpectExpr := UpperCase(Arg('expectexpr', LDatasetAlias + '.' + LExpect));
+  Log('--- ModifyReport on the sample');
+  Log('  prompt: ' + LPrompt);
+  LRunner := TRunner.Create;
+  LHttp := TRpDatabaseHttp.Create;
+  LRequest := TRpApiModifyReportRequest.Create;
+  LResult := nil;
+  try
+    LHttp.Token := AToken;
+    LHttp.InstallId := AInstallId;
+    LRequest.AITier := ratStandard;
+    // -mode reasoning: Standard with Reasoning, as the copilot can ask
+    if SameText(Arg('mode', 'fast'), 'reasoning') then
+      LRequest.Mode := rdmReasoning
+    else
+      LRequest.Mode := rdmFast;
+    Log('  mode: ' + Arg('mode', 'fast'));
+    LRequest.ReportFormat := rdfXml;
+    LRequest.ReturnModifiedDocument := True;
+    LRequest.UserLanguage := 'English';
+    LRequest.UserInstructions.Add(LPrompt);
+    LRequest.Config.LocalAlias := LAlias;
+    LRequest.Config.LocalSchemaName := LSchema;
+    LRequest.Config.SchemaName := LSchema;
+    // The steps of the copilot (TFRpChatFrame and TFRpMainFVCL): the context
+    // with the datasets opened, the local schema inline, the explanation of
+    // the datasets, then ModifyReport with that context
+    LReport := TRpReport.Create(nil);
+    try
+      LReport.LoadFromFile(AFileName);
+      RpReportFolder := LReport.ReportFolder;
+      LContext := '';
+{$IFNDEF FPC}
+      if not HasFlag('nocontext') then
+      begin
+        LContext := DesignerContextJson(LReport);
+        Check(LContext <> '', 'the context of the copilot (the datasets opened)');
+      end;
+{$ENDIF}
+      RpResolveLocalSchemaConfig(LRequest.Config, ReportXml(LReport));
+{$IFNDEF FPC}
+      if not HasFlag('nocontext') then
+        PreprocessDatasets(LHttp, LReport, LRequest.Config, LRequest.Mode);
+{$ENDIF}
+      LRequest.ReportDocument := ReportXml(LReport);
+      LRequest.ExistingContextJson := LContext;
+    finally
+      LReport.Free;
+    end;
+    try
+      LResult := RpModifyReportWithClientSql(LHttp, LRequest, nil, LRunner.Progress, nil);
+    except
+      on E: Exception do
+        Log('  exception: ' + OneLine(E.Message));
+    end;
+    Check(LRequest.Config.HasInlineSchema, 'the request carries the local schema inline');
+    Check(LResult <> nil, 'the API answers');
+    if LResult = nil then
+      Exit;
+    Log('  client SQL turns: ' + IntToStr(LRunner.Turns) + ', steps: ' +
+      IntToStr(LResult.Steps.Count));
+    if LResult.ErrorMessage <> '' then
+      Log('  error: ' + OneLine(RpComposeApiErrorMessage(LResult.ErrorMessage,
+        LResult.DebugDetails)));
+    if LResult.ResultData.ErrorMessage <> '' then
+      Log('  result error: ' + OneLine(LResult.ResultData.ErrorMessage));
+    Log('  explanation: ' + OneLine(Copy(LResult.ResultData.Explanation, 1, 400)));
+    Check((LResult.ErrorMessage = '') and LResult.ResultData.Success, 'no error');
+    Check(LResult.ResultData.ModifiedReportDocument <> '', 'a document to apply');
+    if LResult.ResultData.ModifiedReportDocument = '' then
+      Exit;
+    // -out: the document of the AI, to look at it in the designer
+    if Arg('out', '') <> '' then
+      with TStringList.Create do
+      try
+        Text := LResult.ResultData.ModifiedReportDocument;
+        SaveToFile(Arg('out', ''), TEncoding.UTF8);
+      finally
+        Free;
+      end;
+    LModified := RpLoadReportDocument(LResult.ResultData.ModifiedReportDocument);
+    try
+      LFound := nil;
+      for I := 0 to LModified.DataInfo.Count - 1 do
+        if SameText(LModified.DataInfo.Items[I].Alias, LDatasetAlias) then
+          LFound := LModified.DataInfo.Items[I];
+      Check(LFound <> nil, 'the dataset ' + LDatasetAlias + ' is still there');
+      if LFound <> nil then
+      begin
+        Log('  SQL after: ' + OneLine(LFound.SQL));
+        Check(Pos(LExpect, UpperCase(LFound.SQL)) > 0, 'its SQL has ' + LExpect);
+        Check(SameText(LFound.DatabaseAlias, LAlias), 'on the connection ' + LAlias);
+      end;
+      // The report shows it: an expression of the report with the field
+      LModifiedText := UpperCase(LResult.ResultData.ModifiedReportDocument);
+      Check(Pos(LExpectExpr, LModifiedText) > 0, 'the report has an expression with ' +
+        LExpectExpr);
+    finally
+      LModified.Free;
+    end;
+  finally
+    LResult.Free;
+    LRequest.Free;
+    LHttp.Free;
+    LRunner.Free;
+  end;
+end;
+
+var
+  GAlias, GConnections, GDocument, GInstallId, GPrompt, GReportFile, GToken,
+    GTokenFile, GUrl: string;
+  GGuest: Boolean;
   GReport: TRpReport;
+  I: Integer;
 begin
   try
     GConnections := Arg('connections', '');
@@ -499,6 +876,29 @@ begin
     end;
 {$ENDIF}
     Log('API: ' + HUB_API_URL);
+    GReportFile := Arg('report', '');
+    if GReportFile <> '' then
+    begin
+{$IFNDEF FPC}
+      CoInitializeEx(nil, COINIT_APARTMENTTHREADED);
+      Application.Initialize;
+      // A frame (the chat of the dialog) takes Application.Handle as its
+      // parent window, 0 in a console application
+      if Application.Handle = 0 then
+        Application.Handle := TForm.Create(nil).Handle;
+{$ENDIF}
+      GGuest := False;
+      for I := 1 to ParamCount do
+        if SameText(ParamStr(I), '-guest') then
+          GGuest := True;
+      GToken := '';
+      if GTokenFile <> '' then
+        GToken := ReadTokenFile(GTokenFile);
+      TestSampleReport(ExpandFileName(GReportFile), GToken, GInstallId,
+        GGuest or (GToken <> ''));
+    end
+    else
+    begin
     TestSqlGuard;
     GReport := NewReport(GAlias);
     try
@@ -514,6 +914,7 @@ begin
         Log('--- 3. skipped: no -tokenfile');
     finally
       GReport.Free;
+    end;
     end;
   except
     on E: Exception do

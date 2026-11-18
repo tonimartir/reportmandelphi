@@ -199,6 +199,9 @@ type
     FAuthUIUpdateVersion: Integer;
     FAuthListenerRegistered: Boolean;
     FAuthToken: string;
+    // The session the cloud list was read with ('' = nobody: the example
+    // databases): another one, the list is read again
+    FCloudSchemasToken: string;
     FMailbox: TRpAsyncMailbox;
     FMailboxRef: IRpAsyncMailbox;
     // AI completion (02:)
@@ -268,7 +271,7 @@ type
     procedure SyncSchemaFromList;
     function LocalSchemaKey: string;
     procedure LoadLocalSchemaTables;
-    procedure ApplyUserSchemas(AList: TStrings);
+    procedure ApplyUserSchemas(AList, ASizes: TStrings);
     procedure ApplyUserAgents(AList: TStrings; const ASelectedTier: string;
       ASelectedAgentAiId: Int64);
     procedure UpdateAuthUI;
@@ -522,7 +525,10 @@ type
     SelectedAgentAiId: Int64;
     NeedsSchemas: Boolean;
     NeedsAgents: Boolean;
+    // The session the schemas were read with ('' = nobody: the examples)
+    Token: string;
     Schemas: TStringList;
+    Sizes: TStringList;
     Agents: TStringList;
     constructor Create;
     destructor Destroy; override;
@@ -1316,90 +1322,42 @@ constructor TRpMonacoAuthPayload.Create;
 begin
   inherited Create;
   Schemas := TStringList.Create;
+  Sizes := TStringList.Create;
   Agents := TStringList.Create;
 end;
 
 destructor TRpMonacoAuthPayload.Destroy;
 begin
   Agents.Free;
+  Sizes.Free;
   Schemas.Free;
   inherited Destroy;
-end;
-
-// 'Name=db|schema|apikey' and the state of the Agent; a schema once, by its
-// Hub database and schema
-procedure AddMergedSchemas(ASource, ADest, ASeenKeys: TStrings; const ADefaultApiKey: string);
-var
-  I: Integer;
-  LSchemaKey: string;
-begin
-  for I := 0 to ASource.Count - 1 do
-  begin
-    LSchemaKey := RpHubSchemaKey(ASource.ValueFromIndex[I]);
-    if ASeenKeys.IndexOf(LSchemaKey) >= 0 then
-      Continue;
-    ASeenKeys.Add(LSchemaKey);
-    ADest.Add(RpHubSchemaLineWithApiKey(ASource[I], ADefaultApiKey));
-  end;
 end;
 
 procedure TRpMonacoAuthWorker.Run;
 var
   LPayload: TRpMonacoAuthPayload;
-  LUserSchemas, LApiKeySchemas, LSeenKeys: TStringList;
   LHttp: TRpDatabaseHttp;
 begin
   LPayload := TRpMonacoAuthPayload.Create;
-  LUserSchemas := TStringList.Create;
-  LApiKeySchemas := TStringList.Create;
-  LSeenKeys := TStringList.Create;
   try
-    LSeenKeys.Sorted := True;
-    LSeenKeys.Duplicates := dupIgnore;
     LPayload.RequestVersion := RequestVersion;
     LPayload.SelectedTier := SelectedTier;
     LPayload.SelectedAgentAiId := SelectedAgentAiId;
     LPayload.NeedsSchemas := NeedsSchemas;
     LPayload.NeedsAgents := NeedsAgents;
+    LPayload.Token := Token;
+    // The list of the copilot: the key of the connection, the session (or
+    // the example databases) and the keys of the connections
     if NeedsSchemas then
     begin
-      // The schemas of the API key of the connection first, then the ones
-      // of the account (VCL LoadApiKeySchemas + LoadUserSchemas)
-      if Trim(BaseApiKey) <> '' then
-      begin
-        LHttp := TRpDatabaseHttp.Create;
-        try
-          try
-            LHttp.ApiKey := Trim(BaseApiKey);
-            LHttp.Token := Token;
-            LHttp.InstallId := InstallId;
-            if not LHttp.GetUserSchemas(LApiKeySchemas) then
-              LApiKeySchemas.Clear;
-          except
-            LApiKeySchemas.Clear;
-          end;
-        finally
-          LHttp.Free;
-        end;
+      try
+        RpLoadDesignerHubSchemas(Token, InstallId, BaseApiKey,
+          LPayload.Schemas, LPayload.Sizes);
+      except
+        LPayload.Schemas.Clear;
+        LPayload.Sizes.Clear;
       end;
-      if Token <> '' then
-      begin
-        LHttp := TRpDatabaseHttp.Create;
-        try
-          try
-            LHttp.Token := Token;
-            LHttp.InstallId := InstallId;
-            if not LHttp.GetUserSchemas(LUserSchemas) then
-              LUserSchemas.Clear;
-          except
-            LUserSchemas.Clear;
-          end;
-        finally
-          LHttp.Free;
-        end;
-      end;
-      AddMergedSchemas(LApiKeySchemas, LPayload.Schemas, LSeenKeys, BaseApiKey);
-      AddMergedSchemas(LUserSchemas, LPayload.Schemas, LSeenKeys, '');
     end;
     if NeedsAgents and (Token <> '') then
     begin
@@ -1420,9 +1378,6 @@ begin
     Post(LPayload);
     LPayload := nil;
   finally
-    LSeenKeys.Free;
-    LApiKeySchemas.Free;
-    LUserSchemas.Free;
     LPayload.Free;
   end;
 end;
@@ -2656,11 +2611,11 @@ begin
     FOnSchemaChanged(Self);
 end;
 
-procedure TFRpMonacoEditorLCL.ApplyUserSchemas(AList: TStrings);
+procedure TFRpMonacoEditorLCL.ApplyUserSchemas(AList, ASizes: TStrings);
 begin
   FUpdatingSchemaList := True;
   try
-    FSchemaList.SetCloudSchemas(AList, nil);
+    FSchemaList.SetCloudSchemas(AList, ASizes);
   finally
     FUpdatingSchemaList := False;
   end;
@@ -2735,7 +2690,8 @@ begin
     FUpdatingSchemaList := False;
   end;
   SyncSchemaFromList;
-  if (not FSchemaList.CloudLoaded) and TRpAuthManager.Instance.IsLoggedIn then
+  // Also without a session: the example databases
+  if not FSchemaList.CloudLoaded then
     UpdateAuthUI;
   UpdateSchemaTables;
 end;
@@ -2828,31 +2784,27 @@ begin
   LAIEnabled := TRpAuthManager.Instance.AIEnabled;
 
   FAIButton.Down := LAIEnabled;
-  if not LLoggedIn then
+  // The cloud schemas read with another session (signed in or out since)
+  // go and are read again; the subschemas of the connection stay. Without a
+  // session the list has the example databases, for everybody
+  if FSchemaList.CloudLoaded and
+    (FCloudSchemasToken <> TRpAuthManager.Instance.Token) then
   begin
-    // The cloud schemas go; the subschemas of the connection stay
-    if FSchemaList.CloudLoaded then
-    begin
-      FUpdatingSchemaList := True;
-      try
-        FSchemaList.ClearCloudSchemas;
-      finally
-        FUpdatingSchemaList := False;
-      end;
+    FUpdatingSchemaList := True;
+    try
+      FSchemaList.ClearCloudSchemas;
+    finally
+      FUpdatingSchemaList := False;
     end;
     SyncSchemaFromList;
-    FAISelection.ClearAgentEndpoints;
-    FAISelection.Visible := LAIEnabled;
-    if not FAISelection.Visible then
-      FAISelection.SetInferenceProgress(False);
-    FAISelection.RefreshState;
-    LayoutTopControls;
     UpdateSchemaTables;
-    Exit;
   end;
+  // The agents of the AI are the ones of the account
+  if not LLoggedIn then
+    FAISelection.ClearAgentEndpoints;
 
   LNeedsSchemas := not FSchemaList.CloudLoaded;
-  LNeedsAgents := FAISelection.AgentEndpointCount = 0;
+  LNeedsAgents := LLoggedIn and (FAISelection.AgentEndpointCount = 0);
 
   FAISelection.Visible := LAIEnabled;
   if not FAISelection.Visible then
@@ -2909,7 +2861,8 @@ begin
       // A new list: the tables are loaded again
       FSchemaCache.Clear;
       FLoadedSchemaTablesId := -1;
-      ApplyUserSchemas(LPayload.Schemas);
+      FCloudSchemasToken := LPayload.Token;
+      ApplyUserSchemas(LPayload.Schemas, LPayload.Sizes);
     end;
     if LPayload.NeedsAgents then
       ApplyUserAgents(LPayload.Agents, LPayload.SelectedTier,
@@ -3264,9 +3217,8 @@ begin
   end;
   if FSchemaTablesRequestedId = FHubSchemaId then
     Exit;
+  // Without key nor session too: the tables of an example schema
   LApiKey := GetSchemaApiKey;
-  if (TRpAuthManager.Instance.Token = '') and (LApiKey = '') then
-    Exit;
   FSchemaTablesRequestedId := FHubSchemaId;
   Inc(FSchemaTablesVersion);
   LWorker := TRpMonacoSchemaTablesWorker.Create(FMailboxRef);

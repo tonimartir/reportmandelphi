@@ -377,7 +377,10 @@
   <tr> 
     <td>+ -</td>
     <td>Arithmetic</td>
-    <td>Sum and Dif operators</td>
+    <td>Sum and Dif operators. + also joins texts: a number plus a text that is
+      not a number gives both texts joined, the number written as Str writes it
+      (10+'a' is '10a', the same as Str(10)+'a'), and a text that is a number is
+      added (10+'7' is 17). Use Str to always join a number and a text.</td>
   </tr>
   <tr> 
     <td>&gt;= &lt;= &gt; &lt;</td>

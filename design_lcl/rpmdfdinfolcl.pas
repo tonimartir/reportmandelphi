@@ -113,11 +113,11 @@ type
     CheckLoadDriverParams: TCheckBox;
     BTestConn: TButton;
     OpenDialog1: TOpenDialog;
-    // Connection wizard: "Add connection" above the toolbar, the same button
-    // in the middle of the tab while the report has no connections, and
+    // Connection wizard: "Add connection" at the end of the toolbar, the
+    // same button in the middle of the tab while the report has no connections, and
     // "Configure with the wizard" for a Reportman AI Agent connection that
     // can not be opened on this computer
-    PConnWizard: TPanel;
+    SepWizardConn: TToolButton;
     BWizardConn: TBitBtn;
     PConnEmpty: TPanel;
     BWizardConnEmpty: TBitBtn;
@@ -1157,21 +1157,6 @@ begin
   TabConnections.Caption := TranslateStr(142, 'Database connections');
   TabConnections.ImageIndex := 0;
 
-  // "Add connection" (the connection wizard) above the toolbar
-  PConnWizard := TPanel.Create(TabConnections);
-  PConnWizard.Parent := TabConnections;
-  PConnWizard.BevelOuter := bvNone;
-  PConnWizard.Align := alTop;
-  PConnWizard.AutoSize := True;
-  PConnWizard.Top := 0;
-  BWizardConn := TBitBtn.Create(PConnWizard);
-  BWizardConn.Parent := PConnWizard;
-  BWizardConn.Caption := TranslateStr(1826, 'Add connection') + '...';
-  BWizardConn.AutoSize := True;
-  BWizardConn.BorderSpacing.Around := Scale96ToScreen(6);
-  BWizardConn.Align := alLeft;
-  BWizardConn.OnClick := BWizardConnClick;
-
   ToolBarConn := TToolBar.Create(TabConnections);
   ToolBarConn.Parent := TabConnections;
   ToolBarConn.Top := Scale96ToScreen(60);
@@ -1224,6 +1209,19 @@ begin
   BSchemas.Hint := TranslateStr(1496, 'Configure DB Schemas');
   BSchemas.ShowHint := True;
   BSchemas.OnClick := BSchemasClick;
+
+  // "Add connection" (the connection wizard) at the end of the toolbar,
+  // after a separator (a row of its own above it took the room of the list)
+  SepWizardConn := TToolButton.Create(ToolBarConn);
+  SepWizardConn.Parent := ToolBarConn;
+  SepWizardConn.Style := tbsSeparator;
+  SepWizardConn.Width := Scale96ToScreen(12);
+  BWizardConn := TBitBtn.Create(ToolBarConn);
+  BWizardConn.Parent := ToolBarConn;
+  BWizardConn.Caption := TranslateStr(1826, 'Add connection') + '...';
+  BWizardConn.AutoSize := True;
+  BWizardConn.Constraints.MaxHeight := ToolBarConn.ButtonHeight;
+  BWizardConn.OnClick := BWizardConnClick;
   PopSchemas := TPopupMenu.Create(Self);
   MLocalSchemas := TMenuItem.Create(PopSchemas);
   MLocalSchemas.Caption := TranslateStr(1840, 'Local schemas...');
@@ -2238,7 +2236,23 @@ begin
       item.SchemaName));
   end
   else
-    FMonacoEditor.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+  begin
+    // A Reportman AI Agent connection: the local subschema of the dataset
+    // while it is in the file, else its Hub schema
+    schemaName := '';
+    if RpCanHaveLocalSchema(dbinfo) then
+      schemaName := RpExistingLocalSubSchema(dbinfo, item.SchemaName);
+    if schemaName <> '' then
+    begin
+      FMonacoEditor.SetHubContext(hubDatabaseId, 0, schemaApiKey);
+      FMonacoEditor.SelectLocalSchema(schemaName);
+    end
+    else
+    begin
+      FMonacoEditor.SelectLocalSchema('');
+      FMonacoEditor.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+    end;
+  end;
   FMonacoEditor.RuntimeDb := runtimeDb;
   if ASyncSqlFromDataInfo then
     FMonacoEditor.AuditText := item.SQLExplanation;
@@ -2262,7 +2276,20 @@ begin
         FChat.SelectLocalSchema(dbinfo.Alias, schemaName);
     end
     else
-      FChat.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+    begin
+      // A Reportman AI Agent connection: the local subschema of the dataset
+      // while it is in the file, else its Hub schema
+      schemaName := '';
+      if RpCanHaveLocalSchema(dbinfo) then
+        schemaName := RpExistingLocalSubSchema(dbinfo, item.SchemaName);
+      if schemaName <> '' then
+      begin
+        FChat.SetHubContext(hubDatabaseId, 0, schemaApiKey);
+        FChat.SelectLocalSchema(dbinfo.Alias, schemaName);
+      end
+      else
+        FChat.SetHubContext(hubDatabaseId, hubSchemaId, schemaApiKey);
+    end;
   end;
 end;
 
@@ -2290,7 +2317,7 @@ begin
   if FMonacoEditor = nil then
     Exit;
   alias := '';
-  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+  if RpCanHaveLocalSchema(ADatabaseInfo) then
     alias := ADatabaseInfo.Alias;
   if (not AForce) and SameText(alias, FMonacoLocalAlias) then
     Exit;
@@ -2361,7 +2388,7 @@ begin
   if FChat = nil then
     Exit;
   alias := '';
-  if RpIsLocalSqlDatabase(ADatabaseInfo) then
+  if RpCanHaveLocalSchema(ADatabaseInfo) then
     alias := ADatabaseInfo.Alias;
   if (not AForce) and SameText(alias, FChatLocalAlias) then
     Exit;
@@ -2491,6 +2518,30 @@ begin
     end;
     Exit;
   end;
+  // An Agent connection: a local subschema chosen is the one of the dataset,
+  // without its Hub schema; a cloud schema chosen, the other way round
+  if RpCanHaveLocalSchema(dbinfo) and (item <> nil) then
+  begin
+    schemaName := FMonacoEditor.GetLocalSchemaName;
+    if schemaName <> '' then
+    begin
+      // Kept in the working copy: OK records it (schemaName)
+      item.SchemaName := schemaName;
+      item.HubSchemaId := 0;
+      if (FChat <> nil) and not (SameText(FChat.GetLocalSchemaAlias, dbinfo.Alias) and
+        SameText(FChat.GetLocalSchemaName, schemaName)) then
+      begin
+        FSyncingSchemaContext := True;
+        try
+          FChat.SelectLocalSchema(dbinfo.Alias, schemaName);
+        finally
+          FSyncingSchemaContext := False;
+        end;
+      end;
+      Exit;
+    end;
+    item.SchemaName := '';
+  end;
   SyncActiveSchemaContext(FMonacoEditor.HubDatabaseId, FMonacoEditor.HubSchemaId,
     FMonacoEditor.GetSchemaApiKey);
 end;
@@ -2521,6 +2572,26 @@ begin
       FMonacoEditor.SelectLocalSchema(FChat.GetLocalSchemaName);
     Exit;
   end;
+  // An Agent connection: a local subschema chosen is the one of the dataset,
+  // without its Hub schema; a cloud schema chosen, the other way round
+  if RpCanHaveLocalSchema(dbinfo) and (item <> nil) and
+    SameText(FChat.GetLocalSchemaAlias, dbinfo.Alias) and
+    (FChat.GetLocalSchemaName <> '') then
+  begin
+    if not FChat.SchemaChangeFromLoad then
+    begin
+      // Kept in the working copy: OK records it (schemaName)
+      item.SchemaName := FChat.GetLocalSchemaName;
+      item.HubSchemaId := 0;
+    end;
+    if (FMonacoEditor <> nil) and
+      not SameText(FMonacoEditor.GetLocalSchemaName, FChat.GetLocalSchemaName) then
+      FMonacoEditor.SelectLocalSchema(FChat.GetLocalSchemaName);
+    Exit;
+  end;
+  if (not FChat.SchemaChangeFromLoad) and (item <> nil) and
+    RpCanHaveLocalSchema(dbinfo) then
+    item.SchemaName := '';
   // The chat also calls this after loading its list; an empty list (not
   // logged in, no network) is not a choice of the user and must not reset
   // the schema of the dataset (the VCL does)
@@ -3203,8 +3274,9 @@ begin
   item := nil;
   if (FActiveConnIndex >= 0) and (FActiveConnIndex < FWork.DatabaseInfo.Count) then
     item := FWork.DatabaseInfo[FActiveConnIndex];
-  // The local schema only for a connection that runs SQL on this computer
-  MLocalSchemas.Enabled := RpIsLocalSqlDatabase(item);
+  // The local schema for a connection that runs SQL on this computer or a
+  // Reportman AI Agent one (the Agent reads its catalog through the API)
+  MLocalSchemas.Enabled := RpCanHaveLocalSchema(item);
   pt := BSchemas.ClientToScreen(Point(0, BSchemas.Height));
   PopSchemas.PopUp(pt.X, pt.Y);
 end;
@@ -3218,7 +3290,7 @@ begin
   if (FActiveConnIndex < 0) or (FActiveConnIndex >= FWork.DatabaseInfo.Count) then
     Exit;
   item := FWork.DatabaseInfo[FActiveConnIndex];
-  if not RpIsLocalSqlDatabase(item) then
+  if not RpCanHaveLocalSchema(item) then
     Exit;
   schemaName := '';
   // On the working copy: the connections being edited, with the parameters

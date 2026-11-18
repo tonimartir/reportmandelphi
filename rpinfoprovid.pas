@@ -141,8 +141,15 @@ type
   CIDExtraGlyph:TList<integer>;             // code - GlyphCount -> glyph
   CIDExtraText:TList<string>;               // code - GlyphCount -> text
   // Embedded as an OpenType font with CFF outlines (12-10-2026): /FontFile3 /OpenType and a
-  // CIDFontType0, not /FontFile2 and a CIDFontType2, which only holds TrueType outlines
+  // CIDFontType0, not /FontFile2 and a CIDFontType2, which only holds TrueType outlines.
+  // A subset with renumbered glyphs (CFFKeepsCIDs) goes as its CFF alone, /CIDFontType0C
   CFFOpenType:boolean;
+  // Set by the PDF writer before GetFontStream (18-11-2026): the font has CFF outlines,
+  // CID-keyed, whose charset gives every glyph its own number as CID (Noto Sans CJK, Source
+  // Han). Its subset may then renumber the glyphs: the subset keeps each glyph's CID in its
+  // charset, and a CIDFontType0 selects glyphs by CID, so the content stream still draws
+  // the right ones without the full-size glyph tables
+  CFFKeepsCIDs:boolean;
   fdata:TObject;
   firstloaded,lastloaded:integer;
   kerningsadded:TStringList;
