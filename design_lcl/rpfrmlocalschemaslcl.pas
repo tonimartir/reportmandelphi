@@ -28,7 +28,10 @@ unit rpfrmlocalschemaslcl;
     Export and Import (the file of the Reportman AI web, 5.6: what travels
     of the subschema goes out, a new subschema comes in), "From the
     library..." (the same import from a schema of the library of Reportman
-    AI, 5.7.1 C2) and the description of the subschema.
+    AI, 5.7.1 C2), "Generate with AI..." (the AI reads the database and
+    proposes a subschema for a domain, docs/generar-esquema-con-ia-plan.md:
+    its progress goes to the log of Validation and the result comes in as a
+    new subschema, not saved) and the description of the subschema.
   - Tabs: Connection (read only, "Refresh from the database" reads the
     catalog again and keeps what people wrote), Tables (a table enters with
     its primary key), Columns (the columns that travel, their description
@@ -67,9 +70,10 @@ uses
 // The local schema of the connection AAlias of the report. ASchemaName is
 // the subschema to show and, when something was saved, the one selected
 // at the end ('' = all the tables). With AAddNew it starts adding a
-// subschema (its name first; cancelling it shows nothing). AChat gives the
-// AI first chosen for "Analyze with AI" (its provider and mode; Standard
-// and Fast without one); the Validation tab can choose another one.
+// subschema (its name first; cancelling it shows nothing). The AI of
+// "Analyze with AI" and "Generate with AI" is the one of the scope "schemas"
+// (TRpAuthManager.GetSchemaAI, Precision and Fast at first), whatever the
+// chat AChat uses; the one chosen to analyze or to generate is kept there.
 // True when the file was saved
 function RpShowLocalSchemasDialog(AReport: TRpReport; const AAlias: string;
   var ASchemaName: string; AAddNew: Boolean = False;
@@ -79,7 +83,7 @@ implementation
 
 uses
   DateUtils, rpmdconsts, rpauthmanager, rpreportdesignercontracts,
-  rpwebmarkdownlcl, rpgraphutilslcl;
+  rpwebmarkdownlcl, rpgraphutilslcl, rpdesignerclientsql;
 
 const
   CKey = ' '#$F0#$9F#$94#$91;
@@ -93,6 +97,11 @@ type
   private
     FAnalysis: IRpSchemaAnalysis;
     FAnalysisTimer: TTimer;
+    // "Generate with AI": the generation running, its timer and the name a
+    // schema without one takes (the domain)
+    FGeneration: IRpSchemaGeneration;
+    FGenerationTimer: TTimer;
+    FGenerationName: string;
     FDatabase: TRpDatabaseInfoItem;
     FDatabases: TRpDatabaseInfoList;
     FFile: TRpLocalSchemaFile;
@@ -134,6 +143,7 @@ type
     BExportAll: TButton;
     BImportAll: TButton;
     BLibrary: TButton;
+    BGenerate: TButton;
     MemoDescription: TMemo;
     // Bottom
     StatusInfo: TStatusBar;
@@ -321,6 +331,14 @@ type
     procedure AISelectionStopRequest(Sender: TObject);
     procedure AISelectionProviderChange(Sender: TObject);
     procedure AnalysisTimerTick(Sender: TObject);
+    // "Generate with AI...": asks the domain, the name and the AI, and runs
+    // the generation with its progress in the log of the Validation tab
+    procedure BGenerateClick(Sender: TObject);
+    procedure GenerationTimerTick(Sender: TObject);
+    procedure StopGeneration;
+    // The final frame of a generation: its schema as a new subschema, not
+    // saved, and what the AI says
+    procedure GenerationDone(const AResultJson: string);
     procedure BSaveClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
   public
@@ -513,6 +531,8 @@ constructor TFRpLocalSchemasLCL.CreateFor(AOwner: TComponent;
   AReport: TRpReport; const AAlias: string; AChat: TFRpChatFrame);
 var
   LIndex: Integer;
+  LAgentAiId: Int64;
+  LMode, LTier: string;
 begin
   inherited CreateNew(AOwner);
   FReport := AReport;
@@ -544,16 +564,18 @@ begin
   FAnalysisTimer.Enabled := False;
   FAnalysisTimer.Interval := 200;
   FAnalysisTimer.OnTimer := AnalysisTimerTick;
+  FGenerationTimer := TTimer.Create(Self);
+  FGenerationTimer.Enabled := False;
+  FGenerationTimer.Interval := 200;
+  FGenerationTimer.OnTimer := GenerationTimerTick;
   BuildControls;
-  // The AI that validates: first the one of the chat, when there is one;
-  // the agents of the user come in the background
-  if AChat <> nil then
-  begin
-    FAISelection.SelectAIMode(AChat.GetAIMode);
-    FAISelection.LoadUserAgents(AChat.GetAITier, AChat.GetAgentAiId);
-  end
-  else
-    FAISelection.LoadUserAgents;
+  // The AI that validates and generates: the one of the scope "schemas"
+  // ([SchemaAI] of reportman_auth.ini, Precision and Fast at first; the
+  // frame starts in Standard and Reasoning); the agents of the user come in
+  // the background
+  TRpAuthManager.Instance.GetSchemaAI(LTier, LMode, LAgentAiId);
+  FAISelection.SelectAIMode(LMode);
+  FAISelection.LoadUserAgents(LTier, LAgentAiId);
 end;
 
 destructor TFRpLocalSchemasLCL.Destroy;
@@ -561,6 +583,7 @@ begin
   // No event of a control being destroyed touches the file
   FUpdating := True;
   StopAnalysis;
+  StopGeneration;
   FRelations.Free;
   FSuggestions.Free;
   FPairSource.Free;
@@ -704,7 +727,7 @@ begin
   LLeft := NewPanel(Self, alLeft, 230);
   LLeft.BorderWidth := S(6);
   NewLabel(LLeft, TranslateStr(1846, 'Subschemas'));
-  LLeftBottom := NewPanel(LLeft, alBottom, 252);
+  LLeftBottom := NewPanel(LLeft, alBottom, 282);
   NewLabel(LLeftBottom, TranslateStr(197, 'Description'));
   MemoDescription := NewMemo(LLeftBottom, 70, MemoDescriptionChange);
   LButtons := NewPanel(LLeftBottom, alClient, 0);
@@ -752,6 +775,15 @@ begin
   BLibrary.Hint := string(TranslateStr(1987, 'Creates a subschema from a ' +
     'schema of the Reportman AI library'));
   BLibrary.ShowHint := True;
+  // A subschema the AI proposes for a domain, read from the database
+  BGenerate := NewButton(LButtons, string(TranslateStr(2057,
+    'Generate with AI...')), BGenerateClick, 214);
+  BGenerate.SetBounds(0, S(154), S(214), S(26));
+  BGenerate.Hint := string(TranslateStr(2059, 'The AI reads the tables of ' +
+    'the connection, their columns, their relations and 10 rows of the ones ' +
+    'of the domain, and proposes a subschema with its descriptions. It is ' +
+    'not saved by itself: review it and press Save.'));
+  BGenerate.ShowHint := True;
   ListSchemas := TListBox.Create(Self);
   ListSchemas.Parent := LLeft;
   ListSchemas.Align := alClient;
@@ -1249,9 +1281,12 @@ var
 begin
   // All the tables (the dictionary) never go to the AI (5.7)
   LHasSchema := SelectedSchema <> nil;
-  BAnalyze.Enabled := LHasSchema and (FAnalysis = nil);
-  LAnalyzeNote.Visible := not LHasSchema;
-  LStatus.Visible := LHasSchema;
+  BAnalyze.Enabled := LHasSchema and (FAnalysis = nil) and (FGeneration = nil);
+  // One request of the AI at a time
+  if BGenerate <> nil then
+    BGenerate.Enabled := (FAnalysis = nil) and (FGeneration = nil);
+  LAnalyzeNote.Visible := not LHasSchema and (FGeneration = nil);
+  LStatus.Visible := LHasSchema or (FGeneration <> nil);
 end;
 
 procedure TFRpLocalSchemasLCL.ShowAnalysisRunning(ARunning: Boolean);
@@ -3385,7 +3420,7 @@ var
   LConfig: TRpApiDatabaseConfig;
   LSchemaName: string;
 begin
-  if FAnalysis <> nil then
+  if (FAnalysis <> nil) or (FGeneration <> nil) then
     Exit;
   // Only a subschema goes to the AI, never all the tables (5.7)
   if SelectedSchema = nil then
@@ -3401,6 +3436,9 @@ begin
       'Sign in to Reportman AI to analyze the schema.'));
     Exit;
   end;
+  // The AI chosen is the one of the scope "schemas" from now on
+  TRpAuthManager.Instance.SetSchemaAI(FAISelection.AITier, FAISelection.AIMode,
+    FAISelection.AgentAiId);
   // What the copilot would send of the subschema, as it is now on screen,
   // to the AI chosen above
   LConfig := TRpApiDatabaseConfig.Create;
@@ -3432,6 +3470,14 @@ end;
 
 procedure TFRpLocalSchemasLCL.BStopClick(Sender: TObject);
 begin
+  if FGeneration <> nil then
+  begin
+    StopGeneration;
+    LStatus.Caption := TranslateStr(1536, 'Generation stopped.');
+    FWebResult.AppendLogLine(LStatus.Caption);
+    ShowAnalysisRunning(False);
+    Exit;
+  end;
   StopAnalysis;
   LStatus.Caption := TranslateStr(1881, 'Analysis cancelled.');
   ShowAnalysisRunning(False);
@@ -3440,7 +3486,7 @@ end;
 // The Stop of the selection while the AI works: the one of the tab
 procedure TFRpLocalSchemasLCL.AISelectionStopRequest(Sender: TObject);
 begin
-  if FAnalysis <> nil then
+  if (FAnalysis <> nil) or (FGeneration <> nil) then
     BStopClick(Sender);
 end;
 
@@ -3519,6 +3565,315 @@ begin
     LStatus.Caption := TranslateStr(1880, 'Analysis completed.');
   finally
     LJson.Free;
+  end;
+  UpdateCounters;
+end;
+
+{ Generate with AI (docs/generar-esquema-con-ia-plan.md 2.3-2.4) }
+
+// "Generate with AI...": the domain (always asked), the name of the
+// subschema and the AI of the scope "schemas" with its credits. False when
+// cancelled; ARequest gets what was chosen
+function ChooseGenerateOptions(AOwner: TComponent;
+  ARequest: TRpSchemaGenerationRequest): Boolean;
+var
+  LAgentAiId: Int64;
+  LAI: TFRpAISelectionLCL;
+  LAIHost, LBottom, LButtons: TPanel;
+  LButton: TButton;
+  LDomain, LName: TEdit;
+  LForm: TForm;
+  LMode, LTier: string;
+  LTop: Integer;
+
+  function S(AValue: Integer): Integer;
+  begin
+    Result := (AValue * Screen.PixelsPerInch) div 96;
+  end;
+
+  // Each one below the ones before it (the same order in both designers)
+  procedure StackTop(AControl: TControl; AMarginTop: Integer);
+  begin
+    AControl.Top := LTop;
+    Inc(LTop, S(1000));
+    AControl.Align := alTop;
+    AControl.BorderSpacing.Left := S(10);
+    AControl.BorderSpacing.Top := S(AMarginTop);
+    AControl.BorderSpacing.Right := S(10);
+  end;
+
+  function NewText(const AText: string; AHeight: Integer): TLabel;
+  begin
+    Result := TLabel.Create(LForm);
+    Result.Parent := LForm;
+    StackTop(Result, 8);
+    Result.AutoSize := False;
+    Result.WordWrap := True;
+    Result.Height := S(AHeight);
+    Result.Caption := AText;
+  end;
+
+  function NewEdit: TEdit;
+  begin
+    Result := TEdit.Create(LForm);
+    Result.Parent := LForm;
+    StackTop(Result, 2);
+  end;
+
+begin
+  Result := False;
+  LTop := 0;
+  LForm := TForm.CreateNew(AOwner);
+  try
+    LForm.Caption := string(TranslateStr(2058, 'Generate the schema with AI'));
+    LForm.Position := poScreenCenter;
+    LForm.BorderIcons := [biSystemMenu];
+    LForm.BorderStyle := bsDialog;
+    LBottom := TPanel.Create(LForm);
+    LBottom.Parent := LForm;
+    LBottom.BevelOuter := bvNone;
+    LBottom.Caption := '';
+    LBottom.Align := alBottom;
+    LBottom.Height := S(44);
+    LButtons := TPanel.Create(LForm);
+    LButtons.Parent := LBottom;
+    LButtons.BevelOuter := bvNone;
+    LButtons.Caption := '';
+    LButtons.Align := alRight;
+    LButtons.Width := S(220);
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(2062, 'Generate'));
+    LButton.ModalResult := mrOk;
+    LButton.Default := True;
+    LButton.SetBounds(S(4), S(9), S(100), S(26));
+    LButton := TButton.Create(LForm);
+    LButton.Parent := LButtons;
+    LButton.Caption := string(TranslateStr(94, 'Cancel'));
+    LButton.ModalResult := mrCancel;
+    LButton.Cancel := True;
+    LButton.SetBounds(S(112), S(9), S(100), S(26));
+    NewText(string(TranslateStr(2059, 'The AI reads the tables of the ' +
+      'connection, their columns, their relations and 10 rows of the ones of ' +
+      'the domain, and proposes a subschema with its descriptions. It is not ' +
+      'saved by itself: review it and press Save.')), 48);
+    NewText(string(TranslateStr(2060, 'Enter the domain (sales, purchases, ' +
+      'sales+purchases... or everything):')), 18).Font.Style := [fsBold];
+    LDomain := NewEdit;
+    NewText(string(TranslateStr(2061, 'Name of the subschema (optional):')), 18);
+    LName := NewEdit;
+    // The AI that generates (provider, mode and credits, as in Validation)
+    LAI := TFRpAISelectionLCL.Create(LForm);
+    LAIHost := TPanel.Create(LForm);
+    LAIHost.BevelOuter := bvNone;
+    LAIHost.Caption := '';
+    LAIHost.Parent := LForm;
+    StackTop(LAIHost, 10);
+    LAIHost.Height := LAI.PreferredHeight + S(6);
+    LAI.Parent := LAIHost;
+    LAI.Align := alTop;
+    TRpAuthManager.Instance.GetSchemaAI(LTier, LMode, LAgentAiId);
+    LAI.SelectAIMode(LMode);
+    LAI.LoadUserAgents(LTier, LAgentAiId);
+    LForm.ClientWidth := S(520);
+    LForm.ClientHeight := S(48 + 18 + 18 + 26 + 26 + 8 * 5 + 10 + 6 + 44 + 16) +
+      LAI.PreferredHeight;
+    LForm.ActiveControl := LDomain;
+    // The domain is always asked
+    repeat
+      if LForm.ShowModal <> mrOk then
+        Exit;
+      if Trim(LDomain.Text) <> '' then
+        Break;
+      RpMessageBox(string(TranslateStr(2063, 'Enter the domain.')), '',
+        [smbOK], smsWarning);
+    until False;
+    ARequest.Domain := Trim(LDomain.Text);
+    ARequest.SchemaName := Trim(LName.Text);
+    ARequest.AITier := LAI.AITier;
+    ARequest.AIMode := LAI.AIMode;
+    ARequest.AgentSecret := LAI.AgentSecret;
+    ARequest.AgentAiId := LAI.AgentAiId;
+    Result := True;
+  finally
+    LForm.Free;
+  end;
+end;
+
+procedure TFRpLocalSchemasLCL.BGenerateClick(Sender: TObject);
+var
+  LDomain: string;
+  LRequest: TRpSchemaGenerationRequest;
+begin
+  if (FAnalysis <> nil) or (FGeneration <> nil) then
+    Exit;
+  if Trim(TRpAuthManager.Instance.Token) = '' then
+  begin
+    RpMessageBox(string(TranslateStr(2070, 'Sign in to Reportman AI to ' +
+      'generate the schema with AI.')), '', [smbOK], smsWarning);
+    Exit;
+  end;
+  LRequest := TRpSchemaGenerationRequest.Create;
+  try
+    if not ChooseGenerateOptions(Self, LRequest) then
+      Exit;
+    // The AI chosen is the one of the scope "schemas" from now on, and the
+    // one the Validation tab shows
+    TRpAuthManager.Instance.SetSchemaAI(LRequest.AITier, LRequest.AIMode,
+      LRequest.AgentAiId);
+    FAISelection.SelectAIMode(LRequest.AIMode);
+    FAISelection.LoadUserAgents(LRequest.AITier, LRequest.AgentAiId);
+    LDomain := LRequest.Domain;
+    FGenerationName := LRequest.SchemaName;
+    if FGenerationName = '' then
+      FGenerationName := LDomain;
+    // On a copy of the connection, in a thread: the screen stays usable and
+    // the progress goes to the log of the Validation tab
+    FGeneration := RpStartSchemaGeneration(LRequest, FDatabase, FReport.Params);
+  finally
+    LRequest.Free;
+  end;
+  Pages.ActivePageIndex := Pages.PageCount - 1;
+  FWebResult.ClearAll;
+  LStatus.Caption := TranslateStr(2064, 'Generating the schema...');
+  FWebResult.AppendLogLine(LStatus.Caption + ' ' + LDomain);
+  ShowAnalysisRunning(True);
+  FGenerationTimer.Enabled := True;
+end;
+
+procedure TFRpLocalSchemasLCL.StopGeneration;
+begin
+  if FGenerationTimer <> nil then
+    FGenerationTimer.Enabled := False;
+  if FGeneration <> nil then
+    FGeneration.Cancel;
+  FGeneration := nil;
+end;
+
+procedure TFRpLocalSchemasLCL.GenerationTimerTick(Sender: TObject);
+var
+  I: Integer;
+  LLines: TStringList;
+  LState: TRpSchemaGenerationState;
+begin
+  if FGeneration = nil then
+  begin
+    FGenerationTimer.Enabled := False;
+    Exit;
+  end;
+  // The state first: once finished, every line came before it
+  LState := FGeneration.GetState;
+  LLines := TStringList.Create;
+  try
+    FGeneration.TakeLines(LLines);
+    for I := 0 to LLines.Count - 1 do
+      FWebResult.AppendLogLine(LLines[I]);
+  finally
+    LLines.Free;
+  end;
+  if not LState.Finished then
+  begin
+    if (LState.InputTokens > 0) or (LState.OutputTokens > 0) then
+      FAISelection.UpdateTokens(LState.InputTokens, LState.OutputTokens, '');
+    Exit;
+  end;
+  FGenerationTimer.Enabled := False;
+  FGeneration := nil;
+  ShowAnalysisRunning(False);
+  if LState.Cancelled then
+  begin
+    LStatus.Caption := TranslateStr(1536, 'Generation stopped.');
+    Exit;
+  end;
+  if LState.ErrorMessage <> '' then
+  begin
+    LStatus.Caption := '';
+    FWebResult.AppendMessage('system', Format(string(TranslateStr(2066,
+      'The schema could not be generated: %s')), [LState.ErrorMessage]));
+    Exit;
+  end;
+  GenerationDone(LState.ResultJson);
+end;
+
+procedure TFRpLocalSchemasLCL.GenerationDone(const AResultJson: string);
+var
+  I, LCount, LCredits, LRelations, LTables, LTurns: Integer;
+  LError, LExplanation, LJson, LMarkdown, LName, LText: string;
+  LFrame, LProfile: TJSONValue;
+  LNames, LSkipped, LValues, LWarnings: TStringList;
+begin
+  LStatus.Caption := '';
+  LFrame := TJSONObject.ParseJSONValue(AResultJson);
+  LNames := TStringList.Create;
+  LSkipped := TStringList.Create;
+  LValues := TStringList.Create;
+  LWarnings := TStringList.Create;
+  try
+    if not (LFrame is TJSONObject) then
+      Exit;
+    // The credits of the account, as the chat refreshes them, and its gauge
+    LProfile := TJSONObject(LFrame).Values['userProfile'];
+    if LProfile is TJSONObject then
+    begin
+      TRpAuthManager.Instance.UpdateProfileFromJson(TJSONObject(LProfile));
+      FAISelection.RefreshState;
+    end;
+    RpGeneratedSchemaInfo(TJSONObject(LFrame), LError, LExplanation, LWarnings,
+      LCredits, LTurns);
+    LJson := RpGeneratedSchemaJson(TJSONObject(LFrame), FGenerationName,
+      LTables, LRelations);
+    if (LError <> '') or (LJson = '') then
+    begin
+      if LError = '' then
+        LError := 'Failed';
+      // The plan error as the cloud says it: its numbers and the way out
+      FWebResult.AppendMessage('system', Format(string(TranslateStr(2066,
+        'The schema could not be generated: %s')), [RpComposeApiErrorMessage(
+        LError, JsonText(TJSONObject(LFrame), 'errorCode'), '')]));
+      Exit;
+    end;
+    // A large catalog reads the columns of the tables it uses first
+    RpImportTableNames(FFile, LJson, LValues, LNames);
+    if not EnsureColumns(LNames) then
+      Exit;
+    LCount := RpImportSchemaJson(FFile, LJson, '', LName, LSkipped, LValues);
+    if LCount <= 0 then
+    begin
+      FWebResult.AppendMessage('system', TranslateStr(2069,
+        'None of the tables the AI proposed is in this database.'));
+      Exit;
+    end;
+    // A new subschema, chosen and not saved: Save writes it, closing asks
+    FModified := True;
+    FillSchemas(LName);
+    LText := Format(string(TranslateStr(2065, 'Schema generated: %s tables ' +
+      'and %s relations. Review it and press Save to keep it.')),
+      [IntToStr(LCount), IntToStr(LRelations)]);
+    LMarkdown := '**' + LName + '**: ' + LText;
+    if Trim(LExplanation) <> '' then
+      LMarkdown := LMarkdown + sLineBreak + sLineBreak + LExplanation;
+    if LWarnings.Count > 0 then
+    begin
+      LMarkdown := LMarkdown + sLineBreak + sLineBreak + '**' +
+        string(TranslateStr(2067, 'Warnings')) + '**' + sLineBreak;
+      for I := 0 to LWarnings.Count - 1 do
+        LMarkdown := LMarkdown + sLineBreak + '- ' + LWarnings[I];
+    end;
+    if LSkipped.Count > 0 then
+      LMarkdown := LMarkdown + sLineBreak + sLineBreak + Format(string(
+        TranslateStr(1937, 'Not in the database, not imported: %s')),
+        [RpShortNameList(LSkipped, 8)]);
+    LMarkdown := LMarkdown + sLineBreak + sLineBreak + '_' + Format(string(
+      TranslateStr(2068, '%s credits, %s turns')), [IntToStr(LCredits),
+      IntToStr(LTurns)]) + '_';
+    FWebResult.AppendMessage('assistant', LMarkdown);
+    ShowInfo(LText);
+  finally
+    LWarnings.Free;
+    LValues.Free;
+    LSkipped.Free;
+    LNames.Free;
+    LFrame.Free;
   end;
   UpdateCounters;
 end;
