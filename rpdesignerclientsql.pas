@@ -138,7 +138,131 @@ function RpModifyReportWithClientSql(AHttp: TRpDatabaseHttp;
   AOnProgress: TRpExpressionStreamProgressEvent = nil;
   ACancel: TRpExpressionStreamCancelEvent = nil): TRpApiModifyReportResult;
 
+{ "Generate with AI" (docs/generar-esquema-con-ia-plan.md, G5): the AI of
+  the cloud explores a database it does not know and proposes a schema for
+  the domain the user names (NlToSql/GenerateSchemaStream). The loop and the
+  prompt live in the cloud; the tools run where the database is reachable:
+
+  - a direct connection (the "turno de apertura en el cliente", as the SQL
+    of the copilot above): every call may end with status
+    NeedsClientResults and typed requests (Tables, Columns, Relations,
+    Rows). This computer reads them with its catalog reader and its preview
+    (rplocalschemas), never with a SQL of the cloud, and calls again with
+    the results and the signed continuation, until Completed or Failed;
+  - a Reportman AI Agent connection: the cloud reads the database through
+    the Hub itself, in one call.
+
+  The result (result.schema, a database config with its schemaTables) is
+  never saved here: the local schema screens import it as a new subschema
+  with its descriptions in the dictionary (RpImportSchemaJson), unsaved. }
+
+const
+  // The calls of one generation (the cloud has its own limits of turns)
+  RP_MAX_SCHEMA_GENERATION_CALLS = 40;
+  // The rows of a table the generator reads, at most
+  RP_SCHEMA_GENERATION_MAX_ROWS = 10;
+
+type
+  // What the user asks "Generate with AI"
+  TRpSchemaGenerationRequest = class(TPersistent)
+  private
+    FAgentAiId: Int64;
+    FAgentSecret: string;
+    FAIMode: string;
+    FAITier: string;
+    FDomain: string;
+    FLanguageIso: string;
+    FSchemaName: string;
+  public
+    procedure Assign(Source: TPersistent); override;
+    // As typed: "ventas", "compras", "ventas+compras", "todo"...
+    property Domain: string read FDomain write FDomain;
+    // Optional: empty, the cloud names it after the domain
+    property SchemaName: string read FSchemaName write FSchemaName;
+    // Standard, Precision or LocalAgent (with the agent of the user)
+    property AITier: string read FAITier write FAITier;
+    // Fast or Reasoning
+    property AIMode: string read FAIMode write FAIMode;
+    property AgentSecret: string read FAgentSecret write FAgentSecret;
+    property AgentAiId: Int64 read FAgentAiId write FAgentAiId;
+    // The two letters of the descriptions and the progress; '' the
+    // language of the AI of the designer
+    property LanguageIso: string read FLanguageIso write FLanguageIso;
+  end;
+
+// What a request of the generator ({ id, kind, tables, maxRows }) reads on
+// the direct connection ADatabase: { id, success, errorMessage } and tables,
+// columns (by table, DiscoveredColumn), relations + includesIncoming or rows
+// (by table, { columns, rows, error }, at most 10 rows). ATableNames are the
+// tables of the catalog (filled when empty): the names asked are spelled as
+// the catalog does. Never raises: a request that fails says why
+function RpAnswerSchemaRequest(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; const ADialect: string; ATableNames: TStrings;
+  ARequest: TJSONObject): TJSONObject;
+
+// The whole generation (see above) on the connection ADatabase (a copy the
+// caller may connect: RpCopyDatabaseInfo), with the session of AHttp
+// (Token, InstallId). AOnProgress receives the frames of the cloud: the ones
+// of actor System and stage ParsingResult are the lines for the user. The
+// final frame (GenerateSchemaApiResult: result with status, schema,
+// explanation, warnings, creditsConsumed of the whole run and turns;
+// userProfile; errorMessage) the caller frees; nil when cancelled
+function RpGenerateSchema(AHttp: TRpDatabaseHttp;
+  ARequest: TRpSchemaGenerationRequest; ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; Sender: TObject = nil;
+  AOnProgress: TRpExpressionStreamProgressEvent = nil;
+  ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+
+// The schema of a final frame that completed, as the JSON text that
+// RpImportSchemaJson imports ({ "name", "schemaTables" }; named ADefaultName
+// when the cloud gave no name), '' when there is none; ATables and
+// ARelations count what it brings
+function RpGeneratedSchemaJson(AFrame: TJSONObject; const ADefaultName: string;
+  out ATables, ARelations: Integer): string;
+// What a final frame says: the error (errorMessage of the frame), the
+// explanation of the AI (Markdown), its warnings (one per line), the
+// credits of the whole run and its turns
+procedure RpGeneratedSchemaInfo(AFrame: TJSONObject; out AError,
+  AExplanation: string; AWarnings: TStrings; out ACredits, ATurns: Integer);
+
+type
+  // The state of a generation in a thread (RpStartSchemaGeneration)
+  TRpSchemaGenerationState = record
+    Finished: Boolean;
+    // Stopped: there is no result
+    Cancelled: Boolean;
+    InputTokens: Integer;
+    OutputTokens: Integer;
+    // The final frame (JSON), when there is one
+    ResultJson: string;
+    // The generation failed before the final frame (HTTP, the database)
+    ErrorMessage: string;
+  end;
+
+  IRpSchemaGeneration = interface
+    ['{4E2B7C19-6A3D-4F58-B1E0-2C9D8A7F5E31}']
+    procedure Cancel;
+    function GetState: TRpSchemaGenerationState;
+    // The lines for the user that came since the last call (added to ALines)
+    procedure TakeLines(ALines: TStrings);
+  end;
+
+// "Generate with AI" of the local schema screens: RpGenerateSchema in a
+// thread of its own, on a copy of the connection made now, with the session
+// of TRpAuthManager. The screen reads GetState and TakeLines with a timer
+// (VCL and LCL alike) and may be closed while it runs: the thread keeps the
+// task alive and ends on its own after Cancel
+function RpStartSchemaGeneration(ARequest: TRpSchemaGenerationRequest;
+  ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList): IRpSchemaGeneration;
+
 implementation
+
+uses
+{$IFDEF FPC}
+  SyncObjs, rpauthmanager;
+{$ELSE}
+  System.SyncObjs, rpauthmanager;
+{$ENDIF}
 
 type
   // UpdateParamsBeforeOpen is protected
@@ -1162,6 +1286,906 @@ begin
     LSteps.Free;
     LRequest.Free;
   end;
+end;
+
+{ Generate with AI }
+
+procedure TRpSchemaGenerationRequest.Assign(Source: TPersistent);
+var
+  LSource: TRpSchemaGenerationRequest;
+begin
+  if Source is TRpSchemaGenerationRequest then
+  begin
+    LSource := TRpSchemaGenerationRequest(Source);
+    FDomain := LSource.Domain;
+    FSchemaName := LSource.SchemaName;
+    FAITier := LSource.AITier;
+    FAIMode := LSource.AIMode;
+    FAgentSecret := LSource.AgentSecret;
+    FAgentAiId := LSource.AgentAiId;
+    FLanguageIso := LSource.LanguageIso;
+  end
+  else
+    inherited Assign(Source);
+end;
+
+function JsonValueText(AObject: TJSONObject; const AName: string): string;
+var
+  LValue: TJSONValue;
+begin
+  Result := '';
+  if AObject = nil then
+    Exit;
+  LValue := AObject.Values[AName];
+  if (LValue <> nil) and not (LValue is TJSONNull) then
+    Result := LValue.Value;
+end;
+
+function JsonValueInt(AObject: TJSONObject; const AName: string): Integer;
+begin
+  Result := StrToIntDef(JsonValueText(AObject, AName), 0);
+end;
+
+function JsonObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
+var
+  LValue: TJSONValue;
+begin
+  Result := nil;
+  if AObject = nil then
+    Exit;
+  LValue := AObject.Values[AName];
+  if LValue is TJSONObject then
+    Result := TJSONObject(LValue);
+end;
+
+function JsonArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
+var
+  LValue: TJSONValue;
+begin
+  Result := nil;
+  if AObject = nil then
+    Exit;
+  LValue := AObject.Values[AName];
+  if LValue is TJSONArray then
+    Result := TJSONArray(LValue);
+end;
+
+// A pair replaced (or added)
+procedure PutPair(AObject: TJSONObject; const AName: string; AValue: TJSONValue);
+var
+  LPair: TJSONPair;
+begin
+  LPair := AObject.RemovePair(AName);
+  LPair.Free;
+  AObject.AddPair(AName, AValue);
+end;
+
+procedure RemoveJsonPair(AObject: TJSONObject; const AName: string);
+var
+  LPair: TJSONPair;
+begin
+  LPair := AObject.RemovePair(AName);
+  LPair.Free;
+end;
+
+// The names of a request as the catalog spells them (one it does not have
+// as it came: its read gives nothing)
+procedure SpellTables(AArray: TJSONArray; ACatalog, ASpelled: TStrings);
+var
+  I, LIndex: Integer;
+  LName: string;
+begin
+  ASpelled.Clear;
+  if AArray = nil then
+    Exit;
+  for I := 0 to AArray.Count - 1 do
+  begin
+    LName := Trim(AArray.Items[I].Value);
+    if LName = '' then
+      Continue;
+    LIndex := ACatalog.IndexOf(LName);
+    if LIndex >= 0 then
+      LName := ACatalog[LIndex];
+    ASpelled.Add(LName);
+  end;
+end;
+
+// 'NUMERIC(18,2)': NUMERIC, 18 and 2
+procedure SplitDeclaredType(const AType: string; out ABase: string;
+  out AFirst, ASecond: Integer);
+var
+  LClose, LComma, LOpen: Integer;
+  LInside: string;
+begin
+  ABase := UpperCase(Trim(AType));
+  AFirst := 0;
+  ASecond := 0;
+  LOpen := Pos('(', ABase);
+  if LOpen <= 0 then
+    Exit;
+  LClose := Pos(')', ABase);
+  if LClose < LOpen then
+    LClose := Length(ABase) + 1;
+  LInside := Copy(ABase, LOpen + 1, LClose - LOpen - 1);
+  ABase := Trim(Copy(ABase, 1, LOpen - 1));
+  LComma := Pos(',', LInside);
+  if LComma > 0 then
+  begin
+    AFirst := StrToIntDef(Trim(Copy(LInside, 1, LComma - 1)), 0);
+    ASecond := StrToIntDef(Trim(Copy(LInside, LComma + 1, MaxInt)), 0);
+  end
+  else
+    AFirst := StrToIntDef(Trim(LInside), 0);
+end;
+
+// The .NET type of a column of the catalog (the cloud's dataType and the
+// declared type), as an ADO.NET reader would say it
+function NetTypeOf(const ACloudType, ABase: string): string;
+
+  function Has(const APart: string): Boolean;
+  begin
+    Result := Pos(APart, ABase) > 0;
+  end;
+
+begin
+  if SameText(ACloudType, 'Integer') then
+  begin
+    if Has('BIGINT') or Has('INT64') or Has('INT128') or (ABase = 'INT8') or
+      Has('BIGSERIAL') or (ABase = 'NUMBER') then
+      Result := 'System.Int64'
+    else if Has('SMALLINT') or (ABase = 'INT2') or Has('SMALLSERIAL') then
+      Result := 'System.Int16'
+    else if Has('TINYINT') then
+      Result := 'System.Byte'
+    else
+      Result := 'System.Int32';
+  end
+  else if SameText(ACloudType, 'Numeric') then
+  begin
+    if Has('DOUBLE') or Has('FLOAT8') or Has('BINARY_DOUBLE') then
+      Result := 'System.Double'
+    else if Has('FLOAT') or Has('REAL') or Has('BINARY_FLOAT') then
+      Result := 'System.Single'
+    else
+      Result := 'System.Decimal';
+  end
+  else if SameText(ACloudType, 'Currency') then
+    Result := 'System.Decimal'
+  else if SameText(ACloudType, 'Date') then
+    Result := 'System.DateTime'
+  else if SameText(ACloudType, 'TimeStamp') then
+  begin
+    if (Copy(ABase, 1, 4) = 'TIME') and (Copy(ABase, 1, 9) <> 'TIMESTAMP') then
+      Result := 'System.TimeSpan'
+    else
+      Result := 'System.DateTime';
+  end
+  else if SameText(ACloudType, 'Boolean') then
+    Result := 'System.Boolean'
+  else if SameText(ACloudType, 'TextLong') then
+    Result := 'System.String'
+  else if Has('BLOB') or Has('BINARY') or Has('BYTEA') or Has('IMAGE') or
+    Has('RAW') then
+    Result := 'System.Byte[]'
+  else
+    Result := 'System.String';
+end;
+
+// A column of the catalog (the format of the schema file) as the cloud's
+// DiscoveredColumn
+function DiscoveredColumnJson(AColumn: TJSONObject; APosition: Integer): TJSONObject;
+var
+  LBase, LCloudType, LDeclared: string;
+  LFirst, LSecond: Integer;
+begin
+  LCloudType := JsonValueText(AColumn, 'dataType');
+  LDeclared := JsonValueText(AColumn, 'detectedType');
+  SplitDeclaredType(LDeclared, LBase, LFirst, LSecond);
+  Result := TJSONObject.Create;
+  Result.AddPair('name', JsonValueText(AColumn, 'name'));
+  Result.AddPair('isPrimaryKey', TJSONBool.Create(SameText(
+    JsonValueText(AColumn, 'isPrimaryKey'), 'true')));
+  Result.AddPair('detectedNetType', NetTypeOf(LCloudType, LBase));
+  Result.AddPair('declaredDbType', LDeclared);
+  Result.AddPair('ordinalPosition', TJSONNumber.Create(APosition));
+  if SameText(LCloudType, 'Numeric') or SameText(LCloudType, 'Currency') or
+    SameText(LCloudType, 'Integer') then
+  begin
+    Result.AddPair('numericPrecision', TJSONNumber.Create(LFirst));
+    Result.AddPair('numericScale', TJSONNumber.Create(LSecond));
+  end
+  else
+    Result.AddPair('size', TJSONNumber.Create(LFirst));
+end;
+
+// A cell for the AI: numbers and booleans as they are, dates in ISO, a
+// BLOB as (BLOB) and long texts cut
+function SampleCellJson(AField: TField): TJSONValue;
+const
+  CMaxText = 300;
+var
+  LText: string;
+  LValue: TDateTime;
+begin
+  if AField.IsNull then
+    Exit(TJSONNull.Create);
+  case AField.DataType of
+    ftSmallint, ftInteger, ftWord, ftAutoInc, ftLargeint
+{$IFNDEF FPC}, ftShortint, ftByte, ftLongWord{$ENDIF}:
+      Result := TJSONNumber.Create(AField.AsLargeInt);
+    ftFloat, ftCurrency, ftBCD, ftFMTBcd{$IFNDEF FPC}, ftExtended, ftSingle{$ENDIF}:
+      Result := TJSONNumber.Create(AField.AsFloat);
+    ftBoolean:
+      Result := TJSONBool.Create(AField.AsBoolean);
+    ftDate:
+      Result := TJSONString.Create(FormatDateTime('yyyy"-"mm"-"dd', AField.AsDateTime));
+    ftTime:
+      Result := TJSONString.Create(FormatDateTime('hh":"nn":"ss', AField.AsDateTime));
+    ftDateTime, ftTimeStamp:
+      begin
+        LValue := AField.AsDateTime;
+        if Frac(LValue) = 0 then
+          Result := TJSONString.Create(FormatDateTime('yyyy"-"mm"-"dd', LValue))
+        else
+          Result := TJSONString.Create(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', LValue));
+      end;
+  else
+    begin
+      if AField.IsBlob and not (AField.DataType in [ftMemo, ftWideMemo, ftFmtMemo]) then
+        LText := '(BLOB)'
+      else
+      begin
+        LText := AField.AsString;
+        if Length(LText) > CMaxText then
+          LText := Copy(LText, 1, CMaxText) + '...';
+      end;
+      Result := TJSONString.Create(LText);
+    end;
+  end;
+end;
+
+// The first rows of a table with the preview of the local schema screens
+// (the dialect of the connection: FIRST, TOP, LIMIT, ROWNUM)
+function SampleRowsJson(ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList;
+  const ADialect, ATable: string; AMaxRows: Integer): TJSONObject;
+var
+  I: Integer;
+  LColumns, LRow, LRows: TJSONArray;
+  LData: TDataSet;
+  LMessage: string;
+begin
+  Result := TJSONObject.Create;
+  LColumns := TJSONArray.Create;
+  Result.AddPair('columns', LColumns);
+  LRows := TJSONArray.Create;
+  Result.AddPair('rows', LRows);
+  try
+    ADatabase.Connect(AParams);
+    LData := ADatabase.OpenDatasetFromSQL(RpLocalSchemaPreviewSql(ADialect,
+      ATable, AMaxRows), nil, False, AParams);
+    try
+      for I := 0 to LData.FieldCount - 1 do
+        LColumns.Add(LData.Fields[I].FieldName);
+      while (not LData.Eof) and (LRows.Count < AMaxRows) do
+      begin
+        LRow := TJSONArray.Create;
+        LRows.AddElement(LRow);
+        for I := 0 to LData.FieldCount - 1 do
+          LRow.AddElement(SampleCellJson(LData.Fields[I]));
+        LData.Next;
+      end;
+    finally
+      LData.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      LMessage := Trim(E.Message);
+      if LMessage = '' then
+        LMessage := E.ClassName;
+      Result.AddPair('error', LMessage);
+    end;
+  end;
+end;
+
+function RpAnswerSchemaRequest(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; const ADialect: string; ATableNames: TStrings;
+  ARequest: TJSONObject): TJSONObject;
+var
+  I, J, K, LMaxRows: Integer;
+  LAsked, LKind, LMessage, LUnusedDialect: string;
+  LCatalog, LSpelled: TStringList;
+  LColumns, LRead, LRelations: TJSONArray;
+  LByTable, LRows, LTable: TJSONObject;
+  LIncoming: Boolean;
+  LList: TJSONArray;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('id', JsonValueText(ARequest, 'id'));
+  LKind := JsonValueText(ARequest, 'kind');
+  LCatalog := TStringList.Create;
+  LSpelled := TStringList.Create;
+  try
+    try
+      if ATableNames.Count = 0 then
+        RpReadLocalSchemaTableNames(ADatabase, AParams, ATableNames, LUnusedDialect);
+      LCatalog.CaseSensitive := False;
+      LCatalog.Assign(ATableNames);
+      LCatalog.Sorted := True;
+      SpellTables(JsonArrayOf(ARequest, 'tables'), LCatalog, LSpelled);
+      if SameText(LKind, 'Tables') then
+      begin
+        LList := TJSONArray.Create;
+        Result.AddPair('tables', LList);
+        for I := 0 to ATableNames.Count - 1 do
+          LList.Add(ATableNames[I]);
+      end
+      else if SameText(LKind, 'Columns') then
+      begin
+        LByTable := TJSONObject.Create;
+        Result.AddPair('columns', LByTable);
+        LRead := RpReadLocalSchemaColumns(ADatabase, AParams, LSpelled);
+        try
+          // By the name asked, as the cloud looks for it; a table that is not
+          // there has no columns
+          for I := 0 to LSpelled.Count - 1 do
+          begin
+            LList := TJSONArray.Create;
+            LAsked := LSpelled[I];
+            LByTable.AddPair(LAsked, LList);
+            for J := 0 to LRead.Count - 1 do
+            begin
+              if not (LRead.Items[J] is TJSONObject) then
+                Continue;
+              LTable := TJSONObject(LRead.Items[J]);
+              if not SameText(JsonValueText(LTable, 'name'), LAsked) then
+                Continue;
+              LColumns := JsonArrayOf(LTable, 'columns');
+              if LColumns <> nil then
+                for K := 0 to LColumns.Count - 1 do
+                  if LColumns.Items[K] is TJSONObject then
+                    LList.AddElement(DiscoveredColumnJson(
+                      TJSONObject(LColumns.Items[K]), K + 1));
+              Break;
+            end;
+          end;
+        finally
+          LRead.Free;
+        end;
+      end
+      else if SameText(LKind, 'Relations') then
+      begin
+        LRelations := RpReadLocalSchemaRelations(ADatabase, AParams, LSpelled,
+          LIncoming);
+        Result.AddPair('relations', LRelations);
+        Result.AddPair('includesIncoming', TJSONBool.Create(LIncoming));
+      end
+      else if SameText(LKind, 'Rows') then
+      begin
+        LMaxRows := JsonValueInt(ARequest, 'maxRows');
+        if (LMaxRows <= 0) or (LMaxRows > RP_SCHEMA_GENERATION_MAX_ROWS) then
+          LMaxRows := RP_SCHEMA_GENERATION_MAX_ROWS;
+        LRows := TJSONObject.Create;
+        Result.AddPair('rows', LRows);
+        for I := 0 to LSpelled.Count - 1 do
+          LRows.AddPair(LSpelled[I], SampleRowsJson(ADatabase, AParams,
+            ADialect, LSpelled[I], LMaxRows));
+      end
+      else
+        raise Exception.Create('Unknown request of the schema generator: ' + LKind);
+      Result.AddPair('success', TJSONBool.Create(True));
+      Result.AddPair('errorMessage', '');
+    except
+      on E: Exception do
+      begin
+        LMessage := Trim(E.Message);
+        if LMessage = '' then
+          LMessage := E.ClassName;
+        RemoveJsonPair(Result, 'tables');
+        RemoveJsonPair(Result, 'columns');
+        RemoveJsonPair(Result, 'relations');
+        RemoveJsonPair(Result, 'includesIncoming');
+        RemoveJsonPair(Result, 'rows');
+        PutPair(Result, 'success', TJSONBool.Create(False));
+        PutPair(Result, 'errorMessage', TJSONString.Create(LMessage));
+      end;
+    end;
+  finally
+    LSpelled.Free;
+    LCatalog.Free;
+  end;
+end;
+
+// The DatabaseProvider of the cloud for a dialect of the catalog
+function ProviderOfDialect(const ADialect: string;
+  ADatabase: TRpDatabaseInfoItem): string;
+begin
+  if Pos('firebird', LowerCase(ADialect)) = 1 then
+    Result := 'Firebird'
+  else if SameText(ADialect, 'SQLServer') or SameText(ADialect, 'MySQL') or
+    SameText(ADialect, 'PostgreSQL') or SameText(ADialect, 'Oracle') or
+    SameText(ADialect, 'SQLite') then
+    Result := ADialect
+  else if ADatabase.Driver = rpdataado then
+    Result := 'OLEDB'
+  else
+    Result := 'ODBC';
+end;
+
+procedure GenerationProgress(Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent; const AText: string);
+begin
+  if Assigned(AOnProgress) then
+    AOnProgress(Sender, 'System', 'ClientRead', 'Full', AText, 0, 0, '', 0);
+end;
+
+function RequestsText(ARequests: TJSONArray): string;
+var
+  I: Integer;
+  LRequest: TJSONObject;
+  LTables: TJSONArray;
+  J: Integer;
+  LNames: string;
+begin
+  Result := '';
+  for I := 0 to ARequests.Count - 1 do
+  begin
+    if not (ARequests.Items[I] is TJSONObject) then
+      Continue;
+    LRequest := TJSONObject(ARequests.Items[I]);
+    LNames := '';
+    LTables := JsonArrayOf(LRequest, 'tables');
+    if LTables <> nil then
+      for J := 0 to LTables.Count - 1 do
+      begin
+        if LNames <> '' then
+          LNames := LNames + ', ';
+        LNames := LNames + LTables.Items[J].Value;
+      end;
+    if Result <> '' then
+      Result := Result + '; ';
+    Result := Result + JsonValueText(LRequest, 'kind');
+    if LNames <> '' then
+      Result := Result + ' (' + LNames + ')';
+  end;
+end;
+
+function RpGenerateSchema(AHttp: TRpDatabaseHttp;
+  ARequest: TRpSchemaGenerationRequest; ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; Sender: TObject;
+  AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+var
+  I, LCall: Integer;
+  LAnswers, LInitial, LRequests: TJSONArray;
+  LApiKey, LDialect: string;
+  LBody, LConfig, LFrame, LResult: TJSONObject;
+  LClientMode: Boolean;
+  LHubDatabaseId: Int64;
+  LNames: TStringList;
+begin
+  Result := nil;
+  if ADatabase = nil then
+    raise Exception.Create('No connection');
+  if Trim(ARequest.Domain) = '' then
+    raise Exception.Create('The domain of the schema is empty');
+  // An Agent connection is read by the cloud through the Hub
+  LClientMode := ADatabase.Driver <> rpdbHttp;
+  LNames := TStringList.Create;
+  LBody := TJSONObject.Create;
+  try
+    if Trim(ARequest.AITier) <> '' then
+      LBody.AddPair('aiTier', ARequest.AITier)
+    else
+      LBody.AddPair('aiTier', 'Standard');
+    if SameText(Trim(ARequest.AIMode), 'Reasoning') then
+      LBody.AddPair('mode', 'Reasoning')
+    else
+      LBody.AddPair('mode', 'Fast');
+    if ARequest.AgentSecret <> '' then
+      LBody.AddPair('agentSecret', ARequest.AgentSecret);
+    if ARequest.AgentAiId <> 0 then
+      LBody.AddPair('agentAiId', TJSONNumber.Create(ARequest.AgentAiId));
+    // The AI of an Agent gets the short prompt, as in the chat
+    if SameText(ARequest.AITier, 'LocalAgent') then
+      LBody.AddPair('simplifiedPrompt', TJSONBool.Create(True));
+    LBody.AddPair('domain', Trim(ARequest.Domain));
+    if Trim(ARequest.SchemaName) <> '' then
+      LBody.AddPair('schemaName', Trim(ARequest.SchemaName));
+    if Trim(ARequest.LanguageIso) <> '' then
+      LBody.AddPair('languageCodeIso', Trim(ARequest.LanguageIso));
+    LConfig := TJSONObject.Create;
+    LBody.AddPair('config', LConfig);
+    LConfig.AddPair('name', ADatabase.Alias);
+    if LClientMode then
+    begin
+      // The names go in the first call: the AI does not spend a turn on them
+      GenerationProgress(Sender, AOnProgress, 'Reading the tables of ' +
+        ADatabase.Alias);
+      RpReadLocalSchemaTableNames(ADatabase, AParams, LNames, LDialect);
+      GenerationProgress(Sender, AOnProgress, IntToStr(LNames.Count) +
+        ' tables, ' + LDialect);
+      LConfig.AddPair('provider', ProviderOfDialect(LDialect, ADatabase));
+      LConfig.AddPair('dialect', LDialect);
+      LBody.AddPair('clientExecutes', TJSONBool.Create(True));
+      LInitial := TJSONArray.Create;
+      LBody.AddPair('initialTables', LInitial);
+      for I := 0 to LNames.Count - 1 do
+        LInitial.Add(LNames[I]);
+    end
+    else
+    begin
+      RpLocalHubDatabase(ADatabase, AParams, LHubDatabaseId, LApiKey);
+      if LHubDatabaseId <= 0 then
+        raise ERpAgentConnectionError.CreateFor(Format(SRpAgentNotConfigured,
+          [ADatabase.Alias]), ADatabase.Alias);
+      LConfig.AddPair('hubDatabaseId', TJSONNumber.Create(LHubDatabaseId));
+      LBody.AddPair('clientExecutes', TJSONBool.Create(False));
+      // An Agent database of another account needs its API key
+      if (LApiKey <> '') and (AHttp.ApiKey = '') then
+        AHttp.ApiKey := LApiKey;
+    end;
+    LCall := 0;
+    while True do
+    begin
+      if Assigned(ACancel) and ACancel(Sender) then
+        Exit;
+      Inc(LCall);
+      LFrame := AHttp.GenerateSchemaStream(LBody, Sender, AOnProgress, ACancel);
+      // Cancelled
+      if LFrame = nil then
+        Exit;
+      LResult := JsonObjectOf(LFrame, 'result');
+      if (Trim(JsonValueText(LFrame, 'errorMessage')) <> '') or (LResult = nil) or
+        not LClientMode or
+        not SameText(JsonValueText(LResult, 'status'), 'NeedsClientResults') then
+      begin
+        Result := LFrame;
+        Exit;
+      end;
+      if LCall >= RP_MAX_SCHEMA_GENERATION_CALLS then
+      begin
+        PutPair(LFrame, 'errorMessage', TJSONString.Create(
+          'The schema generator asked this computer too many times: it was stopped.'));
+        Result := LFrame;
+        Exit;
+      end;
+      try
+        LRequests := JsonArrayOf(LResult, 'clientRequests');
+        if LRequests = nil then
+          raise Exception.Create('The schema generator asked nothing to read');
+        GenerationProgress(Sender, AOnProgress, 'Answering ' + RequestsText(LRequests));
+        LAnswers := TJSONArray.Create;
+        try
+          for I := 0 to LRequests.Count - 1 do
+          begin
+            if Assigned(ACancel) and ACancel(Sender) then
+              Exit;
+            if LRequests.Items[I] is TJSONObject then
+              LAnswers.AddElement(RpAnswerSchemaRequest(ADatabase, AParams,
+                LDialect, LNames, TJSONObject(LRequests.Items[I])));
+          end;
+          // The next call: the same request with the continuation and what
+          // was read (the names went in the first one)
+          RemoveJsonPair(LBody, 'initialTables');
+          PutPair(LBody, 'continuation', TJSONString.Create(
+            JsonValueText(LResult, 'continuation')));
+          PutPair(LBody, 'clientResults', LAnswers);
+          LAnswers := nil;
+        finally
+          LAnswers.Free;
+        end;
+      finally
+        LFrame.Free;
+      end;
+    end;
+  finally
+    LBody.Free;
+    LNames.Free;
+  end;
+end;
+
+function RpGeneratedSchemaJson(AFrame: TJSONObject; const ADefaultName: string;
+  out ATables, ARelations: Integer): string;
+var
+  I: Integer;
+  LResult, LSchema, LCopy: TJSONObject;
+  LTables, LKeys: TJSONArray;
+begin
+  Result := '';
+  ATables := 0;
+  ARelations := 0;
+  LResult := JsonObjectOf(AFrame, 'result');
+  if (LResult = nil) or not SameText(JsonValueText(LResult, 'status'), 'Completed') then
+    Exit;
+  LSchema := JsonObjectOf(LResult, 'schema');
+  if LSchema = nil then
+    Exit;
+  LTables := JsonArrayOf(LSchema, 'schemaTables');
+  if LTables = nil then
+    Exit;
+  for I := 0 to LTables.Count - 1 do
+    if LTables.Items[I] is TJSONObject then
+    begin
+      Inc(ATables);
+      LKeys := JsonArrayOf(TJSONObject(LTables.Items[I]), 'foreignKeys');
+      if LKeys <> nil then
+        Inc(ARelations, LKeys.Count);
+    end;
+  LCopy := TJSONObject.Create;
+  try
+    if Trim(JsonValueText(LSchema, 'name')) <> '' then
+      LCopy.AddPair('name', Trim(JsonValueText(LSchema, 'name')))
+    else
+      LCopy.AddPair('name', Trim(ADefaultName));
+    LCopy.AddPair('schemaTables', TJSONArray(LTables.Clone));
+    Result := LCopy.ToJSON;
+  finally
+    LCopy.Free;
+  end;
+end;
+
+procedure RpGeneratedSchemaInfo(AFrame: TJSONObject; out AError,
+  AExplanation: string; AWarnings: TStrings; out ACredits, ATurns: Integer);
+var
+  I: Integer;
+  LResult: TJSONObject;
+  LWarnings: TJSONArray;
+begin
+  AError := Trim(JsonValueText(AFrame, 'errorMessage'));
+  AExplanation := '';
+  ACredits := 0;
+  ATurns := 0;
+  LResult := JsonObjectOf(AFrame, 'result');
+  if LResult = nil then
+    Exit;
+  AExplanation := JsonValueText(LResult, 'explanation');
+  ACredits := JsonValueInt(LResult, 'creditsConsumed');
+  ATurns := JsonValueInt(LResult, 'turns');
+  LWarnings := JsonArrayOf(LResult, 'warnings');
+  if (AWarnings <> nil) and (LWarnings <> nil) then
+    for I := 0 to LWarnings.Count - 1 do
+      if Trim(LWarnings.Items[I].Value) <> '' then
+        AWarnings.Add(Trim(LWarnings.Items[I].Value));
+end;
+
+{ Generate with AI in a thread }
+
+type
+  TRpSchemaGeneration = class(TInterfacedObject, IRpSchemaGeneration)
+  private
+    FLock: TCriticalSection;
+    FState: TRpSchemaGenerationState;
+    FLines: TStringList;
+    FCancelRequested: Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Cancel;
+    function GetState: TRpSchemaGenerationState;
+    procedure TakeLines(ALines: TStrings);
+    function CancelRequested: Boolean;
+    // The events of the stream (the worker thread)
+    function StreamCancel(Sender: TObject): Boolean;
+    procedure StreamProgress(Sender: TObject; const AActor, AStage,
+      AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+      const AProgressId: string; APrefillPercent: Integer);
+    procedure Finish(const AResultJson, AErrorMessage: string;
+      ACancelled: Boolean);
+  end;
+
+  TRpSchemaGenerationThread = class(TThread)
+  private
+    // Keeps the task alive while the thread runs
+    FTask: IRpSchemaGeneration;
+    FGeneration: TRpSchemaGeneration;
+    FRequest: TRpSchemaGenerationRequest;
+    FDatabases: TRpDatabaseInfoList;
+    FParams: TRpParamList;
+    FToken: string;
+    FInstallId: string;
+  protected
+    procedure Execute; override;
+  public
+    constructor CreateFor(AGeneration: TRpSchemaGeneration;
+      ARequest: TRpSchemaGenerationRequest; ADatabase: TRpDatabaseInfoItem;
+      AParams: TRpParamList);
+    destructor Destroy; override;
+  end;
+
+constructor TRpSchemaGeneration.Create;
+begin
+  inherited Create;
+  FLock := TCriticalSection.Create;
+  FLines := TStringList.Create;
+end;
+
+destructor TRpSchemaGeneration.Destroy;
+begin
+  FLines.Free;
+  FLock.Free;
+  inherited Destroy;
+end;
+
+procedure TRpSchemaGeneration.Cancel;
+begin
+  FLock.Enter;
+  try
+    FCancelRequested := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaGeneration.CancelRequested: Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := FCancelRequested;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaGeneration.GetState: TRpSchemaGenerationState;
+begin
+  FLock.Enter;
+  try
+    Result := FState;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpSchemaGeneration.TakeLines(ALines: TStrings);
+begin
+  FLock.Enter;
+  try
+    ALines.AddStrings(FLines);
+    FLines.Clear;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRpSchemaGeneration.StreamCancel(Sender: TObject): Boolean;
+begin
+  Result := CancelRequested;
+end;
+
+procedure TRpSchemaGeneration.StreamProgress(Sender: TObject; const AActor,
+  AStage, AChunkType, AChunk: string; AInputTokens, AOutputTokens: Integer;
+  const AProgressId: string; APrefillPercent: Integer);
+begin
+  FLock.Enter;
+  try
+    if AInputTokens > 0 then
+      FState.InputTokens := AInputTokens;
+    if AOutputTokens > 0 then
+      FState.OutputTokens := AOutputTokens;
+    // The lines the cloud writes for the user
+    if SameText(AActor, 'System') and SameText(AStage, 'ParsingResult') and
+      (Trim(AChunk) <> '') then
+      FLines.Add(Trim(AChunk));
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRpSchemaGeneration.Finish(const AResultJson, AErrorMessage: string;
+  ACancelled: Boolean);
+begin
+  FLock.Enter;
+  try
+    FState.ResultJson := AResultJson;
+    FState.ErrorMessage := AErrorMessage;
+    FState.Cancelled := ACancelled or FCancelRequested;
+    FState.Finished := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+constructor TRpSchemaGenerationThread.CreateFor(AGeneration: TRpSchemaGeneration;
+  ARequest: TRpSchemaGenerationRequest; ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList);
+begin
+  inherited Create(True);
+  FreeOnTerminate := True;
+  FGeneration := AGeneration;
+  FTask := AGeneration;
+  FRequest := TRpSchemaGenerationRequest.Create;
+  FRequest.Assign(ARequest);
+  // A copy of the connection and of the parameters: the screen may be
+  // closed while the thread reads
+  FDatabases := RpCopyDatabaseInfo(ADatabase);
+  FParams := TRpParamList.Create(nil);
+  if AParams <> nil then
+    FParams.Assign(AParams);
+  // The session is read here, in the thread of the screen
+  FToken := TRpAuthManager.Instance.Token;
+  FInstallId := TRpAuthManager.Instance.InstallId;
+end;
+
+destructor TRpSchemaGenerationThread.Destroy;
+begin
+  if FDatabases <> nil then
+  begin
+    try
+      FDatabases.Items[0].DisConnect;
+    except
+      // Its last connection, closed as it can
+    end;
+    FDatabases.Free;
+  end;
+  FParams.Free;
+  FRequest.Free;
+  FTask := nil;
+  inherited Destroy;
+end;
+
+procedure TRpSchemaGenerationThread.Execute;
+var
+  LHttp: TRpDatabaseHttp;
+  LResult: TJSONObject;
+{$IFDEF MSWINDOWS}
+  LComInitialized: Boolean;
+{$ENDIF}
+begin
+{$IFDEF MSWINDOWS}
+  // ADO is COM: its objects are made and used here
+  LComInitialized := Succeeded(CoInitialize(nil));
+{$ENDIF}
+  try
+    LResult := nil;
+    LHttp := nil;
+    try
+      try
+        LHttp := TRpDatabaseHttp.Create;
+        LHttp.Token := FToken;
+        LHttp.InstallId := FInstallId;
+        LHttp.AITier := FRequest.AITier;
+        LHttp.AgentSecret := FRequest.AgentSecret;
+        LHttp.AgentAiId := FRequest.AgentAiId;
+        LResult := RpGenerateSchema(LHttp, FRequest, FDatabases.Items[0],
+          FParams, FGeneration, FGeneration.StreamProgress,
+          FGeneration.StreamCancel);
+        if LResult = nil then
+          FGeneration.Finish('', '', True)
+        else
+          FGeneration.Finish(LResult.ToJSON, '', False);
+      finally
+        LResult.Free;
+        LHttp.Free;
+      end;
+    except
+      on E: Exception do
+        FGeneration.Finish('', E.Message, FGeneration.CancelRequested);
+    end;
+  finally
+    try
+      FDatabases.Items[0].DisConnect;
+    except
+      // Closed as it can
+    end;
+{$IFDEF MSWINDOWS}
+    if LComInitialized then
+      CoUninitialize;
+{$ENDIF}
+  end;
+end;
+
+function RpStartSchemaGeneration(ARequest: TRpSchemaGenerationRequest;
+  ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList): IRpSchemaGeneration;
+var
+  LGeneration: TRpSchemaGeneration;
+  LThread: TRpSchemaGenerationThread;
+begin
+  LGeneration := TRpSchemaGeneration.Create;
+  Result := LGeneration;
+  LThread := TRpSchemaGenerationThread.CreateFor(LGeneration, ARequest,
+    ADatabase, AParams);
+  LThread.Start;
 end;
 
 initialization

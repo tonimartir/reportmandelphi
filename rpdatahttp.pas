@@ -233,6 +233,15 @@ type
       Sender: TObject = nil;
       AOnProgress: TRpExpressionStreamProgressEvent = nil;
       ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
+    // One call of "Generate with AI" (NlToSql/GenerateSchemaStream): ARequest
+    // is the GenerateSchemaRequest of the cloud as it goes (the language of
+    // the AI is added when it has none, and the API key of this client).
+    // The final frame (GenerateSchemaApiResult: result, userProfile,
+    // errorMessage, errorCode; the caller frees it), nil when cancelled.
+    // The loop of the calls is RpGenerateSchema (rpdesignerclientsql)
+    function GenerateSchemaStream(ARequest: TJSONObject; Sender: TObject = nil;
+      AOnProgress: TRpExpressionStreamProgressEvent = nil;
+      ACancel: TRpExpressionStreamCancelEvent = nil): TJSONObject;
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject; ResponseStream: TStream): Boolean; overload;
     function InternalRequest(const AAction: string; const RequestBody: TJSONObject;
       ResponseStream: TStream; ATimeoutMs: Integer): Boolean; overload;
@@ -892,7 +901,8 @@ begin
       LHttpClient.ResponseTimeout := MODIFY_REPORT_TIMEOUT_MS;
       TRpAuthManager.Instance.Log('HTTP Request Body: ' + RequestBody.ToJSON);
     end
-    else if SameText(AAction, 'NlToSql/AnalyzeSchemaStream') then
+    else if SameText(AAction, 'NlToSql/AnalyzeSchemaStream') or
+      SameText(AAction, 'NlToSql/GenerateSchemaStream') then
     begin
       // A large schema with a reasoning model takes minutes
       LHttpClient.ConnectionTimeout := MODIFY_REPORT_TIMEOUT_MS;
@@ -1268,6 +1278,72 @@ begin
   finally
     LRequest.Free;
   end;
+end;
+
+{$IFNDEF FIREDAC}
+// The final frame of an SSE answer read whole: the last 'data: {...}' line
+// with a result or an error message that is not a progress frame
+function LastResultFrame(const AText: string): TJSONObject;
+var
+  I: Integer;
+  LLines: TStringList;
+  LLine: string;
+  LValue: TJSONValue;
+begin
+  Result := nil;
+  LLines := TStringList.Create;
+  try
+    LLines.Text := AText;
+    for I := LLines.Count - 1 downto 0 do
+    begin
+      LLine := Trim(LLines[I]);
+      if Copy(LLine, 1, 7) <> 'data: {' then
+        Continue;
+      LValue := TJSONObject.ParseJSONValue(Copy(LLine, 7, MaxInt));
+      if (LValue is TJSONObject) and (TJSONObject(LValue).Values['actor'] = nil) and
+        ((TJSONObject(LValue).Values['result'] <> nil) or
+        (TJSONObject(LValue).Values['errorMessage'] <> nil)) then
+        Exit(TJSONObject(LValue));
+      LValue.Free;
+    end;
+  finally
+    LLines.Free;
+  end;
+end;
+{$ENDIF}
+
+function TRpDatabaseHttp.GenerateSchemaStream(ARequest: TJSONObject;
+  Sender: TObject; AOnProgress: TRpExpressionStreamProgressEvent;
+  ACancel: TRpExpressionStreamCancelEvent): TJSONObject;
+{$IFNDEF FIREDAC}
+var
+  LResponseStream: TStringStream;
+{$ENDIF}
+begin
+  if ARequest = nil then
+    raise Exception.Create('GenerateSchema request not assigned');
+  if ARequest.Values['languageCodeIso'] = nil then
+    ARequest.AddPair('languageCodeIso',
+      UserLanguageIsoCode(TRpAuthManager.Instance.AILanguage));
+  if (FApiKey <> '') and (ARequest.Values['apiKey'] = nil) then
+    ARequest.AddPair('apiKey', FApiKey);
+  if ARequest.Values['runtime'] = nil then
+    AddOptionalRuntime(ARequest, FRuntimeDb);
+{$IFDEF FIREDAC}
+  Result := StreamJsonRequest(Self, 'NlToSql/GenerateSchemaStream', ARequest,
+    Sender, AOnProgress, ACancel);
+{$ELSE}
+  // Without a streaming client the answer is read whole: no progress
+  Result := nil;
+  LResponseStream := TStringStream.Create('', TEncoding.UTF8);
+  try
+    if InternalRequest('NlToSql/GenerateSchemaStream', ARequest, LResponseStream,
+      MODIFY_REPORT_TIMEOUT_MS) then
+      Result := LastResultFrame(LResponseStream.DataString);
+  finally
+    LResponseStream.Free;
+  end;
+{$ENDIF}
 end;
 
 { "Analyze with AI" in a thread }

@@ -362,6 +362,31 @@ function RpLocalDatabaseDialect(ADatabase: TRpDatabaseInfoItem): string;
 function RpReadLocalSchemaCatalog(ADatabase: TRpDatabaseInfoItem;
   AParams: TRpParamList; out ADialect: string;
   AColumnsOf: TStrings = nil; AProgress: TObject = nil): TJSONArray;
+
+{ The reads of "Generate with AI" (docs/generar-esquema-con-ia-plan.md
+  2.2): the generator of the cloud asks a direct connection for its tables,
+  the columns and relations of some of them and some rows, and this computer
+  reads them with its catalog reader (rpdesignerclientsql answers) }
+
+// The names of every table of the catalog of the connection (connects it),
+// sorted, and the cloud's dialect (Firebird5, PostgreSQL...; Default when
+// unknown)
+procedure RpReadLocalSchemaTableNames(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; ANames: TStrings; out ADialect: string);
+// Every foreign key in which a table of ATables (as the catalog spells
+// them) is the source OR the target, as the cloud's DiscoveredForeignKey:
+// [{ "constraintName", "sourceTable", "sourceColumns", "targetTable",
+// "targetColumns" }] (the caller frees it). AIncludesIncoming is False when
+// the catalog only tells the ones going out (a Reportman AI Agent
+// connection) or none (a driver without catalog queries)
+function RpReadLocalSchemaRelations(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; ATables: TStrings;
+  out AIncludesIncoming: Boolean): TJSONArray;
+// The Hub database and the API key of a Reportman AI Agent connection
+// (HubDatabaseId, ApiKey of its parameters; 0 and '' when it has none)
+procedure RpLocalHubDatabase(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; out AHubDatabaseId: Int64; out AApiKey: string);
+
 { The reads of the database of the local schema screens (spec P of
   18-10-2026): off the main thread, with their progress and a cancel that
   is always possible }
@@ -2948,11 +2973,20 @@ type
     procedure ReadColumns(ANames: TStrings);
     function ColumnsToRead(AColumnsOf: TStrings): TStringList;
     procedure Connect(out ADialect: string);
+    // The relations of the tables of FIn as source OR target (one row per
+    // pair of columns: constraint, source table, source column, target
+    // table, target column); '' when the family has no such query
+    function RelationsSql: string;
+    procedure ReadSQLiteRelations(AWanted: TStrings);
+    function RelationsToJson: TJSONArray;
   public
     constructor Create(ADatabase: TRpDatabaseInfoItem; AParams: TRpParamList);
     destructor Destroy; override;
     function Read(out ADialect: string; AColumnsOf: TStrings): TJSONArray;
     function ReadColumnsOf(ATables: TStrings): TJSONArray;
+    procedure ReadTableNames(ANames: TStrings; out ADialect: string);
+    function ReadRelationsOf(ATables: TStrings;
+      out AIncludesIncoming: Boolean): TJSONArray;
   end;
 
 constructor TRpCatalogReader.Create(ADatabase: TRpDatabaseInfoItem;
@@ -4135,6 +4169,323 @@ begin
     Result := FCatalog.ToJsonArray(True);
   finally
     LNames.Free;
+  end;
+end;
+
+procedure TRpCatalogReader.ReadTableNames(ANames: TStrings;
+  out ADialect: string);
+var
+  I: Integer;
+begin
+  ANames.Clear;
+  Connect(ADialect);
+  try
+    ReadTables;
+  except
+    // As Read: the tables the driver lists when the catalog can not be read
+    if (FFamily in [rcfGeneric, rcfHub]) or (ExceptObject is EAbort) then
+      raise;
+    FCatalog.List.Clear;
+    FFamily := rcfGeneric;
+    ReadTables;
+  end;
+  // The names only: the catalog owns its tables
+  for I := 0 to FCatalog.List.Count - 1 do
+    ANames.Add(TRpCatTable(FCatalog.List.Objects[I]).Name);
+end;
+
+function TRpCatalogReader.RelationsSql: string;
+begin
+  case FFamily of
+    rcfFirebird:
+      Result := 'SELECT TRIM(RC.RDB$CONSTRAINT_NAME), TRIM(RC.RDB$RELATION_NAME), ' +
+        'TRIM(S.RDB$FIELD_NAME), TRIM(RC2.RDB$RELATION_NAME), TRIM(S2.RDB$FIELD_NAME) ' +
+        'FROM RDB$RELATION_CONSTRAINTS RC ' +
+        'JOIN RDB$REF_CONSTRAINTS REF ON REF.RDB$CONSTRAINT_NAME = RC.RDB$CONSTRAINT_NAME ' +
+        'JOIN RDB$RELATION_CONSTRAINTS RC2 ON RC2.RDB$CONSTRAINT_NAME = REF.RDB$CONST_NAME_UQ ' +
+        'JOIN RDB$INDEX_SEGMENTS S ON S.RDB$INDEX_NAME = RC.RDB$INDEX_NAME ' +
+        'JOIN RDB$INDEX_SEGMENTS S2 ON S2.RDB$INDEX_NAME = RC2.RDB$INDEX_NAME ' +
+        'AND S2.RDB$FIELD_POSITION = S.RDB$FIELD_POSITION ' +
+        'WHERE RC.RDB$CONSTRAINT_TYPE = ''FOREIGN KEY'' ' +
+        'AND (TRIM(RC.RDB$RELATION_NAME)' + FIn +
+        ' OR TRIM(RC2.RDB$RELATION_NAME)' + FIn + ') ' +
+        'ORDER BY RC.RDB$RELATION_NAME, RC.RDB$CONSTRAINT_NAME, S.RDB$FIELD_POSITION';
+    // MySQL names the unique constraint of every primary key PRIMARY: the
+    // target is in the key usage itself
+    rcfMySQL:
+      Result := 'SELECT kcu.CONSTRAINT_NAME, kcu.TABLE_NAME, kcu.COLUMN_NAME, ' +
+        'kcu.REFERENCED_TABLE_NAME, kcu.REFERENCED_COLUMN_NAME ' +
+        'FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ' +
+        'WHERE kcu.TABLE_SCHEMA = DATABASE() AND kcu.REFERENCED_TABLE_NAME IS NOT NULL ' +
+        'AND (kcu.TABLE_NAME' + FIn + ' OR kcu.REFERENCED_TABLE_NAME' + FIn + ') ' +
+        'ORDER BY kcu.TABLE_NAME, kcu.CONSTRAINT_NAME, kcu.ORDINAL_POSITION';
+    rcfPostgreSQL, rcfSQLServer:
+      Result := 'SELECT rc.CONSTRAINT_NAME, kcu.TABLE_NAME, kcu.COLUMN_NAME, ' +
+        'kcu2.TABLE_NAME, kcu2.COLUMN_NAME ' +
+        'FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc ' +
+        'JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME ' +
+        'AND kcu.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA ' +
+        'JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu2 ON kcu2.CONSTRAINT_NAME = rc.UNIQUE_CONSTRAINT_NAME ' +
+        'AND kcu2.CONSTRAINT_SCHEMA = rc.UNIQUE_CONSTRAINT_SCHEMA ' +
+        'AND kcu2.ORDINAL_POSITION = kcu.ORDINAL_POSITION ' +
+        'WHERE (kcu.TABLE_NAME' + FIn + ' OR kcu2.TABLE_NAME' + FIn + ') ' +
+        'ORDER BY kcu.TABLE_NAME, rc.CONSTRAINT_NAME, kcu.ORDINAL_POSITION';
+    rcfOracle:
+      Result := 'SELECT C.CONSTRAINT_NAME, CC.TABLE_NAME, CC.COLUMN_NAME, ' +
+        'RC.TABLE_NAME, RCC.COLUMN_NAME FROM USER_CONSTRAINTS C ' +
+        'JOIN USER_CONS_COLUMNS CC ON CC.CONSTRAINT_NAME = C.CONSTRAINT_NAME ' +
+        'JOIN USER_CONSTRAINTS RC ON RC.CONSTRAINT_NAME = C.R_CONSTRAINT_NAME ' +
+        'JOIN USER_CONS_COLUMNS RCC ON RCC.CONSTRAINT_NAME = RC.CONSTRAINT_NAME ' +
+        'AND RCC.POSITION = CC.POSITION ' +
+        'WHERE C.CONSTRAINT_TYPE = ''R'' ' +
+        'AND (CC.TABLE_NAME' + FIn + ' OR RC.TABLE_NAME' + FIn + ') ' +
+        'ORDER BY 2, 1, CC.POSITION';
+  else
+    Result := '';
+  end;
+end;
+
+// PRAGMA foreign_key_list is per table: every table is read, and the keys
+// that leave or reach a wanted table are kept
+procedure TRpCatalogReader.ReadSQLiteRelations(AWanted: TStrings);
+var
+  I: Integer;
+  LData: TDataSet;
+  LNames: TStringList;
+  LQuoted, LTarget: string;
+begin
+  ReadSQLiteTables;
+  LNames := TStringList.Create;
+  try
+    for I := 0 to FCatalog.List.Count - 1 do
+      LNames.Add(TRpCatTable(FCatalog.List.Objects[I]).Name);
+    for I := 0 to LNames.Count - 1 do
+    begin
+      LQuoted := '''' + StringReplace(LNames[I], '''', '''''', [rfReplaceAll]) + '''';
+      try
+        // id, seq, table, from, to
+        LData := OpenSQLitePragma('foreign_key_list', LQuoted,
+          'id, seq, "table", "from", "to"', 'id, seq');
+      except
+        // A table whose keys can not be read has none
+        Continue;
+      end;
+      try
+        while not LData.Eof do
+        begin
+          LTarget := FieldText(LData, 2);
+          if (AWanted.IndexOf(LNames[I]) >= 0) or (AWanted.IndexOf(LTarget) >= 0) then
+            AddForeignKey(LNames[I], 'FK_' + LNames[I] + '_' + FieldText(LData, 0),
+              LTarget, FieldText(LData, 3), FieldText(LData, 4));
+          NextRow(LData);
+        end;
+      finally
+        LData.Free;
+      end;
+    end;
+  finally
+    LNames.Free;
+  end;
+end;
+
+// The foreign keys read, as the schema generator wants them
+// (DiscoveredForeignKey of the cloud)
+function TRpCatalogReader.RelationsToJson: TJSONArray;
+var
+  I, J, K: Integer;
+  LForeignKey: TRpCatForeignKey;
+  LItem: TJSONObject;
+  LNames: TJSONArray;
+  LTable: TRpCatTable;
+begin
+  Result := TJSONArray.Create;
+  for I := 0 to FCatalog.List.Count - 1 do
+  begin
+    LTable := TRpCatTable(FCatalog.List.Objects[I]);
+    for J := 0 to LTable.ForeignKeys.Count - 1 do
+    begin
+      LForeignKey := TRpCatForeignKey(LTable.ForeignKeys[J]);
+      LItem := TJSONObject.Create;
+      Result.AddElement(LItem);
+      LItem.AddPair('constraintName', LForeignKey.ConstraintName);
+      LItem.AddPair('sourceTable', LTable.Name);
+      LNames := TJSONArray.Create;
+      LItem.AddPair('sourceColumns', LNames);
+      for K := 0 to LForeignKey.SourceColumns.Count - 1 do
+        LNames.Add(LForeignKey.SourceColumns[K]);
+      LItem.AddPair('targetTable', LForeignKey.TargetTable);
+      LNames := TJSONArray.Create;
+      LItem.AddPair('targetColumns', LNames);
+      for K := 0 to LForeignKey.TargetColumns.Count - 1 do
+        LNames.Add(LForeignKey.TargetColumns[K]);
+    end;
+  end;
+end;
+
+function TRpCatalogReader.ReadRelationsOf(ATables: TStrings;
+  out AIncludesIncoming: Boolean): TJSONArray;
+const
+  CBatch = 200;
+var
+  I, J, K, LFirst: Integer;
+  LData: TDataSet;
+  LDialect, LKey, LSql, LSource: string;
+  LDone, LBatchKeys, LWanted: TStringList;
+  LKeys: TJSONArray;
+  LItem: TJSONObject;
+  LSourceColumns, LTargetColumns: TJSONArray;
+begin
+  AIncludesIncoming := True;
+  Connect(LDialect);
+  LWanted := TStringList.Create;
+  LDone := TStringList.Create;
+  LBatchKeys := TStringList.Create;
+  try
+    LWanted.CaseSensitive := False;
+    LWanted.Sorted := True;
+    LWanted.Duplicates := dupIgnore;
+    for I := 0 to ATables.Count - 1 do
+      if Trim(ATables[I]) <> '' then
+        LWanted.Add(Trim(ATables[I]));
+    LDone.CaseSensitive := False;
+    LDone.Sorted := True;
+    LDone.Duplicates := dupIgnore;
+    case FFamily of
+      rcfSQLite:
+        ReadSQLiteRelations(LWanted);
+      rcfHub:
+        begin
+          // The Agent tells the keys going out of a table only
+          AIncludesIncoming := False;
+          for I := 0 to LWanted.Count - 1 do
+          begin
+            HubRequestStarts;
+            LKeys := HubConnection.ReadHubForeignKeys(LWanted[I]);
+            try
+              HubRequestEnds;
+              LSource := FCatalog.Add(LWanted[I]).Name;
+              for J := 0 to LKeys.Count - 1 do
+              begin
+                if not (LKeys.Items[J] is TJSONObject) then
+                  Continue;
+                LItem := TJSONObject(LKeys.Items[J]);
+                if not ((LItem.Values['sourceColumns'] is TJSONArray) and
+                  (LItem.Values['targetColumns'] is TJSONArray)) then
+                  Continue;
+                LSourceColumns := TJSONArray(LItem.Values['sourceColumns']);
+                LTargetColumns := TJSONArray(LItem.Values['targetColumns']);
+                for K := 0 to LSourceColumns.Count - 1 do
+                  if K < LTargetColumns.Count then
+                    AddForeignKey(LSource, HubText(LItem, 'constraintName'),
+                      HubText(LItem, 'targetTable'),
+                      Trim(LSourceColumns.Items[K].Value),
+                      Trim(LTargetColumns.Items[K].Value));
+              end;
+            finally
+              LKeys.Free;
+            end;
+          end;
+        end;
+      rcfFirebird, rcfPostgreSQL, rcfMySQL, rcfSQLServer, rcfOracle:
+        begin
+          // By batches of names; a key with a table in two batches is read
+          // in both and kept once
+          LFirst := 0;
+          while LFirst < LWanted.Count do
+          begin
+            FIn := '';
+            for I := LFirst to LWanted.Count - 1 do
+            begin
+              if I >= LFirst + CBatch then
+                Break;
+              if FIn <> '' then
+                FIn := FIn + ', ';
+              FIn := FIn + QuotedStr(LWanted[I]);
+            end;
+            FIn := ' IN (' + FIn + ')';
+            Inc(LFirst, CBatch);
+            LSql := RelationsSql;
+            LBatchKeys.Clear;
+            LData := Open(LSql);
+            try
+              while not LData.Eof do
+              begin
+                LKey := FieldText(LData, 1) + '|' + FieldText(LData, 0);
+                if LDone.IndexOf(LKey) < 0 then
+                begin
+                  FCatalog.Add(FieldText(LData, 1));
+                  AddForeignKey(FieldText(LData, 1), FieldText(LData, 0),
+                    FieldText(LData, 3), FieldText(LData, 2), FieldText(LData, 4));
+                  LBatchKeys.Add(LKey);
+                end;
+                NextRow(LData);
+              end;
+            finally
+              LData.Free;
+            end;
+            LDone.AddStrings(LBatchKeys);
+          end;
+          FIn := '';
+        end;
+    else
+      // A catalog this reader does not know: no relations
+      AIncludesIncoming := False;
+    end;
+    Result := RelationsToJson;
+  finally
+    LBatchKeys.Free;
+    LDone.Free;
+    LWanted.Free;
+  end;
+end;
+
+procedure RpReadLocalSchemaTableNames(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; ANames: TStrings; out ADialect: string);
+var
+  LReader: TRpCatalogReader;
+begin
+  if ADatabase = nil then
+    raise Exception.Create('No connection');
+  LReader := TRpCatalogReader.Create(ADatabase, AParams);
+  try
+    LReader.ReadTableNames(ANames, ADialect);
+  finally
+    LReader.Free;
+  end;
+end;
+
+function RpReadLocalSchemaRelations(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; ATables: TStrings;
+  out AIncludesIncoming: Boolean): TJSONArray;
+var
+  LReader: TRpCatalogReader;
+begin
+  if ADatabase = nil then
+    raise Exception.Create('No connection');
+  LReader := TRpCatalogReader.Create(ADatabase, AParams);
+  try
+    Result := LReader.ReadRelationsOf(ATables, AIncludesIncoming);
+  finally
+    LReader.Free;
+  end;
+end;
+
+procedure RpLocalHubDatabase(ADatabase: TRpDatabaseInfoItem;
+  AParams: TRpParamList; out AHubDatabaseId: Int64; out AApiKey: string);
+var
+  LParams: TStringList;
+begin
+  AHubDatabaseId := 0;
+  AApiKey := '';
+  if ADatabase = nil then
+    Exit;
+  LParams := TStringList.Create;
+  try
+    GetDatabaseParams(ADatabase, LParams, AParams);
+    AApiKey := Trim(LParams.Values['ApiKey']);
+    AHubDatabaseId := StrToInt64Def(Trim(LParams.Values['HubDatabaseId']), 0);
+  finally
+    LParams.Free;
   end;
 end;
 
