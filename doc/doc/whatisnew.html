@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Release notes and version history - Report Manager Docs</title>
-<meta name="description" content="Version 4.0.23 release notes: the example database of Reportman AI without signing in, local schemas for Agent connections and a ready request for the copilot in every sample, plus version history.">
+<meta name="description" content="Version 4.0.24 release notes: a number plus a text joins both texts in an expression, and the ECC Level of barcodes, plus version history.">
 <link rel="canonical" href="https://reportman.es/doc/whatisnew.html">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -229,6 +229,21 @@
 <h1>Release notes and version history</h1>
 <h2>Release notes</h2>
     <h3><b>What is new</b></h3>
+
+    <p>Version 4.0.24 (November 2026)</p>
+    <ul>
+      <li><b>A number plus a text in an expression</b>: <code>+</code> joins both texts
+        when one side is a number and the other a text that is not a number, the number
+        written as <code>Str</code> writes it: <code>POSTEN+UPOS</code> gives
+        <code>10a</code>, the same as <code>Str(POSTEN)+UPOS</code>. A text that is a
+        number is still added (<code>10+'7'</code> is 17). Version 4.0 stopped such an
+        expression with a conversion error, and the versions before it printed only the
+        number, or gave a syntax error when anything followed the sum. The same in the
+        Delphi, Lazarus and .NET engines.</li>
+      <li><b>Barcodes</b>: the property is now called <i>ECC Level</i>, since it sets
+        the error correction of the QR codes too, and the barcode reference explains
+        what each value does for PDF417 and QR.</li>
+    </ul>
 
     <p>Version 4.0.23 (November 2026)</p>
     <ul>
