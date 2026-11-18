@@ -1854,15 +1854,25 @@ procedure TrpPDFFile.SetXref;
 var i:Integer;
 var guid: TGuid;
 var guidstring: string;
+var entryEnd: string;
 begin
  FObjectCount:=FObjectCount+1;
  FTempStream.Clear;
  SWriteLine(FTempStream,'xref');
  SWriteLine(FTempStream,'0 '+IntToStr(FObjectCount));
- SWriteLine(FTempStream,'0000000000 65535 f');
+ // Every entry is exactly 20 bytes: its end of line is two characters (ISO 32000-1, 7.5.4).
+ // With the lone line feed of PDF/A (EndOfLine) the entries were 19 bytes, and a reader
+ // that seeks entry n at 20*n bytes reads the wrong offsets; a space goes before it.
+ // PDF 1.4 already ends them with CR LF and is written as before.
+ if (FPDFConformance = TPDFConformanceType.PDF_1_4) then
+  entryEnd:=EndOfLine
+ else
+  entryEnd:=' '+EndOfLine;
+ WriteStringToStream(AnsiString('0000000000 65535 f'+entryEnd),FTempStream);
 
  for i:=0 to FObjectCount-2 do
-  SWriteLine(FTempStream,GetOffsetNumber(trim(FObjectOffsets.Strings[i]))+' 00000 n');
+  WriteStringToStream(AnsiString(GetOffsetNumber(trim(FObjectOffsets.Strings[i]))+' 00000 n'+
+   entryEnd),FTempStream);
 
  SWriteLine(FTempStream,'trailer');
  SWriteLine(FTempStream,'<< /Size '+IntToStr(FObjectCount));
