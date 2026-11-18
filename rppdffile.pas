@@ -351,6 +351,8 @@ implementation
 function SfntDirectory(m:TMemoryStream;ADirectoryOffset,AFontIndex:integer):Int64; forward;
 function SfntIsCFF(m:TMemoryStream;ABase:Int64):boolean; forward;
 function CFFGlyphsAreCIDs(m:TMemoryStream;ABase:Int64):boolean; forward;
+function CFFGlyphsAreCIDsKeyed(m:TMemoryStream;ABase:Int64;out ACIDKeyed:boolean):boolean; forward;
+function SfntCFFTable(m:TMemoryStream;ABase:Int64):TMemoryStream; forward;
 // Whether a text is laid out glyph by glyph (below, with NeedsUnicodeFont)
 function NeedsComplexShaping(const Text:WideString):Boolean; forward;
 
@@ -4473,6 +4475,9 @@ var
  propios:TList<Integer>;
  cidmapIndex:integer;
  cidbytes:array[0..1] of Byte;
+ cffBase:Int64;
+ cidKeyed,cffBare:boolean;
+ cffTable:TMemoryStream;
 
  // Whether the loaded character AIndex declares its nominal glyph. Not when the shaped text
  // already gave that glyph another text (ShapedGlyphCode): the text drawn wins (12-10-2026).
@@ -4521,6 +4526,16 @@ begin
    FTempStream.Clear;
    SWriteLine(FTempStream,IntToStr(FObjectCount)+' 0 obj');
     adata.FontProgramIsSubset:=false;
+    // A CID-keyed CFF whose CIDs are its glyph numbers: its subset may renumber the
+    // glyphs (TRpTTFontData.CFFKeepsCIDs)
+    adata.CFFKeepsCIDs:=false;
+    if ((not adata.Type1) and Assigned(adata.FontData) and Assigned(adata.FontData.FontData)) then
+    begin
+     cffBase:=SfntDirectory(adata.FontData.FontData,adata.FontData.DirectoryOffset,
+      adata.FontIndex and $FFFF);
+     adata.CFFKeepsCIDs:=SfntIsCFF(adata.FontData.FontData,cffBase) and
+      CFFGlyphsAreCIDsKeyed(adata.FontData.FontData,cffBase,cidKeyed) and cidKeyed;
+    end;
     FontStream:=Canvas.InfoProvider.GetFontStream(adata);
     //FontStream:=Canvas.InfoProvider.GetFullFontStream(adata);
    // A subset carries a tag of six capital letters and + before its name (ISO
@@ -4534,10 +4549,33 @@ begin
    // and a PDF/A validator rejects it. It goes as /FontFile3 /OpenType with a CIDFontType0
    // when its glyph numbers are its CIDs (CFFGlyphsAreCIDs); a CID-keyed font with another
    // charset, or a whole collection, stays as it was.
-   adata.CFFOpenType:=(not adata.Type1) and Assigned(FontStream) and
-    SfntIsCFF(FontStream,0) and CFFGlyphsAreCIDs(FontStream,0);
+   // A SUBSET THAT RENUMBERED THE GLYPHS of a CID-keyed font whose CIDs are its glyph
+   // numbers (CFFKeepsCIDs, 18-11-2026) keeps the CID of every glyph in its charset. It
+   // goes as its CFF alone, /FontFile3 /CIDFontType0C: a CIDFontType0 selects the glyph of
+   // a CID through that charset (ISO 32000-1, 9.7.4.2), and FreeType, so Poppler, only
+   // applies it to a bare CFF; inside an OpenType font it takes the CID as the glyph number.
+   cidKeyed:=false;
+   cffBare:=false;
+   adata.CFFOpenType:=false;
+   if ((not adata.Type1) and Assigned(FontStream) and SfntIsCFF(FontStream,0)) then
+   begin
+    adata.CFFOpenType:=CFFGlyphsAreCIDsKeyed(FontStream,0,cidKeyed);
+    if ((not adata.CFFOpenType) and adata.CFFKeepsCIDs and cidKeyed) then
+    begin
+     cffTable:=SfntCFFTable(FontStream,0);
+     if Assigned(cffTable) then
+     begin
+      FontStream.Free;
+      FontStream:=cffTable;
+      cffBare:=true;
+      adata.CFFOpenType:=true;
+     end;
+    end;
+   end;
    // A font file stream has no /Type (ISO 32000-1, 9.9)
-   if adata.CFFOpenType then
+   if cffBare then
+    SWriteLine(FTempStream,'<< /Subtype /CIDFontType0C')
+   else if adata.CFFOpenType then
     SWriteLine(FTempStream,'<< /Subtype /OpenType')
    else
     SWriteLine(FTempStream,'<< ');
@@ -5526,12 +5564,52 @@ begin
   (p[ABase+3]=Ord('O'));
 end;
 
+// The 'CFF ' table of the font at ABase, alone; nil when it has none or cannot be read
+function SfntCFFTable(m:TMemoryStream;ABase:Int64):TMemoryStream;
+var
+ p:PByte;
+ tables,i:integer;
+ rec,offset,len:Int64;
+begin
+ Result:=nil;
+ p:=m.Memory;
+ if ((ABase<0) or (ABase+12>m.Size)) then
+  exit;
+ tables:=(p[ABase+4] shl 8) or p[ABase+5];
+ for i:=0 to tables-1 do
+ begin
+  rec:=ABase+12+Int64(i)*16;
+  if (rec+16>m.Size) then
+   exit;
+  if ((p[rec]=Ord('C')) and (p[rec+1]=Ord('F')) and (p[rec+2]=Ord('F')) and (p[rec+3]=Ord(' '))) then
+  begin
+   offset:=(Int64(p[rec+8]) shl 24) or (p[rec+9] shl 16) or (p[rec+10] shl 8) or p[rec+11];
+   len:=(Int64(p[rec+12]) shl 24) or (p[rec+13] shl 16) or (p[rec+14] shl 8) or p[rec+15];
+   if ((len<=0) or (offset+len>m.Size)) then
+    exit;
+   Result:=TMemoryStream.Create;
+   Result.SetSize(len);
+   Move(p[offset],Result.Memory^,len);
+   Result.Position:=0;
+   exit;
+  end;
+ end;
+end;
+
 // Whether the glyph numbers of the CFF font at ABase are its CIDs, as a CIDFontType0 reads
 // them (12-10-2026): a CFF that is not CID-keyed takes the CID as the glyph number, a
 // CID-keyed one maps the CID through its charset. The content stream writes glyph numbers,
 // so a CID-keyed font can only be declared as CFF when its charset is the identity (Adobe
 // Identity: Noto Sans CJK, Source Han); false when it is not or cannot be read.
 function CFFGlyphsAreCIDs(m:TMemoryStream;ABase:Int64):boolean;
+var
+ cidKeyed:boolean;
+begin
+ Result:=CFFGlyphsAreCIDsKeyed(m,ABase,cidKeyed);
+end;
+
+// The same, and whether the font is CID-keyed (ROS in its Top DICT)
+function CFFGlyphsAreCIDsKeyed(m:TMemoryStream;ABase:Int64;out ACIDKeyed:boolean):boolean;
 var
  p:PByte;
  size,cff,cffEnd,pos,dictStart,dictEnd,charset,charStrings:Int64;
@@ -5591,6 +5669,7 @@ var
  dummy,nextPos:Int64;
 begin
  Result:=false;
+ ACIDKeyed:=false;
  size:=m.Size;
  p:=m.Memory;
  try
@@ -5673,6 +5752,7 @@ begin
    else
     Inc(pos);
   end;
+  ACIDKeyed:=cidKeyed;
   if (not cidKeyed) then
   begin
    Result:=true;

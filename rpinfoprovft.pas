@@ -3114,7 +3114,14 @@ begin
      end
      else
      begin
-       hb_subset_input_set_flags(subsetInput, HB_SUBSET_FLAGS_RETAIN_GIDS);
+       // The glyph numbers are kept: the content stream draws the ones of the whole font.
+       // Not in a CID-keyed CFF whose CIDs are its glyph numbers (CFFKeepsCIDs): its subset
+       // keeps every CID in the charset, a CIDFontType0 draws by CID, and keeping the
+       // numbers took the whole CharStrings INDEX and hmtx (Noto Sans CJK JP with 34 glyphs:
+       // 155 KB compressed instead of 7 KB)
+       if not data.CFFKeepsCIDs then
+         hb_subset_input_set_flags(subsetInput, HB_SUBSET_FLAGS_RETAIN_GIDS);
+       RpHBDropTablesForPDF(subsetInput, face, not data.isunicode);
 
        // --- Obtener set de glifos y añadirlos ---
        glyphsSet := hb_subset_input_glyph_set(subsetInput);

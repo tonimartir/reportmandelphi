@@ -854,6 +854,7 @@ begin
         hb_set_add(glyphs, info.Glyph);
       for i := 0 to High(AFace.AxisTags) do
         pin(input, hbface, AFace.AxisTags[i], AFace.AxisValues[i]);
+      RpHBDropTablesForPDF(input, hbface, not AData.isunicode);
       newFace := hb_subset_or_fail(hbface, input);
       // THBFace wraps the pointer hb_subset_or_fail returns (nil: it failed)
       if PPointer(@newFace)^ = nil then
