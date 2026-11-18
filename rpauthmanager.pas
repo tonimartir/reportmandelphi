@@ -267,6 +267,15 @@ type
     // and columns of the widest table (<= 0 is no limit). False while the
     // plan is not known
     function GetSchemaLimits(out AMaxTables, AMaxColumnsPerTable: Integer): Boolean;
+    // The AI of the local schema screens ("Analyze with AI" and "Generate
+    // with AI"), the scope "schemas" of docs/generar-esquema-con-ia-plan.md
+    // 2.3.1: the section [SchemaAI] of reportman_auth.ini, shared with the C#
+    // designer. Tier: Standard, Precision or LocalAgent; Mode: Fast or
+    // Reasoning; AgentAiId: the agent with LocalAgent (0 otherwise). Without
+    // the section, Precision and Fast. Written key by key: the rest of the
+    // file stays
+    procedure GetSchemaAI(out ATier, AMode: string; out AAgentAiId: Int64);
+    procedure SetSchemaAI(const ATier, AMode: string; AAgentAiId: Int64);
 
     procedure RegisterAuthListener(AListener: TRpAuthEvent);
     procedure UnregisterAuthListener(AListener: TRpAuthEvent);
@@ -2342,6 +2351,74 @@ begin
   // UI code triggers status refresh explicitly after the dialog is visible.
   if GetIsLoggedIn then
     Log('LoadConfig: deferred CheckStatus until explicit background refresh.');
+end;
+
+const
+  CSchemaAISection = 'SchemaAI';
+
+function NormalizeSchemaTier(const AValue: string): string;
+begin
+  if SameText(Trim(AValue), 'Standard') then
+    Result := 'Standard'
+  else if SameText(Trim(AValue), 'LocalAgent') then
+    Result := 'LocalAgent'
+  else
+    Result := 'Precision';
+end;
+
+function NormalizeSchemaMode(const AValue: string): string;
+begin
+  if SameText(Trim(AValue), 'Reasoning') then
+    Result := 'Reasoning'
+  else
+    Result := 'Fast';
+end;
+
+procedure TRpAuthManager.GetSchemaAI(out ATier, AMode: string;
+  out AAgentAiId: Int64);
+var
+  LIni: TIniFile;
+begin
+  FLock.Enter;
+  try
+    LIni := TIniFile.Create(GetConfigFileName);
+    try
+      ATier := NormalizeSchemaTier(LIni.ReadString(CSchemaAISection, 'Tier', 'Precision'));
+      AMode := NormalizeSchemaMode(LIni.ReadString(CSchemaAISection, 'Mode', 'Fast'));
+      AAgentAiId := StrToInt64Def(LIni.ReadString(CSchemaAISection, 'AgentAiId', '0'), 0);
+    finally
+      LIni.Free;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  if ATier <> 'LocalAgent' then
+    AAgentAiId := 0;
+end;
+
+procedure TRpAuthManager.SetSchemaAI(const ATier, AMode: string;
+  AAgentAiId: Int64);
+var
+  LIni: TIniFile;
+  LTier: string;
+begin
+  LTier := NormalizeSchemaTier(ATier);
+  if LTier <> 'LocalAgent' then
+    AAgentAiId := 0;
+  FLock.Enter;
+  try
+    LIni := TIniFile.Create(GetConfigFileName);
+    try
+      LIni.WriteString(CSchemaAISection, 'Tier', LTier);
+      LIni.WriteString(CSchemaAISection, 'Mode', NormalizeSchemaMode(AMode));
+      LIni.WriteString(CSchemaAISection, 'AgentAiId', IntToStr(AAgentAiId));
+      LIni.UpdateFile;
+    finally
+      LIni.Free;
+    end;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TRpAuthManager.ClearConfig;

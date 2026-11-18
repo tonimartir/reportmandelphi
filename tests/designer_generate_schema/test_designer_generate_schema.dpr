@@ -8,6 +8,9 @@ program test_designer_generate_schema;
 {   against a Reportman AI API and a database of this   }
 {   computer (docs/generar-esquema-con-ia-plan.md G5).  }
 {                                                       }
+{   0. The configuration "schemas" ([SchemaAI] of       }
+{      reportman_auth.ini), only when LOCALAPPDATA is   }
+{      a folder below the one of the connections file.  }
 {   1. The four requests of the generator, answered     }
 {      from the catalog of the connection: the tables,  }
 {      the columns (primary key, .NET type), the        }
@@ -54,13 +57,13 @@ uses
 {$IFDEF UNIX}
   cthreads,
 {$ENDIF}
-  LazUTF8, SysUtils, Classes, DateUtils, rpjsonfpc, rphttpclientfpc,
+  LazUTF8, SysUtils, Classes, DateUtils, IniFiles, rpjsonfpc, rphttpclientfpc,
 {$ELSE}
-  System.SysUtils, System.Classes, System.DateUtils, System.JSON,
-  Winapi.ActiveX,
+  System.SysUtils, System.Classes, System.DateUtils, System.IniFiles,
+  System.JSON, Winapi.ActiveX,
 {$ENDIF}
   rptypes, rpdatainfo, rpreport, rpdatahttp, rplocalschemas,
-  rpdesignerclientsql;
+  rpdesignerclientsql, rpauthmanager;
 
 type
   TRunner = class
@@ -364,6 +367,59 @@ begin
   end;
 end;
 
+// 0. The configuration "schemas" ([SchemaAI] of reportman_auth.ini). Only
+// with LOCALAPPDATA in the folder of the test: the file of the user is never
+// touched
+procedure TestSettings(const AFolder: string);
+var
+  LFileName, LMode, LTier: string;
+  LAgentAiId: Int64;
+  LIni: TIniFile;
+begin
+  Log('--- 0. The configuration "schemas" ([SchemaAI] of reportman_auth.ini)');
+  if not SameText(Copy(IncludeTrailingPathDelimiter(ExpandFileName(
+    GetEnvironmentVariable('LOCALAPPDATA'))), 1, Length(AFolder)), AFolder) then
+  begin
+    Log('  skipped: LOCALAPPDATA is not a folder of the test');
+    Exit;
+  end;
+  LFileName := IncludeTrailingPathDelimiter(GetEnvironmentVariable('LOCALAPPDATA')) +
+    'Reportman' + PathDelim + 'reportman_auth.ini';
+  ForceDirectories(ExtractFilePath(LFileName));
+  // A file of a session, without the section
+  LIni := TIniFile.Create(LFileName);
+  try
+    LIni.EraseSection('SchemaAI');
+    LIni.WriteString('Preferences', 'AILanguage', 'Spanish');
+    LIni.WriteString('OtherProgram', 'Key', 'kept');
+  finally
+    LIni.Free;
+  end;
+  TRpAuthManager.Instance.GetSchemaAI(LTier, LMode, LAgentAiId);
+  Log('  without the section: ' + LTier + '/' + LMode + '/' + IntToStr(LAgentAiId));
+  Check((LTier = 'Precision') and (LMode = 'Fast') and (LAgentAiId = 0),
+    'without the section: Precision and Fast');
+  TRpAuthManager.Instance.SetSchemaAI('Standard', 'Reasoning', 42);
+  TRpAuthManager.Instance.GetSchemaAI(LTier, LMode, LAgentAiId);
+  Check((LTier = 'Standard') and (LMode = 'Reasoning') and (LAgentAiId = 0),
+    'Standard and Reasoning are kept (no agent without LocalAgent)');
+  TRpAuthManager.Instance.SetSchemaAI('LocalAgent', 'Fast', 42);
+  TRpAuthManager.Instance.GetSchemaAI(LTier, LMode, LAgentAiId);
+  Check((LTier = 'LocalAgent') and (LMode = 'Fast') and (LAgentAiId = 42),
+    'the AI of an Agent is kept with its id');
+  LIni := TIniFile.Create(LFileName);
+  try
+    Log('  [SchemaAI] Tier=' + LIni.ReadString('SchemaAI', 'Tier', '') + ' Mode=' +
+      LIni.ReadString('SchemaAI', 'Mode', '') + ' AgentAiId=' +
+      LIni.ReadString('SchemaAI', 'AgentAiId', ''));
+    Check(LIni.ReadString('OtherProgram', 'Key', '') = 'kept', 'the rest of the file stays');
+    Check(LIni.ReadString('SchemaAI', 'Tier', '') = 'LocalAgent', 'the keys of the C# designer: Tier, Mode, AgentAiId');
+  finally
+    LIni.Free;
+  end;
+  TRpAuthManager.Instance.SetSchemaAI('Precision', 'Fast', 0);
+end;
+
 // 2 and 3. The generation and the subschema
 procedure TestGenerate(AReport: TRpReport; const AAlias, AToken,
   AInstallId: string; AExample: Boolean);
@@ -520,6 +576,7 @@ begin
       end;
 {$ENDIF}
       Log('API: ' + HUB_API_URL);
+      TestSettings(ExtractFilePath(DBXConnectionsFileOverride));
       GReport := NewReport(GAlias);
       TestRequests(GReport, GAlias, GExample, GDialect, GNames);
       GReport.DatabaseInfo.ItemByName(GAlias).DisConnect;
