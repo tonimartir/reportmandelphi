@@ -389,6 +389,20 @@ El JSON publicado es el que genera el script: su `CommunityDescription` por
 defecto ya es la que escribió Toni para el primer envío (con la IA y los
 ejemplos).
 
+### 4.0.24 (18-11-2026, commit cf417dd2)
+
+Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.23 quedan en la
+VM, en `~/webs/opm-anteriores/4.0.23`. Novedades para quien lo instala: en una
+expresión, un número más un texto que no es un número junta los dos textos
+(`POSTEN+UPOS` da `10a`, como `Str(POSTEN)+UPOS`; un texto que es un número se
+sigue sumando), y la propiedad de los códigos de barras se llama ECC Level. Sin
+ficheros nuevos: zip de 200 ficheros, 5.755.622 bytes, MD5
+`ae84cc4e2e2d5d387a7df4169d8e27e9`.
+
+Validado en Linux con la imagen `reportman-linux-builder` (`--ws=gtk2` y
+`--ws=qt6`, los tres paquetes desde el zip). macOS y Windows no se validaron
+con el zip.
+
 ### 4.0.23 (08-11-2026, commit b336ffd6)
 
 Publicado en `https://reportman.es/opm/`; los ficheros de la 4.0.22 quedan en la
