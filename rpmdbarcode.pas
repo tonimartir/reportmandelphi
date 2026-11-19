@@ -839,11 +839,7 @@ const tabelle_128: array[0..102] of TCode128 = (
 	( a:')'; b:')'; c:'09'; data:'221213'; ),
 	( a:'*'; b:'*'; c:'10'; data:'221312'; ),
 	( a:'+'; b:'+'; c:'11'; data:'231212'; ),
-{$IFDEF FPC}
-	( a:#180; b:#180; c:'12'; data:'112232'; ),
-{$ELSE}
-	( a:'´'; b:'´'; c:'12'; data:'112232'; ),
-{$ENDIF}
+	( a:','; b:','; c:'12'; data:'112232'; ),
 	( a:'-'; b:'-'; c:'13'; data:'122132'; ),
 	( a:'.'; b:'.'; c:'14'; data:'122231'; ),
 	( a:'/'; b:'/'; c:'15'; data:'113222'; ),
@@ -948,214 +944,275 @@ Stop   = '2331112';
 
 
 
-// find Code 128 Codeset A or B
-function Find_Code128AB(c:AnsiChar):integer;
-var
-	i:integer;
-	v:Ansichar;
-begin
-	for i:=0 to High(tabelle_128) do
-	begin
-		if FTyp = bcCode128A then
-			v := tabelle_128[i].a
-		else
-			v := tabelle_128[i].b;
-		if c = v then
-		begin
-			result := i;
-			exit;
-		end;
-	end;
-	result := -1;
-end;
+// Code 128 as symbol values: the start code, the data, the check value and
+// then the stop pattern.
+// - The text comes from CurrentTextW, so the FNC1 mark (the inverted question
+//   mark, U+00BF) is one character on every platform: converting it to
+//   AnsiString on Linux (UTF-8) made two bytes of it and broke GS1-128.
+// - Code128A and Code128B write the whole text in that code set (a character
+//   the set does not have is written as a space).
+// - Code128C writes the digits in pairs; a character that does not make a pair
+//   goes in code set B and the symbol switches back to C after it.
+// - Code128 chooses the code sets that give the shortest symbol, switching
+//   between A, B and C as often as it pays off (GS1-128 data such as
+//   (00)...(10)L2511 needs C and B in the same symbol).
+const
+ C128_FNC1 = -1;
+ C128_INFINITE = MaxInt div 4;
+ C128_SETA = 0;
+ C128_SETB = 1;
+ C128_SETC = 2;
 
-// find Code 128 Codeset A or B
-function Find_Code128C(c: AnsiString):integer;
 var
- i:integer;
- v: AnsiString;
-begin
- for i:=0 to High(tabelle_128) do
- begin
-  v:= tabelle_128[i].c;
-  if c = v then
-  begin
-   result := i;
-   exit;
-  end;
- end;
- result := -1;
-end;
+ W: WideString;
+ codes: array of integer;
+ n: integer;
+ values: array of integer;
+ nvalues: integer;
+ cost, choice: array of array [0..2] of integer;
+ i, c, best, cand, checksum, startset: integer;
 
-function FindNewType(FText: AnsiString;i:integer):TRpBarcodeType;
-var
- acopy: AnsiString;
- isalpha:boolean;
- index:integer;
+// The value of a character in code set A or B, or -1 if the set does not have it
+function ValueIn(aset, achar: integer): integer;
 begin
- if FText[i]=Chr($BF) then
-  inc(i);
- acopy:=Copy(ftext,i,Length(FText));
- index:=Pos(Chr($BF),String(acopy));
- if index>0 then
-  acopy:=copy(acopy,1,index-1);
- if (length(acopy) mod 2)<>0 then
+ Result:=-1;
+ if achar=C128_FNC1 then
  begin
-  Result:=bcCode128B;
+  Result:=102;
   exit;
  end;
- isalpha:=false;
- index:=1;
- While index<=Length(acopy) do
- begin
-  if Not (acopy[index] in ['0'..'9']) then
-  begin
-   isalpha:=True;
-   break;
-  end;
-  inc(index);
+ case aset of
+  C128_SETA:
+   if (achar>=0) and (achar<32) then
+    Result:=achar+64
+   else
+   if (achar>=32) and (achar<=95) then
+    Result:=achar-32;
+  C128_SETB:
+   if (achar>=32) and (achar<=127) then
+    Result:=achar-32;
  end;
- if isalpha then
-  Result:=bcCode128B
- else
-  Result:=bcCode128C;
 end;
 
-var i, idx,idxC: integer;
-	startcode: AnsiString;
-	checksum : integer;
-        newtyp:TRpBarcodeType;
-//        isalphanum:boolean;
-//        isean:boolean;
-//        newtext: AnsiString;
-        cadc: AnsiString;
-//        index,numint:integer;
-        FText: AnsiString;
-
+function IsDigitAt(p: integer): boolean;
 begin
- checksum:=0;
- Result:='';
- i:=1;
- FText:=CurrentText;
+ Result:=(p<n) and (codes[p]>=Ord('0')) and (codes[p]<=Ord('9'));
+end;
 
- While i<=Length(FText) do
+// Symbols needed to write codes[p..] being in aset, writing codes[p] in aset
+function CostIn(aset, p: integer): integer;
+begin
+ Result:=C128_INFINITE;
+ if codes[p]=C128_FNC1 then
+  Result:=1+cost[p+1][aset]
+ else
+ if aset=C128_SETC then
  begin
-  // Determine what type of code is
-  newTyp:=FTyp;
-  if FTyp=bcCode128 then
-  begin
-   newTyp:=FindNewType(FText,i);
-  end;
-  case newtyp of
-   bcCode128A: begin checksum := 103; startcode:= StartA; end;
-   bcCode128B: begin checksum := 104; startcode:= StartB; end;
-   bcCode128C: begin checksum := 105; startcode:= StartC; end;
-  end;
-  if i=1 then
-   result := result+Convert(startcode);    // Startcode
-//  numint:=0;
-  // Look for EAN control
-  idxC := 1;
-  if FText[i]=Chr($BF) then
-  begin
-   result:=Result+Convert('411131');
-   Inc(checksum, 102*i);
-   inc(i);
-   inc(idxC);
-   if i>Length(FText) then
-    break;
-  end;
+  if IsDigitAt(p) and IsDigitAt(p+1) then
+   Result:=1+cost[p+2][aset];
+ end
+ else
+ if ValueIn(aset,codes[p])>=0 then
+  Result:=1+cost[p+1][aset];
+end;
 
-  case newtyp of
-   bccode128A,bccode128B:
-    begin
-     While i<=Length(FText) do
-     begin
-      idx := Find_Code128AB(FText[i]);
-      if idx < 0 then
-      	idx := Find_Code128AB(' ');
-      result := result + Convert(tabelle_128[idx].data);
-      Inc(checksum, idx*(i));
-      inc(i);
-      if Length(FText)>=i then
-       if FText[i]=chr($BF) then
-       begin
-        result:=Result+Convert('411131');
-        Inc(checksum, 102*i);
-        inc(i);
-        continue;
-       end;
-     end;
-    end;
-   bccode128C:
-    begin
-     cadc:='';
-     While i<=Length(FText) do
-     begin
-      if Length(FText)>=i then
-       if FText[i]=chr($BF) then
-       begin
-        result:=Result+Convert('411131');
-        Inc(checksum, 102*idxC);
-        inc(i);
-        Inc(idxC);
-        continue;
-       end;
-      cadc:=cadc+FText[i];
-      if length(cadc)>1 then
-      begin
-       idx := Find_Code128C(cadc);
-       if idx < 0 then
-	      idx := Find_Code128C('00');
-// Fix by Chris Gradussen
-// first pair of 2 digits multiply by 1 instead of 2
-// second pair of 2 digits multiply by 2 instead of 4...
-//       Inc(checksum, (idx*i)); Original line
-//       Inc(checksum,(idx*(i div 2)));
-       Inc(checksum,(idx*(idxC)));
-       Inc(idxC);
-       result := result + Convert(tabelle_128[idx].data);
-       cadc:='';
-      end;
-      inc(i);
+procedure AddValue(avalue: integer);
+begin
+ if nvalues>=Length(values) then
+  SetLength(values,nvalues*2+16);
+ values[nvalues]:=avalue;
+ inc(nvalues);
+end;
 
-     end;
-    end;
+// Writes codes[p] (the digit pair at p in code set C), returns the next position
+function WriteAt(aset, p: integer): integer;
+begin
+ if codes[p]=C128_FNC1 then
+ begin
+  AddValue(102);
+  Result:=p+1;
+ end
+ else
+ if aset=C128_SETC then
+ begin
+  AddValue((codes[p]-Ord('0'))*10+(codes[p+1]-Ord('0')));
+  Result:=p+2;
+ end
+ else
+ begin
+  AddValue(ValueIn(aset,codes[p]));
+  Result:=p+1;
+ end;
+end;
+
+procedure SwitchTo(aset: integer);
+begin
+ case aset of
+  C128_SETA: AddValue(101);
+  C128_SETB: AddValue(100);
+ else
+  AddValue(99);
+ end;
+end;
+
+procedure EncodeFixed(aset: integer);
+var
+ p, current: integer;
+begin
+ current:=aset;
+ p:=0;
+ while p<n do
+ begin
+  if codes[p]=C128_FNC1 then
+   p:=WriteAt(current,p)
+  else
+  if aset<>C128_SETC then
+  begin
+   if ValueIn(aset,codes[p])<0 then
+    codes[p]:=32;
+   p:=WriteAt(aset,p);
+  end
+  else
+  if IsDigitAt(p) and IsDigitAt(p+1) then
+  begin
+   if current<>C128_SETC then
+   begin
+    SwitchTo(C128_SETC);
+    current:=C128_SETC;
+   end;
+   p:=WriteAt(C128_SETC,p);
+  end
+  else
+  begin
+   if current<>C128_SETB then
+   begin
+    SwitchTo(C128_SETB);
+    current:=C128_SETB;
+   end;
+   p:=WriteAt(C128_SETB,p);
   end;
  end;
- checksum := checksum mod 103;
- result := result + Convert(tabelle_128[checksum].data);
- result := result + Convert(Stop);      // Stopcode
-        (*
- // Look if it's Code128 it can be optimized
-	case newtyp of
-		bcCode128A: begin checksum := 103; startcode:= StartA; end;
-		bcCode128B: begin checksum := 104; startcode:= StartB; end;
-		bcCode128C: begin checksum := 105; startcode:= StartC; end;
-	end;
+end;
 
-	result := Convert(startcode);    // Startcode
+procedure EncodeShortest;
+var
+ p, aset, other: integer;
+begin
+ // From the end: the fewest symbols for the rest of the text in each code set
+ SetLength(cost,n+2);
+ SetLength(choice,n+2);
+ for aset:=C128_SETA to C128_SETC do
+ begin
+  cost[n][aset]:=0;
+  cost[n+1][aset]:=0;
+ end;
+ for p:=n-1 downto 0 do
+  for aset:=C128_SETA to C128_SETC do
+  begin
+   best:=CostIn(aset,p);
+   choice[p][aset]:=aset;
+   for other:=C128_SETC downto C128_SETA do
+    if other<>aset then
+    begin
+     cand:=CostIn(other,p);
+     if cand<C128_INFINITE then
+     begin
+      inc(cand);
+      if cand<best then
+      begin
+       best:=cand;
+       choice[p][aset]:=other;
+      end;
+     end;
+    end;
+   cost[p][aset]:=best;
+  end;
+ // The start code set: the cheapest (B on a tie, then C)
+ startset:=C128_SETB;
+ best:=CostIn(C128_SETB,0);
+ cand:=CostIn(C128_SETC,0);
+ if cand<best then
+ begin
+  best:=cand;
+  startset:=C128_SETC;
+ end;
+ cand:=CostIn(C128_SETA,0);
+ if cand<best then
+  startset:=C128_SETA;
+ AddValue(103+startset);
+ aset:=startset;
+ p:=0;
+ while p<n do
+ begin
+  other:=choice[p][aset];
+  if other<>aset then
+  begin
+   SwitchTo(other);
+   aset:=other;
+  end;
+  p:=WriteAt(aset,p);
+ end;
+end;
 
-	if newTyp = bcCode128C then
-		for i:=1 to Length(FText) div 2 do
-		begin
-			// not implemented !!!
-		end
-	else
-		for i:=1 to Length(FText) do
-		begin
-			idx := Find_Code128AB(FText[i]);
-			if idx < 0 then
-				idx := Find_Code128AB(' ');
-			result := result + Convert(tabelle_128[idx].data);
-			Inc(checksum, idx*i);
-		end;
-
-	checksum := checksum mod 103;
-	result := result + Convert(tabelle_128[checksum].data);
-
- 	result := result + Convert(Stop);      // Stopcode
-*)end;
+begin
+ Result:='';
+ if Length(CurrentTextW)>0 then
+  W:=CurrentTextW
+ else
+  W:=WideString(CurrentText);
+ n:=Length(W);
+ if n=0 then
+  exit;
+ SetLength(codes,n+2);
+ for i:=1 to n do
+ begin
+  c:=Ord(W[i]);
+  if c=$BF then
+   codes[i-1]:=C128_FNC1
+  else
+  if c>127 then
+   codes[i-1]:=32
+  else
+   codes[i-1]:=c;
+ end;
+ nvalues:=0;
+ SetLength(values,n+16);
+ case Typ of
+  bcCode128A:
+   begin
+    AddValue(103);
+    EncodeFixed(C128_SETA);
+   end;
+  bcCode128B:
+   begin
+    AddValue(104);
+    EncodeFixed(C128_SETB);
+   end;
+  bcCode128C:
+   begin
+    AddValue(105);
+    EncodeFixed(C128_SETC);
+   end;
+ else
+  EncodeShortest;
+ end;
+ checksum:=values[0];
+ for i:=1 to nvalues-1 do
+  checksum:=checksum+values[i]*i;
+ checksum:=checksum mod 103;
+ for i:=0 to nvalues-1 do
+ begin
+  case values[i] of
+   103: Result:=Result+Convert(StartA);
+   104: Result:=Result+Convert(StartB);
+   105: Result:=Result+Convert(StartC);
+  else
+   Result:=Result+Convert(tabelle_128[values[i]].data);
+  end;
+ end;
+ Result:=Result+Convert(tabelle_128[checksum].data);
+ Result:=Result+Convert(Stop);
+end;
 
 
 
@@ -1519,6 +1576,13 @@ begin
 	modules[1] := Round(FModul*FRatio);
 	modules[2] := modules[1] * 3 div 2;
 	modules[3] := modules[1] * 2;
+	// Code 128 bars and spaces are 1, 2, 3 or 4 modules: the Ratio does not apply
+	if Typ in [bcCode128A,bcCode128B,bcCode128C,bcCode128] then
+	begin
+		modules[1] := FModul * 2;
+		modules[2] := FModul * 3;
+		modules[3] := FModul * 4;
+	end;
 end;
 
 

@@ -264,15 +264,25 @@
   <tr> 
     <td>bcCode128A, bcCode128B, bcCode128C, bcCode128</td>
     <td> 
-      <p>Code 128 family, A and B allow alphanumeric coding, the B allow also 
-        lowercase chars. The C allow only numeric values but generates the narrowest
-        barcode, but the total number of digits must be even. The bcCode128 generates a B and C mixed barcode, full optimized, 
-        so a code like 234534AB generates a 128C segment and a 128B segment, so 
-        the barcode is 50% smaller than using 128B.</p>
-      <p>Example of a GS1 SSCC:</p>
-      <p>Calc.Checksum set to true, Bar Modul set to 0.05, FNC1 required is ¿ character</p>
-      <p>Expression: '¿'+ '001234567890123456789'
-      </p>
+      <p>Code 128 family, A and B allow alphanumeric coding, the B allow also
+        lowercase chars. The C codes the digits in pairs and generates the narrowest
+        barcode; a character that does not make a pair (a letter, or the last digit of an odd
+        count) is coded in code set B and the barcode switches back to C. The bcCode128 chooses
+        the code sets that give the shortest barcode, switching between A, B and C as often as
+        it pays off, so a code like 234534AB generates a 128C segment and a 128B segment, and
+        the barcode is up to 50% smaller than using 128B. Bars and spaces are 1 to 4 modules
+        wide: the Ratio does not apply.</p>
+      <p>GS1-128 (SSCC and the other GS1 application identifiers):</p>
+      <p>The FNC1 character is ¿. The first one goes at the start; inside the barcode put the
+        fixed-length data first and a ¿ after each variable-length field that another one
+        follows. The Code 128 check character is always added (Calc.Checksum does not matter).</p>
+      <p>SSCC, 18 digits: '¿'+'00'+'376104250021234569'</p>
+      <p>GTIN, count and lot: '¿'+'02'+'08412345678905'+'37'+'24'+'¿'+'10'+'L2511'</p>
+      <p>GS1 logistic labels ask for a module between 0.495 and 0.940 mm, a bar height of at
+        least 31.75 mm and 10 modules of blank space on each side, which the report must leave
+        around the barcode. Bar Modul 0.06 (centimetres) gives 0.60 mm; 0.05 is stored as
+        0.494 mm, below the minimum, because the module is kept in twips. Before printing
+        hundreds of labels, scan one.</p>
     </td>
   </tr>
   <tr> 

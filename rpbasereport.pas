@@ -1842,7 +1842,9 @@ begin
   barcode.Rotation:=Round(Rotation*10);
   barcode.Checksum:=CalcChecksum;
   FValue:=Evaluator.EvaluateText(Expression);
-  barcode.CurrentText:=AnsiString(FormatVariant(displayformat,FValue,rpParamUnknown,true));
+  // The WideString keeps the FNC1 mark (U+00BF) as one character on Linux too
+  barcode.CurrentTextW:=FormatVariant(displayformat,FValue,rpParamUnknown,true);
+  barcode.CurrentText:=AnsiString(barcode.CurrentTextW);
   try
    data:=String(barcode.Calculatebarcode);
   except
