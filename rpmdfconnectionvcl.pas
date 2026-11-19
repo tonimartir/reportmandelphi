@@ -540,6 +540,8 @@ procedure TFRpConnectionVCL.BBuildClick(Sender: TObject);
 var
  dinfoitem:TRpDatabaseinfoitem;
  newstring:String;
+ ownerform:TCustomForm;
+ ownerhandle:THandle;
 {$ENDIF}
 begin
 {$IFDEF USEADO}
@@ -547,8 +549,16 @@ begin
   if LConnections.ItemIndex<0 then
    Raise Exception.Create(SRpSelectAddConnection);
  AssertCanModify('Database connection');
+ // (19-11-2026) Modal to the window of the frame: with no owner (0) it
+ // stayed enabled behind the dialog (a frame handle would only disable the
+ // frame)
+ ownerform:=GetParentForm(Self);
+ if Assigned(ownerform) then
+  ownerhandle:=ownerform.Handle
+ else
+  ownerhandle:=0;
  EConnectionString.OnChange:=nil;
- newstring:=PromptDataSource(0,dinfoitem.ADOConnectionString);
+ newstring:=PromptDataSource(ownerhandle,dinfoitem.ADOConnectionString);
  EConnectionString.Text:=EncodeADOPassword(newstring);
  dinfoitem.ADOConnectionString:=newstring;
  EConnectionString.Onchange:=EConnectionStringChange;

@@ -356,7 +356,8 @@ begin
   if LConnections.ItemIndex<0 then
    Raise Exception.Create(SRpSelectAddConnection);
  EADOConnection.OnChange:=nil;
- newstring:=PromptDataSource(0,dinfoitem.ADOConnectionString);
+ // (19-11-2026) Modal to this window (with no owner it stayed enabled behind)
+ newstring:=PromptDataSource(Handle,dinfoitem.ADOConnectionString);
  EADOConnection.Text:=EncodeADOPassword(newstring);
  dinfoitem.ADOConnectionString:=newstring;
  EADOConnection.Onchange:=EReportTableChange;

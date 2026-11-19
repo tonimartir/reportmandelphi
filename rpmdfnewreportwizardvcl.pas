@@ -1958,7 +1958,10 @@ var
 {$ENDIF}
 begin
 {$IFDEF USEADO}
-  newstring := PromptDataSource(0, FEdAdoConnString.Text);
+  // (19-11-2026) Modal to the wizard: with no owner (0) the wizard stayed
+  // enabled behind it, and its Cancel did nothing until the Data Link was
+  // closed (hidden behind the wizard)
+  newstring := PromptDataSource(Handle, FEdAdoConnString.Text);
   if Trim(newstring) <> '' then
     FEdAdoConnString.Text := newstring;
 {$ELSE}
