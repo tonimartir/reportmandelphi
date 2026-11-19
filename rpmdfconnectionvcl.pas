@@ -580,6 +580,11 @@ begin
  begin
   aitem:=TMenuItem.Create(PopAdd);
   aitem.Caption:=ComboAvailable.Items.Strings[i];
+  // The name (the caption marks the connections shared with .NET and may
+  // get an accelerator)
+  aitem.Hint:=ComboAvailable.Items.Strings[i];
+  if Assigned(ConAdmin) then
+   aitem.Caption:=ConAdmin.ConnectionDisplayName(ComboAvailable.Items.Strings[i]);
   aitem.OnClick:=MenuAddClick;
   PopAdd.Items.Add(aitem);
  end;
@@ -707,10 +712,18 @@ var
 begin
  if Not Assigned(FDatabaseInfo) then
   exit;
- conname:=UpperCase(Trim(TMenuItem(Sender).Caption));
+ conname:=UpperCase(Trim(TMenuItem(Sender).Hint));
+ if Length(conname)<1 then
+  conname:=UpperCase(Trim(StripHotkey(TMenuItem(Sender).Caption)));
  if Length(conname)<1 then
   exit;
  AssertCanModify('Database connection');
+ // A connection shared with .NET used for the first time: its Delphi
+ // parameters (they say the driver of the report)
+ if Assigned(ConAdmin) and ConAdmin.IsDotNetConnection(conname) and
+  (not ConAdmin.DotNetHasDelphiParams(conname)) then
+  if not RpEditDotNetConnection(ConAdmin,conname) then
+   exit;
  item:=Fdatabaseinfo.Add(conname);
  EnsureDatabaseInfoItemName(TRpBaseReport(report), item);
  item.Driver:=ResolveAvailableConnectionDriver(conname,TRpDbDriver(GDriver.ItemIndex));

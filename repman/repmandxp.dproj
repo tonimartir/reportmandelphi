@@ -1221,6 +1221,7 @@
         <DCCReference Include="..\rpreport.pas"/>
         <DCCReference Include="..\rpreportdesignercontracts.pas"/>
         <DCCReference Include="..\rplocalschemas.pas"/>
+        <DCCReference Include="..\rpdbxdotnet.pas"/>
         <DCCReference Include="..\rpdesignerclientsql.pas"/>
         <DCCReference Include="..\rpfrmlocalschemasvcl.pas"/>
         <DCCReference Include="..\rpsamplesutil.pas"/>

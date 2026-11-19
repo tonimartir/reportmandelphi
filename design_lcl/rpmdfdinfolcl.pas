@@ -3260,7 +3260,8 @@ begin
     FConAdmin.config.ReadSections(sections);
     for i := 0 to sections.Count - 1 do
     begin
-      drivername := Trim(FConAdmin.config.ReadString(sections[i], 'DriverName', ''));
+      // A connection shared with .NET: the Delphi driver it opens with
+      drivername := Trim(FConAdmin.EffectiveDriverName(sections[i]));
       if drivername = '' then
         Continue;
       if ResolveFpcConnectionDriver(drivername, driver) = driver then
@@ -3282,7 +3283,11 @@ begin
   for i := 0 to FAvailable.Count - 1 do
   begin
     aitem := TMenuItem.Create(PopAdd);
-    aitem.Caption := FAvailable[i];
+    // The connections shared with .NET, marked
+    if FConAdmin <> nil then
+      aitem.Caption := FConAdmin.ConnectionDisplayName(FAvailable[i])
+    else
+      aitem.Caption := FAvailable[i];
     // The name (a caption may get an accelerator)
     aitem.Hint := FAvailable[i];
     aitem.OnClick := MenuAddClick;
@@ -3313,6 +3318,12 @@ begin
     Exit;
   if not CheckCanModify then
     Exit;
+  // A connection shared with .NET used for the first time: its Delphi
+  // parameters (they say the driver of the report)
+  if (FConAdmin <> nil) and FConAdmin.IsDotNetConnection(conname) and
+    (not FConAdmin.DotNetHasDelphiParams(conname)) then
+    if not RpEditDotNetConnection(FConAdmin, conname) then
+      Exit;
   SaveActiveConn;
   driver := SelectedListDriver;
   if FConAdmin <> nil then

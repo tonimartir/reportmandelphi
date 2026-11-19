@@ -23,6 +23,7 @@ uses
   rphttpclientfpc, rpnetencodingfpc, rpioutilsfpc, rpsysutilsfpc, 
   rpaireportcontracts, rpreportdesignercontracts, rpauthmanager, rpdatahttp, 
   rpsqldbconnfpc, rpdarwinlibs, rplocalschemas, rpdesignerclientsql, rpinfoprovct, rpsamplesutil, 
+  rpdbxdotnet, 
   LazarusPackageIntf;
 
 implementation

@@ -139,7 +139,7 @@ function RpExecuteConnectionTest(const AConnectionName: string; AParams: TString
 implementation
 
 uses
-  rpparams, rpdatahttp, rpjsonfpc, rpauthmanager, rpsqldbconnfpc;
+  rpparams, rpdatahttp, rpjsonfpc, rpauthmanager, rpsqldbconnfpc, rpdbxdotnet;
 
 // A FireDac connection with a DriverID that SQLdb opens
 function IsSQLDBConnection(const ADriverName, ADriverId: string): Boolean;
@@ -486,6 +486,9 @@ var
   LValues: TStringList;
   I: Integer;
 begin
+  // Erasing it would remove the connection of the .NET programs
+  if AConnAdmin.IsDotNetConnection(AConnectionName) then
+    raise Exception.CreateFmt(SRpDotNetCannotReplace, [AConnectionName]);
   if RpDbxDriverFamily(ADriverName) = RP_DBX_DRIVER_SQLITE then
   begin
     // The [Sqlite] driver section only has dbExpress loaders: the
@@ -747,6 +750,19 @@ begin
     LConnAdmin.GetConnectionParams(AConnectionName, LCurrentParams);
     if LCurrentParams.Count = 0 then
       raise Exception.Create('Connection not found: ' + AConnectionName);
+    // A connection shared with .NET: only its Delphi parameters (its Delphi.*
+    // keys) change, the driver chosen included
+    if LConnAdmin.IsDotNetConnection(AConnectionName) then
+    begin
+      LAllowedParams.Assign(AValues);
+      I := LAllowedParams.IndexOfName(RP_DBX_DBX_DRIVER_PARAM);
+      if I >= 0 then
+        LAllowedParams.Delete(I);
+      LAllowedParams.Values['DriverName'] := ResolveEffectiveDriverName(AValues,
+        Trim(LCurrentParams.Values['DriverName']));
+      LConnAdmin.UpdateDotNetDelphiParams(AConnectionName, LAllowedParams);
+      Exit;
+    end;
 
     LOriginalDriverName := Trim(LCurrentParams.Values['DriverName']);
     LNewDriverName := ResolveEffectiveDriverName(AValues, LOriginalDriverName);

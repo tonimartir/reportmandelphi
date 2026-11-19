@@ -209,13 +209,50 @@ type
    procedure GetConnectionNames(alist:TStrings;drivername:String);
    procedure AddConnection(newname:string;drivername:string);
    procedure DeleteConnection(conname:string);
+   // Connections of this computer shared with .NET (DriverName=ADO.NET,
+   // written by Reportman AI, Reportman.Server and the C# designer, see
+   // rpdbxdotnet). GetConnectionParams gives their Delphi parameters (the
+   // Delphi.* keys, or the ones proposed from .NET while they are not
+   // defined); AddConnection never replaces them and DeleteConnection only
+   // forgets their Delphi parameters.
+   function IsDotNetConnection(const conname:string):Boolean;
+   // Its Delphi parameters are defined (Delphi.DriverName)
+   function DotNetHasDelphiParams(const conname:string):Boolean;
+   // The Delphi parameters proposed from the .NET ones; True when the
+   // translation is clear
+   function GetDotNetProposedParams(const conname:string;params:TStrings):Boolean;
+   // The provider and where the data is ('SQLiteCore: C:\datos\ventas.db')
+   function GetDotNetDescription(const conname:string):string;
+   // Writes its Delphi parameters (DriverName, Database...) in its Delphi.*
+   // keys and, when it is another one, the password in the Secret.Password
+   // of the connection (DPAPI, the one of every program), touching nothing
+   // else of the file
+   procedure SetDotNetDelphiParams(const conname:string;params:TStrings);
+   // The same, values over the Delphi parameters it has (or the proposed)
+   procedure UpdateDotNetDelphiParams(const conname:string;values:TStrings);
+   // Removes its Delphi.* keys: the next use asks for them again
+   procedure ForgetDotNetDelphiParams(const conname:string);
+   // The driver a connection opens with in Delphi (for .NET ones, the Delphi
+   // one)
+   function EffectiveDriverName(const conname:string):string;
+   // The name of a connection in the lists (the ones of .NET marked)
+   function ConnectionDisplayName(const conname:string):string;
  end;
+
+ // The designer asks for the Delphi parameters of a connection shared with
+ // .NET used for the first time (TRpDatabaseInfoItem.Connect); True when it
+ // saved them. Without it (or False) the connection raises SRpDotNetNotDefined
+ TRpDotNetConnectionSetupFunc=function(AConnAdmin:TRpConnAdmin;
+  const AAlias:string):Boolean;
 
 var
  // Process-wide override for the dbxconnections registry file, settable from the
  // command line (-dbxconnectionfile). The instance-level DBXConnectionsOverride
  // takes precedence when assigned.
  DBXConnectionsFileOverride:string='';
+ // The dialog of the designer for the Delphi parameters of a connection
+ // shared with .NET (TRpDotNetConnectionSetupFunc)
+ RpDotNetConnectionSetup:TRpDotNetConnectionSetupFunc=nil;
  // Folder of the report open in the designer: a relative SQLite database (the
  // samples) and, in Lazarus, a MyBase file that is not found are looked for
  // there, also by the copies of the report the AI works on (they are loaded
@@ -661,6 +698,7 @@ uses
  rpdarwinlibs,
  {$ENDIF}
 {$ENDIF}
+ rpdbxdotnet,
  rpreport,rpbasereport;
 
 
@@ -2400,6 +2438,25 @@ begin
   [ADatabase,Alias,searched]));
 end;
 
+// A connection shared with .NET without its Delphi parameters: the designer
+// asks for them (RpDotNetConnectionSetup) or it is not opened with the
+// proposed ones without asking
+procedure RpCheckDotNetConnection(AItem:TRpDatabaseInfoItem);
+begin
+ if not Assigned(AItem.ConAdmin) then
+  AItem.UpdateConAdmin;
+ if not AItem.ConAdmin.IsDotNetConnection(AItem.Alias) then
+  exit;
+ if AItem.ConAdmin.DotNetHasDelphiParams(AItem.Alias) then
+  exit;
+ if Assigned(RpDotNetConnectionSetup) and
+  RpDotNetConnectionSetup(AItem.ConAdmin,AItem.Alias) and
+  AItem.ConAdmin.DotNetHasDelphiParams(AItem.Alias) then
+  exit;
+ Raise Exception.Create(Format(SRpDotNetNotDefined,[AItem.Alias,
+  AItem.ConAdmin.GetDotNetDescription(AItem.Alias)]));
+end;
+
 procedure TRpDatabaseinfoitem.Connect(params:TRpParamList);
 var
  conname:string;
@@ -2449,6 +2506,11 @@ begin
      end;
     end;
    end;
+   // A connection of this computer shared with .NET opens with its own
+   // Delphi parameters, asked for the first time (a test gives them all)
+   if FLoadParams and (FDriver in [rpdatadbexpress,rpdataibx,rpdatazeos,
+    rpdataibo,rpfiredac]) and (paramlist.IndexOfName('DriverName')<0) then
+    RpCheckDotNetConnection(Self);
    case Fdriver of
     rpdatadbexpress:
      begin
@@ -4394,6 +4456,13 @@ end;
 
 procedure TRpConnAdmin.DeleteConnection(conname:string);
 begin
+ // A connection shared with .NET belongs to the .NET programs too: Delphi
+ // only forgets its own parameters
+ if IsDotNetConnection(conname) then
+ begin
+  ForgetDotNetDelphiParams(conname);
+  exit;
+ end;
  config.EraseSection(conname);
 end;
 
@@ -4402,6 +4471,9 @@ var
  alist:TStringList;
  i:integer;
 begin
+ // Erasing it would remove the connection of the .NET programs
+ if IsDotNetConnection(newname) then
+  Raise Exception.Create(Format(SRpDotNetCannotReplace,[newname]));
  config.EraseSection(newname);
  alist:=TStringList.Create;
  try
@@ -4436,6 +4508,10 @@ begin
    begin
     if UpperCase(config.ReadString(alist2.Strings[i],'DriverName',''))=
      UpperCase(drivername) then
+     alist.Add(alist2.Strings[i])
+    // A connection shared with .NET is also one of its Delphi driver
+    else if IsDotNetConnection(alist2.Strings[i]) and
+     SameText(EffectiveDriverName(alist2.Strings[i]),drivername) then
      alist.Add(alist2.Strings[i]);
    end
    else
@@ -4443,6 +4519,202 @@ begin
   end;
  finally
   alist2.free;
+ end;
+end;
+
+// The lines of a section shared with .NET, the values as .NET wrote them
+// (UTF-8, see RpDotNetIniText)
+procedure ReadDotNetSection(AConfig:TMemIniFile;const conname:string;
+ ASection:TStrings);
+var
+ i:integer;
+begin
+ AConfig.ReadSectionValues(conname,ASection);
+ for i:=0 to ASection.Count-1 do
+  if Length(ASection.Names[i])>0 then
+   ASection.Strings[i]:=ASection.Names[i]+'='+
+    RpDotNetIniText(ASection.ValueFromIndex[i]);
+end;
+
+function TRpConnAdmin.IsDotNetConnection(const conname:string):Boolean;
+begin
+ Result:=Assigned(config) and (Length(Trim(conname))>0) and
+  RpIsDotNetDriverName(config.ReadString(conname,'DriverName',''));
+end;
+
+function TRpConnAdmin.DotNetHasDelphiParams(const conname:string):Boolean;
+var
+ section:TStringList;
+begin
+ Result:=False;
+ if not IsDotNetConnection(conname) then
+  exit;
+ section:=TStringList.Create;
+ try
+  ReadDotNetSection(config,conname,section);
+  Result:=RpDotNetHasDelphiParams(section);
+ finally
+  section.Free;
+ end;
+end;
+
+function TRpConnAdmin.GetDotNetProposedParams(const conname:string;
+ params:TStrings):Boolean;
+var
+ section:TStringList;
+begin
+ Result:=False;
+ params.Clear;
+ if not IsDotNetConnection(conname) then
+  exit;
+ section:=TStringList.Create;
+ try
+  ReadDotNetSection(config,conname,section);
+  Result:=RpDotNetProposeDelphiParams(section,params);
+ finally
+  section.Free;
+ end;
+end;
+
+function TRpConnAdmin.GetDotNetDescription(const conname:string):string;
+var
+ section:TStringList;
+begin
+ Result:='';
+ if not IsDotNetConnection(conname) then
+  exit;
+ section:=TStringList.Create;
+ try
+  ReadDotNetSection(config,conname,section);
+  Result:=RpDotNetDescription(section);
+ finally
+  section.Free;
+ end;
+end;
+
+function TRpConnAdmin.EffectiveDriverName(const conname:string):string;
+var
+ section:TStringList;
+begin
+ if not IsDotNetConnection(conname) then
+ begin
+  Result:=config.ReadString(conname,'DriverName','');
+  exit;
+ end;
+ section:=TStringList.Create;
+ try
+  ReadDotNetSection(config,conname,section);
+  Result:=RpDotNetEffectiveDriverName(section);
+ finally
+  section.Free;
+ end;
+end;
+
+function TRpConnAdmin.ConnectionDisplayName(const conname:string):string;
+begin
+ if IsDotNetConnection(conname) then
+  Result:=RpDotNetDisplayName(conname)
+ else
+  Result:=conname;
+end;
+
+procedure TRpConnAdmin.SetDotNetDelphiParams(const conname:string;
+ params:TStrings);
+var
+ lines,keys,section:TStringList;
+ i:integer;
+ password,secret,secretkey:string;
+ infile:boolean;
+begin
+ if not IsDotNetConnection(conname) then
+  Raise Exception.Create(Format(SRpDotNetNotFound,[conname,configfilename]));
+ infile:=(Length(configfilename)>0) and FileExists(configfilename);
+ lines:=TStringList.Create;
+ keys:=TStringList.Create;
+ section:=TStringList.Create;
+ try
+  RpDotNetDelphiLines(params,lines);
+  // Only its Delphi.* lines change in the file; nothing else is rewritten
+  if infile then
+   RpDotNetWriteDelphiKeys(configfilename,conname,lines);
+  // And in memory, the other changes not written yet are kept
+  config.ReadSection(conname,keys);
+  for i:=0 to keys.Count-1 do
+   if SameText(Copy(Trim(keys[i]),1,Length(RP_DOTNET_DELPHI_PREFIX)),
+    RP_DOTNET_DELPHI_PREFIX) then
+    config.DeleteKey(conname,keys[i]);
+  for i:=0 to lines.Count-1 do
+   config.WriteString(conname,lines.Names[i],lines.ValueFromIndex[i]);
+  // The password is the one of the connection, for every program
+  // (Secret.Password, as the C# designer writes it): written only when it
+  // is another one (or this Windows user can not read the one there is),
+  // ciphered; without DPAPI it is not kept
+  password:='';
+  for i:=0 to params.Count-1 do
+   if RpIsPasswordParamName(Trim(params.Names[i])) and
+    (Length(params.ValueFromIndex[i])>0) then
+   begin
+    password:=params.ValueFromIndex[i];
+    break;
+   end;
+  if Length(password)>0 then
+  begin
+   ReadDotNetSection(config,conname,section);
+   if password<>RpDotNetPassword(section) then
+   begin
+    secret:=RpDpapiProtect(password);
+    if Length(secret)>0 then
+    begin
+     secretkey:=RpDotNetPasswordKey(section);
+     if infile then
+      RpDotNetWriteKey(configfilename,conname,secretkey,secret);
+     config.WriteString(conname,secretkey,secret);
+    end;
+   end;
+  end;
+ finally
+  section.Free;
+  keys.Free;
+  lines.Free;
+ end;
+end;
+
+procedure TRpConnAdmin.UpdateDotNetDelphiParams(const conname:string;
+ values:TStrings);
+var
+ params:TStringList;
+ i,index:integer;
+ name:string;
+begin
+ params:=TStringList.Create;
+ try
+  GetConnectionParams(conname,params);
+  for i:=0 to values.Count-1 do
+  begin
+   name:=Trim(values.Names[i]);
+   if Length(name)=0 then
+    continue;
+   index:=params.IndexOfName(name);
+   if index>=0 then
+    params.Strings[index]:=name+'='+values.ValueFromIndex[i]
+   else
+    params.Add(name+'='+values.ValueFromIndex[i]);
+  end;
+  SetDotNetDelphiParams(conname,params);
+ finally
+  params.Free;
+ end;
+end;
+
+procedure TRpConnAdmin.ForgetDotNetDelphiParams(const conname:string);
+var
+ params:TStringList;
+begin
+ params:=TStringList.Create;
+ try
+  SetDotNetDelphiParams(conname,params);
+ finally
+  params.Free;
  end;
 end;
 
@@ -4757,8 +5029,27 @@ begin
 end;
 
 procedure TRpConnAdmin.GetConnectionParams(conname:string;params:TStrings);
+var
+ section:TStringList;
 begin
- config.ReadSectionValues(conname,params);
+ if not IsDotNetConnection(conname) then
+ begin
+  config.ReadSectionValues(conname,params);
+  exit;
+ end;
+ // A connection shared with .NET: its Delphi parameters, or the proposed
+ // ones while they are not defined (Connect does not open it with these
+ // without asking, RpCheckDotNetConnection)
+ section:=TStringList.Create;
+ try
+  ReadDotNetSection(config,conname,section);
+  if RpDotNetHasDelphiParams(section) then
+   RpDotNetDelphiParams(section,params)
+  else
+   RpDotNetProposeDelphiParams(section,params);
+ finally
+  section.Free;
+ end;
 end;
 
 procedure TRpConnAdmin.GetDriverLibNames(const drivername:string;var LibraryName,VendorLib:string);

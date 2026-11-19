@@ -128,6 +128,14 @@ type
     procedure Edit1Change(Sender:TObject);
     procedure BSelectHubConnectionClick(Sender: TObject);
     procedure HubConnectionMenuItemClick(Sender: TObject);
+    // A connection shared with .NET: what it is and its Delphi parameters
+    procedure CreateDotNetControls;
+    procedure DotNetParamsClick(Sender: TObject);
+    procedure UpdateDotNetControls;
+    function SelectedConnection: string;
+  private
+    FDotNetInfo: TLabel;
+    FDotNetValues: TLabel;
   public
     { Public declarations }
     ConnectionsFile:string;
@@ -135,12 +143,19 @@ type
 
 procedure ShowDBXConfig(ConnectionsFile:string='');
 function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
+// The Delphi parameters of a connection of this computer shared with .NET
+// (DriverName=ADO.NET, see rpdbxdotnet): asks for them, proposed from the
+// .NET ones while they are not defined, and saves them in its Delphi.* keys
+// (a password typed goes, ciphered, to the Secret.Password of the
+// connection, the one of every program). True when they were saved
+function RpEditDotNetConnection(AConnAdmin: TRpConnAdmin;
+  const AAlias: string): Boolean;
 
 implementation
 
 {$R *.dfm}
 
-uses System.JSON, rpreport,  rpauthmanager
+uses System.JSON, rpreport,  rpauthmanager, Vcl.ValEdit, rpdbxdotnet
 {$IFDEF MSWINDOWS}
   , rpdatadirect, rpdcintegration
 {$ENDIF}
@@ -148,6 +163,258 @@ uses System.JSON, rpreport,  rpauthmanager
 
 const
   HTTP_TEST_CONNECTION_TIMEOUT_MS = 10000;
+
+type
+  // The Delphi parameters of a connection shared with .NET (built in code)
+  TFRpDotNetConnectionVCL = class(TForm)
+  private
+    FConAdmin: TRpConnAdmin;
+    FAlias: string;
+    FPasswordName: string;
+    FInfo: TLabel;
+    FComboDriver: TComboBox;
+    FGrid: TValueListEditor;
+    FPassword: TEdit;
+    procedure BuildControls(const AInfo: string);
+    procedure LoadParams(AParams: TStrings);
+    procedure CurrentParams(AParams: TStrings; AWithPassword: Boolean);
+    procedure ComboDriverChange(Sender: TObject);
+    procedure OKClick(Sender: TObject);
+  public
+    constructor CreateFor(AOwner: TComponent; AConAdmin: TRpConnAdmin;
+      const AAlias: string);
+  end;
+
+constructor TFRpDotNetConnectionVCL.CreateFor(AOwner: TComponent;
+  AConAdmin: TRpConnAdmin; const AAlias: string);
+var
+  LParams: TStringList;
+  LInfo: string;
+begin
+  inherited CreateNew(AOwner);
+  FConAdmin := AConAdmin;
+  FAlias := AAlias;
+  LParams := TStringList.Create;
+  try
+    LInfo := RpDotNetSetupText(AAlias, AConAdmin.GetDotNetDescription(AAlias));
+    if AConAdmin.DotNetHasDelphiParams(AAlias) then
+    begin
+      AConAdmin.GetConnectionParams(AAlias, LParams);
+      LInfo := LInfo + sLineBreak + SRpDotNetSetupDefined;
+    end
+    else if AConAdmin.GetDotNetProposedParams(AAlias, LParams) then
+      LInfo := LInfo + sLineBreak + SRpDotNetSetupProposed
+    else
+      LInfo := LInfo + sLineBreak + SRpDotNetSetupNotClear;
+    BuildControls(LInfo);
+    LoadParams(LParams);
+  finally
+    LParams.Free;
+  end;
+end;
+
+procedure TFRpDotNetConnectionVCL.BuildControls(const AInfo: string);
+var
+  LPanel, LButtons: TPanel;
+  LLabel: TLabel;
+  LButton: TButton;
+begin
+  Caption := Format(SRpDotNetSetupTitle, [FAlias]);
+  BorderStyle := bsSizeable;
+  BorderIcons := [biSystemMenu];
+  Position := poScreenCenter;
+  Width := ScaleDpi(560);
+  Height := ScaleDpi(470);
+  Constraints.MinWidth := ScaleDpi(420);
+  Constraints.MinHeight := ScaleDpi(340);
+
+  FInfo := TLabel.Create(Self);
+  FInfo.Parent := Self;
+  FInfo.Align := alTop;
+  FInfo.AlignWithMargins := True;
+  FInfo.Margins.SetBounds(ScaleDpi(10), ScaleDpi(10), ScaleDpi(10), ScaleDpi(6));
+  FInfo.WordWrap := True;
+  FInfo.ShowAccelChar := False;
+  FInfo.Caption := AInfo;
+
+  LPanel := TPanel.Create(Self);
+  LPanel.Parent := Self;
+  LPanel.Align := alTop;
+  LPanel.Top := FInfo.Top + FInfo.Height + 1;
+  LPanel.BevelOuter := bvNone;
+  LPanel.Height := ScaleDpi(32);
+  LLabel := TLabel.Create(Self);
+  LLabel.Parent := LPanel;
+  LLabel.Caption := SRpDotNetDriver;
+  LLabel.SetBounds(ScaleDpi(10), ScaleDpi(8), ScaleDpi(90), ScaleDpi(16));
+  FComboDriver := TComboBox.Create(Self);
+  FComboDriver.Parent := LPanel;
+  FComboDriver.Style := csDropDownList;
+  FComboDriver.SetBounds(ScaleDpi(110), ScaleDpi(4), ScaleDpi(220), ScaleDpi(22));
+  FComboDriver.OnChange := ComboDriverChange;
+
+  LButtons := TPanel.Create(Self);
+  LButtons.Parent := Self;
+  LButtons.Align := alBottom;
+  LButtons.BevelOuter := bvNone;
+  LButtons.Height := ScaleDpi(44);
+  // The lowest of the bottom panels
+  LButtons.Top := ScaleDpi(10000);
+  LButton := TButton.Create(Self);
+  LButton.Parent := LButtons;
+  LButton.Caption := SRpCancel;
+  LButton.Cancel := True;
+  LButton.ModalResult := mrCancel;
+  LButton.SetBounds(LButtons.Width - ScaleDpi(95), ScaleDpi(9), ScaleDpi(85), ScaleDpi(26));
+  LButton.Anchors := [akTop, akRight];
+  LButton := TButton.Create(Self);
+  LButton.Parent := LButtons;
+  LButton.Caption := SRpOk;
+  LButton.Default := True;
+  LButton.OnClick := OKClick;
+  LButton.SetBounds(LButtons.Width - ScaleDpi(186), ScaleDpi(9), ScaleDpi(85), ScaleDpi(26));
+  LButton.Anchors := [akTop, akRight];
+
+  LPanel := TPanel.Create(Self);
+  LPanel.Parent := Self;
+  LPanel.Align := alBottom;
+  LPanel.BevelOuter := bvNone;
+  LPanel.Height := ScaleDpi(52);
+  LPanel.Top := ScaleDpi(5000);
+  LLabel := TLabel.Create(Self);
+  LLabel.Parent := LPanel;
+  LLabel.Caption := SRpDotNetPassword;
+  LLabel.SetBounds(ScaleDpi(10), ScaleDpi(10), ScaleDpi(90), ScaleDpi(16));
+  FPassword := TEdit.Create(Self);
+  FPassword.Parent := LPanel;
+  FPassword.PasswordChar := '*';
+  FPassword.SetBounds(ScaleDpi(110), ScaleDpi(6), ScaleDpi(220), ScaleDpi(22));
+  LLabel := TLabel.Create(Self);
+  LLabel.Parent := LPanel;
+  LLabel.ShowAccelChar := False;
+  if RpDpapiAvailable then
+    LLabel.Caption := SRpDotNetPasswordKept
+  else
+    LLabel.Caption := SRpDotNetPasswordNotKept;
+  LLabel.SetBounds(ScaleDpi(110), ScaleDpi(32), ScaleDpi(420), ScaleDpi(16));
+
+  FGrid := TValueListEditor.Create(Self);
+  FGrid.Parent := Self;
+  FGrid.Align := alClient;
+  FGrid.AlignWithMargins := True;
+  FGrid.Margins.SetBounds(ScaleDpi(10), ScaleDpi(4), ScaleDpi(10), ScaleDpi(4));
+  FGrid.TitleCaptions[0] := SRpDotNetParameter;
+  FGrid.TitleCaptions[1] := SRpDotNetValue;
+  FGrid.KeyOptions := [keyEdit, keyAdd, keyDelete, keyUnique];
+  FGrid.ColWidths[0] := ScaleDpi(170);
+end;
+
+procedure TFRpDotNetConnectionVCL.LoadParams(AParams: TStrings);
+var
+  I: Integer;
+  LName, LDriver: string;
+begin
+  LDriver := Trim(AParams.Values['DriverName']);
+  RpDotNetDelphiDrivers(FConAdmin.drivers, LDriver, FComboDriver.Items);
+  FComboDriver.ItemIndex := FComboDriver.Items.IndexOf(LDriver);
+  if FComboDriver.ItemIndex < 0 then
+    FComboDriver.ItemIndex := 0;
+  FGrid.Strings.Clear;
+  FPasswordName := '';
+  for I := 0 to AParams.Count - 1 do
+  begin
+    LName := Trim(AParams.Names[I]);
+    if (LName = '') or SameText(LName, 'DriverName') then
+      Continue;
+    if RpIsPasswordParamName(LName) then
+    begin
+      // The password goes in its own box, hidden
+      if FPasswordName = '' then
+      begin
+        FPasswordName := LName;
+        FPassword.Text := AParams.ValueFromIndex[I];
+      end;
+      Continue;
+    end;
+    FGrid.Strings.Add(LName + '=' + AParams.ValueFromIndex[I]);
+  end;
+  if FPasswordName = '' then
+    FPasswordName := 'Password';
+end;
+
+procedure TFRpDotNetConnectionVCL.CurrentParams(AParams: TStrings;
+  AWithPassword: Boolean);
+var
+  I: Integer;
+begin
+  AParams.Clear;
+  AParams.Add('DriverName=' + FComboDriver.Text);
+  for I := 0 to FGrid.Strings.Count - 1 do
+    if Trim(FGrid.Strings.Names[I]) <> '' then
+      AParams.Add(Trim(FGrid.Strings.Names[I]) + '=' + FGrid.Strings.ValueFromIndex[I]);
+  if AWithPassword and (FPassword.Text <> '') then
+    AParams.Add(FPasswordName + '=' + FPassword.Text);
+end;
+
+procedure TFRpDotNetConnectionVCL.ComboDriverChange(Sender: TObject);
+var
+  LCurrent, LParams: TStringList;
+begin
+  // The parameters of the driver chosen, with the values typed of the same
+  // names
+  LCurrent := TStringList.Create;
+  LParams := TStringList.Create;
+  try
+    CurrentParams(LCurrent, False);
+    RpDotNetDriverParams(FConAdmin.drivers, FComboDriver.Text, LCurrent, LParams);
+    FGrid.Strings.Clear;
+    FGrid.Strings.AddStrings(LParams);
+  finally
+    LParams.Free;
+    LCurrent.Free;
+  end;
+end;
+
+procedure TFRpDotNetConnectionVCL.OKClick(Sender: TObject);
+var
+  LParams: TStringList;
+begin
+  LParams := TStringList.Create;
+  try
+    CurrentParams(LParams, True);
+    FConAdmin.SetDotNetDelphiParams(FAlias, LParams);
+  finally
+    LParams.Free;
+  end;
+  ModalResult := mrOk;
+end;
+
+function RpEditDotNetConnection(AConnAdmin: TRpConnAdmin;
+  const AAlias: string): Boolean;
+var
+  LDialog: TFRpDotNetConnectionVCL;
+begin
+  Result := False;
+  if (AConnAdmin = nil) or not AConnAdmin.IsDotNetConnection(AAlias) then
+    Exit;
+  LDialog := TFRpDotNetConnectionVCL.CreateFor(Application, AConnAdmin, AAlias);
+  try
+    Result := LDialog.ShowModal = mrOk;
+  finally
+    LDialog.Free;
+  end;
+end;
+
+// The first use of a connection shared with .NET (TRpDatabaseInfoItem.Connect):
+// the dialog, only in the thread of the windows
+function DotNetConnectionSetupVCL(AConnAdmin: TRpConnAdmin;
+  const AAlias: string): Boolean;
+begin
+  Result := False;
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+    Exit;
+  Result := RpEditDotNetConnection(AConnAdmin, AAlias);
+end;
 
 function ResolveDbxConnectionDriver(const ADriverName: string): TRpDbDriver;
 begin
@@ -335,6 +602,7 @@ end;
 procedure TFRpDBXConfigVCL.ComboDriversClick(Sender: TObject);
 var
  drivername:string;
+ i:integer;
 begin
  // Load the connections
  if Not Assigned(ConAdmin) then
@@ -343,6 +611,9 @@ begin
  if drivername=SRpAllDriver then
   drivername:='';
  ConAdmin.GetConnectionNames(LConnections.items,drivername);
+ // The connections shared with .NET, marked
+ for i:=0 to LConnections.Items.Count-1 do
+  LConnections.Items[i]:=ConAdmin.ConnectionDisplayName(LConnections.Items[i]);
  if LConnections.Items.Count>0 then
   LConnections.ItemIndex:=0
  else
@@ -350,6 +621,12 @@ begin
  LConnectionsClick(Self);
 end;
 
+function TFRpDBXConfigVCL.SelectedConnection: string;
+begin
+ Result:='';
+ if LConnections.ItemIndex>=0 then
+  Result:=RpConnectionNameFromDisplay(LConnections.Items[LConnections.ItemIndex]);
+end;
 
 procedure TFRpDBXConfigVCL.FreeParamsControls;
 var
@@ -357,6 +634,8 @@ var
 begin
  FAgentInfo:=nil;
  FAgentLink:=nil;
+ FDotNetInfo:=nil;
+ FDotNetValues:=nil;
  i:=0;
  While  ScrollParams.ControlCount>0 do
  begin
@@ -375,6 +654,12 @@ var
 begin
  if Not Assigned(ConAdmin) then
   exit;
+ // A connection shared with .NET: its Delphi parameters, in their dialog
+ if ConAdmin.IsDotNetConnection(connectionname) then
+ begin
+  CreateDotNetControls;
+  exit;
+ end;
  alist:=TStringList.create;
  try
   ConAdmin.Drivers.ReadSections(alist);
@@ -494,6 +779,69 @@ begin
  TRpAuthManager.Instance.OpenAgentDownloadPage;
 end;
 
+// A connection of this computer shared with .NET: what it is, its Delphi
+// parameters (read only here) and the button of their dialog
+procedure TFRpDBXConfigVCL.CreateDotNetControls;
+var
+ LButton:TButton;
+begin
+ FDotNetInfo:=TLabel.Create(Self);
+ FDotNetInfo.Parent:=ScrollParams;
+ FDotNetInfo.Left:=ScaleDpi(CONTROL_DISTANCEX);
+ FDotNetInfo.Top:=ScaleDpi(CONTROL_DISTANCEY);
+ FDotNetInfo.Width:=ScrollParams.Width-ScaleDPI(30)-ScaleDpi(CONTROL_DISTANCEX);
+ FDotNetInfo.Anchors:=[akLeft,akTop,akRight];
+ FDotNetInfo.WordWrap:=True;
+ FDotNetInfo.ShowAccelChar:=False;
+ FDotNetInfo.Caption:=RpDotNetSetupText(connectionname,
+  ConAdmin.GetDotNetDescription(connectionname));
+
+ LButton:=TButton.Create(Self);
+ LButton.Parent:=ScrollParams;
+ LButton.Caption:=SRpDotNetParamsButton;
+ LButton.Left:=FDotNetInfo.Left;
+ LButton.Top:=FDotNetInfo.Top+FDotNetInfo.Height+ScaleDpi(8);
+ LButton.Width:=ScaleDpi(160);
+ LButton.Height:=ScaleDpi(26);
+ LButton.OnClick:=DotNetParamsClick;
+
+ FDotNetValues:=TLabel.Create(Self);
+ FDotNetValues.Parent:=ScrollParams;
+ FDotNetValues.Left:=FDotNetInfo.Left;
+ FDotNetValues.Top:=LButton.Top+LButton.Height+ScaleDpi(8);
+ FDotNetValues.Width:=FDotNetInfo.Width;
+ FDotNetValues.Anchors:=[akLeft,akTop,akRight];
+ FDotNetValues.WordWrap:=True;
+ FDotNetValues.ShowAccelChar:=False;
+ UpdateDotNetControls;
+end;
+
+procedure TFRpDBXConfigVCL.UpdateDotNetControls;
+var
+ LParams:TStringList;
+begin
+ if FDotNetValues=nil then
+  exit;
+ if not ConAdmin.DotNetHasDelphiParams(connectionname) then
+ begin
+  FDotNetValues.Caption:=SRpDotNetNotDefinedYet;
+  exit;
+ end;
+ LParams:=TStringList.Create;
+ try
+  ConAdmin.GetConnectionParams(connectionname,LParams);
+  FDotNetValues.Caption:=RpDotNetParamsText(LParams);
+ finally
+  LParams.Free;
+ end;
+end;
+
+procedure TFRpDBXConfigVCL.DotNetParamsClick(Sender: TObject);
+begin
+ if RpEditDotNetConnection(ConAdmin,connectionname) then
+  UpdateDotNetControls;
+end;
+
 procedure TFRpDBXConfigVCL.LConnectionsClick(Sender: TObject);
 begin
  if LConnections.ItemIndex<0 then
@@ -507,7 +855,7 @@ begin
   exit;
  end;
  ScrollParams.Visible:=true;
- connectionname:=LConnections.Items.strings[LConnections.ItemIndex];
+ connectionname:=SelectedConnection;
  FreeParamsControls;
  CreateParamsControls;
 end;
@@ -529,7 +877,7 @@ var
 begin
  if Not Assigned(ConAdmin) then
   exit;
- conname:=LConnections.Items.Strings[LConnections.ItemIndex];
+ conname:=SelectedConnection;
  paramname:=params.Names[TEdit(Sender).Tag];
  paramvalue:=TEdit(Sender).Text;
  if Length(paramvalue)=0 then
@@ -572,7 +920,18 @@ begin
   exit;
  if LConnections.ItemIndex<0 then
   exit;
- conname:=LConnections.Items.Strings[LConnections.ItemIndex];
+ conname:=SelectedConnection;
+ // A connection shared with .NET stays: only its Delphi parameters go
+ if ConAdmin.IsDotNetConnection(conname) then
+ begin
+  if smbOk=RpMessageBox(Format(SRpDotNetForget,[conname]),SRpDropConnection,
+   [smbok,smbCancel],smsWarning,smbCancel) then
+  begin
+   ConAdmin.DeleteConnection(conname);
+   UpdateDotNetControls;
+  end;
+  exit;
+ end;
  if smbOk=RpMessageBox(SRpSureDropConnection+conname,SRpDropConnection,[smbok,smbCancel],smsWarning,smbCancel) then
  begin
   ConAdmin.DeleteConnection(conname);
@@ -626,7 +985,16 @@ begin
   exit;
  if LConnections.ItemIndex<0 then
   Raise Exception.Create(SRpSelectConnectionFirst);
- conname:=LConnections.Items.strings[Lconnections.itemindex];
+ conname:=SelectedConnection;
+ // A connection shared with .NET is tested with its Delphi parameters: asked
+ // here the first time (the test reads the file again)
+ if ConAdmin.IsDotNetConnection(conname) and
+  (not ConAdmin.DotNetHasDelphiParams(conname)) then
+ begin
+  if not RpEditDotNetConnection(ConAdmin,conname) then
+   exit;
+  UpdateDotNetControls;
+ end;
  alist:=TStringList.Create;
  try
   ConAdmin.GetConnectionParams(conname,alist);
@@ -839,4 +1207,8 @@ begin
   end;
 end;
 
+initialization
+ // The engine asks the designer for the Delphi parameters of a connection
+ // shared with .NET used for the first time
+ RpDotNetConnectionSetup:=DotNetConnectionSetupVCL;
 end.

@@ -110,6 +110,7 @@ uses
   rpreport in '..\rpreport.pas',
   rpreportdesignercontracts in '..\rpreportdesignercontracts.pas',
   rplocalschemas in '..\rplocalschemas.pas',
+  rpdbxdotnet in '..\rpdbxdotnet.pas',
   rpdesignerclientsql in '..\rpdesignerclientsql.pas',
   rpfrmlocalschemasvcl in '..\rpfrmlocalschemasvcl.pas',
   rpsamplesutil in '..\rpsamplesutil.pas',
