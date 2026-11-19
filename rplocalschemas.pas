@@ -596,6 +596,14 @@ function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
 function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
   const AFileName: string; out ANewName: string; ASkipped: TStrings;
   ATemplateValues: TStrings = nil): Integer;
+// The import of the schema "Generate with AI" proposes: as RpImportSchemaJson
+// (named after its "name"), but what the dictionary has written is kept: a
+// description of a table, of a column or of a relation, or the allowed values
+// of a column, comes from the AI only when the dictionary has none. What the
+// person wrote is not lost to a guess of the AI
+function RpImportGeneratedSchemaJson(AFile: TRpLocalSchemaFile;
+  const AJson: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings = nil): Integer;
 // The same import with another origin, a schema of the library of Reportman
 // AI (5.7.1 C2, the fullSchema of GET api/schema/{id}): the new subschema is
 // named after ALibraryName, the name of the schema in the library ("name 2"
@@ -5132,17 +5140,25 @@ begin
   end;
 end;
 
-// The allowed values of a column of the file, when it has some
+// The allowed values of a column of the file, when it has some (with
+// AKeepWritten, only when the column of the dictionary has none)
 procedure ImportAllowedValues(AFile: TRpLocalSchemaFile;
-  const ATable, AColumn: string; AItems: TJSONArray);
+  const ATable, AColumn: string; AItems: TJSONArray; AKeepWritten: Boolean);
 var
   I: Integer;
   LItem: TJSONObject;
   LLabel, LValue: string;
   LLabels, LValues: TStringList;
+  LWritten: TJSONArray;
 begin
   if (AItems = nil) or (AItems.Count = 0) then
     Exit;
+  if AKeepWritten then
+  begin
+    LWritten := JArr(AFile.FindColumn(ATable, AColumn), 'allowedValues');
+    if (LWritten <> nil) and (LWritten.Count > 0) then
+      Exit;
+  end;
   LValues := TStringList.Create;
   LLabels := TStringList.Create;
   try
@@ -5790,10 +5806,12 @@ begin
 end;
 
 // The import of RpImportSchemaJson; AForcedName names the new subschema
-// instead of the "name" of the JSON when it is not empty
+// instead of the "name" of the JSON when it is not empty. AKeepWritten keeps
+// what the dictionary has written (a description, the allowed values) and
+// only fills what is empty; else what is imported wins
 function ImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
   AFileName, AForcedName: string; out ANewName: string;
-  ASkipped, ATemplateValues: TStrings): Integer;
+  ASkipped, ATemplateValues: TStrings; AKeepWritten: Boolean): Integer;
 var
   I, J: Integer;
   LRoot: TJSONValue;
@@ -5803,7 +5821,7 @@ var
   LSchema: TRpLocalSubSchema;
   LColumnName, LName, LTableName, LText: string;
   LResolver: TRpImportResolver;
-  LTargetTable: TJSONObject;
+  LRelation, LTargetTable: TJSONObject;
   LUsed: TStringList;
 begin
   Result := -1;
@@ -5865,7 +5883,8 @@ begin
       AddUsedPlaceholders(LResolver, LTableName, LUsed);
       LTableName := JStr(LCatalogTable, 'name');
       LText := JStrCI(LTable, 'context');
-      if Trim(LText) <> '' then
+      if (Trim(LText) <> '') and (not AKeepWritten or
+        (Trim(JStr(LCatalogTable, 'context')) = '')) then
         AFile.SetTableContext(LTableName, LText);
       // A table twice in the file joins its columns
       if LSchema.Tables.IndexOf(LTableName) >= 0 then
@@ -5892,10 +5911,11 @@ begin
           LColumnName := JStr(LCatalogColumn, 'name');
           LChosen.Add(LColumnName);
           LText := JStrCI(LColumn, 'context');
-          if Trim(LText) <> '' then
+          if (Trim(LText) <> '') and (not AKeepWritten or
+            (Trim(JStr(LCatalogColumn, 'context')) = '')) then
             AFile.SetColumnContext(LTableName, LColumnName, LText);
           ImportAllowedValues(AFile, LTableName, LColumnName,
-            JArrCI(LColumn, 'allowedValues'));
+            JArrCI(LColumn, 'allowedValues'), AKeepWritten);
         end;
       // In the order of the catalog; none left: its primary key
       AFile.GetColumnNames(LTableName, LNames);
@@ -5933,8 +5953,20 @@ begin
           not ColumnsExist(LTargetTable, LTarget) then
           Continue;
         // A relation the file brings comes back if it was excluded
-        AFile.AddRelation(JStr(LCatalogTable, 'name'), LText, LSource, LTarget,
-          JStrCI(LItem, 'relationshipContext'), LSchema);
+        if not AKeepWritten then
+          AFile.AddRelation(JStr(LCatalogTable, 'name'), LText, LSource,
+            LTarget, JStrCI(LItem, 'relationshipContext'), LSchema)
+        else
+        begin
+          // The one the dictionary has keeps its description: the file's
+          // only goes to one without
+          LRelation := AFile.AddRelation(JStr(LCatalogTable, 'name'), LText,
+            LSource, LTarget, '', LSchema);
+          if (Trim(JStr(LRelation, 'relationshipContext')) = '') and
+            (Trim(JStrCI(LItem, 'relationshipContext')) <> '') then
+            SetPair(LRelation, 'relationshipContext',
+              TJSONString.Create(JStrCI(LItem, 'relationshipContext')));
+        end;
       end;
     end;
     Result := LSchema.Tables.Count;
@@ -5963,7 +5995,7 @@ function RpImportSchemaJson(AFile: TRpLocalSchemaFile; const AJson,
   ATemplateValues: TStrings): Integer;
 begin
   Result := ImportSchemaJson(AFile, AJson, AFileName, '', ANewName, ASkipped,
-    ATemplateValues);
+    ATemplateValues, False);
 end;
 
 function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
@@ -5972,6 +6004,14 @@ function RpImportSchemaFile(AFile: TRpLocalSchemaFile;
 begin
   Result := RpImportSchemaJson(AFile, ReadUtf8File(AFileName), AFileName,
     ANewName, ASkipped, ATemplateValues);
+end;
+
+function RpImportGeneratedSchemaJson(AFile: TRpLocalSchemaFile;
+  const AJson: string; out ANewName: string; ASkipped: TStrings;
+  ATemplateValues: TStrings): Integer;
+begin
+  Result := ImportSchemaJson(AFile, AJson, '', '', ANewName, ASkipped,
+    ATemplateValues, True);
 end;
 
 function RpImportLibrarySchemaJson(AFile: TRpLocalSchemaFile; const AJson,
@@ -5994,7 +6034,7 @@ begin
       try
         LWrapped.AddPair('schemaTables', TJSONArray(LRoot.Clone));
         Result := ImportSchemaJson(AFile, LWrapped.ToJSON, '', ALibraryName,
-          ANewName, ASkipped, ATemplateValues);
+          ANewName, ASkipped, ATemplateValues, False);
       finally
         LWrapped.Free;
       end;
@@ -6004,7 +6044,7 @@ begin
     LRoot.Free;
   end;
   Result := ImportSchemaJson(AFile, AJson, '', ALibraryName, ANewName,
-    ASkipped, ATemplateValues);
+    ASkipped, ATemplateValues, False);
 end;
 
 { Export all / Import all }

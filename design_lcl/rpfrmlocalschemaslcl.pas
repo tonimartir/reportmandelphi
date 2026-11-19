@@ -3836,7 +3836,7 @@ begin
     RpImportTableNames(FFile, LJson, LValues, LNames);
     if not EnsureColumns(LNames) then
       Exit;
-    LCount := RpImportSchemaJson(FFile, LJson, '', LName, LSkipped, LValues);
+    LCount := RpImportGeneratedSchemaJson(FFile, LJson, LName, LSkipped, LValues);
     if LCount <= 0 then
     begin
       FWebResult.AppendMessage('system', TranslateStr(2069,

@@ -676,6 +676,16 @@ const
     '{"Name":"products","Columns":[{"Name":"PRICE","DataType":3}]},' +
     '{"Name":"CUSTOMERS","Columns":[{"Name":"STATE","DataType":4,' +
     '"AllowedValues":[{"Value":"X","Label":"Closed"},{"Value":"","Label":""}]}]}]}';
+  // What "Generate with AI" proposes over what the Desktop described
+  GeneratedFile =
+    '{"name":"Sales by the AI","schemaTables":[' +
+    '{"name":"SALES","context":"Guess of the AI","columns":[' +
+    '{"name":"SALEID","context":"Number of the sale"},' +
+    '{"name":"TOTAL","context":"Guess of the AI"}],' +
+    '"foreignKeys":[{"targetTable":"CUSTOMERS","sourceColumns":["CUSTOMERID"],' +
+    '"targetColumns":["CUSTOMERID"],"relationshipContext":"Guess of the AI"}]},' +
+    '{"name":"CUSTOMERS","columns":[{"name":"STATE",' +
+    '"allowedValues":[{"value":"A","label":"Guess"}]}]}]}';
 var
   LExporter, LImporter: TRpLocalSchemaFile;
   LList, LValues, LLabels, LSkipped: TStringList;
@@ -822,6 +832,38 @@ begin
       'import: a short list of what was not imported');
     Check(RpShortNameList(LSkipped, 5) = 'SALES.DISCOUNT, GONE, PRODUCTS.PRICE',
       'import: a short list, whole');
+
+    // "Generate with AI": what the dictionary has written is kept, the AI
+    // only fills what is empty (SALEID has no description)
+    LCount := RpImportGeneratedSchemaJson(LImporter, GeneratedFile, LName, LSkipped);
+    LSchema := LImporter.Schemas[LImporter.IndexOfSchema(LName)];
+    Check((LCount = 2) and (LName = 'Sales by the AI') and
+      (LSchema.Tables.CommaText = 'SALES,CUSTOMERS'),
+      'generated: a new subschema with the tables of the AI: ' + LName + ' ' +
+      LSchema.Tables.CommaText);
+    Check(LImporter.FindTable('SALES').Values['context'].Value = 'Sales of the old Desktop',
+      'generated: the description of a table that was written is kept');
+    Check(LImporter.FindColumn('SALES', 'TOTAL').Values['context'].Value = 'Total amount',
+      'generated: the one of a column too');
+    Check(LImporter.FindColumn('SALES', 'SALEID').Values['context'].Value = 'Number of the sale',
+      'generated: an empty one, the AI fills it');
+    LImporter.GetAllowedValues('CUSTOMERS', 'STATE', LValues, LLabels);
+    Check(Joined(LValues) = 'X', 'generated: the allowed values that were there are kept');
+    LImporter.GetRelations(nil, LRelations);
+    Check((LRelations.Count = 2) and
+      (TRpLocalRelation(LRelations[1]).Context = 'From the Desktop'),
+      'generated: and the description of the relation');
+    LRelations.Clear;
+    // The same text imported as a file: what is imported wins, as before
+    RpImportSchemaJson(LImporter, GeneratedFile, '', LName, LSkipped);
+    LImporter.GetAllowedValues('CUSTOMERS', 'STATE', LValues, LLabels);
+    LImporter.GetRelations(nil, LRelations);
+    Check((LImporter.FindTable('SALES').Values['context'].Value = 'Guess of the AI') and
+      (LImporter.FindColumn('SALES', 'TOTAL').Values['context'].Value = 'Guess of the AI') and
+      (Joined(LValues) = 'A') and (LRelations.Count = 2) and
+      (TRpLocalRelation(LRelations[1]).Context = 'Guess of the AI'),
+      'generated: an import of a file still wins');
+    LRelations.Clear;
 
     // Without a name: the file name, without "_Config"
     LCount := RpImportSchemaJson(LImporter, '{"name":"","schemaTables":[{"name":"PRODUCTS"}]}',

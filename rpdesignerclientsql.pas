@@ -154,7 +154,8 @@ function RpModifyReportWithClientSql(AHttp: TRpDatabaseHttp;
 
   The result (result.schema, a database config with its schemaTables) is
   never saved here: the local schema screens import it as a new subschema
-  with its descriptions in the dictionary (RpImportSchemaJson), unsaved. }
+  with its descriptions in the dictionary where it has none
+  (RpImportGeneratedSchemaJson: what is written there is kept), unsaved. }
 
 const
   // The calls of one generation (the cloud has its own limits of turns)

@@ -496,7 +496,7 @@ begin
     LFile := RpLoadLocalSchema(LDatabase, AReport.Params, True, False);
     try
       LDatabase.DisConnect;
-      LCount := RpImportSchemaJson(LFile, LJson, '', LName, LSkipped);
+      LCount := RpImportGeneratedSchemaJson(LFile, LJson, LName, LSkipped);
       Log('  imported as "' + LName + '": ' + IntToStr(LCount) + ' tables' );
       if LSkipped.Count > 0 then
         Log('  not imported: ' + LSkipped.CommaText);
