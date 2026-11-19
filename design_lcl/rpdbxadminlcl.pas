@@ -535,7 +535,7 @@ begin
   LConnAdmin := CreateConnAdmin;
   try
     WriteNewConnection(LConnAdmin, Trim(AConnectionName), Trim(ADriverName), AProtocol);
-    LConnAdmin.config.UpdateFile;
+    LConnAdmin.SaveConfig;
   finally
     LConnAdmin.Free;
   end;
@@ -799,7 +799,7 @@ begin
         Continue;
       LConnAdmin.config.WriteString(AConnectionName, LName, AValues.ValueFromIndex[I]);
     end;
-    LConnAdmin.config.UpdateFile;
+    LConnAdmin.SaveConfig;
   finally
     LAllowedParams.Free;
     LCurrentParams.Free;

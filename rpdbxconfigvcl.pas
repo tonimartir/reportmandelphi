@@ -891,7 +891,7 @@ begin
  else
   params.Values[paramname]:=paramvalue;
  ConAdmin.config.WriteString(conname,paramname,paramvalue);
- ConAdmin.config.UpdateFile;
+ ConAdmin.SaveConfig;
 end;
 
 procedure TFRpDBXConfigVCL.BAddClick(Sender: TObject);
@@ -906,7 +906,7 @@ begin
  if Length(newname)<1 then
   exit;
  ConAdmin.AddConnection(newname,ComboDrivers.Text);
- ConAdmin.config.UpdateFile;
+ ConAdmin.SaveConfig;
  ComboDriversClick(Self);
  LConnections.ItemIndex:=LConnections.Items.IndexOf(newname);
  LConnectionsClick(Self);
@@ -935,7 +935,7 @@ begin
  if smbOk=RpMessageBox(SRpSureDropConnection+conname,SRpDropConnection,[smbok,smbCancel],smsWarning,smbCancel) then
  begin
   ConAdmin.DeleteConnection(conname);
-  ConAdmin.Config.UpdateFile;
+  ConAdmin.SaveConfig;
   ComboDriversCLick(Self);
  end;
 end;
@@ -1035,7 +1035,7 @@ procedure TFRpDBXConfigVCL.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
  try
   if Assigned(ConAdmin) then
-   ConAdmin.Config.UpdateFile;
+   ConAdmin.SaveConfig;
 //  UpdateConAdmin;
  except
   on E:Exception do

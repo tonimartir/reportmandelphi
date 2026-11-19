@@ -1388,7 +1388,7 @@ begin
   else
     FParams.Values[paramname] := paramvalue;
   FConAdmin.config.WriteString(conname, paramname, paramvalue);
-  FConAdmin.config.UpdateFile;
+  FConAdmin.SaveConfig;
   if SameText(paramname, 'ApiKey') then
     UpdateHubButton;
 end;
@@ -1406,7 +1406,7 @@ begin
   if Length(newname) < 1 then
     Exit;
   FConAdmin.AddConnection(newname, FComboDrivers.Text);
-  FConAdmin.config.UpdateFile;
+  FConAdmin.SaveConfig;
   ComboDriversClick(Self);
   SelectConnection(newname);
   Result := True;
@@ -1417,7 +1417,7 @@ begin
   if not Assigned(FConAdmin) then
     Exit;
   FConAdmin.DeleteConnection(AName);
-  FConAdmin.config.UpdateFile;
+  FConAdmin.SaveConfig;
   ComboDriversClick(Self);
 end;
 
@@ -1538,7 +1538,7 @@ end;
 procedure TFRpDBXConfigLCL.SaveConfig;
 begin
   if Assigned(FConAdmin) then
-    FConAdmin.Config.UpdateFile;
+    FConAdmin.SaveConfig;
 end;
 
 procedure TFRpDBXConfigLCL.DoClose(var CloseAction: TCloseAction);

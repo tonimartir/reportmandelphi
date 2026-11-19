@@ -60,8 +60,8 @@ unit rpdbxdotnet;
   proposed from the .NET ones (RpDotNetProposeDelphiParams). Writing them
   touches only the Delphi.* lines (and the line of the password) of the
   section: every other byte of the file (other sections, comments, blank
-  lines) stays as it was (RpDotNetWriteDelphiKeys, RpDotNetWriteKey), as the
-  .NET writer does.
+  lines) stays as it was, as the .NET writer does. The whole file is
+  written so by Delphi (RpIniSaveChanges, below).
 
   Phase F9 of docs/reportman-ai-chat-conexiones-locales-plan.md (ReportmanAI). }
 
@@ -140,7 +140,7 @@ function RpBase64Encode(const ABytes: TBytes): string;
 function RpBase64Decode(const AText: string; out ABytes: TBytes): Boolean;
 
 // The functions below take ASection: the Name=Value lines of the section
-// (TMemIniFile.ReadSectionValues, the values through RpDotNetIniText)
+// (TMemIniFile.ReadSectionValues of RpCreateConnectionsIni)
 
 // Its Delphi parameters are defined (Delphi.DriverName)
 function RpDotNetHasDelphiParams(ASection: TStrings): Boolean;
@@ -170,22 +170,65 @@ function RpDotNetDescription(ASection: TStrings): string;
 // connection, Secret.*)
 procedure RpDotNetDelphiLines(AParams, ALines: TStrings);
 
-// Replaces the Delphi.* keys of the section AAlias of the file with ALines
-// (Delphi.<Name>=<Value>, UTF-8), where the first of them was or after the
-// last line of the section. The rest of the file does not change, byte for
-// byte. Raises when the file or the section are not there
-procedure RpDotNetWriteDelphiKeys(const AFileName, AAlias: string;
-  ALines: TStrings);
-// Writes AKey=AValue in the section AAlias: its line is replaced where it
-// is, or it goes before the Delphi.* keys (after the last line of the
-// section when there are none). Nothing else of the file changes
-procedure RpDotNetWriteKey(const AFileName, AAlias, AKey, AValue: string);
+{ The shared connections file (dbxconnections), written surgically.
 
-// A value of an ADO.NET section as read by a TMemIniFile: .NET writes the
-// file in UTF-8 and Delphi reads it as ANSI (two characters for each accented
-// letter): the UTF-8 bytes are read again; a value read right stays; the FPC
-// engine reads it as it is
-function RpDotNetIniText(const AValue: string): string;
+  The designers, the Desktop, the chat and Reportman.Server write the same
+  file, so nobody rewrites it whole (TMemIniFile.UpdateFile drops the
+  comments and the blank lines, loses the keys of a repeated section and,
+  as the file is read when a dialog opens and written when it closes,
+  overwrites what another program saved meanwhile). TRpConnAdmin keeps a
+  snapshot of what it read (TRpIniSnapshot) and saves the DIFFERENCES
+  between it and the TMemIniFile in memory (RpIniSaveChanges), applied line
+  by line to the file as it is on disk at that moment: a value changed in
+  its line, a new key after the last one of its section, a key deleted
+  without its line, a new section at the end, a deleted section without its
+  lines. Comments, order, blank lines, the sections and keys of other
+  programs and their changes meanwhile stay as they are.
+
+  The encoding, the same rule in Delphi, FPC and .NET: with a UTF-8 BOM
+  (EF BB BF) the file is UTF-8 and is written again with its BOM; without
+  it, the ANSI code page of the system in Windows and UTF-8 in Linux and
+  macOS. The line breaks (CRLF/LF) and whether it ends with one stay. }
+
+type
+  // What a connections file had: its sections, with their keys and values
+  TRpIniSnapshot = class(TObject)
+  private
+    FSections: TStringList;
+    function GetCount: Integer;
+    function GetName(AIndex: Integer): string;
+    function GetValues(AIndex: Integer): TStrings;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Clear;
+    // The sections, keys and values of AIni
+    procedure Assign(AIni: TCustomIniFile);
+    function IndexOf(const ASection: string): Integer;
+    property Count: Integer read GetCount;
+    property Names[AIndex: Integer]: string read GetName;
+    // Name=Value, in their order
+    property Values[AIndex: Integer]: TStrings read GetValues;
+  end;
+
+// The encoding of a connections file by the rule: UTF-8 with a BOM; without
+// it, the ANSI code page of the system in Windows, UTF-8 elsewhere. A
+// standard instance (TEncoding.UTF8, TEncoding.ANSI) or, in FPC on Windows,
+// a new one of GetACP that the caller frees (AOwned)
+function RpIniFileEncoding(const AFileName: string; out AOwned: Boolean): TEncoding;
+// The TMemIniFile of a connections file, read by that rule (case
+// insensitive). It owns the encoding it needs
+function RpCreateConnectionsIni(const AFileName: string): TMemIniFile;
+// Frees the TMemIniFile of a connections file WITHOUT writing it: the one
+// of FPC writes the whole file when it is freed with changes (CacheUpdates);
+// the file is only written by RpIniSaveChanges
+procedure RpFreeConnectionsIni(var AIni: TMemIniFile);
+// Saves in AFileName, as it is on disk now, the differences between
+// ASnapshot (what was read) and AIni (what there is in memory). The file is
+// created when it is not there. Every other byte stays
+procedure RpIniSaveChanges(const AFileName: string; ASnapshot: TRpIniSnapshot;
+  AIni: TCustomIniFile);
+
 // The name of a connection in the lists of the designers (with the mark of
 // .NET) and back
 function RpDotNetDisplayName(const AName: string): string;
@@ -246,6 +289,8 @@ const
 function RpMoveFileEx(lpExistingFileName, lpNewFileName: PWideChar;
   dwFlags: Cardinal): LongBool; stdcall;
   external 'kernel32.dll' name 'MoveFileExW';
+// The ANSI code page of the system
+function RpGetACP: Cardinal; stdcall; external 'kernel32.dll' name 'GetACP';
 {$ENDIF}
 
 const
@@ -273,72 +318,6 @@ begin
   if ACount > 0 then
     Move(B[AStart], U[1], ACount);
   Result := string(U);
-end;
-
-function IsValidUtf8(const B: TBytes; AStart, ACount: Integer): Boolean;
-var
-  I, LEnd, LMore, J: Integer;
-  C: Byte;
-begin
-  Result := False;
-  I := AStart;
-  LEnd := AStart + ACount;
-  while I < LEnd do
-  begin
-    C := B[I];
-    if C < $80 then
-      LMore := 0
-    else if (C and $E0) = $C0 then
-    begin
-      if C < $C2 then
-        Exit;
-      LMore := 1;
-    end
-    else if (C and $F0) = $E0 then
-      LMore := 2
-    else if (C and $F8) = $F0 then
-    begin
-      if C > $F4 then
-        Exit;
-      LMore := 3;
-    end
-    else
-      Exit;
-    for J := 1 to LMore do
-      if (I + J >= LEnd) or ((B[I + J] and $C0) <> $80) then
-        Exit;
-    Inc(I, LMore + 1);
-  end;
-  Result := True;
-end;
-
-function RpDotNetIniText(const AValue: string): string;
-{$IFNDEF FPC}
-var
-  I: Integer;
-  LHigh: Boolean;
-  LBytes: TBytes;
-{$ENDIF}
-begin
-  Result := AValue;
-{$IFNDEF FPC}
-  LHigh := False;
-  for I := 1 to Length(AValue) do
-    if Ord(AValue[I]) > 127 then
-    begin
-      LHigh := True;
-      Break;
-    end;
-  if not LHigh then
-    Exit;
-  // Only when the text is the ANSI reading of UTF-8 bytes: a value that
-  // was read right (or written by Delphi) does not go back to the same text
-  LBytes := TEncoding.ANSI.GetBytes(AValue);
-  if TEncoding.ANSI.GetString(LBytes) <> AValue then
-    Exit;
-  if IsValidUtf8(LBytes, 0, Length(LBytes)) then
-    Result := TEncoding.UTF8.GetString(LBytes);
-{$ENDIF}
 end;
 
 function RpIsDotNetDriverName(const ADriverName: string): Boolean;
@@ -1083,136 +1062,254 @@ begin
     [ADescription]) + sLineBreak + Format(SRpDotNetSetupInfo, [AAlias]);
 end;
 
-{ The file }
+{ The snapshot }
 
-type
-  TRpRawLines = array of TBytes;
+constructor TRpIniSnapshot.Create;
+begin
+  inherited Create;
+  FSections := TStringList.Create;
+end;
 
-// The lines of the file, each one with its line break (the last one may
-// have none)
-function SplitRawLines(const AData: TBytes): TRpRawLines;
+destructor TRpIniSnapshot.Destroy;
+begin
+  Clear;
+  FSections.Free;
+  inherited Destroy;
+end;
+
+procedure TRpIniSnapshot.Clear;
 var
-  I, LStart, LCount: Integer;
+  I: Integer;
 begin
-  Result := nil;
-  LCount := 0;
-  LStart := 0;
-  for I := 0 to Length(AData) - 1 do
-    if AData[I] = 10 then
-    begin
-      SetLength(Result, LCount + 1);
-      Result[LCount] := Copy(AData, LStart, I - LStart + 1);
-      Inc(LCount);
-      LStart := I + 1;
-    end;
-  if LStart < Length(AData) then
-  begin
-    SetLength(Result, LCount + 1);
-    Result[LCount] := Copy(AData, LStart, Length(AData) - LStart);
-  end;
+  for I := 0 to FSections.Count - 1 do
+    FSections.Objects[I].Free;
+  FSections.Clear;
 end;
 
-// The text of a line without its line break and blanks around it (UTF-8
-// when it is valid, the code page of the system otherwise)
-function RawLineText(const ALine: TBytes; ASkipBom: Boolean): string;
+function TRpIniSnapshot.GetCount: Integer;
+begin
+  Result := FSections.Count;
+end;
+
+function TRpIniSnapshot.GetName(AIndex: Integer): string;
+begin
+  Result := FSections[AIndex];
+end;
+
+function TRpIniSnapshot.GetValues(AIndex: Integer): TStrings;
+begin
+  Result := TStrings(FSections.Objects[AIndex]);
+end;
+
+function TRpIniSnapshot.IndexOf(const ASection: string): Integer;
+begin
+  Result := FSections.IndexOf(ASection);
+end;
+
+procedure TRpIniSnapshot.Assign(AIni: TCustomIniFile);
 var
-  LStart, LEnd: Integer;
-{$IFNDEF FPC}
-  LAnsi: TBytes;
-{$ENDIF}
+  LSections, LKeys, LValues: TStringList;
+  I, J: Integer;
 begin
-  LStart := 0;
-  LEnd := Length(ALine);
-  if ASkipBom and (LEnd >= 3) and (ALine[0] = $EF) and (ALine[1] = $BB) and
-    (ALine[2] = $BF) then
-    LStart := 3;
-  while (LEnd > LStart) and (ALine[LEnd - 1] in [10, 13]) do
-    Dec(LEnd);
-  if IsValidUtf8(ALine, LStart, LEnd - LStart) then
-    Result := Utf8Text(ALine, LStart, LEnd - LStart)
-  else
-  begin
-{$IFDEF FPC}
-    Result := Utf8Text(ALine, LStart, LEnd - LStart);
-{$ELSE}
-    LAnsi := Copy(ALine, LStart, LEnd - LStart);
-    Result := TEncoding.ANSI.GetString(LAnsi);
-{$ENDIF}
-  end;
-  Result := Trim(Result);
-end;
-
-function IsSectionLine(const AText: string; out AName: string): Boolean;
-begin
-  Result := (Length(AText) >= 2) and (AText[1] = '[') and (AText[Length(AText)] = ']');
-  if Result then
-    AName := Trim(Copy(AText, 2, Length(AText) - 2))
-  else
-    AName := '';
-end;
-
-function HasLineBreak(const ALine: TBytes): Boolean;
-begin
-  Result := (Length(ALine) > 0) and (ALine[Length(ALine) - 1] = 10);
-end;
-
-// A key line of the section that ReplaceSectionKeys replaces: the key AKey
-// (AExact) or one that starts with it
-function IsKeyLine(const AText, AKey: string; AExact: Boolean): Boolean;
-var
-  LKey: string;
-begin
-  Result := False;
-  if (Pos('=', AText) <= 1) or (AText[1] = ';') or (AText[1] = '#') then
+  Clear;
+  if AIni = nil then
     Exit;
-  LKey := Trim(Copy(AText, 1, Pos('=', AText) - 1));
-  if AExact then
-    Result := SameText(LKey, AKey)
-  else
-    Result := StartsText(AKey, LKey);
+  LSections := TStringList.Create;
+  LKeys := TStringList.Create;
+  try
+    AIni.ReadSections(LSections);
+    for I := 0 to LSections.Count - 1 do
+    begin
+      // A repeated section: the ini reads the first one
+      if FSections.IndexOf(LSections[I]) >= 0 then
+        Continue;
+      LValues := TStringList.Create;
+      FSections.AddObject(LSections[I], LValues);
+      AIni.ReadSection(LSections[I], LKeys);
+      for J := 0 to LKeys.Count - 1 do
+        if (Trim(LKeys[J]) <> '') and (LValues.IndexOfName(Trim(LKeys[J])) < 0) then
+          LValues.Add(Trim(LKeys[J]) + '=' + AIni.ReadString(LSections[I], LKeys[J], ''));
+    end;
+  finally
+    LKeys.Free;
+    LSections.Free;
+  end;
 end;
 
-// Replaces the lines of the key AKey (AExact) or of the keys that start with
-// it in the section AAlias with ALines: where the first of them was,
-// otherwise (a key) before the Delphi.* keys, otherwise after the last line
-// of the section. Every other byte of the file stays
-procedure ReplaceSectionKeys(const AFileName, AAlias, AKey: string;
-  AExact: Boolean; ALines: TStrings);
+{ The encoding }
+
+function RpIniHasBom(const AFileName: string): Boolean;
 var
   LStream: TFileStream;
-  LData, LBreak, LBytes: TBytes;
-  LLines, LResult: TRpRawLines;
-  I, J, LCount, LStart, LEnd, LLastContent, LInsertAt: Integer;
-  LText, LName, LTemp: string;
-  LFound, LCrLf: Boolean;
-  LNewLines: TRpRawLines;
-
-  procedure AddResult(const ALine: TBytes);
-  begin
-    SetLength(LResult, LCount + 1);
-    LResult[LCount] := ALine;
-    Inc(LCount);
-  end;
-
+  LBom: array[0..2] of Byte;
 begin
+  Result := False;
   if not FileExists(AFileName) then
-    raise Exception.CreateFmt(SRpDotNetNotFound, [AAlias, AFileName]);
-  LStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    Exit;
+  LStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
-    SetLength(LData, LStream.Size);
-    if Length(LData) > 0 then
-      LStream.ReadBuffer(LData[0], Length(LData));
+    Result := (LStream.Read(LBom, 3) = 3) and (LBom[0] = $EF) and (LBom[1] = $BB) and
+      (LBom[2] = $BF);
   finally
     LStream.Free;
   end;
-  LLines := SplitRawLines(LData);
-  // The line break of the file (CRLF from the designers and .NET on Windows)
-  LCrLf := False;
+end;
+
+function RpIniFileEncoding(const AFileName: string; out AOwned: Boolean): TEncoding;
+begin
+  AOwned := False;
+  if RpIniHasBom(AFileName) then
+    Exit(TEncoding.UTF8);
+{$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+  // TEncoding.ANSI of FPC is the code page of the strings (UTF-8 in
+  // Lazarus): the one of the system is GetACP
+  Result := TEncoding.GetEncoding(Integer(RpGetACP));
+  AOwned := True;
+{$ELSE}
+  Result := TEncoding.ANSI;
+{$ENDIF}
+{$ELSE}
+  Result := TEncoding.UTF8;
+{$ENDIF}
+end;
+
+function RpCreateConnectionsIni(const AFileName: string): TMemIniFile;
+var
+  LEncoding: TEncoding;
+  LOwned: Boolean;
+begin
+  LEncoding := RpIniFileEncoding(AFileName, LOwned);
+{$IFDEF FPC}
+  // The ini frees an encoding that is not a standard one
+  Result := TMemIniFile.Create(AFileName, LEncoding, LOwned, []);
+{$ELSE}
+  Result := TMemIniFile.Create(AFileName, LEncoding);
+  Result.CaseSensitive := False;
+{$ENDIF}
+end;
+
+procedure RpFreeConnectionsIni(var AIni: TMemIniFile);
+begin
+  if AIni = nil then
+    Exit;
+{$IFDEF FPC}
+  // Without a file name its UpdateFile of Destroy writes nothing
+  AIni.Rename('', False);
+{$ENDIF}
+  FreeAndNil(AIni);
+end;
+
+{ The file }
+
+type
+  TRpIniLine = record
+    // The line without its line break, as it is in the file
+    Text: TBytes;
+    // Its line break (empty: the last line of a file that does not end
+    // with one)
+    Brk: TBytes;
+  end;
+
+  // The connections file as it is on disk, line by line: what does not
+  // change is written back byte for byte
+  TRpIniDocument = class(TObject)
+  private
+    FLines: array of TRpIniLine;
+    FCount: Integer;
+    FBom: Boolean;
+    FUtf8: Boolean;
+    FFinalBreak: Boolean;
+    FBreak: TBytes;
+    FModified: Boolean;
+    FAnsi: TEncoding;
+    FOwnsAnsi: Boolean;
+    function LineText(AIndex: Integer): string;
+    function Encode(const AText: string): TBytes;
+    procedure InsertLine(AIndex: Integer; const AText: string);
+    procedure DeleteLine(AIndex: Integer);
+    function IsBlank(AIndex: Integer): Boolean;
+    function KeyOf(AIndex: Integer; out AKey, AValue: string): Boolean;
+    function SectionAt(AIndex: Integer; out AName: string): Boolean;
+    function FindSection(const AName: string): Integer;
+    function SectionEnd(AStart: Integer): Integer;
+    function LastKeyLine(AStart: Integer): Integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure LoadFromFile(const AFileName: string);
+    procedure SaveToFile(const AFileName: string);
+    procedure AddSection(const ASection: string);
+    procedure SetValue(const ASection, AKey, AValue: string);
+    procedure DeleteKey(const ASection, AKey: string);
+    procedure DeleteSection(const ASection: string);
+    property Modified: Boolean read FModified;
+  end;
+
+constructor TRpIniDocument.Create;
+begin
+  inherited Create;
+{$IFDEF MSWINDOWS}
+{$IFDEF FPC}
+  FAnsi := TEncoding.GetEncoding(Integer(RpGetACP));
+  FOwnsAnsi := True;
+{$ELSE}
+  FAnsi := TEncoding.ANSI;
+{$ENDIF}
+{$ENDIF}
+end;
+
+destructor TRpIniDocument.Destroy;
+begin
+  if FOwnsAnsi then
+    FAnsi.Free;
+  inherited Destroy;
+end;
+
+procedure TRpIniDocument.LoadFromFile(const AFileName: string);
+var
+  LStream: TFileStream;
+  LData: TBytes;
+  I, LStart, LFirst, LEnd: Integer;
+  LLine: TRpIniLine;
+  LCrLf, LFound: Boolean;
+begin
+  FCount := 0;
+  SetLength(FLines, 0);
+  FModified := False;
+  FBom := False;
+  FFinalBreak := True;
+  LData := nil;
+  if FileExists(AFileName) then
+  begin
+    LStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    try
+      SetLength(LData, LStream.Size);
+      if Length(LData) > 0 then
+        LStream.ReadBuffer(LData[0], Length(LData));
+    finally
+      LStream.Free;
+    end;
+  end;
+  LFirst := 0;
+  if (Length(LData) >= 3) and (LData[0] = $EF) and (LData[1] = $BB) and (LData[2] = $BF) then
+  begin
+    FBom := True;
+    LFirst := 3;
+  end;
+  // The rule: UTF-8 with a BOM; without it, ANSI in Windows, UTF-8 elsewhere
+{$IFDEF MSWINDOWS}
+  FUtf8 := FBom;
+{$ELSE}
+  FUtf8 := True;
+{$ENDIF}
+  // The line break of the file (the one of the system for a new file)
   LFound := False;
-  for I := 0 to Length(LData) - 1 do
+  LCrLf := False;
+  for I := LFirst to Length(LData) - 1 do
     if LData[I] = 10 then
     begin
-      LCrLf := (I > 0) and (LData[I - 1] = 13);
+      LCrLf := (I > LFirst) and (LData[I - 1] = 13);
       LFound := True;
       Break;
     end;
@@ -1224,101 +1321,90 @@ begin
 {$ENDIF}
   if LCrLf then
   begin
-    SetLength(LBreak, 2);
-    LBreak[0] := 13;
-    LBreak[1] := 10;
+    SetLength(FBreak, 2);
+    FBreak[0] := 13;
+    FBreak[1] := 10;
   end
   else
   begin
-    SetLength(LBreak, 1);
-    LBreak[0] := 10;
+    SetLength(FBreak, 1);
+    FBreak[0] := 10;
   end;
-  // The section: from its [ALIAS] to the next section
-  LStart := -1;
-  LEnd := Length(LLines);
-  for I := 0 to Length(LLines) - 1 do
+  LStart := LFirst;
+  I := LFirst;
+  while I < Length(LData) do
   begin
-    LText := RawLineText(LLines[I], I = 0);
-    if IsSectionLine(LText, LName) then
+    if LData[I] = 10 then
     begin
-      if LStart >= 0 then
+      LEnd := I;
+      if (LEnd > LStart) and (LData[LEnd - 1] = 13) then
       begin
-        LEnd := I;
-        Break;
-      end;
-      if SameText(LName, Trim(AAlias)) then
-        LStart := I;
+        Dec(LEnd);
+        LLine.Brk := Copy(LData, LEnd, 2);
+      end
+      else
+        LLine.Brk := Copy(LData, I, 1);
+      LLine.Text := Copy(LData, LStart, LEnd - LStart);
+      if FCount >= Length(FLines) then
+        SetLength(FLines, FCount * 2 + 16);
+      FLines[FCount] := LLine;
+      Inc(FCount);
+      LStart := I + 1;
     end;
+    Inc(I);
   end;
-  if LStart < 0 then
-    raise Exception.CreateFmt(SRpDotNetNotFound, [AAlias, AFileName]);
-  // Its last line with something: the blank lines after it are not its own
-  LLastContent := LStart;
-  for I := LStart + 1 to LEnd - 1 do
-    if RawLineText(LLines[I], False) <> '' then
-      LLastContent := I;
-  // The new lines, UTF-8 (the encoding of the .NET writer)
-  SetLength(LNewLines, ALines.Count);
-  for I := 0 to ALines.Count - 1 do
+  if LStart < Length(LData) then
   begin
-    LBytes := Utf8Bytes(ALines[I]);
-    J := Length(LBytes);
-    SetLength(LBytes, J + Length(LBreak));
-    Move(LBreak[0], LBytes[J], Length(LBreak));
-    LNewLines[I] := LBytes;
+    // The last line, without a line break
+    LLine.Text := Copy(LData, LStart, Length(LData) - LStart);
+    LLine.Brk := nil;
+    if FCount >= Length(FLines) then
+      SetLength(FLines, FCount + 1);
+    FLines[FCount] := LLine;
+    Inc(FCount);
+    FFinalBreak := False;
   end;
-  // Where the first line replaced was; a key without line goes before the
-  // Delphi.* keys; otherwise after the last line of the section
-  LInsertAt := -1;
-  for I := LStart + 1 to LEnd - 1 do
-    if IsKeyLine(RawLineText(LLines[I], False), AKey, AExact) then
-    begin
-      LInsertAt := I;
-      Break;
-    end;
-  if (LInsertAt < 0) and AExact then
-    for I := LStart + 1 to LEnd - 1 do
-      if IsKeyLine(RawLineText(LLines[I], False), RP_DOTNET_DELPHI_PREFIX, False) then
-      begin
-        LInsertAt := I;
-        Break;
-      end;
-  if LInsertAt < 0 then
-    LInsertAt := LLastContent + 1;
-  LCount := 0;
-  SetLength(LResult, 0);
-  for I := 0 to Length(LLines) - 1 do
-  begin
-    if I = LInsertAt then
-      for J := 0 to Length(LNewLines) - 1 do
-        AddResult(LNewLines[J]);
-    if (I > LStart) and (I < LEnd) and
-      IsKeyLine(RawLineText(LLines[I], False), AKey, AExact) then
-      Continue;
-    // The last line of the file without a line break gets one when lines
-    // go after it
-    if (I = Length(LLines) - 1) and (LInsertAt = Length(LLines)) and
-      (Length(LNewLines) > 0) and (not HasLineBreak(LLines[I])) then
-    begin
-      LBytes := Copy(LLines[I], 0, Length(LLines[I]));
-      J := Length(LBytes);
-      SetLength(LBytes, J + Length(LBreak));
-      Move(LBreak[0], LBytes[J], Length(LBreak));
-      AddResult(LBytes);
-    end
-    else
-      AddResult(LLines[I]);
-  end;
-  if LInsertAt >= Length(LLines) then
-    for J := 0 to Length(LNewLines) - 1 do
-      AddResult(LNewLines[J]);
+end;
+
+procedure TRpIniDocument.SaveToFile(const AFileName: string);
+var
+  LStream: TFileStream;
+  LTemp, LDir: string;
+  I: Integer;
+  LBreak: TBytes;
+  LBom: array[0..2] of Byte;
+begin
+  LDir := ExtractFileDir(ExpandFileName(AFileName));
+  if (LDir <> '') and not DirectoryExists(LDir) then
+    ForceDirectories(LDir);
   // Written next to it and moved over it: the file is never half written
   LTemp := AFileName + '.tmp';
   LStream := TFileStream.Create(LTemp, fmCreate);
   try
-    for I := 0 to LCount - 1 do
-      if Length(LResult[I]) > 0 then
-        LStream.WriteBuffer(LResult[I][0], Length(LResult[I]));
+    if FBom then
+    begin
+      LBom[0] := $EF;
+      LBom[1] := $BB;
+      LBom[2] := $BF;
+      LStream.WriteBuffer(LBom, 3);
+    end;
+    for I := 0 to FCount - 1 do
+    begin
+      if Length(FLines[I].Text) > 0 then
+        LStream.WriteBuffer(FLines[I].Text[0], Length(FLines[I].Text));
+      // Every line but the last one has its break; the last one, only when
+      // the file ended with one
+      LBreak := FLines[I].Brk;
+      if (I < FCount - 1) or FFinalBreak then
+      begin
+        if Length(LBreak) = 0 then
+          LBreak := FBreak;
+      end
+      else
+        LBreak := nil;
+      if Length(LBreak) > 0 then
+        LStream.WriteBuffer(LBreak[0], Length(LBreak));
+    end;
   finally
     LStream.Free;
   end;
@@ -1334,26 +1420,248 @@ begin
   if not RenameFile(LTemp, AFileName) then
     RaiseLastOSError;
 {$ENDIF}
+  FModified := False;
 end;
 
-procedure RpDotNetWriteDelphiKeys(const AFileName, AAlias: string;
-  ALines: TStrings);
+function TRpIniDocument.LineText(AIndex: Integer): string;
 begin
-  ReplaceSectionKeys(AFileName, AAlias, RP_DOTNET_DELPHI_PREFIX, False, ALines);
+  if FUtf8 or (FAnsi = nil) then
+    Result := Utf8Text(FLines[AIndex].Text, 0, Length(FLines[AIndex].Text))
+  else
+    Result := FAnsi.GetString(FLines[AIndex].Text);
 end;
 
-procedure RpDotNetWriteKey(const AFileName, AAlias, AKey, AValue: string);
+function TRpIniDocument.Encode(const AText: string): TBytes;
+begin
+  if FUtf8 or (FAnsi = nil) then
+    Result := Utf8Bytes(AText)
+  else
+    Result := FAnsi.GetBytes(UnicodeString(AText));
+end;
+
+procedure TRpIniDocument.InsertLine(AIndex: Integer; const AText: string);
 var
-  LLines: TStringList;
+  I: Integer;
 begin
-  if (Trim(AKey) = '') or (Pos('=', AKey) > 0) then
-    raise Exception.Create('Invalid key: ' + AKey);
-  LLines := TStringList.Create;
+  if FCount >= Length(FLines) then
+    SetLength(FLines, FCount * 2 + 16);
+  // A line after the last one: the last one gets its break
+  if (AIndex = FCount) and (FCount > 0) and (Length(FLines[FCount - 1].Brk) = 0) then
+    FLines[FCount - 1].Brk := FBreak;
+  for I := FCount downto AIndex + 1 do
+    FLines[I] := FLines[I - 1];
+  FLines[AIndex].Text := Encode(AText);
+  FLines[AIndex].Brk := FBreak;
+  Inc(FCount);
+  FModified := True;
+end;
+
+procedure TRpIniDocument.DeleteLine(AIndex: Integer);
+var
+  I: Integer;
+begin
+  for I := AIndex to FCount - 2 do
+    FLines[I] := FLines[I + 1];
+  Dec(FCount);
+  FModified := True;
+end;
+
+function TRpIniDocument.IsBlank(AIndex: Integer): Boolean;
+begin
+  Result := Trim(LineText(AIndex)) = '';
+end;
+
+function TRpIniDocument.KeyOf(AIndex: Integer; out AKey, AValue: string): Boolean;
+var
+  LText: string;
+  P: Integer;
+begin
+  Result := False;
+  AKey := '';
+  AValue := '';
+  LText := Trim(LineText(AIndex));
+  if (LText = '') or (LText[1] = ';') or (LText[1] = '#') or (LText[1] = '[') then
+    Exit;
+  P := Pos('=', LText);
+  if P <= 1 then
+    Exit;
+  AKey := Trim(Copy(LText, 1, P - 1));
+  AValue := Trim(Copy(LText, P + 1, MaxInt));
+  Result := AKey <> '';
+end;
+
+function TRpIniDocument.SectionAt(AIndex: Integer; out AName: string): Boolean;
+var
+  LText: string;
+begin
+  LText := Trim(LineText(AIndex));
+  Result := (Length(LText) >= 2) and (LText[1] = '[') and (LText[Length(LText)] = ']');
+  if Result then
+    AName := Trim(Copy(LText, 2, Length(LText) - 2))
+  else
+    AName := '';
+end;
+
+function TRpIniDocument.FindSection(const AName: string): Integer;
+var
+  I: Integer;
+  LName: string;
+begin
+  for I := 0 to FCount - 1 do
+    if SectionAt(I, LName) and SameText(LName, Trim(AName)) then
+      Exit(I);
+  Result := -1;
+end;
+
+function TRpIniDocument.SectionEnd(AStart: Integer): Integer;
+var
+  LName: string;
+begin
+  Result := AStart + 1;
+  while (Result < FCount) and not SectionAt(Result, LName) do
+    Inc(Result);
+end;
+
+function TRpIniDocument.LastKeyLine(AStart: Integer): Integer;
+var
+  I: Integer;
+  LKey, LValue: string;
+begin
+  Result := AStart;
+  for I := AStart + 1 to SectionEnd(AStart) - 1 do
+    if KeyOf(I, LKey, LValue) then
+      Result := I;
+end;
+
+procedure TRpIniDocument.AddSection(const ASection: string);
+begin
+  if FindSection(ASection) >= 0 then
+    Exit;
+  // At the end, after a blank line
+  if (FCount > 0) and not IsBlank(FCount - 1) then
+    InsertLine(FCount, '');
+  InsertLine(FCount, '[' + Trim(ASection) + ']');
+end;
+
+procedure TRpIniDocument.SetValue(const ASection, AKey, AValue: string);
+var
+  LStart, I: Integer;
+  LKey, LValue: string;
+begin
+  LStart := FindSection(ASection);
+  if LStart < 0 then
+  begin
+    AddSection(ASection);
+    InsertLine(FCount, Trim(AKey) + '=' + AValue);
+    Exit;
+  end;
+  // Its line, where it is (the key as the file has it)
+  for I := LStart + 1 to SectionEnd(LStart) - 1 do
+    if KeyOf(I, LKey, LValue) and SameText(LKey, Trim(AKey)) then
+    begin
+      if LValue <> Trim(AValue) then
+      begin
+        FLines[I].Text := Encode(LKey + '=' + AValue);
+        FModified := True;
+      end;
+      Exit;
+    end;
+  // A new key, after the last one of its section
+  InsertLine(LastKeyLine(LStart) + 1, Trim(AKey) + '=' + AValue);
+end;
+
+procedure TRpIniDocument.DeleteKey(const ASection, AKey: string);
+var
+  LStart, I: Integer;
+  LKey, LValue: string;
+begin
+  LStart := FindSection(ASection);
+  if LStart < 0 then
+    Exit;
+  // Its lines (a key repeated would come back when the file is read again)
+  for I := SectionEnd(LStart) - 1 downto LStart + 1 do
+    if KeyOf(I, LKey, LValue) and SameText(LKey, Trim(AKey)) then
+      DeleteLine(I);
+end;
+
+procedure TRpIniDocument.DeleteSection(const ASection: string);
+var
+  LStart, LLast, I: Integer;
+begin
+  LStart := FindSection(ASection);
+  while LStart >= 0 do
+  begin
+    // From its header to its last key: the comments and blank lines after
+    // it are the ones of what follows
+    LLast := LastKeyLine(LStart);
+    for I := LLast downto LStart do
+      DeleteLine(I);
+    // The blank lines that separated it, when there is one before it
+    if (LStart = 0) or IsBlank(LStart - 1) then
+      while (LStart < FCount) and IsBlank(LStart) do
+        DeleteLine(LStart);
+    // A repeated section too
+    LStart := FindSection(ASection);
+  end;
+end;
+
+procedure RpIniSaveChanges(const AFileName: string; ASnapshot: TRpIniSnapshot;
+  AIni: TCustomIniFile);
+var
+  LNow: TRpIniSnapshot;
+  LDoc: TRpIniDocument;
+  LBefore, LAfter: TStrings;
+  I, J, K, LIndex: Integer;
+  LKey: string;
+begin
+  if Trim(AFileName) = '' then
+    Exit;
+  LNow := TRpIniSnapshot.Create;
+  LDoc := TRpIniDocument.Create;
   try
-    LLines.Add(Trim(AKey) + '=' + AValue);
-    ReplaceSectionKeys(AFileName, AAlias, Trim(AKey), True, LLines);
+    LNow.Assign(AIni);
+    // The file as it is now (another program may have written it)
+    LDoc.LoadFromFile(AFileName);
+    for I := 0 to LNow.Count - 1 do
+    begin
+      LAfter := LNow.Values[I];
+      J := -1;
+      if ASnapshot <> nil then
+        J := ASnapshot.IndexOf(LNow.Names[I]);
+      LBefore := nil;
+      if J >= 0 then
+        LBefore := ASnapshot.Values[J]
+      else
+        // A new section, also one without keys
+        LDoc.AddSection(LNow.Names[I]);
+      // The keys new or changed
+      for K := 0 to LAfter.Count - 1 do
+      begin
+        LKey := LAfter.Names[K];
+        if LKey = '' then
+          Continue;
+        LIndex := -1;
+        if LBefore <> nil then
+          LIndex := LBefore.IndexOfName(LKey);
+        if (LIndex < 0) or (LBefore.ValueFromIndex[LIndex] <> LAfter.ValueFromIndex[K]) then
+          LDoc.SetValue(LNow.Names[I], LKey, LAfter.ValueFromIndex[K]);
+      end;
+      // The keys deleted
+      if LBefore <> nil then
+        for K := 0 to LBefore.Count - 1 do
+          if (LBefore.Names[K] <> '') and (LAfter.IndexOfName(LBefore.Names[K]) < 0) then
+            LDoc.DeleteKey(LNow.Names[I], LBefore.Names[K]);
+    end;
+    // The sections deleted
+    if ASnapshot <> nil then
+      for J := 0 to ASnapshot.Count - 1 do
+        if LNow.IndexOf(ASnapshot.Names[J]) < 0 then
+          LDoc.DeleteSection(ASnapshot.Names[J]);
+    if LDoc.Modified then
+      LDoc.SaveToFile(AFileName);
   finally
-    LLines.Free;
+    LDoc.Free;
+    LNow.Free;
   end;
 end;
 

@@ -193,16 +193,29 @@ type
 
  TRpConnAdmin=class(TObject)
   private
+   // What the connections file had when it was read (rpdbxdotnet
+   // TRpIniSnapshot): SaveConfig writes only what changed since then
+   FSnapshot:TObject;
+   // The file config was read from (the one SaveConfig writes)
+   FConfigFile:string;
   public
    DBXConnectionsOverride:String;
    DBXDriversOverride:String;
    driverfilename:string;
    configfilename:string;
+   // The connections file in memory (read by the encoding rule of
+   // RpCreateConnectionsIni). Written with SaveConfig, never UpdateFile
    config:TMemInifile;
    drivers:TMemInifile;
    constructor Create;
    destructor Destroy;override;
    procedure LoadConfig;
+   // Writes what changed in config since it was read (keys and sections
+   // new, changed and deleted) in the file AS IT IS NOW on disk, line by
+   // line: comments, blank lines, order and what other programs (the
+   // Desktop, the chat, the C# designer) wrote meanwhile stay
+   // (RpIniSaveChanges)
+   procedure SaveConfig;
    procedure GetDriverNames(alist:TStrings);
    procedure GetConnectionParams(conname:string;params:TStrings);
    procedure GetDriverLibNames(const drivername:string;var LibraryName,VendorLib:string);
@@ -845,8 +858,9 @@ begin
       // EFCreateError "Access denied". The on-disk copy is only a cache: the
       // ini can be built entirely in memory, so a failure here must NOT break
       // initialization. Swallow the write error and fall back to an in-memory
-      // ini. Explicit designer saves go through other code paths (config.UpdateFile
-      // / TRpDatabaseInfoList.SaveToFile) and must keep raising on failure.
+      // ini. Explicit designer saves go through other code paths (config, with
+      // TRpConnAdmin.SaveConfig / TRpDatabaseInfoList.SaveToFile) and must keep
+      // raising on failure.
       if Length(ATargetFileName) > 0 then
       begin
         try
@@ -2257,7 +2271,7 @@ begin
    item.ConAdmin.config.WriteString(item.Alias,'HubDatabaseId',IntToStr(AHubDatabaseId));
    if (Trim(AApiKey)<>'') and (Trim(params.Values['ApiKey'])='') then
     item.ConAdmin.config.WriteString(item.Alias,'ApiKey',Trim(AApiKey));
-   item.ConAdmin.config.UpdateFile;
+   item.ConAdmin.SaveConfig;
    // A connection opened before without them reads them again
    item.DisConnect;
    Inc(Result);
@@ -4522,18 +4536,12 @@ begin
  end;
 end;
 
-// The lines of a section shared with .NET, the values as .NET wrote them
-// (UTF-8, see RpDotNetIniText)
+// The lines of a section shared with .NET (read by the encoding rule of
+// RpCreateConnectionsIni, the same in .NET)
 procedure ReadDotNetSection(AConfig:TMemIniFile;const conname:string;
  ASection:TStrings);
-var
- i:integer;
 begin
  AConfig.ReadSectionValues(conname,ASection);
- for i:=0 to ASection.Count-1 do
-  if Length(ASection.Names[i])>0 then
-   ASection.Strings[i]:=ASection.Names[i]+'='+
-    RpDotNetIniText(ASection.ValueFromIndex[i]);
 end;
 
 function TRpConnAdmin.IsDotNetConnection(const conname:string):Boolean;
@@ -4624,20 +4632,15 @@ var
  lines,keys,section:TStringList;
  i:integer;
  password,secret,secretkey:string;
- infile:boolean;
 begin
  if not IsDotNetConnection(conname) then
   Raise Exception.Create(Format(SRpDotNetNotFound,[conname,configfilename]));
- infile:=(Length(configfilename)>0) and FileExists(configfilename);
  lines:=TStringList.Create;
  keys:=TStringList.Create;
  section:=TStringList.Create;
  try
   RpDotNetDelphiLines(params,lines);
-  // Only its Delphi.* lines change in the file; nothing else is rewritten
-  if infile then
-   RpDotNetWriteDelphiKeys(configfilename,conname,lines);
-  // And in memory, the other changes not written yet are kept
+  // Its Delphi.* keys, in memory; SaveConfig writes only those lines
   config.ReadSection(conname,keys);
   for i:=0 to keys.Count-1 do
    if SameText(Copy(Trim(keys[i]),1,Length(RP_DOTNET_DELPHI_PREFIX)),
@@ -4666,12 +4669,12 @@ begin
     if Length(secret)>0 then
     begin
      secretkey:=RpDotNetPasswordKey(section);
-     if infile then
-      RpDotNetWriteKey(configfilename,conname,secretkey,secret);
      config.WriteString(conname,secretkey,secret);
     end;
    end;
   end;
+  // In the file only what changed, in its lines; nothing else is rewritten
+  SaveConfig;
  finally
   section.Free;
   keys.Free;
@@ -4738,17 +4741,35 @@ end;
 
 destructor TRpConnAdmin.Destroy;
 begin
- if Assigned(config) then
- begin
-  config.free;
-  config:=nil;
- end;
+ // Without writing it (FPC would write the whole file): SaveConfig does
+ RpFreeConnectionsIni(config);
  if Assigned(drivers) then
  begin
   drivers.free;
   drivers:=nil;
  end;
+ FSnapshot.Free;
+ FSnapshot:=nil;
  inherited Destroy;
+end;
+
+procedure TRpConnAdmin.SaveConfig;
+var
+ target:string;
+begin
+ if not Assigned(config) then
+  exit;
+ // The file it was read from
+ target:=FConfigFile;
+ if Length(target)=0 then
+  target:=configfilename;
+ if Length(target)=0 then
+  exit;
+ if not Assigned(FSnapshot) then
+  FSnapshot:=TRpIniSnapshot.Create;
+ RpIniSaveChanges(target,TRpIniSnapshot(FSnapshot),config);
+ // What is in memory is what the file has now (for this program)
+ TRpIniSnapshot(FSnapshot).Assign(config);
 end;
 
 
@@ -4833,11 +4854,8 @@ var
 {$ENDIF}
 
 begin
- if Assigned(config) then
- begin
-  config.free;
-  config:=nil;
- end;
+ // Without writing it (FPC would write the whole file): SaveConfig does
+ RpFreeConnectionsIni(config);
  if Assigned(drivers) then
  begin
   drivers.free;
@@ -4965,7 +4983,7 @@ begin
   configfilename:=dbxconpath;
  if FileExists(configfilename) then
  begin
-  config:=TMemInifile.Create(configfilename);
+  config:=RpCreateConnectionsIni(configfilename);
 {$IFDEF USEVARIANTS}
  {$IFNDEF FPC}
    config.CaseSensitive:=false;
@@ -4980,7 +4998,7 @@ begin
    if (Length(nconfigfilename)=0) then
      Raise Exception.Create(SRpConfigFileNotExists+' - '+configfilename);
    configfilename:=nconfigfilename+'dbxconnections.ini';
-  config:=TMemInifile.Create(configfilename);
+  config:=RpCreateConnectionsIni(configfilename);
 {$IFDEF USEVARIANTS}
  {$IFNDEF FPC}
    config.CaseSensitive:=false;
@@ -4990,7 +5008,7 @@ begin
   // Check if exists in the current dir
   if FileExists(DBXCONFIGFILENAME) then
   begin
-   config:=TMemInifile.Create(DBXCONFIGFILENAME);
+   config:=RpCreateConnectionsIni(DBXCONFIGFILENAME);
  {$IFNDEF FPC}
    config.CaseSensitive:=false;
  {$ENDIF}
@@ -5002,7 +5020,7 @@ begin
    if FileExists('/usr/local/etc/'+DBXCONFIGFILENAME+'.conf') then
    begin
     CopyFileTo('/usr/local/etc/'+DBXCONFIGFILENAME+'.conf',configfilename);
-    config:=TMemIniFile.Create(configfilename);
+    config:=RpCreateConnectionsIni(configfilename);
  {$IFNDEF FPC}
     config.CaseSensitive:=false;
  {$ENDIF}
@@ -5013,7 +5031,7 @@ begin
     // location (configfilename) instead of failing, so connections can be
     // added through the admin tools. The effective path is reported by the
     // diagnostics pages and the command line tools.
-    config:=TMemIniFile.Create(configfilename);
+    config:=RpCreateConnectionsIni(configfilename);
  {$IFNDEF FPC}
     config.CaseSensitive:=false;
  {$ENDIF}
@@ -5026,6 +5044,11 @@ begin
   end
 {$ENDIF}
  end;
+ // What the file has now: SaveConfig writes only the changes made since
+ FConfigFile:=config.FileName;
+ if not Assigned(FSnapshot) then
+  FSnapshot:=TRpIniSnapshot.Create;
+ TRpIniSnapshot(FSnapshot).Assign(config);
 end;
 
 procedure TRpConnAdmin.GetConnectionParams(conname:string;params:TStrings);

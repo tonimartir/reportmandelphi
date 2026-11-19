@@ -1158,7 +1158,7 @@ begin
   LConnAdmin := CreateConnAdmin;
   try
     LConnAdmin.AddConnection(Trim(AConnectionName), LEffectiveDriverName);
-    LConnAdmin.config.UpdateFile;
+    LConnAdmin.SaveConfig;
   finally
     LConnAdmin.Free;
   end;
@@ -1264,7 +1264,7 @@ begin
       LConnAdmin.config.WriteString(AConnectionName, LName,
         AValues.ValueFromIndex[I]);
     end;
-    LConnAdmin.config.UpdateFile;
+    LConnAdmin.SaveConfig;
   finally
     LAllowedParams.Free;
     LSeedValues.Free;
@@ -1282,7 +1282,7 @@ begin
   LConnAdmin := CreateConnAdmin;
   try
     LConnAdmin.DeleteConnection(AConnectionName);
-    LConnAdmin.config.UpdateFile;
+    LConnAdmin.SaveConfig;
   finally
     LConnAdmin.Free;
   end;

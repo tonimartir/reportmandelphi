@@ -27,6 +27,11 @@ program test_dbx_dotnet_connections;
 {      SQLite database with them.                        }
 {   7. The subschemas are shared by alias               }
 {      (dbxschemas\<ALIAS>.json next to the file).      }
+{   8. The surgical save (TRpConnAdmin.SaveConfig) of   }
+{      a file with comments, blank lines, a repeated    }
+{      section and an accented letter, while another    }
+{      program writes it: ANSI and UTF-8 with BOM, CRLF }
+{      and LF, with and without a final line break.     }
 {                                                       }
 {   Delphi: build.bat. Lazarus: test_dbx_dotnet_        }
 {   connections.lpi (lazbuild). Run:                    }
@@ -49,6 +54,10 @@ uses
 {$IFDEF FPC}
 {$IFDEF UNIX}
   cthreads,
+{$ENDIF}
+{$IFDEF MSWINDOWS}
+  // Before SysUtils: its DeleteFile is the one of strings
+  Windows,
 {$ENDIF}
   LazUTF8, SysUtils, Classes, IniFiles,
 {$ELSE}
@@ -82,7 +91,7 @@ begin
   Inc(Skipped);
 end;
 
-// The n with tilde: an accented letter in a path, UTF-8 in the file
+// The n with tilde: an accented letter in a path
 function NTilde: string;
 begin
 {$IFDEF FPC}
@@ -138,6 +147,95 @@ begin
     ((Length(A) = 0) or CompareMem(@A[0], @B[0], Length(A)));
 end;
 
+// The text in the ANSI code page of the system (a connections file without
+// a BOM in Windows, the rule of rpdbxdotnet) and back
+function AnsiBytes(const AText: string): TBytes;
+{$IFDEF FPC}
+var
+  LEncoding: TEncoding;
+begin
+  LEncoding := TEncoding.GetEncoding(Integer(GetACP));
+  try
+    Result := LEncoding.GetBytes(UnicodeString(AText));
+  finally
+    LEncoding.Free;
+  end;
+end;
+{$ELSE}
+begin
+  Result := TEncoding.ANSI.GetBytes(AText);
+end;
+{$ENDIF}
+
+function AnsiText(const ABytes: TBytes): string;
+{$IFDEF FPC}
+var
+  LEncoding: TEncoding;
+begin
+  LEncoding := TEncoding.GetEncoding(Integer(GetACP));
+  try
+    Result := string(LEncoding.GetString(ABytes));
+  finally
+    LEncoding.Free;
+  end;
+end;
+{$ELSE}
+begin
+  Result := TEncoding.ANSI.GetString(ABytes);
+end;
+{$ENDIF}
+
+function HasBom(const ABytes: TBytes): Boolean;
+begin
+  Result := (Length(ABytes) >= 3) and (ABytes[0] = $EF) and (ABytes[1] = $BB) and
+    (ABytes[2] = $BF);
+end;
+
+// A connections file as text by the rule: UTF-8 with its BOM, ANSI without
+function FileText(const ABytes: TBytes): string;
+begin
+  if HasBom(ABytes) then
+    Result := BytesText(Copy(ABytes, 3, Length(ABytes) - 3))
+  else
+    Result := AnsiText(ABytes);
+end;
+
+// The bytes of AText in a connections file: UTF-8 with a BOM or ANSI
+function FileBytes(const AText: string; ABom: Boolean): TBytes;
+var
+  LText: UTF8String;
+begin
+  if not ABom then
+    Exit(AnsiBytes(AText));
+  LText := UTF8String(AText);
+  SetLength(Result, Length(LText) + 3);
+  Result[0] := $EF;
+  Result[1] := $BB;
+  Result[2] := $BF;
+  if Length(LText) > 0 then
+    Move(LText[1], Result[3], Length(LText));
+end;
+
+procedure WriteBytes(const AFileName: string; const ABytes: TBytes);
+var
+  LStream: TFileStream;
+begin
+  LStream := TFileStream.Create(AFileName, fmCreate);
+  try
+    if Length(ABytes) > 0 then
+      LStream.WriteBuffer(ABytes[0], Length(ABytes));
+  finally
+    LStream.Free;
+  end;
+end;
+
+// A connections file as Delphi and (by the rule) .NET write it in Windows:
+// ANSI, without a BOM
+procedure WriteAnsi(const AFileName, AText: string);
+begin
+  WriteBytes(AFileName, AnsiBytes(AText));
+end;
+
 // The file without its lines that start with Delphi. (they must be the only
 // difference with the original)
 function WithoutDelphiLines(const AText: string): string;
@@ -173,11 +271,26 @@ begin
   end;
 end;
 
+// A TRpConnAdmin of AFileName (never the real file: the global override is
+// the file too while it is created)
+function NewAdminFor(const AFileName: string): TRpConnAdmin;
+var
+  LOverride: string;
+begin
+  LOverride := DBXConnectionsFileOverride;
+  DBXConnectionsFileOverride := AFileName;
+  try
+    Result := TRpConnAdmin.Create;
+    Result.DBXConnectionsOverride := AFileName;
+    Result.LoadConfig;
+  finally
+    DBXConnectionsFileOverride := LOverride;
+  end;
+end;
+
 function NewAdmin: TRpConnAdmin;
 begin
-  Result := TRpConnAdmin.Create;
-  Result.DBXConnectionsOverride := GIni;
-  Result.LoadConfig;
+  Result := NewAdminFor(GIni);
 end;
 
 procedure WriteFixture;
@@ -241,7 +354,7 @@ begin
     'DriverName=ADO.NET'#13#10 +
     'ProviderFactory=System.Data.OleDb'#13#10 +
     'ConnectionString=Provider=Microsoft.ACE.OLEDB.12.0;Data Source=C:\datos\a.accdb'#13#10;
-  WriteUtf8(GIni, LText);
+  WriteAnsi(GIni, LText);
   ForceDirectories(ExtractFilePath(LDb));
 end;
 
@@ -418,8 +531,8 @@ begin
     LParams.Values['User_Name'] := 'DELPHIUSER';
     LAdmin.SetDotNetDelphiParams('CONTA', LParams);
     LAfter := ReadBytes(GIni);
-    LText := BytesText(LAfter);
-    Check(WithoutDelphiLines(LText) = BytesText(LBefore),
+    LText := FileText(LAfter);
+    Check(WithoutDelphiLines(LText) = FileText(LBefore),
       'writing the Delphi.* keys leaves every other byte of the file as it was ' +
       '(the password, the same, is not written again)');
     Check((Pos('[CONTA]'#13#10'DriverName=ADO.NET', LText) > 0) and
@@ -455,12 +568,12 @@ begin
       // its line replaced where it is
       LParams.Values['Password'] := GPassword + '-delphi';
       LAdmin2.SetDotNetDelphiParams('CONTA', LParams);
-      LText := BytesText(ReadBytes(GIni));
+      LText := FileText(ReadBytes(GIni));
       LNewSecret := SecretValueOf(LText);
       Check((LNewSecret <> GSecret) and (Copy(LNewSecret, 1, 6) = 'dpapi:') and
         RpDpapiUnprotect(LNewSecret, LPlain) and (LPlain = GPassword + '-delphi'),
         'another password is written ciphered in Secret.Password (as the C# designer)');
-      Check(WithoutSecretValue(WithoutDelphiLines(LText)) = WithoutSecretValue(BytesText(LBefore)),
+      Check(WithoutSecretValue(WithoutDelphiLines(LText)) = WithoutSecretValue(FileText(LBefore)),
         'only the line of Secret.Password changes, in its place');
       Check((Pos('Param.Charset=UTF8'#13#10'Secret.Password=dpapi:', LText) > 0) and
         (CountOf('Secret.Password=', LText) = 1) and (Pos(GPassword + '-delphi', LText) = 0),
@@ -474,8 +587,8 @@ begin
       LAgain := ReadBytes(GIni);
       LParams.Values['RoleName'] := 'READER';
       LAdmin2.SetDotNetDelphiParams('CONTA', LParams);
-      LText := BytesText(ReadBytes(GIni));
-      Check((WithoutDelphiLines(LText) = WithoutDelphiLines(BytesText(LAgain))) and
+      LText := FileText(ReadBytes(GIni));
+      Check((WithoutDelphiLines(LText) = WithoutDelphiLines(FileText(LAgain))) and
         (CountOf('Delphi.DriverName=', LText) = 1) and (Pos('Delphi.RoleName=READER', LText) > 0),
         'writing them again replaces them, the rest the same (the password not written again)');
       // 5. Never replaced by AddConnection
@@ -489,9 +602,9 @@ begin
         'AddConnection does not erase a connection shared with .NET');
       // DeleteConnection only forgets the Delphi parameters
       LAdmin2.DeleteConnection('CONTA');
-      LText := BytesText(ReadBytes(GIni));
+      LText := FileText(ReadBytes(GIni));
       Check((LText = WithoutDelphiLines(LText)) and
-        (WithoutSecretValue(LText) = WithoutSecretValue(BytesText(LBefore))) and
+        (WithoutSecretValue(LText) = WithoutSecretValue(FileText(LBefore))) and
         (SecretValueOf(LText) = LNewSecret),
         'DeleteConnection forgets the Delphi parameters: the original file, with the password kept');
       Check(LAdmin2.IsDotNetConnection('CONTA') and not LAdmin2.DotNetHasDelphiParams('CONTA'),
@@ -518,9 +631,9 @@ var
   LBefore: TBytes;
 begin
   LBefore := ReadBytes(GIni);
-  LText := StringReplace(BytesText(LBefore), 'Secret.Password=' + GSecret,
+  LText := StringReplace(FileText(LBefore), 'Secret.Password=' + GSecret,
     'Secret.Password=dpapi:AQAAAOtherUser', []);
-  WriteUtf8(GIni, LText);
+  WriteAnsi(GIni, LText);
   LAdmin := NewAdmin;
   LParams := TStringList.Create;
   try
@@ -529,7 +642,7 @@ begin
       'a password of another Windows user is not proposed (it is asked for)');
     LParams.Values['Password'] := GPassword;
     LAdmin.SetDotNetDelphiParams('CONTA', LParams);
-    LText := BytesText(ReadBytes(GIni));
+    LText := FileText(ReadBytes(GIni));
     Check(RpDpapiUnprotect(SecretValueOf(LText), LPlain) and (LPlain = GPassword),
       'the password typed is written for this Windows user in Secret.Password');
   finally
@@ -539,32 +652,214 @@ begin
   WriteFixture;
 end;
 
-// The section the last one of a file without a line break at the end
-procedure TestLastSection;
+{ 8. The surgical save of the connections file }
+
+// What the file has as text, by the rule of its encoding (and whether it
+// has its BOM)
+function FileNow(const AFileName: string; out ABom: Boolean): string;
 var
-  LFile, LText: string;
-  LLines: TStringList;
+  LBytes: TBytes;
+begin
+  LBytes := ReadBytes(AFileName);
+  ABom := HasBom(LBytes);
+  Result := FileText(LBytes);
+end;
+
+// The connections dialog (load, change a key, add a key and a connection,
+// delete a key and a connection) while ANOTHER program adds a section and
+// changes a key of its own between the load and the save. AVariant: the
+// encoding (ABom: UTF-8 with BOM; otherwise ANSI), the line break and
+// whether the file ends with one
+procedure TestSurgicalSave(const AVariant: string; ABom: Boolean;
+  const LB: string; AFinal: Boolean);
+var
+  LFile, LText, LOther, LExpected, LDb, LNew, LNow, LDelphiDb: string;
+  LAdmin, LCheck: TRpConnAdmin;
+  LBom: Boolean;
+  LParams: TStringList;
   LBefore: TBytes;
 begin
-  LFile := IncludeTrailingPathDelimiter(GFolder) + 'last.ini';
-  WriteUtf8(LFile, '[A]'#13#10'DriverName=FireDac'#13#10#13#10'[B]'#13#10'DriverName=ADO.NET'#13#10 +
-    'ProviderFactory=SQLiteCore'#13#10'Param.DataSource=b.db');
-  LBefore := ReadBytes(LFile);
-  LLines := TStringList.Create;
+  LFile := IncludeTrailingPathDelimiter(GFolder) + 'surgical-' + AVariant + '.ini';
+  LDb := 'C:\datos\contabilidad a' + NTilde + 'o.fdb';
+  LNew := 'C:\datos\nueva a' + NTilde + 'o.db';
+  LText :=
+    '; The shared connections file of a test' + LB +
+    ';   with two lines of comments' + LB +
+    LB +
+    '[DELPHI_FB]' + LB +
+    'DriverName=FireDac' + LB +
+    'DriverID=FB' + LB +
+    '; the database of the accounts' + LB +
+    'Database=' + LDb + LB +
+    'User_Name=SYSDBA' + LB +
+    LB +
+    '[AGENTE]' + LB +
+    'DriverName=Reportman AI Agent' + LB +
+    'ApiKey=key-of-test' + LB +
+    'HubDatabaseId=42' + LB +
+    LB +
+    LB +
+    '; A connection of the Reportman AI Desktop' + LB +
+    '[VENTAS]' + LB +
+    'DriverName=ADO.NET' + LB +
+    'ProviderFactory=SQLiteCore' + LB +
+    'Param.DataSource=C:\datos\ventas.db' + LB +
+    'ConnectionString=Data Source=C:\datos\ventas.db' + LB +
+    LB +
+    '[BORRAR]' + LB +
+    'DriverName=FireDac' + LB +
+    'DriverID=SQLite' + LB +
+    'Database=borrar.db' + LB +
+    LB +
+    '; A repeated section: the ini reads only the first one' + LB +
+    '[AGENTE]' + LB +
+    'Repeated=kept';
+  if AFinal then
+    LText := LText + LB;
+  WriteBytes(LFile, FileBytes(LText, ABom));
+
+  // The dialog loads the file
+  LAdmin := NewAdminFor(LFile);
   try
-    LLines.Add('Delphi.DriverName=FireDac');
-    LLines.Add('Delphi.Database=b.db');
-    RpDotNetWriteDelphiKeys(LFile, 'B', LLines);
-    LText := BytesText(ReadBytes(LFile));
-    Check(LText = BytesText(LBefore) + #13#10'Delphi.DriverName=FireDac'#13#10'Delphi.Database=b.db'#13#10,
-      'the last section without a line break: the keys go after it with the CRLF of the file');
-    LLines.Clear;
-    RpDotNetWriteDelphiKeys(LFile, 'B', LLines);
-    Check(BytesText(ReadBytes(LFile)) = BytesText(LBefore) + #13#10,
-      'forgetting them leaves the line break added');
+    Check(LAdmin.config.ReadString('DELPHI_FB', 'Database', '') = LDb,
+      AVariant + ': the accented letter is read by the encoding rule (' +
+      LAdmin.config.ReadString('DELPHI_FB', 'Database', '') + ')');
+    // What the dialog changes
+    LAdmin.config.WriteString('DELPHI_FB', 'User_Name', 'CONTABLE');
+    LAdmin.config.WriteString('DELPHI_FB', 'CharacterSet', 'UTF8');
+    LAdmin.config.DeleteKey('AGENTE', 'ApiKey');
+    LAdmin.config.WriteString('NUEVA', 'DriverName', 'FireDac');
+    LAdmin.config.WriteString('NUEVA', 'Database', LNew);
+    LAdmin.DeleteConnection('BORRAR');
+
+    // Meanwhile another program (the Desktop) changes its connection and
+    // adds another one at the end, as the .NET writer does
+    LOther := StringReplace(FileNow(LFile, LBom), 'Param.DataSource=C:\datos\ventas.db',
+      'Param.DataSource=C:\datos\ventas2.db', []);
+    if not AFinal then
+      LOther := LOther + LB;
+    LOther := LOther + LB + '[OTRO]' + LB + 'DriverName=ADO.NET' + LB +
+      'ProviderFactory=PostgreSQL';
+    if AFinal then
+      LOther := LOther + LB;
+    WriteBytes(LFile, FileBytes(LOther, ABom));
+
+    LAdmin.SaveConfig;
+
+    // Only the lines Delphi touched change
+    LExpected := StringReplace(LOther, 'User_Name=SYSDBA' + LB,
+      'User_Name=CONTABLE' + LB + 'CharacterSet=UTF8' + LB, []);
+    LExpected := StringReplace(LExpected, 'ApiKey=key-of-test' + LB, '', []);
+    LExpected := StringReplace(LExpected, '[BORRAR]' + LB + 'DriverName=FireDac' + LB +
+      'DriverID=SQLite' + LB + 'Database=borrar.db' + LB + LB, '', []);
+    if not AFinal then
+      LExpected := LExpected + LB;
+    LExpected := LExpected + LB + '[NUEVA]' + LB + 'DriverName=FireDac' + LB +
+      'Database=' + LNew;
+    if AFinal then
+      LExpected := LExpected + LB;
+    LNow := FileNow(LFile, LBom);
+    Check(LNow = LExpected, AVariant + ': the save changes only the lines of Delphi; ' +
+      'the section and the change of the other program, the comments, the blank lines ' +
+      'and the repeated section stay');
+    if LNow <> LExpected then
+    begin
+      WriteLn('     expected:'#13#10, LExpected);
+      WriteLn('     written:'#13#10, LNow);
+    end;
+    Check(SameBytes(ReadBytes(LFile), FileBytes(LExpected, ABom)),
+      AVariant + ': byte for byte, in the encoding of the file (BOM kept: ' +
+      BoolToStr(LBom, True) + ')');
+    // Nothing changed: nothing written, also over a change of another program
+    LBefore := FileBytes(StringReplace(LExpected, 'ProviderFactory=PostgreSQL',
+      'ProviderFactory=Oracle', []), ABom);
+    WriteBytes(LFile, LBefore);
+    LAdmin.SaveConfig;
+    Check(SameBytes(ReadBytes(LFile), LBefore),
+      AVariant + ': a save without changes does not write the file');
+
+    // The Delphi parameters of a connection shared with .NET, in the
+    // encoding of the file
+    LDelphiDb := 'C:\datos\ventas a' + NTilde + 'o.db';
+    LParams := TStringList.Create;
+    try
+      LParams.Add('DriverName=FireDac');
+      LParams.Add('DriverID=SQLite');
+      LParams.Add('Database=' + LDelphiDb);
+      LAdmin.SetDotNetDelphiParams('VENTAS', LParams);
+    finally
+      LParams.Free;
+    end;
+    LNow := FileNow(LFile, LBom);
+    Check(LNow = StringReplace(FileText(LBefore), 'ConnectionString=Data Source=C:\datos\ventas.db' + LB,
+      'ConnectionString=Data Source=C:\datos\ventas.db' + LB + 'Delphi.DriverName=FireDac' + LB +
+      'Delphi.DriverID=SQLite' + LB + 'Delphi.Database=' + LDelphiDb + LB, []),
+      AVariant + ': the Delphi.* keys go after the last key of their section, in the ' +
+      'encoding of the file');
   finally
-    LLines.Free;
+    LAdmin.Free;
   end;
+
+  // Changes in memory that are not saved are not written when it is freed
+  // (the TMemIniFile of FPC writes itself then)
+  LBefore := ReadBytes(LFile);
+  LAdmin := NewAdminFor(LFile);
+  try
+    LAdmin.config.WriteString('DELPHI_FB', 'User_Name', 'NOT SAVED');
+    LAdmin.config.EraseSection('NUEVA');
+    LAdmin.LoadConfig;
+    LAdmin.config.WriteString('DELPHI_FB', 'User_Name', 'NOT SAVED EITHER');
+  finally
+    LAdmin.Free;
+  end;
+  Check(SameBytes(ReadBytes(LFile), LBefore),
+    AVariant + ': changes not saved are not written when it is read again or freed');
+
+  // Another program reads it
+  LCheck := NewAdminFor(LFile);
+  try
+    Check((LCheck.config.ReadString('DELPHI_FB', 'User_Name', '') = 'CONTABLE') and
+      (LCheck.config.ReadString('DELPHI_FB', 'Database', '') = LDb) and
+      (LCheck.config.ReadString('NUEVA', 'Database', '') = LNew),
+      AVariant + ': read again, the changes of Delphi are there');
+    Check((LCheck.config.ReadString('OTRO', 'ProviderFactory', '') = 'Oracle') and
+      (LCheck.config.ReadString('VENTAS', 'Param.DataSource', '') = 'C:\datos\ventas2.db'),
+      AVariant + ': read again, the ones of the other program too (' +
+      LCheck.config.ReadString('OTRO', 'ProviderFactory', '') + ', ' +
+      LCheck.config.ReadString('VENTAS', 'Param.DataSource', '') + ')');
+    Check(LCheck.config.ReadString('VENTAS', 'Delphi.Database', '') = LDelphiDb,
+      AVariant + ': read again, the Delphi.* keys (' +
+      LCheck.config.ReadString('VENTAS', 'Delphi.Database', '') + ')');
+    Check((not LCheck.config.SectionExists('BORRAR')) and
+      (LCheck.config.ReadString('AGENTE', 'ApiKey', '') = '') and
+      (LCheck.config.ReadString('AGENTE', 'HubDatabaseId', '') = '42'),
+      AVariant + ': read again, the section and the key deleted are not there');
+  finally
+    LCheck.Free;
+  end;
+end;
+
+// An empty file (one that is not there is not used: TRpConnAdmin goes to the
+// shared one): SaveConfig writes what there is in memory (ANSI, CRLF in Windows)
+procedure TestSaveEmptyFile;
+var
+  LFile: string;
+  LAdmin: TRpConnAdmin;
+begin
+  LFile := IncludeTrailingPathDelimiter(GFolder) + 'new' + PathDelim + 'dbxconnections.ini';
+  ForceDirectories(ExtractFilePath(LFile));
+  WriteBytes(LFile, nil);
+  LAdmin := NewAdminFor(LFile);
+  try
+    LAdmin.config.WriteString('PRIMERA', 'DriverName', 'FireDac');
+    LAdmin.config.WriteString('PRIMERA', 'Database', 'C:\a' + NTilde + 'o.db');
+    LAdmin.SaveConfig;
+  finally
+    LAdmin.Free;
+  end;
+  Check(SameBytes(ReadBytes(LFile), AnsiBytes('[PRIMERA]'#13#10'DriverName=FireDac'#13#10 +
+    'Database=C:\a' + NTilde + 'o.db'#13#10)),
+    'an empty file is written with what there is, ANSI and CRLF in Windows');
 end;
 
 { 6. The first use: Connect asks for them }
@@ -694,7 +989,7 @@ begin
     LList.Free;
   end;
   RpDotNetConnectionSetup := nil;
-  DBXConnectionsFileOverride := '';
+  DBXConnectionsFileOverride := GIni;
 end;
 
 { 7. The subschemas, shared by alias }
@@ -734,7 +1029,7 @@ begin
   finally
     LNames.Free;
     LList.Free;
-    DBXConnectionsFileOverride := '';
+    DBXConnectionsFileOverride := GIni;
   end;
   // The connection of the subschemas did not change
   LAdmin := NewAdmin;
@@ -801,6 +1096,8 @@ begin
     IntToStr(Random(1000000)) + FormatDateTime('hhnnsszzz', Now);
   ForceDirectories(GFolder);
   GIni := IncludeTrailingPathDelimiter(GFolder) + 'dbxconnections.ini';
+  // Every TRpConnAdmin of the test reads the temporary file, never the real one
+  DBXConnectionsFileOverride := GIni;
   WriteLn('Temporary connections file: ', GIni);
   try
     try
@@ -817,7 +1114,11 @@ begin
       TestDpapi(LDotNetSecret, LDotNetPlain);
       TestWrite;
       TestOtherUserPassword;
-      TestLastSection;
+      TestSurgicalSave('ansi-crlf', False, #13#10, True);
+      TestSurgicalSave('utf8bom-crlf', True, #13#10, True);
+      TestSurgicalSave('ansi-lf-no-final-break', False, #10, False);
+      TestSurgicalSave('utf8bom-lf', True, #10, True);
+      TestSaveEmptyFile;
       TestConnect(LRoot + 'clientes.db');
       TestSubschemas(LRoot + 'tests' + PathDelim + 'local_schema_file' + PathDelim +
         'dbxschemas-v2.json');
