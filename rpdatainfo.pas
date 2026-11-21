@@ -5940,6 +5940,7 @@ var
  i,index:integer;
  fname:string;
  fdef:TFieldDef;
+ attributes:TFieldAttributes;
  indexfieldnames:string;
 {$IFDEF FPC}
  keynames:string;
@@ -5951,6 +5952,15 @@ begin
  lfields2:=TStringList.Create;
  try
   aresult.FieldDefs.Assign(data1.FieldDefs);
+  // A row only the second dataset has leaves the fields of the first one empty:
+  // a NOT NULL column of the first dataset must not refuse it
+  for i:=0 to aresult.FieldDefs.Count-1 do
+  begin
+   attributes:=aresult.FieldDefs[i].Attributes;
+   Exclude(attributes,faRequired);
+   Exclude(attributes,faReadOnly);
+   aresult.FieldDefs[i].Attributes:=attributes;
+  end;
   aresult.FieldDefs.Add(prefix,ftInteger);
   indexfieldnames:=prefix;
   for i:=0 to originalfields.Count-1 do
@@ -6082,13 +6092,16 @@ begin
   // Combine the two datasets
   client.Close;
   client.FieldDefs.Assign(data.FieldDefs);
+  // The other datasets of the union may leave a field empty (a NOT NULL column
+  // of the first one)
   for i := 0 to client.FieldDefs.Count-1 do
   begin
     fielddef:=client.FieldDefs[i];
-    if (faReadOnly in fielddef.Attributes) then
+    if ((faReadOnly in fielddef.Attributes) or (faRequired in fielddef.Attributes)) then
     begin
      attributes:=fielddef.Attributes;
      Exclude(attributes,faReadOnly);
+     Exclude(attributes,faRequired);
      fielddef.Attributes := attributes;
     end
   end;

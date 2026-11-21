@@ -66,9 +66,13 @@ PARAM_UNKNOWN = 16
 CHART_BAR, CHART_HORZBAR, CHART_PIE = 1, 3, 5
 BARCODE_EAN13 = 15
 DRAW_FULL = 2
+DRIVER_MYBASE = 1
 DRIVER_FIREDAC = 9
 
 CONNECTION = 'SAMPLES'
+# The in-memory connection (driver MyBase) of the union samples: its datasets
+# run no SQL, they join the rows of other datasets of the report
+MEMORY = 'MEMORY'
 
 # ---------------------------------------------------------------------------
 # XML writer (rpxmlstream.pas)
@@ -479,6 +483,7 @@ class Report:
         self.params = []
         self.subreports = []
         self.page = {}
+        self.connections = [(CONNECTION, DRIVER_FIREDAC)]
         # The connection, in the report: FireDAC + SQLite on samples.db,
         # next to the report
         self.params.append(Param('DBPARAM_DRIVERNAME', PARAM_STRING, 'FireDac',
@@ -494,8 +499,24 @@ class Report:
         self.counters[prefix] = n + 1
         return '%s%d' % (prefix, n)
 
-    def dataset(self, alias, sql, datasource=''):
-        self.datasets.append((alias, sql, datasource))
+    def dataset(self, alias, sql, datasource='', open_on_start=True):
+        self.datasets.append({'alias': alias, 'sql': sql, 'datasource': datasource,
+                              'connection': CONNECTION, 'open_on_start': open_on_start})
+
+    def memory_connection(self):
+        """The MyBase connection of the in-memory datasets (unions), once."""
+        if (MEMORY, DRIVER_MYBASE) not in self.connections:
+            self.connections.append((MEMORY, DRIVER_MYBASE))
+
+    def union(self, alias, unions, parallel=False, group=False, index_fields=''):
+        """A dataset of the MyBase connection made of the rows of other datasets:
+        DataUnions, one entry per dataset; with parallel an entry may name the
+        fields it shares with the first dataset, 'ALIAS-FIELD1;FIELD2'."""
+        self.memory_connection()
+        self.datasets.append({'alias': alias, 'sql': '', 'datasource': '', 'connection': MEMORY,
+                              'open_on_start': True, 'unions': list(unions),
+                              'parallel': parallel, 'group': group,
+                              'index_fields': index_fields})
 
     # The local subschema of samples/dbxschemas/SAMPLES.json the datasets are
     # made with (SCHEMANAME): the copilot starts on it
@@ -579,42 +600,45 @@ class Report:
         out.s('DOCKEYWORDS', '')
         out.s('DOCXMPCONTENT', '')
 
-        out.raw('<DATABASEINFO>')
-        out.s('ALIAS', CONNECTION)
-        out.s('NAME', 'TRpDatabaseInfoItem0')
-        out.s('CONFIGFILE', '')
-        out.b('LOADPARAMS', False)
-        out.b('LOADDRIVERPARAMS', False)
-        out.b('LOGINPROMPT', False)
-        out.i('DRIVER', DRIVER_FIREDAC)
-        out.s('REPORTTABLE', 'REPMAN_REPORTS')
-        out.s('REPORTSEARCHFIELD', 'REPORT_NAME')
-        out.s('REPORTFIELD', 'REPORT')
-        out.s('REPORTGROUPSTABLE', 'REPMAN_GROUPS')
-        out.w('ADOCONNECTIONSTRING', '')
-        out.i('DOTNETDRIVER', 0)
-        out.s('PROVIDERFACTORY', '')
-        out.raw('</DATABASEINFO>')
-
-        for n, (alias, sql, datasource) in enumerate(self.datasets):
-            out.raw('<DATAINFO>')
+        for n, (alias, driver) in enumerate(self.connections):
+            out.raw('<DATABASEINFO>')
             out.s('ALIAS', alias)
+            out.s('NAME', 'TRpDatabaseInfoItem%d' % n)
+            out.s('CONFIGFILE', '')
+            out.b('LOADPARAMS', False)
+            out.b('LOADDRIVERPARAMS', False)
+            out.b('LOGINPROMPT', False)
+            out.i('DRIVER', driver)
+            out.s('REPORTTABLE', 'REPMAN_REPORTS')
+            out.s('REPORTSEARCHFIELD', 'REPORT_NAME')
+            out.s('REPORTFIELD', 'REPORT')
+            out.s('REPORTGROUPSTABLE', 'REPMAN_GROUPS')
+            out.w('ADOCONNECTIONSTRING', '')
+            out.i('DOTNETDRIVER', 0)
+            out.s('PROVIDERFACTORY', '')
+            out.raw('</DATABASEINFO>')
+
+        for n, ds in enumerate(self.datasets):
+            out.raw('<DATAINFO>')
+            out.s('ALIAS', ds['alias'])
             out.s('NAME', 'TRpDataInfoItem%d' % n)
-            out.s('DATABASEALIAS', CONNECTION)
-            out.w('SQL', sql)
-            if self.schema:
+            out.s('DATABASEALIAS', ds['connection'])
+            out.w('SQL', ds['sql'])
+            if self.schema and ds['connection'] == CONNECTION:
                 out.w('SCHEMANAME', self.schema)
-            out.s('DATASOURCE', datasource)
-            for tag in ('MYBASEFILENAME', 'MYBASEFIELDS', 'MYBASEINDEXFIELDS',
-                        'MYBASEMASTERFIELDS', 'BDEINDEXFIELDS', 'BDEINDEXNAME', 'BDETABLE'):
+            out.s('DATASOURCE', ds['datasource'])
+            out.s('MYBASEFILENAME', '')
+            out.s('MYBASEFIELDS', '')
+            out.s('MYBASEINDEXFIELDS', ds.get('index_fields', ''))
+            for tag in ('MYBASEMASTERFIELDS', 'BDEINDEXFIELDS', 'BDEINDEXNAME', 'BDETABLE'):
                 out.s(tag, '')
             out.i('BDETYPE', 0)
-            for tag in ('BDEFILTER', 'BDEMASTERFIELDS', 'BDEFIRSTRANGE', 'BDELASTRANGE',
-                        'DATAUNIONS'):
+            for tag in ('BDEFILTER', 'BDEMASTERFIELDS', 'BDEFIRSTRANGE', 'BDELASTRANGE'):
                 out.s(tag, '')
-            out.b('GROUPUNION', False)
-            out.b('OPENONSTART', True)
-            out.b('PARALLELUNION', False)
+            out.s('DATAUNIONS', lines(*ds.get('unions', [])))
+            out.b('GROUPUNION', ds.get('group', False))
+            out.b('OPENONSTART', ds['open_on_start'])
+            out.b('PARALLELUNION', ds.get('parallel', False))
             out.raw('</DATAINFO>')
 
         for prm in self.params:
@@ -1137,6 +1161,143 @@ def letter():
              '\u00b7 VAT ES-B00000000', size=8, color=MIDGRAY, alignment=CENTER)
     return rep
 
+def contacts():
+    """A union of datasets: the rows of two queries, one after the other, in
+    one in-memory dataset of the MyBase connection. The columns are those of
+    the first dataset and the rows of the others fill them by position."""
+    rep = Report('Contact directory', 'Customers and employees in one list: a union of two datasets')
+    # Only the union reads them. The union takes its fields from the first
+    # dataset: its text columns are columns of a table (an SQLite expression
+    # has no declared type, and the in-memory dataset of Delphi refuses a text
+    # field without one); the rows of the second one only have to fit them.
+    rep.dataset('CUSTOMER_CONTACTS',
+                'SELECT 1 AS KIND, CONTACT_NAME AS NAME, COMPANY_NAME AS ORGANIZATION, '
+                'CITY AS PLACE, PHONE FROM CUSTOMERS ORDER BY CONTACT_NAME', open_on_start=False)
+    rep.dataset('EMPLOYEE_CONTACTS',
+                "SELECT 2 AS KIND, FIRST_NAME || ' ' || LAST_NAME AS NAME, "
+                "TITLE AS ORGANIZATION, REGION AS PLACE, 'Ext. ' || (100 + EMPLOYEE_ID) AS PHONE "
+                'FROM EMPLOYEES ORDER BY FIRST_NAME, LAST_NAME', open_on_start=False)
+    rep.union('DIRECTORY', ['CUSTOMER_CONTACTS', 'EMPLOYEE_CONTACTS'])
+    sub = rep.subreport('DIRECTORY')
+    banner(sub, 'Contact directory', 'Customers and employees in one list: the dataset DIRECTORY '
+           'is the union of CUSTOMER_CONTACTS and EMPLOYEE_CONTACTS')
+    cols = [(0, 2900, 'Name', LEFT), (3000, 3500, 'Company or role', LEFT),
+            (6600, 2300, 'City or region', LEFT), (9000, 1758, 'Phone', LEFT)]
+    _, total = sub.group('TOTAL', '', 0, 700)
+    head, foot = sub.group('KIND', 'DIRECTORY.KIND', 900, 520,
+                           header={'pagerepeat': True, 'beginpage': 'FREE_SPACE_CMS<3'})
+    head.expr(0, 150, 7000, 340, "IIF(DIRECTORY.KIND=1,'Customers','Employees')", size=13,
+              style=BOLD, color=DARK)
+    head.rect(0, 540, WIDTH, 20, fill=ACCENT)
+    column_headers(head, 620, cols)
+    det = sub.section(SEC_DETAIL, 320)
+    det.expr(0, 50, 2900, 240, 'DIRECTORY.NAME', cut=True)
+    det.expr(3000, 50, 3500, 240, 'DIRECTORY.ORGANIZATION', cut=True)
+    det.expr(6600, 50, 2300, 240, 'DIRECTORY.PLACE', cut=True)
+    det.expr(9000, 50, 1758, 240, 'DIRECTORY.PHONE', color=GRAY)
+    det.rect(0, 305, WIDTH, 10, fill=ROWLINE)
+    foot.label(WIDTH - 3600, 90, 2500, 250, 'Contacts in this group', color=GRAY, alignment=RIGHT)
+    foot.expr(WIDTH - 1000, 90, 1000, 250, '1', style=BOLD, alignment=RIGHT, fmt='#,##0',
+              aggregate=AG_GROUP, group='KIND')
+    total.rect(0, 150, WIDTH, 420, fill=LIGHT)
+    total.label(200, 220, 5000, 280, 'Total contacts', size=10, style=BOLD, color=DARK)
+    total.expr(WIDTH - 1700, 220, 1500, 280, '1', size=10, style=BOLD, color=DARK, alignment=RIGHT,
+               fmt='#,##0', aggregate=AG_GENERAL)
+    page_footer(sub)
+    return rep
+
+
+def year_over_year():
+    """Parallel unions: the columns of the second dataset are added to the rows
+    of the first one, with the prefix Q02_ (and an integer column Q02_ that
+    tells the rows the second dataset reached). With common fields
+    (ALIAS-FIELD) the rows are matched by them; without them, by position."""
+    rep = Report('Year over year', 'Sales of two years side by side: parallel unions of datasets')
+    rep.param('FIRST_YEAR', PARAM_INTEGER, 2024, 'First year',
+              datasets=('CATEGORY_FIRST', 'TOP_FIRST'))
+    rep.param('SECOND_YEAR', PARAM_INTEGER, 2025, 'Second year',
+              datasets=('CATEGORY_SECOND', 'TOP_SECOND'))
+    sales = 'SUM(L.QUANTITY*L.UNIT_PRICE*(1-L.DISCOUNT/100.0))'
+
+    def joins(year_param):
+        return ('FROM ORDER_LINES L '
+                'JOIN ORDERS O ON O.ORDER_ID = L.ORDER_ID '
+                'JOIN PRODUCTS P ON P.PRODUCT_ID = L.PRODUCT_ID '
+                'JOIN CATEGORIES C ON C.CATEGORY_ID = P.CATEGORY_ID '
+                "WHERE CAST(strftime('%Y', O.ORDER_DATE) AS INTEGER) = :" + year_param + ' ')
+
+    for suffix, year_param in (('FIRST', 'FIRST_YEAR'), ('SECOND', 'SECOND_YEAR')):
+        rep.dataset('CATEGORY_' + suffix,
+                    'SELECT C.NAME AS CATEGORY, COUNT(DISTINCT O.ORDER_ID) AS ORDERS, ' + sales +
+                    ' AS SALES ' + joins(year_param) + 'GROUP BY C.NAME ORDER BY C.NAME',
+                    open_on_start=False)
+    for suffix, year_param in (('FIRST', 'FIRST_YEAR'), ('SECOND', 'SECOND_YEAR')):
+        rep.dataset('TOP_' + suffix,
+                    'SELECT P.NAME AS PRODUCT, ' + sales + ' AS SALES ' + joins(year_param) +
+                    'GROUP BY P.PRODUCT_ID, P.NAME ORDER BY SALES DESC LIMIT 10',
+                    open_on_start=False)
+    # Matched by the category, the field both datasets share
+    rep.union('BY_CATEGORY', ['CATEGORY_FIRST-CATEGORY', 'CATEGORY_SECOND-CATEGORY'], parallel=True)
+    # Matched by position: the first of each year, the second...
+    rep.union('TOP_PRODUCTS', ['TOP_FIRST', 'TOP_SECOND'], parallel=True)
+
+    years = "STR(FIRST_YEAR)+' and '+STR(SECOND_YEAR)"
+    first, second = "STR(FIRST_YEAR)", "STR(SECOND_YEAR)"
+    # By category
+    sub = rep.subreport('BY_CATEGORY')
+    banner(sub, 'Year over year', 'Parallel unions of a dataset for each year, side by side')
+    sub.pheader[0].expr(WIDTH - 3500, 920, 3500, 260, "'Years '+" + years, size=9, style=BOLD,
+                        color=DARK, alignment=RIGHT)
+    head, foot = sub.group('COMPARISON', '', 1300, 700)
+    head.label(0, 100, 8000, 420, 'Sales by category', size=16, style=BOLD, color=DARK)
+    head.rect(0, 600, WIDTH, 20, fill=ACCENT)
+    head.expr(3300, 700, 3100, 240, first, size=9, style=BOLD, color=DARK, alignment=CENTER)
+    head.expr(6500, 700, 3100, 240, second, size=9, style=BOLD, color=DARK, alignment=CENTER)
+    column_headers(head, 980, [(0, 3200, 'Category', LEFT), (3300, 1100, 'Orders', RIGHT),
+                               (4500, 1900, 'Sales (EUR)', RIGHT), (6500, 1100, 'Orders', RIGHT),
+                               (7700, 1900, 'Sales (EUR)', RIGHT), (9700, 1058, 'Change', RIGHT)])
+    det = sub.section(SEC_DETAIL, 320)
+    det.expr(0, 45, 3200, 240, 'BY_CATEGORY.CATEGORY', cut=True)
+    det.expr(3300, 45, 1100, 240, 'BY_CATEGORY.ORDERS', alignment=RIGHT, fmt='#,##0')
+    det.expr(4500, 45, 1900, 240, 'BY_CATEGORY.SALES', alignment=RIGHT, fmt='#,##0.00')
+    det.expr(6500, 45, 1100, 240, 'BY_CATEGORY.Q02_ORDERS', alignment=RIGHT, fmt='#,##0')
+    det.expr(7700, 45, 1900, 240, 'BY_CATEGORY.Q02_SALES', alignment=RIGHT, fmt='#,##0.00')
+    det.expr(9700, 45, 1058, 240,
+             '100*(BY_CATEGORY.Q02_SALES-BY_CATEGORY.SALES)/BY_CATEGORY.SALES',
+             alignment=RIGHT, fmt='0.0"%"', color=GRAY)
+    det.rect(0, 305, WIDTH, 10, fill=ROWLINE)
+    foot.rect(0, 60, WIDTH, 400, fill=LIGHT)
+    foot.label(200, 130, 3000, 270, 'Total', style=BOLD, color=DARK)
+    for x, w, field, fmt in ((3300, 1100, 'ORDERS', '#,##0'), (4500, 1900, 'SALES', '#,##0.00'),
+                             (6500, 1100, 'Q02_ORDERS', '#,##0'),
+                             (7700, 1900, 'Q02_SALES', '#,##0.00')):
+        foot.expr(x, 130, w, 270, 'BY_CATEGORY.' + field, style=BOLD, color=DARK,
+                  alignment=RIGHT, fmt=fmt, aggregate=AG_GENERAL)
+    page_footer(sub)
+    # The ten best sold products of each year, by position
+    sub2 = rep.subreport('TOP_PRODUCTS')
+    banner(sub2, 'Year over year', 'Parallel unions of a dataset for each year, side by side')
+    sub2.pheader[0].expr(WIDTH - 3500, 920, 3500, 260, "'Years '+" + years, size=9, style=BOLD,
+                         color=DARK, alignment=RIGHT)
+    head2, _ = sub2.group('RANKING', '', 1300, 200)
+    head2.label(0, 300, 8000, 420, 'The ten best sold products', size=16, style=BOLD, color=DARK)
+    head2.rect(0, 800, WIDTH, 20, fill=ACCENT)
+    column_headers(head2, 980, [(0, 400, '#', RIGHT), (600, 3200, '', LEFT),
+                                (3900, 1300, 'Sales (EUR)', RIGHT), (5500, 3700, '', LEFT),
+                                (9300, 1458, 'Sales (EUR)', RIGHT)])
+    head2.expr(600, 980, 3200, 240, "'Product '+" + first, size=8, style=BOLD, color=GRAY)
+    head2.expr(5500, 980, 3700, 240, "'Product '+" + second, size=8, style=BOLD, color=GRAY)
+    det2 = sub2.section(SEC_DETAIL, 320)
+    det2.expr(0, 45, 400, 240, '1', alignment=RIGHT, fmt='0', color=GRAY, aggregate=AG_GENERAL)
+    det2.expr(600, 45, 3200, 240, 'TOP_PRODUCTS.PRODUCT', cut=True)
+    det2.expr(3900, 45, 1300, 240, 'TOP_PRODUCTS.SALES', alignment=RIGHT, fmt='#,##0.00')
+    det2.expr(5500, 45, 3700, 240, 'TOP_PRODUCTS.Q02_PRODUCT', cut=True)
+    det2.expr(9300, 45, 1458, 240, 'TOP_PRODUCTS.Q02_SALES', alignment=RIGHT, fmt='#,##0.00')
+    det2.rect(0, 305, WIDTH, 10, fill=ROWLINE)
+    page_footer(sub2)
+    return rep
+
+
 SAMPLES = [
     ('fishes.rep', fishes),
     ('customers.rep', customers),
@@ -1147,6 +1308,8 @@ SAMPLES = [
     ('labels.rep', labels),
     ('letter.rep', letter),
     ('international.rep', international),
+    ('contacts.rep', contacts),
+    ('year-over-year.rep', year_over_year),
 ]
 
 
