@@ -5,8 +5,9 @@ Fecha: 21-11-2026 (revisado el mismo día: sin lector DFM y sin WebAssembly). Es
 
 ## Estado del prototipo (21-11-2026, tarde)
 
-Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), en 33 commits
-locales **sin push** (unas 59.000 líneas de TypeScript sin contar las pruebas; 1.384 pruebas). Cada parte se ha portado entera y comprobado contra el motor C# con el
+Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), en commits
+locales **sin push** hasta el viernes 27-11-2026 (unas 59.000 líneas de TypeScript sin contar las
+pruebas; 1.414 pruebas). Cada parte se ha portado entera y comprobado contra el motor C# con el
 arnés `typescript/tools/golden-cs`; las partes que faltan fallan con un error claro («not supported
 yet»), nunca con una salida distinta.
 
@@ -401,10 +402,27 @@ F1 sí (sección 10).
 
 ### F0 — Base y red de seguridad · 2-3 días
 
+**Estado (21-11-2026): hecha, salvo las salidas de Delphi del corpus.**
+- **CI** en este equipo, no en GitHub: `npm run ci` copia el árbol de trabajo y lo instala, compila,
+  prueba y comprueba en Windows con su Node y en Linux en Docker dentro de WSL, con `node:22` y
+  `node:24`. En verde en los tres: 1.363, 1.233 y 1.233 pruebas; las demás se saltan por las fuentes
+  de Windows, poppler o una base de datos que no está.
+- **`reportman-lib` vive solo en el repositorio C#**: ReportmanAI lo compila por ruta (`tsconfig`
+  `paths`, con sus dependencias desde su propio `node_modules`) y `projects/reportman-model` se ha
+  borrado de ReportmanAI. Comprobado con `npm run build:server`, el paquete `ngx-reportman-lib` y
+  las pruebas de la web. Se trajo lo único que solo tenía ReportmanAI (`RpKey_1849` y la copia de
+  las uniones en el historial de deshacer) y el diseñador web usa ya los nombres JSON del modelo C#
+  (`dpires`, `docXMPContent`, `vAlignment`, `bde*`).
+- **`rep-inventory`**: `npm run inventory -- <informes>` lee los 11 ejemplos de `samples/` y los 8
+  XML de `repman/repsamples`; los 8 DFM de esa carpeta salen aparte, para guardarlos como XML.
+- **Pendiente**: las salidas de Delphi (`printreptopdf`) de cada informe del corpus como un
+  conjunto; hoy se comparan a mano (ejemplos de uniones). No se usan eslint ni tsup: `tsc -b`
+  compila y la frontera del núcleo la pone `types: []`.
+
 - **Monorepo** (decisión 9.1):
   - workspaces, TypeScript 5.9, tsup (ESM + `.d.ts`), vitest y eslint con fronteras entre paquetes;
   - la regla de compilación del principio 1 y la prueba de «solo JavaScript» del principio 2;
-  - CI en Node 22 y 24, Linux y Windows.
+  - CI en Node 22 y 24, Linux y Windows, en este equipo (`npm run ci`, Linux en WSL), no en GitHub.
 - **Traslado de `reportman-lib`** desde ReportmanAI (sección 9.1):
   - se copia sin historial, en un commit inicial que dice de dónde viene;
   - ReportmanAI pasa a compilarlo por ruta desde el repositorio C# (`tsconfig` `paths`), como ya
@@ -692,7 +710,7 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
 
    | Código TS de hoy (ReportmanAI, privado) | ¿Al repositorio C#? | Por qué |
    |---|---|---|
-   | `reportman-lib` (modelo, ~3.860 líneas) | **Sí, en la F0** | El motor depende de él, así que tiene que ser público y MPL. Ya está casi todo en inglés y no depende de Angular en el código. |
+   | `reportman-lib` (modelo, ~3.860 líneas) | **Sí, en la F0** (hecho el 21-11-2026; la copia de ReportmanAI se ha borrado) | El motor depende de él, así que tiene que ser público y MPL. Ya está casi todo en inglés y no depende de Angular en el código. |
    | `ngx-reportman-lib` + `reportman-designer` (diseñador) | **Todavía no: en la F7** | Su licencia está sin decidir (MPL o comercial, decisión 1 de `server-componentes-plan.md`). Lleva el copiloto y el puente de la IA, y la app del servidor lo compila desde el código fuente. Trasladarlo ahora rompe la build de ReportmanAI sin ganar nada para el motor. |
    | La app de Reportman.Server.Web (consola, conexiones, asistente) | **No** | Es del anfitrión .NET y privada. |
    | El canal de datos TS de Reportman.Web (`fast-serializer.ts`, WebRTC) | **No por ahora** | El driver del Agent de la F4 va por HTTP con `fetch`. Si algún día hay WebRTC en el navegador, se reutiliza de ahí. |
