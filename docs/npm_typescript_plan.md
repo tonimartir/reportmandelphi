@@ -757,7 +757,11 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
    de 2025 siguen obsoletos y no se reutilizan.
 3. **Licencia** — **DECIDIDO**: MPL-2.0 para todos los paquetes del motor (`lib`, `metafile`,
    `text`, `pdf`, `engine`, `node` y los drivers), como el motor C#. El diseñador y el servidor
-   Node se deciden aparte (la F7 depende de la licencia del diseñador).
+   Node se deciden aparte (la F7 depende de la licencia del diseñador). El repositorio C# entero
+   pasó a MPL 2.0 el 21-11-2026 (`LICENSE.TXT`, `NOTICE.TXT` con los créditos y las cabeceras de
+   los fuentes); hasta entonces el texto era la MPL 1.1 con la GPL como alternativa, aunque los
+   paquetes NuGet ya declaraban MPL-2.0. La MPL 2.0 es compatible con la GPL, así que la doble
+   licencia ya no hace falta. Delphi sigue con MPL 1.1 y GPL.
 4. **Node mínimo** — **DECIDIDO**: 22.12, la primera 22 en la que un proyecto CommonJS puede hacer
    `require()` de un paquete ESM sin opciones.
 5. **ESM solo o ESM + CommonJS** — **DECIDIDO**: solo ESM. `check:dist` comprobará que cada paquete
