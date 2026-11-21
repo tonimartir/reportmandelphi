@@ -3,22 +3,23 @@
 Fecha: 21-11-2026 (revisado el mismo día: sin lector DFM y sin WebAssembly). Estado:
 **prototipo en marcha** (ver «Estado del prototipo»); quedan decisiones de la sección 9.
 
-## Estado del prototipo (21-11-2026, tarde)
+## Estado del prototipo (21-11-2026, noche)
 
-Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), en commits
-locales **sin push** hasta el viernes 27-11-2026 (unas 59.000 líneas de TypeScript sin contar las
-pruebas; 1.414 pruebas). Cada parte se ha portado entera y comprobado contra el motor C# con el
+Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`; subido el
+21-11-2026, y los últimos commits de la F1 en local sin push), unas 59.000 líneas de TypeScript sin
+contar las pruebas, 1.427 pruebas. Paquetes `@reportman/*` en la versión `0.1.0-alpha.1`, listos
+para publicar con la etiqueta `next` (estado de la F1 en la sección 5). Cada parte se ha portado entera y comprobado contra el motor C# con el
 arnés `typescript/tools/golden-cs`; las partes que faltan fallan con un error claro («not supported
 yet»), nunca con una salida distinta.
 
 | Paquete | Qué hace ya | Comprobación contra C# |
 |---|---|---|
-| `reportman-lib` | Modelo del diseñador sin Angular, lector XML del `.rep` (normal y zlib), rechazo claro del DFM | 22 informes: 0 diferencias en 23.382 valores |
-| `reportman-metafile` | Metafile, páginas, objetos, contrato `PrintOut` (dispositivo que mide) | (base de los demás) |
-| `reportman-text` | Las 14 fuentes estándar del PDF y el salto de línea del motor; fuentes TrueType/OpenType con fontkit (elección por nombre y estilo, métricas, fallback por cobertura, shaping), bidi con bidi-js, escrituras complejas, texto HTML | 1.395 medidas con fuentes estándar y 703 con TrueType (latín, árabe, hebreo, devanagari, tailandés, CJK, coreano) idénticas |
-| `reportman-pdf` | PDF con fuentes estándar: texto, formas, anotaciones, metadatos, Flate; imágenes JPEG, BMP, PNG y GIF (decodificadores propios que dan los mismos píxeles que SkiaSharp); fuentes incrustadas como subconjuntos (Type0/CID, ToUnicode); PDF/A-3B con archivos asociados | PDFs idénticos byte a byte con fuentes estándar; con fuentes incrustadas, todo igual salvo los bytes de los subconjuntos (fontkit, no hb-subset) y menos del 0,01 % de píxeles distintos |
-| `reportman-engine` | Expresiones (todas las funciones, formatos y culturas de .NET), datos con contrato de anfitrión, parámetros en dos pasos (`Describe`/`Apply` del servidor .NET), secciones, grupos, subinformes, maestro/detalle, columnas, dos pasadas, imágenes (campo, expresión, fondos de sección, `IMAGEOP`), códigos de barras (18 tipos 1D, PDF417, QR), gráficos (`VectorChart`, `GRAPHIC*`) | 6.244 expresiones idénticas; metafile objeto a objeto en **los 9 ejemplos**; PDF byte a byte en los 7 que van con fuentes estándar (`letter` e `international` necesitan TrueType) y en más de cien informes sintéticos |
-| `reportman-node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`), formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
+| `@reportman/lib` | Modelo del diseñador sin Angular, lector XML del `.rep` (normal y zlib), rechazo claro del DFM | 22 informes: 0 diferencias en 23.382 valores |
+| `@reportman/metafile` | Metafile, páginas, objetos, contrato `PrintOut` (dispositivo que mide) | (base de los demás) |
+| `@reportman/text` | Las 14 fuentes estándar del PDF y el salto de línea del motor; fuentes TrueType/OpenType con fontkit (elección por nombre y estilo, métricas, fallback por cobertura, shaping), bidi con bidi-js, escrituras complejas, texto HTML | 1.395 medidas con fuentes estándar y 703 con TrueType (latín, árabe, hebreo, devanagari, tailandés, CJK, coreano) idénticas |
+| `@reportman/pdf` | PDF con fuentes estándar: texto, formas, anotaciones, metadatos, Flate; imágenes JPEG, BMP, PNG y GIF (decodificadores propios que dan los mismos píxeles que SkiaSharp); fuentes incrustadas como subconjuntos (Type0/CID, ToUnicode); PDF/A-3B con archivos asociados | PDFs idénticos byte a byte con fuentes estándar; con fuentes incrustadas, todo igual salvo los bytes de los subconjuntos (fontkit, no hb-subset) y menos del 0,01 % de píxeles distintos |
+| `@reportman/engine` | Expresiones (todas las funciones, formatos y culturas de .NET), datos con contrato de anfitrión, parámetros en dos pasos (`Describe`/`Apply` del servidor .NET), secciones, grupos, subinformes, maestro/detalle, columnas, dos pasadas, imágenes (campo, expresión, fondos de sección, `IMAGEOP`), códigos de barras (18 tipos 1D, PDF417, QR), gráficos (`VectorChart`, `GRAPHIC*`) | 6.244 expresiones idénticas; metafile objeto a objeto en **los 9 ejemplos**; PDF byte a byte en los 7 que van con fuentes estándar (`letter` e `international` necesitan TrueType) y en más de cien informes sintéticos |
+| `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`), formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
 
 Sin dependencias nativas ni WebAssembly (`npm run check:pure-js`): las únicas dependencias de
 producción del núcleo son `fflate`, `i18next` (modelo del diseñador), `@zxing/library` (bloques
@@ -29,11 +30,11 @@ Reportman.Server, comprobados contra bases reales en Docker):
 
 | Paquete | Base | Comprobación contra C# |
 |---|---|---|
-| `reportman-driver-postgres` (`pg`) | PostgreSQL 17 | 56 casos iguales a Npgsql 10 (PDF byte a byte o el mismo error) |
-| `reportman-driver-firebird` (`node-firebird`) | Firebird 5 | 10 informes byte a byte y todos los tipos iguales a FirebirdClient 10.3 |
-| `reportman-driver-mysql` (`mysql2`) | MySQL 8.4 y MariaDB 11.8 | 12 informes byte a byte; las mismas sentencias en el log del servidor que MySqlConnector 2.5 |
-| `reportman-driver-mssql` (`tedious`) | SQL Server 2022 | Los 8 ejemplos y 30 casos sintéticos o de error byte a byte; las mismas sentencias que SqlClient 6.1 (trazadas en el servidor con Extended Events: lote simple, o `sp_executesql` con sus mismas declaraciones) y 46 consultas con los mismos tipos y valores; cadena de conexión leída como SqlClient |
-| `reportman-driver-http` (solo `fetch`, también en el navegador) | Agent de Reportman AI (API HTTP del Hub) | 42 informes byte a byte y las 168 peticiones idénticas a `HttpAgentExecutor`, contra un Hub simulado en local (sin tocar producción); sin el canal WebRTC |
+| `@reportman/driver-postgres` (`pg`) | PostgreSQL 17 | 56 casos iguales a Npgsql 10 (PDF byte a byte o el mismo error) |
+| `@reportman/driver-firebird` (`node-firebird`) | Firebird 5 | 10 informes byte a byte y todos los tipos iguales a FirebirdClient 10.3 |
+| `@reportman/driver-mysql` (`mysql2`) | MySQL 8.4 y MariaDB 11.8 | 12 informes byte a byte; las mismas sentencias en el log del servidor que MySqlConnector 2.5 |
+| `@reportman/driver-mssql` (`tedious`) | SQL Server 2022 | Los 8 ejemplos y 30 casos sintéticos o de error byte a byte; las mismas sentencias que SqlClient 6.1 (trazadas en el servidor con Extended Events: lote simple, o `sp_executesql` con sus mismas declaraciones) y 46 consultas con los mismos tipos y valores; cadena de conexión leída como SqlClient |
+| `@reportman/driver-http` (solo `fetch`, también en el navegador) | Agent de Reportman AI (API HTTP del Hub) | 42 informes byte a byte y las 168 peticiones idénticas a `HttpAgentExecutor`, contra un Hub simulado en local (sin tocar producción); sin el canal WebRTC |
 
 Errores del motor C# encontrados con PostgreSQL y MySQL: Npgsql y MySqlConnector solo admiten un
 comando (un lector) a la vez por conexión, así que el motor C# falla con `sales-by-category` y con
@@ -53,8 +54,8 @@ Encrypted. Las uniones de conjuntos de datos (MyBase, normal, agrupada y en para
 comprobadas contra C#, que ahora las construye como Delphi (ejemplos `contacts` y
 `year-over-year`). Fuera todavía en general: `.rpmf`, `dbxconnections.ini` para las
 conexiones directas, los datasets REST declarativos (decisión 9.6), el escritor XML de
-`reportman-lib`, el servidor Node (F6), el diseñador en npm (F7) y el conversor DFM → XML (al
-final). Lo que falta para la F1 son los informes y la base de datos del patrocinador.
+`@reportman/lib`, el servidor Node (F6) y el diseñador en npm (F7). El conversor DFM → XML ya
+existe, fuera del motor: `reptotxt -xml` de Delphi, que comprueba que el XML da el mismo informe.
 
 ## 0. Resumen
 
@@ -500,6 +501,32 @@ equivocada.
 - el JSON del paso 1 coincide con el de `ReportParameters.Describe` de C# para el mismo informe;
 - funciona en Node 22 y 24, en Linux y Windows, sin binarios.
 
+**Estado (21-11-2026)**: hecha, falta publicar.
+
+- Los tres informes del patrocinador (convertidos con `reptotxt -xml`, Zeos sobre PostgreSQL)
+  dan, con el motor TypeScript y su base de datos, las mismas páginas y los mismos textos que los
+  PDF de Delphi, palabra por palabra salvo la hora de `NOW`. Diferencia raster: 0,22 %, 1,62 % y
+  3,14 % (desplazamientos de menos de un punto; el QR del DANFE dibuja otro patrón de módulos,
+  pero leído con zxing da la misma URL de consulta con la misma clave).
+- Las diferencias encontradas eran errores del motor C#, corregidos en los dos motores con las
+  fixtures de `golden-cs` regeneradas (decisión 9.8): los `#13#10` del analizador, `VAL`, fecha
+  frente a número (por su valor OLE, como Delphi), las horas sin fecha impresas sin la fecha, los
+  alias de dataset sin distinguir mayúsculas, las búsquedas `:NOMBRE` de los parámetros de
+  sustitución que `ConvertToDotNet` convertía en parámetros SQL, y los tipos de los parámetros con
+  Npgsql. Las comillas de un `SubsExpreList`, como en Delphi, solo se aplican a los informes
+  convertidos desde drivers que solo tiene Delphi (`ConvertedFromDelphi`): los nativos de C# y los
+  del Agent siguen igual, porque su valor ya va entre comillas.
+- Adaptador para la aplicación del patrocinador (CommonJS): sus dos llamadas con el mismo contrato
+  que su puente Delphi (el JSON del paso 1 de `uReportProcessor.pas`, las conversiones de los
+  valores del paso 2, idioma 4 si el informe trae uno fuera de rango, CODEMP y CODFIL), y el
+  driver síncrono solo para los informes que lo necesitan (`isSynchronousDataRequired`). Probado
+  a través de su propio servidor: los tres PDF iguales a los de Delphi.
+- Paquetes renombrados a `@reportman/*`, versión `0.1.0-alpha.1`, `publishConfig` con acceso
+  público y etiqueta `next`. `npm pack` de los once e instalación limpia en un proyecto CommonJS
+  comprobadas. CI local en Windows y en Linux con Node 22 y 24.
+- Falta: publicar (Toni, con su llave: `npm publish --workspaces` desde `typescript/`), y enviar
+  el adaptador al patrocinador.
+
 ### F2 — Motor completo: paridad funcional con C# · 3-4 semanas
 
 - **Expresiones y formatos**: todas las funciones (41 + 33) y todos los tipos de parámetro;
@@ -754,8 +781,9 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
 **Recibido (21-11-2026)**: un repositorio de referencia con su base de datos (esquema y datos de
 prueba), tres `.rep` reales **en DFM de texto**, cómo los ejecuta hoy (dos pasos: el JSON de los
 parámetros con sus listas resueltas y el PDF sin comprimir) y su aplicación Node (CommonJS). Las
-fuentes son las Type1 estándar (Helvetica). Queda por confirmar la versión de Node de producción
-(con CommonJS hace falta ≥ 22.12, decisión 9.5) y guardar los tres informes como XML.
+fuentes son las Type1 estándar (Helvetica). Se da por hecho que su Node de producción es al menos
+la 22.12 (con CommonJS hace falta, decisión 9.5). Los tres informes están guardados como XML con
+`reptotxt -xml` (21-11-2026).
 
 - La base de datos y su versión.
 - Dos o tres `.rep` reales, con sus conexiones (`dbxconnections.ini` o los parámetros de conexión,
