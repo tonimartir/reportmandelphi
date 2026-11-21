@@ -63,7 +63,8 @@ begin
   // Looks stream type
   if (stream.size<1) then
    Raise Exception.Create('Invalid stream format');
-  firstchar:=PChar(stream.memory)^;
+  // The first byte (a PChar reads two bytes in Unicode Delphi: no text or zlib report was seen)
+  firstchar:=Char(PByte(stream.memory)^);
   if firstchar='x' then
    theformat:=0
   else

@@ -4076,9 +4076,9 @@ end;
 function ReadStreamFromHandle(handle:THandle):TMemoryStream;
 var
  memstream:TMemoryStream;
- astring:String;
- buffer:array [0..3] of char;
- pbuf:Pchar;
+ // The bytes as they come: a Char buffer and a String made them two bytes each in Unicode
+ // Delphi, so the stream got half the data mixed with zeros
+ buffer:array [0..65535] of Byte;
  finish:boolean;
 {$IFDEF MSWINDOWS}
  readed:DWORD;
@@ -4089,49 +4089,34 @@ var
 begin
  memstream:=TMemoryStream.Create;
  try
-  pbuf:=@buffer;
-  astring:='';
   finish:=false;
-  buffer[1]:=chr(0);
   repeat
-
 {$IFDEF MSWINDOWS}
-   if not ReadFile(handle,pbuf^,1,readed,nil) then
+   if not ReadFile(handle,buffer[0],SizeOf(buffer),readed,nil) then
    begin
     lasterror:=GetLastError;
     if ((lasterror<>ERROR_HANDLE_EOF) AND (lasterror<>ERROR_BROKEN_PIPE)) then
-    begin
      RaiseLastOSError;
-    end
-    else
-    begin
-     finish:=true;
-     readed:=0;
-    end;
+    readed:=0;
    end;
+   // A pipe ends with ERROR_BROKEN_PIPE, a redirected file reads no bytes at its end
+   if readed=0 then
+    finish:=true;
 {$ELSE}
    // In linux the handle 0 is the stdinput
+   // FileRead returns bytes read, 0 at EOF and -1 on error
 {$IFDEF FPC}
-        readed:=FileRead(0,pbuf^,1);
-        if readed=0 then
-         finish:=true;
+   readed:=FileRead(0,buffer[0],SizeOf(buffer));
 {$ELSE}
-        // FileRead returns bytes read, 0 at EOF and -1 on error
-        readed:=SysUtils.FileRead(handle,pbuf^,1);
-        if readed<=0 then
-         finish:=true;
+   readed:=SysUtils.FileRead(handle,buffer[0],SizeOf(buffer));
 {$ENDIF}
+   if readed<=0 then
+    finish:=true;
 {$ENDIF}
    if readed>0 then
-   begin
-    astring:=astring+pbuf[0];
-   end;
+    memstream.Write(buffer[0],readed);
   until finish;
-  if Length(astring)>0 then
-  begin
-   memstream.Write(astring[1],Length(astring));
-   memstream.Seek(0,soFromBeginning);
-  end;
+  memstream.Seek(0,soFromBeginning);
   Result:=memstream;
  except
   memstream.free;
