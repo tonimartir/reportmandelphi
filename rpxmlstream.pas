@@ -368,6 +368,9 @@ begin
  WritePropertyS('GROUPNAME',AnsiString(section.GroupName),Stream);
  WritePropertyW('CHANGEEXPRESSION',section.ChangeExpression,Stream);
  WritePropertyW('BEGINPAGEEXPRESSION',section.BeginPageExpression,Stream);
+ // Kept by the DFM format, and written by the .Net writer the same way: only when it is true
+ if section.BeginPage then
+  WritePropertyBool('BEGINPAGE',section.BeginPage,Stream);
  WritePropertyW('SKIPEXPREV',section.SkipExpreV,Stream);
  WritePropertyW('SKIPEXPREH',section.SkipExpreH,Stream);
  WritePropertyW('SKIPTOPAGEEXPRE',section.SkipToPageExpre,Stream);
@@ -420,6 +423,77 @@ begin
  WriteStringToStream('</SECTION>'+CRLF,Stream);
 end;
 
+// BIDIMODE only says whether the current language is right to left: BIDIMODES, the mode of every
+// language, is written when it holds more than that (BidiFull, other languages), as the .Net
+// writer does. Its lines are joined with CR LF on every platform, as TStrings.Text on Windows
+function NeedsBidiModes(compt:TRpGenTextComponent):Boolean;
+var
+ current,i:integer;
+ implied:String;
+begin
+ Result:=false;
+ // The index GetBidiMode reads
+ current:=TRpReport(compt.Report).Language+1;
+ if (current<0) or (current>256) then
+  current:=0;
+ for i:=0 to compt.BidiModes.Count-1 do
+ begin
+  if (i=current) and compt.RightToLeft then
+   implied:='BidiPartial'
+  else
+   implied:='BidiNo';
+  if compt.BidiModes.Strings[i]<>implied then
+  begin
+   Result:=true;
+   exit;
+  end;
+ end;
+end;
+
+function BidiModesText(compt:TRpGenTextComponent):String;
+var
+ i:integer;
+begin
+ Result:='';
+ for i:=0 to compt.BidiModes.Count-1 do
+  Result:=Result+compt.BidiModes.Strings[i]+#13#10;
+end;
+
+// The colors of the Series collection of a chart (the DFM format keeps them, the XML one did not):
+// integers separated by commas, as the .Net writer writes them
+function SeriesColorsText(compc:TRpChart):String;
+var
+ i:integer;
+begin
+ Result:='';
+ for i:=0 to compc.Series.Count-1 do
+ begin
+  if i>0 then
+   Result:=Result+',';
+  Result:=Result+IntToStr(compc.Series.Items[i].Color);
+ end;
+end;
+
+procedure ReadSeriesColors(compc:TRpChart;const text:String);
+var
+ list:TStringList;
+ i,color:integer;
+begin
+ compc.Series.Clear;
+ list:=TStringList.Create;
+ try
+  // Separators of a CommaText: commas and blanks
+  list.CommaText:=text;
+  for i:=0 to list.Count-1 do
+  begin
+   if TryStrToInt(Trim(list.Strings[i]),color) then
+    compc.Series.Add.Color:=color;
+  end;
+ finally
+  list.Free;
+ end;
+end;
+
 procedure WriteComponentXML(comp:TRpCommonPosComponent;Stream:TStream);
 var
  compt:TRpGenTextComponent;
@@ -468,6 +542,9 @@ begin
   WritePropertyBool('WORDWRAP',compt.WordWrap,Stream);
   WritePropertyBool('WORDBREAK',compt.WordBreak,Stream);
   WritePropertyBool('SINGLELINE',compt.SingleLine,Stream);
+  // After BIDIMODE: the reader reads it later, so it wins
+  if NeedsBidiModes(compt) then
+   WritePropertyS('BIDIMODES',AnsiString(BidiModesText(compt)),Stream);
   WritePropertyBool('MULTIPAGE',compt.Multipage,Stream);
   WritePropertyI('PRINTSTEP',Integer(compt.PrintStep),Stream);
   if compt.IsHtml then
@@ -552,6 +629,8 @@ begin
   WritePropertyW('SERIECAPTION',compc.SerieCaption,Stream);
   WritePropertyW('CLEAREXPRESSION',compc.ClearExpression,Stream);
 //  WritePropertyI('SERIES',Integer(compc.Series),Stream);
+  if compc.Series.Count>0 then
+   WritePropertyS('SERIESCOLORS',AnsiString(SeriesColorsText(compc)),Stream);
   WritePropertyBool('CHANGESERIEBOOL',compc.ChangeSerieBool,Stream);
   WritePropertyI('CHARTTYPE',Integer(compc.ChartType),Stream);
   WritePropertyW('IDENTIFIER',compc.Identifier,Stream);
@@ -1124,6 +1203,9 @@ begin
  if propname='BEGINPAGEEXPRESSION' then
   sec.BeginPageExpression:=RpStringToWString(propvalue)
  else
+ if propname='BEGINPAGE' then
+  sec.BeginPage:=RpStrToBool(propvalue)
+ else
  if propname='SKIPEXPREV' then
   sec.SkipExpreV:=RpStringToWString(propvalue)
  else
@@ -1395,7 +1477,10 @@ begin
  begin
   aparam.Value:=Null;
   case aparam.ParamType of
-   rpParamString,rpParamExpreA,rpParamExpreB,rpParamSubst,rpParamList,rpParamUnknown:
+   // The text types the writer saves (substitution lists and initial expressions were written
+   // but not read back: their value was lost; the .Net and TypeScript readers read them)
+   rpParamString,rpParamExpreA,rpParamExpreB,rpParamSubst,rpParamList,rpParamSubstList,
+   rpParamInitialExpression,rpParamUnknown:
     aparam.Value:=RpStringToString(propvalue);
    rpParamInteger:
     begin
@@ -1922,6 +2007,9 @@ begin
   else
   if propname='CLEAREXPRESSION' then
    compc.ClearExpression:=RpStringToWString(propvalue)
+  else
+  if propname='SERIESCOLORS' then
+   ReadSeriesColors(compc,String(RpStringToString(propvalue)))
   else
   if propname='CHANGESERIEBOOL' then
    compc.ChangeSerieBool:=RpStrToBool(propvalue)
