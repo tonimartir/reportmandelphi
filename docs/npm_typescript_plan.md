@@ -559,9 +559,11 @@ los tests de `tests/` del motor C# están portados.
   - `-mysql` (mysql2)
   - `-mssql` (tedious)
   - `-firebird` (node-firebird)
-  - `-oracle` (oracledb en modo Thin, que es JS). **Por verificar**: el paquete de npm pesa 4 MB y
-    tiene un script `install`, señal de que trae los binarios del modo Thick. Si es así, choca con
-    el principio 2: se deja Oracle fuera o se acepta como excepción documentada.
+  - `-oracle` (oracledb en modo Thin, que es JS). **Verificado (21-11-2026)**: `oracledb` 26.0.0
+    pesa 4 MB, trae los binarios del modo Thick (`.node` de Windows x64, Linux x64/arm64 y macOS
+    arm64) y un script `install` que solo comprueba la versión de Node y el binario. **DECIDIDO**:
+    se acepta como excepción documentada al principio 2, en su propio paquete y siempre en modo Thin
+    (el núcleo sigue siendo JavaScript puro), y se hace cuando un cliente lo necesite.
   - `-sqlite` (`node:sqlite`, integrado en Node)
   - Con `pg` no se instala `pg-native`, que es opcional.
 - **Conexiones de Delphi**:
@@ -721,22 +723,39 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
      inicial que dice de dónde viene.
    - ReportmanAI pasa a compilarlo por ruta, como ya hace con el motor C#, y desde la F8 de su plan
      lo tomará de npm.
-2. **Nombres**: sin ámbito (`reportman-engine`, `reportman-pdf`…, coherente con `reportman-lib`;
-   todos libres hoy) o con ámbito `@reportman/*`. ¿Se reservan ya en npm?
-3. **Licencia**: MPL-2.0 para el núcleo y `reportman-lib`. `reportman-engine` depende de
-   `reportman-lib`, así que el modelo no puede ser comercial aunque el diseñador lo sea.
-4. **Node mínimo**: 22 LTS.
-5. **ESM solo o ESM + CommonJS**: depende de cómo carga los módulos el patrocinador; dual en la F1
-   si hace falta.
-6. **Datasets REST/JSON**:
-   - **como parte del formato**: un nuevo tipo de conexión en Delphi, C#, TS y los diseñadores;
-   - **o solo como gancho del anfitrión**: ya en la F1.
-7. **Entrega de la F1**: privada (tarball o repositorio) o prerelease pública en npm.
-8. **Errores de C# o de Delphi encontrados al portar**: se corrigen también allí (recomendado).
-9. **El orden de F2 a F7 y su financiación**: lo comprometido es la F1; el resto se ordena según lo
-   que pidan los patrocinadores.
+2. **Nombres** — **DECIDIDO (21-11-2026)**: ámbito `@reportman/*`. La organización `reportman`
+   de npm está creada (gratuita, paquetes públicos; dueño `tonimartir`). Los paquetes:
+   `@reportman/lib`, `metafile`, `text`, `pdf`, `engine`, `node`, `driver-*`, y más adelante
+   `export`, `canvas`, `server` y `ngx`. Los `reportman-lib` (0.0.26) y `ngx-reportman-lib` (0.0.37)
+   de 2025 siguen obsoletos y no se reutilizan.
+3. **Licencia** — **DECIDIDO**: MPL-2.0 para todos los paquetes del motor (`lib`, `metafile`,
+   `text`, `pdf`, `engine`, `node` y los drivers), como el motor C#. El diseñador y el servidor
+   Node se deciden aparte (la F7 depende de la licencia del diseñador).
+4. **Node mínimo** — **DECIDIDO**: 22.12, la primera 22 en la que un proyecto CommonJS puede hacer
+   `require()` de un paquete ESM sin opciones.
+5. **ESM solo o ESM + CommonJS** — **DECIDIDO**: solo ESM. `check:dist` comprobará que cada paquete
+   se carga con `require()` desde CommonJS (en Node ≥ 22.12, sin `await` de primer nivel en los
+   módulos que se cargan). Si algún usuario necesitara un Node anterior con CommonJS, se añade la
+   versión doble después.
+6. **Datasets REST/JSON** — **DECIDIDO**: solo el gancho del anfitrión (las filas de un dataset las
+   da el programa; ya hecho). Un tipo de conexión REST en el formato `.rep` queda como proyecto
+   aparte, si un patrocinador lo pide.
+7. **Entrega de la F1** — **DECIDIDO**: versión previa pública en npm (`0.1.0-alpha.N`, etiqueta
+   `next`; la etiqueta `latest` no se usa hasta la 1.0). El código ya es público en el repositorio C#.
+8. **Errores de C# o de Delphi encontrados al portar** — **DECIDIDO**: se corrigen en los tres
+   motores, revisando a fondo que cada corrección sea compatible con los informes existentes; si no
+   puede serlo, se discute antes de hacerla.
+9. **El orden de F2 a F7 y su financiación** — **DECIDIDO**: primero el motor. Las conexiones de
+   Delphi y `dbxconnections.ini` (parte de la F4) → F1 en cuanto lleguen los informes → F2 → F3 → F5
+   → F6 → F7 → conversor DFM. Si se avanza en una fase sin patrocinador lo decide Toni fase a fase.
 
 ## 10. Lo que falta del patrocinador (bloquea la F1, no la F0)
+
+**Recibido (21-11-2026)**: un repositorio de referencia con su base de datos (esquema y datos de
+prueba), tres `.rep` reales **en DFM de texto**, cómo los ejecuta hoy (dos pasos: el JSON de los
+parámetros con sus listas resueltas y el PDF sin comprimir) y su aplicación Node (CommonJS). Las
+fuentes son las Type1 estándar (Helvetica). Queda por confirmar la versión de Node de producción
+(con CommonJS hace falta ≥ 22.12, decisión 9.5) y guardar los tres informes como XML.
 
 - La base de datos y su versión.
 - Dos o tres `.rep` reales, con sus conexiones (`dbxconnections.ini` o los parámetros de conexión,
