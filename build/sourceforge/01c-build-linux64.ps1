@@ -1,6 +1,7 @@
-# Task 01c - Delphi Linux64 Release builds of printreptopdf and repwebexe.
+# Task 01c - Delphi Linux64 Release builds of printreptopdf, reptotxt and repwebexe.
 #   repman\utils\printreptopdf\binrl64\printreptopdf   (zipped by task 05)
-#   server\web\repwebexe                                (copied to the Docker
+#   repman\utils\reptotxt\binrl64\reptotxt             (zipped by task 05)
+#   server\web\repwebexe                               (copied to the Docker
 #                                                        artifacts folder)
 # No PAServer: MSBuild compiles and links against the Linux64 SDK already pulled
 # into RAD Studio (Tools > Options > SDK Manager); PAServer is only needed to
@@ -15,13 +16,15 @@
 param([string]$PlatformSdk = 'rocky8.10.sdk')
 . "$PSScriptRoot\_common.ps1"
 
-Info "== Task 01c: Linux64 Release (printreptopdf, repwebexe), SDK $PlatformSdk =="
+Info "== Task 01c: Linux64 Release (printreptopdf, reptotxt, repwebexe), SDK $PlatformSdk =="
 Import-RsVars
 if (-not (Test-Path $MsBuild)) { Fail "MSBuild not found: $MsBuild" }
 
 $targets = @(
   [pscustomobject]@{ Proj = (Join-Path $RepoRoot 'repman\utils\printreptopdf\printreptopdf.dproj');
                      Bin  = (Join-Path $RepoRoot 'repman\utils\printreptopdf\binrl64\printreptopdf') },
+  [pscustomobject]@{ Proj = (Join-Path $RepoRoot 'repman\utils\reptotxt\reptotxt.dproj');
+                     Bin  = (Join-Path $RepoRoot 'repman\utils\reptotxt\binrl64\reptotxt') },
   [pscustomobject]@{ Proj = (Join-Path $RepoRoot 'server\web\repwebexe.dproj');
                      Bin  = (Join-Path $RepoRoot 'server\web\repwebexe') }
 )

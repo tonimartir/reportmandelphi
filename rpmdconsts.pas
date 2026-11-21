@@ -405,6 +405,8 @@ var
   SRpRepToTxt1:WideString='reptotxt';
   SRpRepToTxt2:WideString='Converts a report file from report manager (.rep) to a plain file';
   SRpRepToTxt3:WideString='Usage: reptotxt -stdin|sourcefilename [destinationfilename]';
+  SRpRepToTxt4:WideString='       reptotxt -xml -stdin|sourcefilename [destinationfilename]   saves the report in XML';
+  SRpRepToTxt5:WideString='       reptotxt -xml sourcefolder destinationfolder   every .rep, subfolders too (XML ones are copied)';
   SRpMetaPrint1:WideString='metaprint';
   SRpMetaPrint2:WideString='Prints a metafile report (.rpmf)';
   SRpMetaPrint3:WideString='Usage: metaprint [Options] -stdin|metafilename';

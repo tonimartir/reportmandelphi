@@ -47,6 +47,7 @@ Source: "c:\desarrollo\prog\toni\reportman\samples\*"; DestDir: "{app}\samples";
 Source: "c:\desarrollo\prog\toni\reportman\repman\dbxdrivers.ini"; DestDir: "{%PUBLIC}"; Flags: uninsneveruninstall
 Source: "c:\desarrollo\prog\toni\reportman\repman\dbxconnections.ini"; DestDir: "{%PUBLIC}"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printreptopdf\binr32\printreptopdf.exe"; DestDir: "{app}"
+Source: "c:\desarrollo\prog\toni\reportman\repman\utils\reptotxt\binr32\reptotxt.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\activex\binr32\Reportman.ocx"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\printrep\binr32\printrepxp.exe"; DestDir: "{app}"
 Source: "c:\desarrollo\prog\toni\reportman\repman\utils\metaprint\binr32\metaprintxp.exe"; DestDir: "{app}"

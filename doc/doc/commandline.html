@@ -239,7 +239,13 @@
   </tr>
   <tr> 
     <td>reptotxt</td>
-    <td>This command converts a .rep file to a plain text files</td>
+    <td>This command converts a .rep file to a plain text files. With the option
+      <code>-xml</code> it saves the report in XML, the format the .Net and
+      TypeScript (Node.js) engines read: a file (<code>reptotxt -xml report.rep report_xml.rep</code>),
+      the standard input, or every .rep of a folder and its subfolders into another folder
+      (<code>reptotxt -xml sourcefolder destinationfolder</code>). Each converted report
+      is read again and must keep all its properties, or that conversion fails; a report that
+      is already XML is copied as it is, and the source is never written</td>
   </tr>
   <tr> 
     <td>txttorep</td>
