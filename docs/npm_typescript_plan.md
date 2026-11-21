@@ -521,9 +521,13 @@ equivocada.
   valores del paso 2, idioma 4 si el informe trae uno fuera de rango, CODEMP y CODFIL), y el
   driver síncrono solo para los informes que lo necesitan (`isSynchronousDataRequired`). Probado
   a través de su propio servidor: los tres PDF iguales a los de Delphi.
+- El JSON del paso 1 de los tres informes, con sus listas de lookup leídas de la base de datos, es
+  idéntico carácter a carácter al de `ReportParameters.Describe` de C# (el del servidor .NET, en
+  el repositorio privado, ejecutado aparte sobre la misma base).
 - Paquetes renombrados a `@reportman/*`, versión `0.1.0-alpha.1`, `publishConfig` con acceso
   público y etiqueta `next`. `npm pack` de los once e instalación limpia en un proyecto CommonJS
-  comprobadas. CI local en Windows y en Linux con Node 22 y 24.
+  comprobadas. CI local en Windows y en Linux con Node 22 y 24, y los tres informes del
+  patrocinador también en Linux (Docker) con Node 22 y 24, desde los paquetes empaquetados.
 - Falta: publicar (Toni, con su llave: `npm publish --workspaces` desde `typescript/`), y enviar
   el adaptador al patrocinador.
 
