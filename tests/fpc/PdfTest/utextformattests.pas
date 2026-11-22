@@ -433,6 +433,47 @@ begin
   end;
 end;
 
+// The first byte a report is saved with: '<' XML, 'o' text
+function SavedFirstByte(ARep: TRpReport): Char;
+var
+  LStream: TMemoryStream;
+begin
+  LStream := TMemoryStream.Create;
+  try
+    ARep.SaveToStream(LStream);
+    Result := PAnsiChar(LStream.Memory)^;
+  finally
+    LStream.Free;
+  end;
+end;
+
+// A new report (CreateNew, the designers) is saved as XML; a report that
+// is loaded keeps its format
+procedure TestDefaultFormat(const ASamplePath: string);
+var
+  LRep: TRpReport;
+begin
+  WriteLn('-- Stream format: XML for a new report, the format of the file for a loaded one');
+  LRep := TRpReport.Create(nil);
+  try
+    LRep.CreateNew;
+    Check(LRep.StreamFormat = rpStreamXML, 'a new report is XML');
+    Check(SavedFirstByte(LRep) = '<', 'a new report is saved as XML');
+  finally
+    LRep.Free;
+  end;
+  if not FileExists(ASamplePath) then
+    Exit;
+  LRep := TRpReport.Create(nil);
+  try
+    LRep.LoadFromFile(ASamplePath);
+    Check(LRep.StreamFormat = rpStreamText, 'a text DFM report keeps its format');
+    Check(SavedFirstByte(LRep) = 'o', 'a text DFM report is saved as a text DFM');
+  finally
+    LRep.Free;
+  end;
+end;
+
 function RunTextFormatTests: Boolean;
 var
   LSample: string;
@@ -450,6 +491,7 @@ begin
     TestDelphiLayout;
     TestLongString;
     TestBinaryStrings;
+    TestDefaultFormat(LSample);
   except
     on E: Exception do
     begin

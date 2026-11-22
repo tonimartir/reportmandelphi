@@ -1004,6 +1004,10 @@ begin
  // Creates a new default report
  FreeSubreports;
  AddSubReport;
+ // A new report is saved as XML, the format every engine reads (the .NET
+ // and TypeScript ones read only XML); a report that is loaded keeps the
+ // format it was saved in, and the format can be changed in the page setup
+ FStreamFormat:=rpStreamXML;
 end;
 
 procedure TRpBaseReport.SaveToFile(Filename:string);
