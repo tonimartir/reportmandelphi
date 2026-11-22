@@ -7,8 +7,9 @@ Fecha: 21-11-2026 (revisado el mismo día: sin lector DFM y sin WebAssembly). Es
 
 Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), unas 71.700
 líneas de TypeScript sin contar las pruebas, 1.924 pruebas (`npm run ci` pasa en Windows y en Linux
-con Node 22 y 24). Paquetes `@reportman/*` en la versión `0.1.0-alpha.1`, listos para publicar con
-la etiqueta `next` (estado de cada fase en la sección 5). Cada parte se ha portado entera y
+con Node 22 y 24). Paquetes `@reportman/*` en la versión `4.1.0-alpha.1` (todos la misma, decisión
+9.7), publicados con la etiqueta `next` y pendientes de aprobar en npm (estado de cada fase en la
+sección 5). Cada parte se ha portado entera y
 comprobado contra el motor C# con el arnés `typescript/tools/golden-cs` (o contra Delphi con
 `golden-delphi`, en lo que solo tiene Delphi); las partes que faltan fallan con un error claro («not supported
 yet»), nunca con una salida distinta.
@@ -1117,8 +1118,15 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
 6. **Datasets REST/JSON** — **DECIDIDO**: solo el gancho del anfitrión (las filas de un dataset las
    da el programa; ya hecho). Un tipo de conexión REST en el formato `.rep` queda como proyecto
    aparte, si un patrocinador lo pide.
-7. **Entrega de la F1** — **DECIDIDO**: versión previa pública en npm (`0.1.0-alpha.N`, etiqueta
-   `next`; la etiqueta `latest` no se usa hasta la 1.0). El código ya es público en el repositorio C#.
+7. **Entrega de la F1** — **DECIDIDO**: versión previa pública en npm, etiqueta `next`. El código ya
+   es público en el repositorio C#. **Versiones (Toni, 22-11-2026)**: todos los paquetes llevan la
+   misma, y en la versión definitiva la misma 4.x que los motores Delphi y C# (hoy Delphi 4.0.24 y el
+   NuGet de C# 3.9.15); la serie empieza en `4.1.0-alpha.N` en vez de `0.1.0-alpha.N`, y `4.1.0`
+   sería la entrega conjunta de los tres. `npm run version:set` la pone en todos los paquetes y en
+   sus referencias, y `npm run release:next` comprueba, compila, prueba y publica. npm pone cada
+   versión nueva en espera (*staged publishing*): queda en la pestaña **Staged Packages** de los
+   ajustes de la cuenta hasta que se aprueba con 2FA, y para un paquete nuevo publica un marcador
+   público `0.0.0-stage`. La primera publicación (`0.1.0-alpha.1`) quedó en espera sin aprobar.
 8. **Errores de C# o de Delphi encontrados al portar** — **DECIDIDO**: se corrigen en los tres
    motores, revisando a fondo que cada corrección sea compatible con los informes existentes; si no
    puede serlo, se discute antes de hacerla.
