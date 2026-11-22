@@ -533,33 +533,66 @@ begin
   end;
 end;
 
+// The clipboard is the one of the session: while another program has it
+// open, as the clipboard of a remote desktop (rdpclip) does after every
+// change to send it to the client, Windows refuses OpenClipboard and the LCL
+// drops what was written, so a test that writes and reads it at once reads
+// the text before. Each write is repeated until it is read back.
+procedure SetClipboardText(const AText: string);
+var
+  tries: Integer;
+begin
+  for tries := 1 to 100 do
+  begin
+    Clipboard.AsText := AText;
+    if Clipboard.AsText = AText then
+      Exit;
+    Sleep(20);
+  end;
+end;
+
+// The key down of the dialog on an empty clipboard; again while its copy to
+// the clipboard is lost that way. The key as the handler left it
+function MessageBoxKeyDown(dlg: TFRpMessageDlgVCL; AKey: Word; AExpectCopy: Boolean): Word;
+var
+  tries: Integer;
+begin
+  for tries := 1 to 100 do
+  begin
+    SetClipboardText('');
+    Result := AKey;
+    dlg.FormKeyDown(dlg, Result, [ssModifier]);
+    if not AExpectCopy or (Clipboard.AsText = dlg.MessageText) then
+      Exit;
+    Sleep(20);
+  end;
+end;
+
 procedure TestMessageBoxCopy;
 var
   dlg: TFRpMessageDlgVCL;
   key: Word;
+  previous: string;
 begin
   LogMsg('Ctrl+C and Ctrl+Insert copy the whole message of RpMessageBox');
+  // What the user had in the clipboard, back at the end
+  previous := Clipboard.AsText;
   dlg := TFRpMessageDlgVCL.Create(nil);
   try
     dlg.MessageText := 'Unknown identifier: FOO (Expression)';
-    Clipboard.AsText := '';
-    key := VK_C;
-    dlg.FormKeyDown(dlg, key, [ssModifier]);
+    key := MessageBoxKeyDown(dlg, VK_C, True);
     CheckStr(dlg.MessageText, Clipboard.AsText, 'Ctrl+C copies the message');
     CheckInt(0, key, 'Ctrl+C is handled');
-    Clipboard.AsText := '';
-    key := VK_INSERT;
-    dlg.FormKeyDown(dlg, key, [ssModifier]);
+    MessageBoxKeyDown(dlg, VK_INSERT, True);
     CheckStr(dlg.MessageText, Clipboard.AsText, 'Ctrl+Insert copies the message');
     // Not in the input box (RpInputBox): its edit copies its own text
-    Clipboard.AsText := '';
     dlg.EInput.Visible := True;
-    key := VK_C;
-    dlg.FormKeyDown(dlg, key, [ssModifier]);
+    key := MessageBoxKeyDown(dlg, VK_C, False);
     CheckStr('', Clipboard.AsText, 'The input box keeps Ctrl+C for its edit');
     CheckInt(VK_C, key, 'Ctrl+C not handled in the input box');
   finally
     dlg.Free;
+    SetClipboardText(previous);
   end;
 end;
 
