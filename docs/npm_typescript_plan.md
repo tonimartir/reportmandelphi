@@ -5,8 +5,8 @@ Fecha: 21-11-2026 (revisado el mismo día: sin lector DFM y sin WebAssembly). Es
 
 ## Estado del prototipo (22-11-2026)
 
-Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), unas 66.700
-líneas de TypeScript sin contar las pruebas, 1.680 pruebas (`npm run ci` pasa en Windows y en Linux
+Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), unas 71.700
+líneas de TypeScript sin contar las pruebas, 1.924 pruebas (`npm run ci` pasa en Windows y en Linux
 con Node 22 y 24). Paquetes `@reportman/*` en la versión `0.1.0-alpha.1`, listos para publicar con
 la etiqueta `next` (estado de cada fase en la sección 5). Cada parte se ha portado entera y
 comprobado contra el motor C# con el arnés `typescript/tools/golden-cs` (o contra Delphi con
@@ -17,11 +17,11 @@ yet»), nunca con una salida distinta.
 |---|---|---|
 | `@reportman/lib` | Modelo del diseñador sin Angular, lector XML del `.rep` (normal y zlib), rechazo claro del DFM | 22 informes: 0 diferencias en 23.382 valores |
 | `@reportman/metafile` | Metafile, páginas, objetos, contrato `PrintOut` (dispositivo que mide) | (base de los demás) |
-| `@reportman/text` | Las 14 fuentes estándar del PDF y el salto de línea del motor; fuentes TrueType/OpenType con fontkit (elección por nombre y estilo, métricas, fallback por cobertura, shaping), bidi con bidi-js, escrituras complejas, texto HTML | 1.395 medidas con fuentes estándar y 703 con TrueType (latín, árabe, hebreo, devanagari, tailandés, CJK, coreano) idénticas |
+| `@reportman/text` | Las 14 fuentes estándar del PDF y el salto de línea del motor; fuentes TrueType/OpenType con fontkit (elección por nombre y estilo, métricas, fallback por cobertura, shaping), bidi con bidi-js, escrituras complejas, texto HTML | 1.395 medidas con fuentes estándar y 703 con TrueType (latín, árabe, hebreo, devanagari, tailandés, CJK, coreano) idénticas; los glifos de HarfBuzz en 126 casos de shaping; WOFF2 igual a fontkit en 163 fuentes |
 | `@reportman/pdf` | PDF con fuentes estándar: texto, formas, anotaciones, metadatos, Flate; imágenes JPEG, BMP, PNG y GIF (decodificadores propios que dan los mismos píxeles que SkiaSharp); fuentes incrustadas como subconjuntos (Type0/CID, ToUnicode); PDF/A-3B con archivos asociados | PDFs idénticos byte a byte con fuentes estándar; con fuentes incrustadas, todo igual salvo los bytes de los subconjuntos (fontkit, no hb-subset) y menos del 0,01 % de píxeles distintos |
 | `@reportman/engine` | Expresiones (todas las funciones, formatos y culturas de .NET), datos con contrato de anfitrión, parámetros en dos pasos (`Describe`/`Apply` del servidor .NET), secciones, grupos, subinformes, maestro/detalle, columnas, dos pasadas, imágenes (campo, expresión, fondos de sección, `IMAGEOP`), códigos de barras (18 tipos 1D, PDF417, QR), gráficos (`VectorChart`, `GRAPHIC*`) | 6.244 expresiones idénticas; metafile objeto a objeto en **los 9 ejemplos**; PDF byte a byte en los 7 que van con fuentes estándar (`letter` e `international` necesitan TrueType) y en más de cien informes sintéticos |
-| `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`, también WOFF), conexiones de `dbxconnections.ini`, cancelación y progreso, formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
-| `@reportman/export` | CSV (`PrintOutCSV`), SVG y HTML (los drivers de Delphi) y texto (`PrintOutText`: todos sus drivers, ESC/POS incluido) | CSV igual a C# en 9 ejemplos; SVG y HTML iguales a Delphi desde el mismo metafile en 13 informes; texto igual a C# en 57 casos |
+| `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`, también WOFF y WOFF2), conexiones de `dbxconnections.ini`, cancelación y progreso, formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
+| `@reportman/export` | CSV (`PrintOutCSV`), SVG y HTML (los drivers de Delphi) y texto (`PrintOutText`: todos sus drivers, ESC/POS incluido) | CSV igual a C# en 9 ejemplos; SVG y HTML iguales a Delphi desde el mismo metafile en 13 informes; texto igual a C# en 63 casos (con los códigos de barras que dibuja la impresora, salvo el PDF417) |
 | `@reportman/dfm` (opcional) | Los informes DFM de Delphi (texto, binario, comprimido) al XML que escribe Delphi para ellos; orden `reportman-dfm2xml` | XML idéntico al de Delphi (`reptotxt -xml`) en 277 informes en todas sus formas, 8 DFM originales, 6 casos a mano (Unicode incluido) y los 51 DFM de este equipo; rechaza lo que Delphi rechaza |
 | `@reportman/server` (MPL 2.0) | La API de informes de Reportman.Server: alias, árbol, parámetros, `execute` a PDF, `.rpmf`, texto y CSV, claves API, adaptadores `node:http`, Express y Fastify; con carpeta de datos, la consola (conexiones con prueba, alias, claves, ejemplos y explorador de la API) y la orden `reportman-server` | Las rutas, respuestas y códigos de error de `ReportsController`; el texto igual al fixture de C# |
 
@@ -68,6 +68,14 @@ Noche del 22-11-2026 (F2 → F6): las funciones que solo tenía Delphi (`TIME`, 
 `LOADFILE` en Delphi y de `FLOATTODATETIME` en C#); las salidas de la F5; la API de informes de la
 F6; y `npm run check:browser`, que ejecuta los casos de paridad del evaluador en un Edge o Chrome
 sin ventana y exige los resultados de C#.
+
+Segunda noche del 22-11-2026 (hasta la F5): las F0 a F5 quedan hechas salvo lo que se aplaza con su
+motivo en cada fase (decisiones de Toni, descargas, el Hub de producción y lo opcional). Lo nuevo:
+el corpus de Delphi frente al motor TypeScript (`check-delphi`), los informes de `repman/repsamples`
+en la paridad con C#, la CI que levanta y exige las bases de datos, `CHSTOCHT`/`CHTTOCHS` (las
+últimas funciones de Delphi, en C# y TypeScript), los tests de consola de C# que faltaban, WOFF2, el
+shaping comprobado contra HarfBuzz, los códigos lineales que dibujan las impresoras de tickets, y
+Symbol y ZapfDingbats en la vista previa.
 
 ## 0. Resumen
 
@@ -417,7 +425,8 @@ F1 sí (sección 10).
 
 ### F0 — Base y red de seguridad · 2-3 días
 
-**Estado (21-11-2026): hecha, salvo las salidas de Delphi del corpus.**
+**Estado (22-11-2026): hecha.** Las salidas de Delphi del corpus, el 22-11-2026 por la noche (ver
+el último punto).
 - **CI** en este equipo, no en GitHub: `npm run ci` copia el árbol de trabajo y lo instala, compila,
   prueba y comprueba en Windows con su Node y en Linux en Docker dentro de WSL, con `node:22` y
   `node:24`. En verde en los tres: 1.363, 1.233 y 1.233 pruebas; las demás se saltan por las fuentes
@@ -430,9 +439,26 @@ F1 sí (sección 10).
   (`dpires`, `docXMPContent`, `vAlignment`, `bde*`).
 - **`rep-inventory`**: `npm run inventory -- <informes>` lee los 11 ejemplos de `samples/` y los 8
   XML de `repman/repsamples`; los 8 DFM de esa carpeta salen aparte, para guardarlos como XML.
-- **Pendiente**: las salidas de Delphi (`printreptopdf`) de cada informe del corpus como un
-  conjunto; hoy se comparan a mano (ejemplos de uniones). No se usan eslint ni tsup: `tsc -b`
-  compila y la frontera del núcleo la pone `types: []`.
+- **Salidas de Delphi del corpus**: `tools/golden-delphi -pdf` escribe el PDF de un informe como
+  `printreptopdf` (el driver PDF mide, `SaveMetafileToPDF`, PDF/A-3 si el informe lo pide) y
+  `tools/check-delphi.mjs` compara, para los ejemplos y los informes de `repman/repsamples` que se
+  pueden ejecutar, las páginas, las palabras que solo tiene uno de los dos PDF (`pdftotext`, como
+  multiconjuntos) y los píxeles distintos (`pdftoppm`). Es una medida de lo que ve un usuario de
+  Delphi, no una prueba: los motores difieren donde difieren C# y Delphi. Hoy, 20 informes: las
+  mismas páginas en todos, las mismas palabras en 12; los demás son los gráficos (TeeChart frente
+  al gráfico vectorial), textos superpuestos y el orden bidi del árabe extraído.
+- **Los informes de `repman/repsamples` en la paridad con C#**: `sync-repsamples.mjs` los copia
+  a las fixtures (los DFM convertidos con `@reportman/dfm`) con la base SQLite que leen; once son
+  casos de la paridad FreeType (metafile, contenido, fuentes, objetos, texto, raster) y seis de la
+  de fuentes estándar. No se copian los que ningún motor puede ejecutar aquí (`mod130` y `mod300`,
+  de una base de facturación; `testorder`, SQL de otro servidor; `debugagentexample`, una base del
+  Hub).
+- **La CI levanta las bases de datos**: `npm run ci` arranca (o crea, como dice el README de cada
+  driver) los contenedores de PostgreSQL, Firebird, MySQL, MariaDB y SQL Server, espera a sus
+  puertos y carga sus ejemplos; con `REPORTMAN_REQUIRE_DATABASES=1` un servidor que no responde
+  hace fallar las pruebas del driver en vez de saltarlas. `--no-databases` lo deja como antes. Solo
+  toca esos contenedores.
+- No se usan eslint ni tsup: `tsc -b` compila y la frontera del núcleo la pone `types: []`.
 
 - **Monorepo** (decisión 9.1):
   - workspaces, TypeScript 5.9, tsup (ESM + `.d.ts`), vitest y eslint con fronteras entre paquetes;
@@ -595,9 +621,14 @@ En la noche del 22-11-2026:
   (`Evaluator.AllowFileFunctions`, desactivado por defecto; `allowFileAccess` en Node). Un campo
   llamado `TIME` sin dataset sigue ganando a la función nueva. `FLOATTODATETIME` fallaba siempre
   en C# (`Convert.ToDateTime(double)`): ahora da la fecha de su valor OLE, como Delphi.
-- Quedan `CHSTOCHT`/`CHTTOCHS`, que en Delphi usan `LCMapString` de Windows (en JS haría falta una
-  tabla de caracteres, de Unihan por ejemplo; además `CHTTOCHS` de Delphi convierte también a
-  tradicional, un error).
+- `CHSTOCHT`/`CHTTOCHS` (22-11-2026 por la noche), en C# y TypeScript: Delphi usa `LCMapString`
+  de Windows (locale zh-CN), que convierte carácter a carácter, así que los dos motores llevan la
+  tabla que da Windows (`ChineseTables.cs` y `chinesetables.ts`, escritas por
+  `generate-chinese-tables.mjs` desde `golden-cs lcmap`: 2.191 caracteres a tradicional y 2.619 a
+  simplificado) y funcionan en cualquier plataforma. Un valor que no es cadena, NULL incluido, es
+  un error de tipo, como en Delphi. `CHTTOCHS` de Delphi convertía también a tradicional
+  (`LCMAP_TRADITIONAL_CHINESE` en las dos): corregido en Delphi (y el tamaño del búfer, que era en
+  bytes y no en caracteres); aquí da simplificado.
 - **Máscaras de fecha**: comparadas con Delphi en 188 casos. Difieren las máscaras de una sola
   letra (`d`, `m`, `h`... que .NET lee como formatos estándar), `c`, `t`/`tt`, `ddddd`/`dddddd`, el
   caso de `a/p` y `am/pm`, y las abreviaturas de `ddd`/`mmm` (datos de Windows frente a ICU). La
@@ -611,9 +642,25 @@ En la noche del 22-11-2026:
 - **En el navegador**: `npm run check:browser` ejecuta los 33.332 casos de expresiones en un
   Chromium del equipo (Edge sin ventana) y dan lo mismo que C#. Firefox no se ha probado.
 
-Falta: el modo de máscaras de Delphi, `CHSTOCHT`/`CHTTOCHS`, el streaming de datasets solo hacia
-delante, la diferencia de metafile sobre todo el corpus y el port de los 23 tests de `tests/` de C#
-(programas de consola por error; casi todos ya cubiertos por las pruebas de paridad).
+La diferencia de metafile sobre todo el corpus está hecha: los informes de `repman/repsamples`
+entraron en las pruebas de paridad (F0). Y los programas de consola de `tests/` de C# que la
+paridad no cubría (EvalSumTest, HtmlBlankLineTest, HtmlMultiPageExtentTest, HtmlYMascarasTest,
+HtmlFallbackCacheTest, PdfTextoRecuperableTest, Code128Gs1Test, FormasClearTest, ParamsTest y la
+parte EAN-13/PDF417 de EscPosReceiptTest) son ahora pruebas de vitest con los valores esperados de
+los de C# (los PDF se leen como PdfPig: glifos, anchos `/W` y `/ToUnicode`). El motor TypeScript ya
+se comportaba como C# en todos; cada prueba se comprobó deshaciendo el arreglo de C# que protege.
+Fuera, por necesitar GDI, el diseñador o un servidor real: los de GDI, TestDesignerApp,
+SqlServerMarsTest e ImagesToPdfPageSizeTest.
+
+Aplazado, con su motivo:
+- **El modo de máscaras de Delphi**: cambia la salida de informes que hoy funcionan en C#, así que
+  necesita decidir cómo se activa (¿solo en los informes convertidos desde drivers de Delphi,
+  `ConvertedFromDelphi`, o con una propiedad nueva del informe?) y llegar a la vez a los dos
+  motores. Decisión de Toni.
+- **El streaming de datasets solo hacia delante**: hoy el motor TypeScript lee cada resultado
+  entero (por eso ejecuta los maestro/detalle que C# no puede con Npgsql o MySqlConnector). Pasar a
+  leer fila a fila es una refactorización grande del contrato de datos, solo útil con resultados de
+  cientos de miles de filas: mejor cuando un cliente lo necesite.
 
 ### F3 — Tipografía y PDF completo · 2-3 semanas
 
@@ -647,15 +694,42 @@ los bytes de los subconjuntos. En la noche del 22-11-2026:
 
 - **WOFF**: un fichero `wOFF` se reconstruye como el sfnt del que salió (las tablas descomprimidas
   con fflate) y se mide, se incrusta y se subconjunta como un TrueType; las carpetas se escanean
-  también por `.woff`. WOFF2 no (Brotli y tablas transformadas): se salta como un fichero que no es
-  fuente.
+  también por `.woff`. WOFF2, más abajo.
 - **Comparación con Delphi** (`printreptopdf`, DirectWrite) en `international` y `letter`: las mismas
   palabras; píxeles distintos 4,4 % y 1,5 %. La diferencia visible es la fuente: el japonés sale con
   otra fuente CJK de reserva (más abajo y más fino) y el título con otra fuente; el shaping de las
   demás escrituras coincide a la vista.
 
-Falta: WOFF2, la elección de la fuente CJK de reserva como DirectWrite, y la validación con veraPDF
-(es una herramienta Java que hay que descargar).
+En la segunda noche del 22-11-2026:
+
+- **WOFF2**: un fichero `wOF2` se reconstruye como el sfnt del que salió: las tablas se
+  descomprimen con el decodificador Brotli en JavaScript que ya traía fontkit (`brotli`, ahora
+  dependencia de `@reportman/text`), `glyf` y `loca` transformadas se decodifican como el
+  decodificador de referencia (contornos, coordenadas en tripletes, compuestos, cajas,
+  instrucciones, el bit de solapamiento), se reconstruye un `hmtx` transformado y se escriben las
+  tablas ordenadas con sus sumas de comprobación. Las carpetas se escanean también por `.woff2`.
+  Comprobado contra fontkit leyendo el propio WOFF2, glifo a glifo (avances, contornos, cajas,
+  cmap): los 163 ficheros WOFF2 de este equipo, todos iguales. Las colecciones (`ttcf`) se rechazan.
+- **Shaping contra HarfBuzz**: `golden-cs shape` da los glifos que HarfBuzz da al motor C# para un
+  texto, y `shaping-parity.test.ts` compara el shaper TypeScript con él: 126 casos (árabe con y sin
+  marcas, hebreo con puntos, devanagari, tailandés, latín y vietnamita, maniqueo) en once fuentes
+  de Windows, a la escala de la fuente y a 1024 unidades, que es a la que da forma el driver
+  FreeType de C#: todos iguales. Salió un error: HarfBuzz redondea los anclajes escalados con su
+  `_hb_roundf` (`floorf(x + .5f)`), no con el `roundf` de C, y una marca a -42,5 quedaba un twip
+  más abajo que en C# (`arab2wordwrap`). Fuera: rohingya hanifi y sogdiano, que HarfBuzz une en su
+  Universal Shaping Engine y fontkit no.
+
+Aplazado, con su motivo:
+- **La fuente CJK de reserva como DirectWrite**: el motor TypeScript elige la de reserva igual que
+  el driver FreeType de C#; imitar a DirectWrite cambiaría también la salida de C# en Linux. Es una
+  decisión de producto (¿qué motor manda en la reserva?), de Toni.
+- **veraPDF**: es una herramienta Java que hay que descargar; pide permiso. El PDF/A-3B ya es
+  igual byte a byte al de C# salvo los subconjuntos.
+- **Fuentes Type 1** (`.pfb`/`.pfa`): el driver FreeType de C# las abre si fontconfig o el escaneo
+  las encuentran (y el PDF las enlaza sin incrustarlas); el motor TypeScript no las lee (fontkit
+  solo lee sfnt, WOFF y WOFF2), así que elige otra cara de la familia o la de reserva. Haría falta
+  un lector de Type 1 propio (eexec, charstrings, nombres de glifo); las distribuciones ya
+  instalan las URW base35 también como OpenType, así que queda para cuando un informe lo pida.
 
 ### F4 — Datos · 2 semanas
 
@@ -699,7 +773,9 @@ va integrado; los demás toman la función de su driver. Las contraseñas DPAPI 
 retrollamada. Las secciones DBExpress de Delphi no se traducen, igual que en C# (que solo abre las
 `ADO.NET` y las del Agent): sería una función nueva.
 
-Falta: el Agent contra la base de la nube (sin tocar producción hasta entonces).
+Las pruebas de integración por base de datos ya forman parte de la CI (la CI levanta las bases y
+las exige, F0), así que del «hecho cuando» solo falta el Agent contra la base de ejemplo de la
+nube: es el Hub de producción, y eso lo prueba Toni (o se decide un Hub de pruebas).
 
 ### F5 — Otras salidas y vista previa en el navegador · 2 semanas
 
@@ -730,8 +806,16 @@ canvas coincide con el raster del PDF.
   solo PLAIN: PLAINFULL, EPSON y sus variantes, IBMPROPRINTER, HP-PCL, VT100 y las impresoras de
   tickets ESC/POS (EPSONTMU210 y la familia TM88) con sus códigos QR, PDF417 y 1D. Las páginas de
   códigos 850, 858, ISO-8859-1 y UTF-8 como las escribe .NET (con su «best fit»). Comparado con
-  `PrintOutText` en 57 casos (`golden-cs --text`): la misma maquetación y los mismos bytes. Las
-  imágenes no se imprimen, como en C# sin lector de bitmaps.
+  `PrintOutText` en 63 casos (`golden-cs --text`): la misma maquetación y los mismos bytes. Las
+  imágenes no se imprimen, como en C# sin lector de bitmaps. Los códigos lineales que dibuja la
+  impresora (segunda noche del 22-11-2026): C# toma su número de módulos de los escritores de
+  ZXing.Net, que `@zxing/library` no tiene, así que el motor TypeScript los rechazaba;
+  `zxingwidth.ts` da la anchura y los rechazos de cada escritor (dígitos de control, longitudes,
+  guardas, ASCII completo, los juegos de Code 128), comprobados con `golden-cs zxing-width` en 3.638
+  textos de las siete simbologías, y un ticket con todas (`syn-text-bars`) sale igual que en C# en
+  PLAIN y cinco drivers de tickets. **Queda el PDF417 nativo**, que falla con un error claro: su
+  número de módulos sale del codificador PDF417 de ZXing (el motor dibuja el PDF417 con el de
+  Delphi), y portarlo son unas mil líneas; para cuando un cliente imprima PDF417 en un ticket.
 
 Y `@reportman/canvas`, la vista previa: pinta las páginas de un metafile en un contexto Canvas 2D
 como las dibuja el dispositivo PDF (extiende el mismo `TextCanvas`, así que los saltos de línea son
@@ -749,7 +833,19 @@ páginas pintadas en un Edge sin ventana con el PDF rasterizado por `pdftoppm`: 
 ajusta los trazos a su manera) y el 0,03 % con TrueType (`international`: árabe, hebreo, devanagari,
 tailandés y japonés incluidos).
 
-Falta: XLSX (opcional); en la vista previa, los glifos de Symbol y ZapfDingbats y las fuentes Type 1.
+En la segunda noche del 22-11-2026, **Symbol y ZapfDingbats en la vista previa**: ningún navegador
+tiene esas fuentes, así que cada byte se dibuja como el carácter Unicode que representa en su
+codificación propia (tablas de `@pdf-lib/standard-fonts`, MIT, comprobadas glifo a glifo contra los
+AFM de Adobe: `generate-symbol-tables.mjs`) con familias de símbolos del sistema (Segoe UI Symbol,
+Noto Sans Symbols, DejaVu Sans...), y avanza con la anchura del AFM, como un visor de PDF. La
+maquetación sigue midiéndolas con 600 milésimas fijas, como el motor C#: así el texto queda donde lo
+pone el visor y la maquetación no se aleja de C#. Las fuentes Type 1 de la vista previa no son un
+hueco de la vista previa sino de la lectura de fuentes (F3, aplazado).
+
+Aplazado: **XLSX** (opcional). C# no exporta a Excel y Delphi solo con OLE (Excel instalado) o con
+`DoExportMetafileXML`, un XML Spreadsheet 2003 (no XLSX) que adivina números y fechas con la
+configuración regional del equipo y escribe un autor fijo. Se puede portar como el SVG y el HTML si
+un cliente lo pide; un XLSX de verdad sería una salida nueva, sin referencia con la que comparar.
 
 ### F6 — Servidor Node: `reportman-server` · 1-2 semanas
 
