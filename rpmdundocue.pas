@@ -184,7 +184,10 @@ begin
 end;
 
 // The lines of a string array as one text, without a line break after the
-// last one
+// last one. The lines are joined with a line feed alone, as a label keeps the
+// text of each language (TRpLabel.UpdateAllStrings splits it at #10, so a
+// CR LF left a CR at the end of the text) and as this cue records it; a
+// TStrings (BidiModes) takes it as its Text too
 function StringArrayToText(const value: Variant): string;
 var
   list: TStringList;
@@ -197,7 +200,7 @@ begin
     for index := 0 to list.Count - 1 do
     begin
       if index > 0 then
-        Result := Result + sLineBreak;
+        Result := Result + #10;
       Result := Result + list[index];
     end;
   finally
