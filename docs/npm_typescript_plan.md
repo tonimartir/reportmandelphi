@@ -22,6 +22,7 @@ yet»), nunca con una salida distinta.
 | `@reportman/engine` | Expresiones (todas las funciones, formatos y culturas de .NET), datos con contrato de anfitrión, parámetros en dos pasos (`Describe`/`Apply` del servidor .NET), secciones, grupos, subinformes, maestro/detalle, columnas, dos pasadas, imágenes (campo, expresión, fondos de sección, `IMAGEOP`), códigos de barras (18 tipos 1D, PDF417, QR), gráficos (`VectorChart`, `GRAPHIC*`) | 6.244 expresiones idénticas; metafile objeto a objeto en **los 9 ejemplos**; PDF byte a byte en los 7 que van con fuentes estándar (`letter` e `international` necesitan TrueType) y en más de cien informes sintéticos |
 | `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`, también WOFF), conexiones de `dbxconnections.ini`, cancelación y progreso, formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
 | `@reportman/export` | CSV (`PrintOutCSV`), SVG y HTML (los drivers de Delphi) y texto (`PrintOutText`: todos sus drivers, ESC/POS incluido) | CSV igual a C# en 9 ejemplos; SVG y HTML iguales a Delphi desde el mismo metafile en 13 informes; texto igual a C# en 57 casos |
+| `@reportman/dfm` (opcional) | Los informes DFM de Delphi (texto, binario, comprimido) al XML que escribe Delphi para ellos; orden `reportman-dfm2xml` | XML idéntico al de Delphi (`reptotxt -xml`) en 277 informes en todas sus formas, 8 DFM originales, 4 casos a mano y los 49 DFM de este equipo |
 | `@reportman/server` (MPL 2.0) | La API de informes de Reportman.Server: alias, árbol, parámetros, `execute` a PDF, `.rpmf`, texto y CSV, claves API, adaptadores `node:http`, Express y Fastify; con carpeta de datos, la consola (conexiones con prueba, alias, claves, ejemplos y explorador de la API) y la orden `reportman-server` | Las rutas, respuestas y códigos de error de `ReportsController`; el texto igual al fixture de C# |
 
 Sin dependencias nativas ni WebAssembly (`npm run check:pure-js`): las únicas dependencias de
@@ -83,7 +84,9 @@ sin ventana y exige los resultados de C#.
   1. cargar el informe, resolver sus parámetros (con las listas de los lookups) → **JSON**;
   2. recibir los valores → **PDF** en un `Uint8Array`.
 - **Formato: solo XML, como el motor C#.**
-  - El formato por defecto de Delphi es DFM de texto; no se escribe un lector DFM en TypeScript.
+  - El formato por defecto de Delphi es DFM de texto; el motor no lee DFM. Desde el 22-11-2026 hay
+    un conversor opcional aparte, `@reportman/dfm` (decisión de Toni: paquete opcional que convierte
+    a XML), que `@reportman/node` usa si está instalado.
   - Los `.rep` DFM se pasan a XML una vez: desde el diseñador Delphi (formato de guardado XML) o con
     un conversor por línea de órdenes que se le da al usuario (sección 1.4).
   - El diseño del informe no cambia, solo su codificación; el PDF de Delphi del DFM y el del XML
@@ -853,6 +856,32 @@ remotos).
      (regla de las unidades compartidas: solo correcciones reales), y C# también se beneficia.
 7. **Hecho cuando**: los 8 DFM convierten con PDFs idénticos en Windows y Linux64, y el grupo compila
    sin avisos nuevos.
+
+**Y el conversor en JavaScript, `@reportman/dfm`** (22-11-2026, decisión de Toni: «paquete opcional
+aparte», un conversor a XML). Lee las tres formas del DFM (texto, binario y cualquiera de las dos con
+zlib) y da el XML que escribe Delphi para ese informe (`reptotxt -xml`), **byte a byte**:
+
+- **Cómo**: un lector propio del formato (los tipos de valor de `TValueType` y la gramática de
+  `ObjectTextToBinary`; el código de Embarcadero se leyó como referencia, no se copió) y una
+  reproducción de lo que hace Delphi al cargar: los valores de los constructores (el DFM omite lo que
+  está en su `default`, y en varios casos el constructor no lo devuelve: el `ExportSize` de una
+  expresión vuelve como 1, el `PenWidth` de una forma como 0), los setters (mayúsculas, recortes,
+  límites), las referencias por nombre como las resuelve `TReader` (un camino `Seccion.Etiqueta` de
+  versiones antiguas no encuentra nada y el componente se cae), los `Loaded` (identificadores
+  repetidos que se vacían, el `AllText` de las etiquetas antiguas), `EnsureReportItemNames`, y el
+  `WriteReportXML` entero (el escape `#n#`, la conversión ANSI con el «best fit» de Windows, el
+  `FloatToStr` de Delphi). Una especificación de las clases (24 clases, 30 enumerados, línea a línea)
+  se sacó del código Delphi antes de escribirlo.
+- **Comprobación**: `tools/golden-dfm`, un programa de consola Delphi, guarda cada informe en las tres
+  formas DFM y escribe el XML de cada una. Las pruebas comparan 277 informes en todas sus formas, los
+  8 DFM originales de `repman/repsamples`, 4 DFM escritos a mano con lo que el corpus no tiene
+  (referencias antiguas, valores de parámetro de todos los tipos, bytes ANSI, ficheros incrustados...)
+  y 432 dobles contra `FloatToStr`: todo idéntico. `npm run check:dfm -- <carpeta>` compara con Delphi
+  cualquier carpeta: los 49 DFM de este equipo, los del patrocinador incluidos, son idénticos.
+- **Uso**: `dfmToXml(bytes)`, `isDfm`, la orden `reportman-dfm2xml` (o `npx @reportman/dfm`) para
+  ficheros y carpetas; `@reportman/node` lo carga solo (dependencia opcional) y el servidor Node
+  sirve informes DFM si está instalado. `@reportman/lib` sigue rechazando el DFM con un mensaje que
+  dice cómo convertirlo.
 
 ## 6. Pruebas y paridad
 
