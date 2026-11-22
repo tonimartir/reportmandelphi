@@ -22,7 +22,7 @@ yet»), nunca con una salida distinta.
 | `@reportman/engine` | Expresiones (todas las funciones, formatos y culturas de .NET), datos con contrato de anfitrión, parámetros en dos pasos (`Describe`/`Apply` del servidor .NET), secciones, grupos, subinformes, maestro/detalle, columnas, dos pasadas, imágenes (campo, expresión, fondos de sección, `IMAGEOP`), códigos de barras (18 tipos 1D, PDF417, QR), gráficos (`VectorChart`, `GRAPHIC*`) | 6.244 expresiones idénticas; metafile objeto a objeto en **los 9 ejemplos**; PDF byte a byte en los 7 que van con fuentes estándar (`letter` e `international` necesitan TrueType) y en más de cien informes sintéticos |
 | `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`, también WOFF), conexiones de `dbxconnections.ini`, cancelación y progreso, formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
 | `@reportman/export` | CSV (`PrintOutCSV`), SVG y HTML (los drivers de Delphi) y texto (`PrintOutText`: todos sus drivers, ESC/POS incluido) | CSV igual a C# en 9 ejemplos; SVG y HTML iguales a Delphi desde el mismo metafile en 13 informes; texto igual a C# en 57 casos |
-| `@reportman/dfm` (opcional) | Los informes DFM de Delphi (texto, binario, comprimido) al XML que escribe Delphi para ellos; orden `reportman-dfm2xml` | XML idéntico al de Delphi (`reptotxt -xml`) en 277 informes en todas sus formas, 8 DFM originales, 4 casos a mano y los 49 DFM de este equipo |
+| `@reportman/dfm` (opcional) | Los informes DFM de Delphi (texto, binario, comprimido) al XML que escribe Delphi para ellos; orden `reportman-dfm2xml` | XML idéntico al de Delphi (`reptotxt -xml`) en 277 informes en todas sus formas, 8 DFM originales, 6 casos a mano (Unicode incluido) y los 51 DFM de este equipo; rechaza lo que Delphi rechaza |
 | `@reportman/server` (MPL 2.0) | La API de informes de Reportman.Server: alias, árbol, parámetros, `execute` a PDF, `.rpmf`, texto y CSV, claves API, adaptadores `node:http`, Express y Fastify; con carpeta de datos, la consola (conexiones con prueba, alias, claves, ejemplos y explorador de la API) y la orden `reportman-server` | Las rutas, respuestas y códigos de error de `ReportsController`; el texto igual al fixture de C# |
 
 Sin dependencias nativas ni WebAssembly (`npm run check:pure-js`): las únicas dependencias de
@@ -858,7 +858,7 @@ remotos).
    sin avisos nuevos.
 
 **Y el conversor en JavaScript, `@reportman/dfm`** (22-11-2026, decisión de Toni: «paquete opcional
-aparte», un conversor a XML). Lee las tres formas del DFM (texto, binario y cualquiera de las dos con
+aparte», un conversor a XML). Lee las tres formas del DFM de un informe (texto, binario y binario con
 zlib) y da el XML que escribe Delphi para ese informe (`reptotxt -xml`), **byte a byte**:
 
 - **Cómo**: un lector propio del formato (los tipos de valor de `TValueType` y la gramática de
@@ -878,6 +878,37 @@ zlib) y da el XML que escribe Delphi para ese informe (`reptotxt -xml`), **byte 
   (referencias antiguas, valores de parámetro de todos los tipos, bytes ANSI, ficheros incrustados...)
   y 432 dobles contra `FloatToStr`: todo idéntico. `npm run check:dfm -- <carpeta>` compara con Delphi
   cualquier carpeta: los 49 DFM de este equipo, los del patrocinador incluidos, son idénticos.
+- **Unicode, como lo escribe y lo lee Delphi** (22-11-2026, a petición de Toni: «replicar la lectura
+  teniendo en cuenta cómo escribe Delphi en su código fuente»). Revisado contra `System.Classes` de
+  RAD Studio 13 y comprobado con Delphi:
+  - **Escritura**: `ObjectBinaryToText` deja el ASCII imprimible entre comillas y escribe cada
+    carácter restante como `#código` de su unidad UTF-16 (un emoji son dos códigos), y corta la línea
+    con `+` cada 64 unidades, aunque parta un par sustituto. En binario, `TWriter.WriteString` elige
+    `vaString` (ASCII), `vaUTF8String` o `vaWString`, y el `WriteWideString` propio de Reportman
+    (`rptypes.pas`) escribe siempre `vaWString`.
+  - **Lectura**: `TParser` lee como bytes de la página ANSI una cadena cuyos códigos son todos menores
+    de 128, y como UTF-16 una con algún código mayor de 127; en ese caso cada byte suelto vale su
+    carácter Latin-1. Después `ObjectTextToBinary` vuelve a escribir la cadena con `WriteString`, y ahí
+    un sustituto suelto se convierte en U+FFFD solo cuando elige UTF-8. El UTF-8 inválido es un error
+    (Delphi lanza la excepción y no abre el informe). Los casos raros del `TParser`: cualquier byte de
+    1 a 32 es blanco, `#` sin dígitos es #0, `#$` va en hexadecimal, un código da la vuelta a 32 bits y
+    se queda con sus 16 bits bajos, y lo que sigue al `end` final se ignora tras leer un token.
+  - **Formato del informe**: `TRpBaseReport.LoadFromStream` lo decide por el primer byte (`o` texto,
+    `<` XML, `x` zlib, cualquier otro binario). Delphi no abre un DFM de texto con BOM o con blancos
+    delante, ni uno de texto comprimido con zlib, y el conversor ahora tampoco.
+  - **`AnsiUpperCase`** (alias, fuentes de datos, nombres de parámetro) usa la tabla de mayúsculas de
+    Windows (`CharUpperBuff`), que no es la de Unicode: `µ`, `ß`, `ı` o el georgiano no cambian. El
+    conversor lleva esa tabla, sacada de Delphi.
+  - Pruebas nuevas contra Delphi: un informe con todos los alfabetos, emoji y sustitutos sueltos en
+    cada tipo de cadena, guardado por Delphi en sus tres formas; los casos del `TParser`; los ficheros
+    que Delphi rechaza; 264 secuencias UTF-8, 173 cadenas por `WriteString` y la tabla de mayúsculas.
+    `check:dfm` compara ahora también lo que rechazan los dos: 51 idénticos y 6 rechazados por ambos.
+  - **Del port de Lazarus** (`rtl_fpc/rpstreamfpc.pas`), visto al revisar cómo escribe: su
+    `RpObjectBinaryToText` deja cada cadena en una sola línea, y el `TParser` de Delphi no lee una
+    línea de 4.090 bytes o más («Line too long», comprobado), así que un SQL largo guardado desde el
+    diseñador Lazarus no se abre en el de Delphi. Además, en las formas binaria y zlib, FPC guarda las
+    propiedades `string` como `vaString` con bytes UTF-8, que Delphi lee como ANSI. El conversor lee
+    las líneas largas.
 - **Uso**: `dfmToXml(bytes)`, `isDfm`, la orden `reportman-dfm2xml` (o `npx @reportman/dfm`) para
   ficheros y carpetas; `@reportman/node` lo carga solo (dependencia opcional) y el servidor Node
   sirve informes DFM si está instalado. `@reportman/lib` sigue rechazando el DFM con un mensaje que
