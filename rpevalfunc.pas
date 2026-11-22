@@ -3005,16 +3005,17 @@ end;
 
 function TIdenLoadFile.GeTRpValue:TRpValue;
 var
- astring:string;
+ astring:AnsiString;
  memstream:TMemorystream;
 begin
  if Not VarIsString(Params[0]) then
    Raise TRpNamedException.Create(SRpEvalType,
          IdenName);
- astring:=String(Params[0]);
  memstream:=TMemoryStream.Create;
  try
-  memstream.LoadFromFile(astring);
+  memstream.LoadFromFile(String(Params[0]));
+  // The bytes of the file as ANSI characters: read into a (Unicode) string, as
+  // before, each pair of bytes became one character and the rest was garbage
   astring:='';
   if memstream.size>0 then
   begin
@@ -3025,7 +3026,7 @@ begin
  finally
   memstream.free;
  end;
- Result:=astring;
+ Result:=String(astring);
 end;
 
 
