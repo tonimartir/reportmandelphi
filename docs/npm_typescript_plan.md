@@ -3,13 +3,14 @@
 Fecha: 21-11-2026 (revisado el mismo día: sin lector DFM y sin WebAssembly). Estado:
 **prototipo en marcha** (ver «Estado del prototipo»); quedan decisiones de la sección 9.
 
-## Estado del prototipo (21-11-2026, noche)
+## Estado del prototipo (22-11-2026)
 
-Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`; subido el
-21-11-2026, y los últimos commits de la F1 en local sin push), unas 59.000 líneas de TypeScript sin
-contar las pruebas, 1.427 pruebas. Paquetes `@reportman/*` en la versión `0.1.0-alpha.1`, listos
-para publicar con la etiqueta `next` (estado de la F1 en la sección 5). Cada parte se ha portado entera y comprobado contra el motor C# con el
-arnés `typescript/tools/golden-cs`; las partes que faltan fallan con un error claro («not supported
+Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), unas 66.700
+líneas de TypeScript sin contar las pruebas, 1.680 pruebas (`npm run ci` pasa en Windows y en Linux
+con Node 22 y 24). Paquetes `@reportman/*` en la versión `0.1.0-alpha.1`, listos para publicar con
+la etiqueta `next` (estado de cada fase en la sección 5). Cada parte se ha portado entera y
+comprobado contra el motor C# con el arnés `typescript/tools/golden-cs` (o contra Delphi con
+`golden-delphi`, en lo que solo tiene Delphi); las partes que faltan fallan con un error claro («not supported
 yet»), nunca con una salida distinta.
 
 | Paquete | Qué hace ya | Comprobación contra C# |
@@ -19,7 +20,9 @@ yet»), nunca con una salida distinta.
 | `@reportman/text` | Las 14 fuentes estándar del PDF y el salto de línea del motor; fuentes TrueType/OpenType con fontkit (elección por nombre y estilo, métricas, fallback por cobertura, shaping), bidi con bidi-js, escrituras complejas, texto HTML | 1.395 medidas con fuentes estándar y 703 con TrueType (latín, árabe, hebreo, devanagari, tailandés, CJK, coreano) idénticas |
 | `@reportman/pdf` | PDF con fuentes estándar: texto, formas, anotaciones, metadatos, Flate; imágenes JPEG, BMP, PNG y GIF (decodificadores propios que dan los mismos píxeles que SkiaSharp); fuentes incrustadas como subconjuntos (Type0/CID, ToUnicode); PDF/A-3B con archivos asociados | PDFs idénticos byte a byte con fuentes estándar; con fuentes incrustadas, todo igual salvo los bytes de los subconjuntos (fontkit, no hb-subset) y menos del 0,01 % de píxeles distintos |
 | `@reportman/engine` | Expresiones (todas las funciones, formatos y culturas de .NET), datos con contrato de anfitrión, parámetros en dos pasos (`Describe`/`Apply` del servidor .NET), secciones, grupos, subinformes, maestro/detalle, columnas, dos pasadas, imágenes (campo, expresión, fondos de sección, `IMAGEOP`), códigos de barras (18 tipos 1D, PDF417, QR), gráficos (`VectorChart`, `GRAPHIC*`) | 6.244 expresiones idénticas; metafile objeto a objeto en **los 9 ejemplos**; PDF byte a byte en los 7 que van con fuentes estándar (`letter` e `international` necesitan TrueType) y en más de cien informes sintéticos |
-| `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`), formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
+| `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`, también WOFF), conexiones de `dbxconnections.ini`, cancelación y progreso, formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
+| `@reportman/export` | CSV (`PrintOutCSV`), SVG y HTML (los drivers de Delphi) y texto (`PrintOutText`: todos sus drivers, ESC/POS incluido) | CSV igual a C# en 9 ejemplos; SVG y HTML iguales a Delphi desde el mismo metafile en 13 informes; texto igual a C# en 57 casos |
+| `@reportman/server` (MPL 2.0) | La API de informes de Reportman.Server: alias, árbol, parámetros, `execute` a PDF, `.rpmf`, texto y CSV, claves API, adaptadores `node:http`, Express y Fastify | Las rutas, respuestas y códigos de error de `ReportsController`; el texto igual al fixture de C# |
 
 Sin dependencias nativas ni WebAssembly (`npm run check:pure-js`): las únicas dependencias de
 producción del núcleo son `fflate`, `i18next` (modelo del diseñador), `@zxing/library` (bloques
@@ -52,10 +55,18 @@ Del driver de SQL Server quedan fuera, con un error claro: la seguridad integrad
 todos los métodos de Azure AD, canalizaciones con nombre, memoria compartida, LocalDB y Always
 Encrypted. Las uniones de conjuntos de datos (MyBase, normal, agrupada y en paralelo) están portadas y
 comprobadas contra C#, que ahora las construye como Delphi (ejemplos `contacts` y
-`year-over-year`). Fuera todavía en general: `.rpmf`, `dbxconnections.ini` para las
-conexiones directas, los datasets REST declarativos (decisión 9.6), el escritor XML de
-`@reportman/lib`, el servidor Node (F6) y el diseñador en npm (F7). El conversor DFM → XML ya
-existe, fuera del motor: `reptotxt -xml` de Delphi, que comprueba que el XML da el mismo informe.
+`year-over-year`). El `.rpmf` se lee y se escribe igual byte a byte que `SaveToStream` de C# (en
+`@reportman/metafile`). Fuera todavía en general: los datasets REST declarativos (decisión 9.6), el
+escritor XML de `@reportman/lib`, la parte de diseño del servidor Node (`/api/designer/*`, F6) y el
+diseñador en npm (F7). El conversor DFM → XML ya existe, fuera del motor: `reptotxt -xml` de
+Delphi, que comprueba que el XML da el mismo informe.
+
+Noche del 22-11-2026 (F2 → F6): las funciones que solo tenía Delphi (`TIME`, `SQRT`,
+`HOURMINSEC`, `FORMATMASK`, `ASC2`, `DECODE64`, `UTF8TOWIDESTRING`, `IDENTEXISTS`, `LOADFILE`,
+`GETINIVALUE`) en C# y TypeScript, comprobadas contra el evaluador de Delphi (con un arreglo de
+`LOADFILE` en Delphi y de `FLOATTODATETIME` en C#); las salidas de la F5; la API de informes de la
+F6; y `npm run check:browser`, que ejecuta los casos de paridad del evaluador en un Edge o Chrome
+sin ventana y exige los resultados de C#.
 
 ## 0. Resumen
 
@@ -710,9 +721,32 @@ canvas coincide con el raster del PDF.
   la altura de dos secciones de `fishes` y el gráfico sin TeeChart). Se conservan las rarezas de Delphi
   (sin escapar el texto del SVG, los BMP de color real que Delphi escribe como «Bad bitmap stream»...);
   lo único no reproducible son los BMP indexados en SVG, donde Delphi escribe memoria sin inicializar.
-- **Texto plano** (`PrintOutText` PLAIN): en curso.
+- **Texto** (port de `PrintOutText`, `TextDevice`): un dispositivo de maquetación propio (la rejilla
+  de caracteres de una impresora de líneas), así que el informe se ejecuta con él y no se escribe
+  desde el metafile del PDF (`executeWithDevice` de `@reportman/node`). Todos los drivers de C#, no
+  solo PLAIN: PLAINFULL, EPSON y sus variantes, IBMPROPRINTER, HP-PCL, VT100 y las impresoras de
+  tickets ESC/POS (EPSONTMU210 y la familia TM88) con sus códigos QR, PDF417 y 1D. Las páginas de
+  códigos 850, 858, ISO-8859-1 y UTF-8 como las escribe .NET (con su «best fit»). Comparado con
+  `PrintOutText` en 57 casos (`golden-cs --text`): la misma maquetación y los mismos bytes. Las
+  imágenes no se imprimen, como en C# sin lector de bitmaps.
 
-Falta: el texto, XLSX (opcional) y `reportman-canvas`, la vista previa en el navegador.
+Y `@reportman/canvas`, la vista previa: pinta las páginas de un metafile en un contexto Canvas 2D
+como las dibuja el dispositivo PDF (extiende el mismo `TextCanvas`, así que los saltos de línea son
+los del PDF). Un cambio respecto al plan: las fuentes TrueType no se cargan como `FontFace`, porque
+`fillText` volvería a dar forma al texto en el navegador y perdería los glifos que eligió el PDF
+(ligaduras, formas árabes, fuentes de reserva); cada glifo se dibuja desde su contorno, leído con
+fontkit de los mismos bytes que incrusta el PDF, en la posición que da su shaper. Las 14 fuentes
+estándar se dibujan con Arial, Times New Roman y Courier New a los anchos del PDF. Las imágenes se
+decodifican como las decodifica el escritor del PDF. Las anotaciones se devuelven aparte y lo que no
+sabe dibujar se informa en el resultado, sin excepciones a media página. 20 pruebas unitarias
+comparan las llamadas de dibujo con el contenido que escribe el PDF del mismo metafile, y
+`npm run check:canvas` (fuera de la CI: necesita navegador y poppler) compara píxel a píxel 28
+páginas pintadas en un Edge sin ventana con el PDF rasterizado por `pdftoppm`: como mucho difiere el
+4,8 % de la tinta de una página con las fuentes estándar (cada rasterizador redondea la línea base y
+ajusta los trazos a su manera) y el 0,03 % con TrueType (`international`: árabe, hebreo, devanagari,
+tailandés y japonés incluidos).
+
+Falta: XLSX (opcional); en la vista previa, los glifos de Symbol y ZapfDingbats y las fuentes Type 1.
 
 ### F6 — Servidor Node: `reportman-server` · 1-2 semanas
 
@@ -732,11 +766,12 @@ implementado) pasan contra Node, y `<reportman-designer>` funciona contra él.
 **Estado (22-11-2026)**: la API de informes, hecha en `@reportman/server` (MPL 2.0): `health`, la
 lista de alias, el árbol de un alias, los parámetros (la forma congelada de Reportman.Server y la
 ruta nueva `parameters/describe` con el `ParameterDescription`) y `execute` por GET y POST (JSON,
-formulario o multipart) a PDF, metafile `.rpmf` comprimido, CSV con `;` y BOM y texto (cuando hay
-salida de texto). Los parámetros se asignan como `ApplyParameters` de Reportman.Server (cualquier
+formulario o multipart) a PDF, metafile `.rpmf` comprimido, CSV con `;` y BOM y texto (como
+`ExecuteToText`: PLAIN, los bytes leídos en la página de códigos 437 y enviados en UTF-8; igual que
+el fixture de C#). Los parámetros se asignan como `ApplyParameters` de Reportman.Server (cualquier
 parámetro por alias o nombre; opción `assign` de `@reportman/node`). Las mismas rutas, respuestas y
 códigos de error (los de `Wrap`: 400, 403, 404, 422 con `noData` o el componente, 500; más 401
-sin clave válida y 501 para `text` sin salida de texto), las claves
+sin clave válida y 501 para `text` si se desactiva), las claves
 (`X-ReportmanServer-ApiKey` o `apikey`, por alias), el almacén de carpetas con sus reglas de rutas
 (sin `..` ni `.versions`). Adaptadores para `node:http`, Express y Fastify. Pruebas con un servidor
 real sobre los ejemplos.
