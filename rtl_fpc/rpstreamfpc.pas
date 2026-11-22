@@ -30,6 +30,18 @@
 //   (1.5s, 12345678c, 45000d) as Extended. RpObjectBinaryToText and
 //   RpObjectTextToBinary keep those values and write the characters as
 //   Unicode codes, as Delphi does, so the files are read by both.
+// - RpObjectBinaryToText breaks a long string every 64 characters (' +' and a
+//   new line), as ObjectBinaryToText of Delphi does: TParser of Delphi reads
+//   the text in a buffer of 4096 bytes and does not read a longer line ("Line
+//   too long"), so a report with a long SQL or text saved by FPC could not be
+//   opened by Delphi.
+// - TBinaryObjectWriter.WriteString writes the bytes of a string property as
+//   they are (vaString), which in an LCL program are UTF-8, and Delphi reads a
+//   vaString with the ANSI code page: the characters of a report saved in the
+//   binary or zlib formats came out wrong in Delphi. TRpBinaryObjectWriter
+//   writes them as TWriter.WriteString of Delphi: ASCII as vaString, else
+//   vaUTF8String when UTF-8 is shorter than UTF-16, vaWString otherwise; the
+//   TReader of FPC reads the three.
 
 unit rpstreamfpc;
 
@@ -49,6 +61,10 @@ type
   TRpBinaryObjectWriter = class(TBinaryObjectWriter)
   public
     procedure WriteCurrency(const Value: Currency); override;
+    // A string in the code page of the program, as Delphi writes a string
+    procedure WriteString(const Value: String); override;
+    // The bytes of a string as they are (vaString, vaLString)
+    procedure WriteRawString(const Value: String);
   end;
 
   TRpReader = class(TReader)
@@ -89,6 +105,40 @@ begin
   WriteValue(vaCurrency);
   q := NtoLE(PInt64(@Value)^);
   Write(q, SizeOf(q));
+end;
+
+procedure TRpBinaryObjectWriter.WriteString(const Value: String);
+var
+  i: Integer;
+  w: UnicodeString;
+  u: RawByteString;
+begin
+  i := 1;
+  while (i <= Length(Value)) and (Ord(Value[i]) < 128) do
+    Inc(i);
+  if i > Length(Value) then
+  begin
+    // ASCII: vaString or vaLString
+    inherited WriteString(Value);
+    Exit;
+  end;
+  // From the code page of the string (the one of the program: UTF-8 in the
+  // LCL), as Delphi: UTF-8 when it is shorter than UTF-16
+  w := UnicodeString(Value);
+  u := UTF8Encode(w);
+  if Length(u) < Length(w) * 2 then
+  begin
+    WriteValue(vaUTF8String);
+    WriteDWord(LongWord(Length(u)));
+    Write(u[1], Length(u));
+  end
+  else
+    WriteWideString(w);
+end;
+
+procedure TRpBinaryObjectWriter.WriteRawString(const Value: String);
+begin
+  inherited WriteString(Value);
 end;
 
 { TRpReader }
@@ -142,60 +192,75 @@ var
     OutStr(s + LineEnding);
   end;
 
-  // Printable ASCII quoted, the rest as #code (UTF-16 code units, as Delphi)
-  procedure OutText(const w: UnicodeString);
+  // As ObjectBinaryToText of Delphi writes a string: the printable ASCII
+  // quoted, every other UTF-16 code unit (the quote too) as #code, and a
+  // line break (' +') every 64 code units, on lines indented one level more
+  // than the property; a string longer than that starts on a new line
+  procedure OutText(const w: UnicodeString; const Indent: string);
+  const
+    LineLength = 64;
   var
-    res: string;
-    i: Integer;
-    code: Word;
-    inquote: Boolean;
+    res, newline: string;
+    i, j, k, len: Integer;
+    linebreak: Boolean;
   begin
-    if Length(w) = 0 then
+    len := Length(w);
+    if len = 0 then
     begin
       OutStr('''''');
       Exit;
     end;
+    newline := LineEnding + Indent + '  ';
     res := '';
-    inquote := False;
-    for i := 1 to Length(w) do
-    begin
-      code := Ord(w[i]);
-      if (code >= 32) and (code < 127) then
+    if len > LineLength then
+      res := newline;
+    i := 1;
+    k := 1;
+    repeat
+      linebreak := False;
+      if (Ord(w[i]) >= 32) and (w[i] <> '''') and (Ord(w[i]) <= 127) then
       begin
-        if not inquote then
+        j := i;
+        repeat
+          Inc(i);
+        until (i > len) or (Ord(w[i]) < 32) or (w[i] = '''') or
+          (i - k >= LineLength) or (Ord(w[i]) > 127);
+        if i - k >= LineLength then
+          linebreak := True;
+        res := res + '''';
+        while j < i do
         begin
-          res := res + '''';
-          inquote := True;
+          res := res + Char(Ord(w[j]));
+          Inc(j);
         end;
-        if code = Ord('''') then
-          res := res + ''''''
-        else
-          res := res + Char(code);
+        res := res + '''';
       end
       else
       begin
-        if inquote then
-        begin
-          res := res + '''';
-          inquote := False;
-        end;
-        res := res + '#' + IntToStr(code);
+        res := res + '#' + IntToStr(Ord(w[i]));
+        Inc(i);
+        if i - k >= LineLength then
+          linebreak := True;
       end;
-    end;
-    if inquote then
-      res := res + '''';
+      if linebreak and (i <= len) then
+      begin
+        res := res + ' +' + newline;
+        k := i;
+      end;
+    until i > len;
     OutStr(res);
   end;
 
   // An AnsiString value holds text in the code page of the program (UTF-8
   // in the LCL applications)
-  procedure OutAnsiText(const s: RawByteString; ACodePage: TSystemCodePage);
+  procedure OutAnsiText(const s: RawByteString; ACodePage: TSystemCodePage;
+    const Indent: string);
   var
     raw: RawByteString;
   begin
     raw := s;
     SetCodePage(raw, ACodePage, False);
-    OutText(UnicodeString(raw));
+    OutText(UnicodeString(raw), Indent);
   end;
 
   function FloatText(const AValue: Extended): string;
@@ -255,22 +320,22 @@ var
         end;
       vaString, vaLString:
         begin
-          OutAnsiText(reader.ReadString(ValueType), DefaultSystemCodePage);
+          OutAnsiText(reader.ReadString(ValueType), DefaultSystemCodePage, Indent);
           OutLn('');
         end;
       vaUTF8String:
         begin
-          OutAnsiText(reader.ReadString(ValueType), CP_UTF8);
+          OutAnsiText(reader.ReadString(ValueType), CP_UTF8, Indent);
           OutLn('');
         end;
       vaWString:
         begin
-          OutText(reader.ReadWideString);
+          OutText(reader.ReadWideString, Indent);
           OutLn('');
         end;
       vaUString:
         begin
-          OutText(reader.ReadUnicodeString);
+          OutText(reader.ReadUnicodeString, Indent);
           OutLn('');
         end;
       vaIdent: OutLn(reader.ReadStr);
@@ -440,10 +505,12 @@ var
       else
         s := s + parser.TokenString;
     end;
+    // Without codes above 127 the bytes go as they are, as before (ASCII, or
+    // the raw bytes of the files of old versions)
     if wide then
       writer.WriteWideString(ws)
     else
-      writer.WriteString(s);
+      writer.WriteRawString(s);
   end;
 
   procedure ProcessValue;

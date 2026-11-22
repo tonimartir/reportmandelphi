@@ -903,12 +903,16 @@ zlib) y da el XML que escribe Delphi para ese informe (`reptotxt -xml`), **byte 
     cada tipo de cadena, guardado por Delphi en sus tres formas; los casos del `TParser`; los ficheros
     que Delphi rechaza; 264 secuencias UTF-8, 173 cadenas por `WriteString` y la tabla de mayúsculas.
     `check:dfm` compara ahora también lo que rechazan los dos: 51 idénticos y 6 rechazados por ambos.
-  - **Del port de Lazarus** (`rtl_fpc/rpstreamfpc.pas`), visto al revisar cómo escribe: su
-    `RpObjectBinaryToText` deja cada cadena en una sola línea, y el `TParser` de Delphi no lee una
-    línea de 4.090 bytes o más («Line too long», comprobado), así que un SQL largo guardado desde el
-    diseñador Lazarus no se abre en el de Delphi. Además, en las formas binaria y zlib, FPC guarda las
-    propiedades `string` como `vaString` con bytes UTF-8, que Delphi lee como ANSI. El conversor lee
-    las líneas largas.
+  - **Del port de Lazarus** (`rtl_fpc/rpstreamfpc.pas`), visto al revisar cómo escribe, y
+    arreglado a petición de Toni: su `RpObjectBinaryToText` dejaba cada cadena en una sola línea, y
+    el `TParser` de Delphi no lee una línea de 4.090 bytes o más («Line too long», comprobado), así que
+    un SQL largo guardado desde el diseñador Lazarus no se abría en el de Delphi; ahora parte las
+    cadenas como Delphi (cada 64 unidades, con `+`). Y en las formas binaria y zlib FPC guardaba las
+    propiedades `string` como `vaString` con bytes UTF-8, que Delphi lee como ANSI (`AÃ±o`);
+    `TRpBinaryObjectWriter.WriteString` las escribe ahora como `TWriter.WriteString` de Delphi. Las
+    pruebas de `tests/fpc/PdfTest` lo comprueban (las líneas exactas que escribe Delphi para una
+    cadena larga, un SQL de 6.000 caracteres, los tipos de valor del binario), y Delphi lee los
+    ficheros que dejan. El conversor sigue leyendo las líneas largas de los informes ya guardados.
 - **Uso**: `dfmToXml(bytes)`, `isDfm`, la orden `reportman-dfm2xml` (o `npx @reportman/dfm`) para
   ficheros y carpetas; `@reportman/node` lo carga solo (dependencia opcional) y el servidor Node
   sirve informes DFM si está instalado. `@reportman/lib` sigue rechazando el DFM con un mensaje que
