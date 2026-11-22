@@ -536,6 +536,17 @@ equivocada.
 - **Expresiones y formatos**: todas las funciones (41 + 33) y todos los tipos de parámetro;
   `Language`/cultura; formatos (.NET y máscaras de fecha de Delphi); semántica decimal; el catálogo
   de rarezas.
+- **Lo que solo tiene Delphi**, en C# y en TypeScript a la vez (decisión 9.8; comparación del
+  22-11-2026: C# y TS tienen la misma lista, 41 funciones y 32 identificadores del informe):
+  - las 12 funciones que faltan: `SQRT`, `TIME`, `HOURMINSEC`, `FORMATMASK`, `ASC2`, `DECODE64`,
+    `UTF8TOWIDESTRING`, `IDENTEXISTS`, `LOADFILE` y `GETINIVALUE` (estas dos leen el disco: en Node,
+    por el anfitrión y con `allowFileAccess`), `CHSTOCHT` y `CHTTOCHS`. Hoy un informe que las usa
+    falla en C# y en TS con «identificador desconocido», así que añadirlas no cambia los que ya
+    funcionan; el único riesgo es un informe con una variable propia del mismo nombre;
+  - las fichas de máscara de fecha de Delphi que `DateFormatMask` deja pasar y que en .NET
+    significan otra cosa: `t`/`tt` (hora corta y larga) y `ddddd`/`dddddd` (fecha corta y larga);
+  - por decidir con Toni: una fecha formateada con máscara vacía sale en C# con el patrón completo
+    de .NET (`FullDateTimePattern`) y en Delphi con `c`; cambiarlo altera informes de C#.
 - **Paginación completa**:
   - columnas (`HorzDesp`/`VertDesp`), `AlignBottom`, `SkipPage`, saltar a página y posición,
     `BeginPageExpression`;
@@ -555,6 +566,12 @@ equivocada.
 
 **Hecho cuando**: todo el corpus pasa la diferencia de metafile contra C# y la raster contra PDF, y
 los tests de `tests/` del motor C# están portados.
+
+**Estado (22-11-2026)**: adelantado en el prototipo: todas las funciones y formatos de C#, columnas,
+dos pasadas, `GROUPPAGECOUNT`, subinformes, uniones MyBase, códigos de barras 1D, PDF417 y QR,
+gráficos, imágenes, `IMAGEOP`/`GRAPHICOP`/`TEXTOP`, y `GETVALUEFROMSQL`/`REOPEN` con driver síncrono.
+Falta: lo que solo tiene Delphi (arriba), el streaming con `AbortSignal`, el `.rpmf`, las pruebas en
+el navegador, la diferencia de metafile sobre todo el corpus y el port de los tests de C#.
 
 ### F3 — Tipografía y PDF completo · 2-3 semanas
 
@@ -581,6 +598,11 @@ los tests de `tests/` del motor C# están portados.
 - `international.rep` y los ejemplos árabes y CJK del corpus coinciden con la salida de Delphi
   (DirectWrite) y con el driver FreeType de C#, como pruebas de regresión;
 - veraPDF valida el PDF/A-3B (herramienta de pruebas).
+
+**Estado (22-11-2026)**: casi hecha en el prototipo: TrueType/OpenType con fontkit, shaping, bidi,
+texto HTML, fuentes incrustadas como subconjuntos y PDF/A-3B, iguales al driver FreeType de C# salvo
+los bytes de los subconjuntos. Falta: WOFF/WOFF2, la comparación con la salida de Delphi
+(DirectWrite) y la validación con veraPDF.
 
 ### F4 — Datos · 2 semanas
 
@@ -612,6 +634,12 @@ los tests de `tests/` del motor C# están portados.
 
 **Hecho cuando**: hay pruebas de integración por base de datos en la CI (servicios Docker) con el
 esquema de `samples.db`, y el Agent funciona contra la base de ejemplo de la nube.
+
+**Estado (22-11-2026)**: los drivers de PostgreSQL, Firebird, MySQL/MariaDB, SQL Server, SQLite y el
+Agent están hechos y comprobados contra C# en Docker (la CI local los prueba si las bases están
+levantadas); Oracle se deja para cuando un cliente lo pida. Falta: la traducción de las conexiones
+de Delphi y `dbxconnections.ini` para las conexiones directas, y el Agent contra la base de la
+nube (sin tocar producción hasta entonces).
 
 ### F5 — Otras salidas y vista previa en el navegador · 2 semanas
 
@@ -658,9 +686,10 @@ Enlaza con la F8 de `server-componentes-plan.md`.
 
 ### Al final — Conversor DFM → XML: `reptotxt -xml` · 1-2 días
 
-Planificada, no hecha, y **se deja para el final de todo** (decisión de Toni, 21-11-2026). Hasta
-entonces, un `.rep` en DFM se guarda como XML desde el diseñador Delphi. Se trabaja en el
-repositorio Delphi (`master`, mensajes en inglés, los dos remotos).
+**Hecha el 21-11-2026** (se adelantó para convertir los informes del patrocinador, que venían en
+DFM): `reptotxt -xml` convierte y comprueba que el XML da el mismo informe. Lo que sigue es el plan
+con el que se hizo. Se trabaja en el repositorio Delphi (`master`, mensajes en inglés, los dos
+remotos).
 
 1. **`repman/utils/reptotxt/reptotxt.dpr`**: una opción `-xml` en cualquier posición.
    - Sin ella, el comportamiento actual no cambia (DFM binario o comprimido → DFM de texto).
