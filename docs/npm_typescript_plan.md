@@ -22,7 +22,7 @@ yet»), nunca con una salida distinta.
 | `@reportman/engine` | Expresiones (todas las funciones, formatos y culturas de .NET), datos con contrato de anfitrión, parámetros en dos pasos (`Describe`/`Apply` del servidor .NET), secciones, grupos, subinformes, maestro/detalle, columnas, dos pasadas, imágenes (campo, expresión, fondos de sección, `IMAGEOP`), códigos de barras (18 tipos 1D, PDF417, QR), gráficos (`VectorChart`, `GRAPHIC*`) | 6.244 expresiones idénticas; metafile objeto a objeto en **los 9 ejemplos**; PDF byte a byte en los 7 que van con fuentes estándar (`letter` e `international` necesitan TrueType) y en más de cien informes sintéticos |
 | `@reportman/node` | `openReport`, `describeParameters` (paso 1), `executeToPdf` (paso 2), SQLite con `node:sqlite`, filas dadas por el anfitrión (REST), fuentes del sistema (`fonts`, también WOFF), conexiones de `dbxconnections.ini`, cancelación y progreso, formulario HTML de referencia, CLI `reportman-pdf` | PDFs idénticos byte a byte a C# |
 | `@reportman/export` | CSV (`PrintOutCSV`), SVG y HTML (los drivers de Delphi) y texto (`PrintOutText`: todos sus drivers, ESC/POS incluido) | CSV igual a C# en 9 ejemplos; SVG y HTML iguales a Delphi desde el mismo metafile en 13 informes; texto igual a C# en 57 casos |
-| `@reportman/server` (MPL 2.0) | La API de informes de Reportman.Server: alias, árbol, parámetros, `execute` a PDF, `.rpmf`, texto y CSV, claves API, adaptadores `node:http`, Express y Fastify | Las rutas, respuestas y códigos de error de `ReportsController`; el texto igual al fixture de C# |
+| `@reportman/server` (MPL 2.0) | La API de informes de Reportman.Server: alias, árbol, parámetros, `execute` a PDF, `.rpmf`, texto y CSV, claves API, adaptadores `node:http`, Express y Fastify; con carpeta de datos, la consola (conexiones con prueba, alias, claves, ejemplos y explorador de la API) y la orden `reportman-server` | Las rutas, respuestas y códigos de error de `ReportsController`; el texto igual al fixture de C# |
 
 Sin dependencias nativas ni WebAssembly (`npm run check:pure-js`): las únicas dependencias de
 producción del núcleo son `fflate`, `i18next` (modelo del diseñador), `@zxing/library` (bloques
@@ -776,9 +776,32 @@ sin clave válida y 501 para `text` si se desactiva), las claves
 (sin `..` ni `.versions`). Adaptadores para `node:http`, Express y Fastify. Pruebas con un servidor
 real sobre los ejemplos.
 
+Y la consola (22-11-2026, a petición de Toni: «la 1», una consola ligera propia en lugar de reutilizar
+la app Angular de Reportman.Server). Con una carpeta de datos (`dataPath`), organizada como la de
+Reportman.Server para que una carpeta pase de uno a otro (`informes/`, `server.json`,
+`dbxconnections.ini`, `apikeys.json`, `ejemplos/`), el servidor responde también las rutas de
+administración con las mismas rutas y respuestas que `ConnectionsController`, `ConsoleController` y
+`SamplesController`: conexiones (listar, guardar, borrar y **probar**, también una definición antes de
+guardarla; los parámetros con los nombres de los builders de .NET, la cadena de conexión construida
+con las palabras clave que leen los drivers de JavaScript, los ficheros de la carpeta de datos
+relativos a ella, las contraseñas nunca devueltas), alias, claves API (crear, rotar, desactivar,
+borrar; el mismo `apikeys.json`, también las antiguas que solo guardan el hash) y los informes de
+ejemplo (instalarlos con su base SQLite y la conexión `SAMPLES`, listarlos por idioma con sus
+miniaturas). La página de la consola (`assets/console.html`, HTML y JavaScript sin framework ni
+recursos externos, en inglés y español) tiene un **explorador de la API** como el de
+Reportman.Server: elige clave, informe, parámetros, formato y método, muestra la petición exacta, la
+ejecuta y da la misma llamada en curl, PowerShell, JavaScript, C# y Delphi. La consola pide una clave
+de administrador (`X-ReportmanServer-AdminKey`) o va abierta con `trusted`. La orden
+`reportman-server` (`npx @reportman/server --samples`) crea la carpeta, instala los ejemplos, guarda y
+escribe la clave de la consola y usa los drivers que haya instalados junto a ella. Pruebas: 20 de la
+consola (con un Hub simulado en local para las conexiones del Agent, sin tocar producción), el
+`check:dist` arranca la orden desde la compilación y ejecuta un ejemplo, y la página se probó entera
+en un Edge sin ventana (entrar, ejecutar, probar y crear una conexión, crear una clave, los ejemplos).
+
 Falta: guardar, renombrar y borrar informes, el protocolo `/api/designer/*` (necesita el escritor XML
-de `@reportman/lib`), la consola, usuarios y sesiones, la API de conexiones y el puente de la IA; y
-pasar las fotos de contrato (`openapi.v1.json`) contra Node.
+de `@reportman/lib`), usuarios, grupos y sesiones (la consola tiene una sola clave), la auditoría, los
+esquemas SQL de las conexiones y el puente de la IA; y pasar las fotos de contrato
+(`openapi.v1.json`) contra Node.
 
 ### F7 — El diseñador web en npm · 3-4 semanas
 
