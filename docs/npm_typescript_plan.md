@@ -632,9 +632,10 @@ En la noche del 22-11-2026:
 - **Máscaras de fecha**: comparadas con Delphi en 188 casos. Difieren las máscaras de una sola
   letra (`d`, `m`, `h`... que .NET lee como formatos estándar), `c`, `t`/`tt`, `ddddd`/`dddddd`, el
   caso de `a/p` y `am/pm`, y las abreviaturas de `ddd`/`mmm` (datos de Windows frente a ICU). La
-  máscara vacía ya coincide. Arreglarlo sin romper informes de C# pide un «modo de máscaras de
-  Delphi» que solo activen los informes convertidos de Delphi y que llegue a todos los sitios que
-  formatean: queda como trabajo aparte.
+  máscara vacía de `FORMATSTR` ya coincide (una fecha sin `DisplayFormat` no: C# usa el formato
+  completo de .NET y Delphi el suyo). Arreglarlo sin romper informes de C# pedía un «modo de
+  máscaras de Delphi» que solo activen los informes convertidos de Delphi y que llegue a todos los
+  sitios que formatean: hecho después, más abajo.
 - **Cancelación y progreso** en `@reportman/node` (`signal`, `onProgress`).
 - **`.rpmf`** (`writeRpmf`/`readRpmf`): byte a byte igual a C# en 13 casos; los comprimidos se
   leen en los dos sentidos. Se encontraron y documentaron errores del formato en C# (polígonos,
@@ -652,11 +653,23 @@ se comportaba como C# en todos; cada prueba se comprobó deshaciendo el arreglo 
 Fuera, por necesitar GDI, el diseñador o un servidor real: los de GDI, TestDesignerApp,
 SqlServerMarsTest e ImagesToPdfPageSizeTest.
 
+**El modo de máscaras de Delphi** (decisión 9.10, 22-11-2026): un informe con la marca
+`ConvertedFromDelphi` formatea una fecha con máscara (`DisplayFormat` de una expresión o de un
+código de barras, su formato de exportación, `FORMATSTR`) con `DelphiDateFormat.cs` y
+`delphidateformat.ts`, ports de `DateTimeToString` de `System.SysUtils`: `d` y `m` solos son el día
+y el mes, `c`, `t`, `tt`, `ddddd` y `dddddd` los formatos del idioma, `am/pm` y `a/p` el texto de la
+máscara, las abreviaturas las de Windows (`nov.`, `lu.`), `g` y `e` la era. Los datos de cada
+cultura son la `TFormatSettings` que Delphi saca de Windows, volcada por `tools/golden-delphi-dates`
+para las culturas del motor; una cultura de C# sin tabla toma los nombres de .NET. Comprobado contra
+Delphi en 7.464 casos (máscaras, fechas y culturas): C# y TypeScript dan lo mismo que Delphi en
+todos. `syn-delphi-masks` imprime en los dos motores los textos del motor Delphi (`golden-delphi`),
+salvo la fecha sin máscara, que este cambio no toca (C# usa el formato completo de .NET). Los demás
+informes no cambian. `ConvertToDotNet` ya pasaba a mayúsculas algunas fichas de la máscara al cargar
+(`mmm` → `MMM`, `hh:` → `HH:`); como `FormatDateTime` no distingue mayúsculas, da lo mismo, salvo
+en una serie de más de cuatro `m` (`mmmmm`). Los informes del patrocinador solo usan `dd/mm/yyyy`,
+`dd/mm/yy` y `hh:mm`, que salían ya iguales.
+
 Aplazado, con su motivo:
-- **El modo de máscaras de Delphi**: cambia la salida de informes que hoy funcionan en C#, así que
-  necesita decidir cómo se activa (¿solo en los informes convertidos desde drivers de Delphi,
-  `ConvertedFromDelphi`, o con una propiedad nueva del informe?) y llegar a la vez a los dos
-  motores. Decisión de Toni.
 - **El streaming de datasets solo hacia delante**: hoy el motor TypeScript lee cada resultado
   entero (por eso ejecuta los maestro/detalle que C# no puede con Npgsql o MySqlConnector). Pasar a
   leer fila a fila es una refactorización grande del contrato de datos, solo útil con resultados de
@@ -697,8 +710,9 @@ los bytes de los subconjuntos. En la noche del 22-11-2026:
   también por `.woff`. WOFF2, más abajo.
 - **Comparación con Delphi** (`printreptopdf`, DirectWrite) en `international` y `letter`: las mismas
   palabras; píxeles distintos 4,4 % y 1,5 %. La diferencia visible es la fuente: el japonés sale con
-  otra fuente CJK de reserva (más abajo y más fino) y el título con otra fuente; el shaping de las
-  demás escrituras coincide a la vista.
+  la misma familia de reserva (Yu Gothic) pero otra cara (Delphi, la Regular: ascendente 985 y
+  descendente −302; TypeScript y C#, una con 880 y −222), así que más abajo y más fino, y el título
+  con otra fuente; el shaping de las demás escrituras coincide a la vista.
 
 En la segunda noche del 22-11-2026:
 
@@ -721,8 +735,11 @@ En la segunda noche del 22-11-2026:
 
 Aplazado, con su motivo:
 - **La fuente CJK de reserva como DirectWrite**: el motor TypeScript elige la de reserva igual que
-  el driver FreeType de C#; imitar a DirectWrite cambiaría también la salida de C# en Linux. Es una
-  decisión de producto (¿qué motor manda en la reserva?), de Toni.
+  el driver FreeType de C# (la primera cara, por orden alfabético, que cubre los caracteres y
+  declara el idioma, con el mismo estilo antes); DirectWrite la elige por escritura e idioma con
+  el peso pedido. Con el japonés de `international` los dos llegan a Yu Gothic, pero a otra cara.
+  Imitar a DirectWrite cambiaría también la salida de C#. Es una decisión de producto (¿qué motor
+  manda en la reserva?), de Toni.
 - **veraPDF**: es una herramienta Java que hay que descargar; pide permiso. El PDF/A-3B ya es
   igual byte a byte al de C# salvo los subconjuntos.
 - **Fuentes Type 1** (`.pfb`/`.pfa`): el driver FreeType de C# las abre si fontconfig o el escaneo
@@ -1108,6 +1125,12 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
 9. **El orden de F2 a F7 y su financiación** — **DECIDIDO**: primero el motor. Las conexiones de
    Delphi y `dbxconnections.ini` (parte de la F4) → F1 en cuanto lleguen los informes → F2 → F3 → F5
    → F6 → F7 → conversor DFM. Si se avanza en una fase sin patrocinador lo decide Toni fase a fase.
+10. **Las máscaras de fecha de Delphi** — **DECIDIDO (22-11-2026, opción A)**: los informes con la
+   marca `ConvertedFromDelphi` (conexiones con drivers que solo tiene Delphi; la misma regla que las
+   comillas de `SubsExpreList`) formatean sus fechas como `FormatDateTime` de Delphi, con las
+   abreviaturas de Windows; los demás siguen con las máscaras de .NET. Descartadas: una propiedad
+   nueva del informe (los `.rep` de Delphi que ya existen no la tendrían) y las dos juntas (se puede
+   añadir si alguien necesita forzarlo). Hecho en C# y TypeScript (F2).
 
 ## 10. Lo que falta del patrocinador (bloquea la F1, no la F0)
 
