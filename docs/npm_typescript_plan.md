@@ -738,8 +738,8 @@ Aplazado, con su motivo:
   el driver FreeType de C# (la primera cara, por orden alfabético, que cubre los caracteres y
   declara el idioma, con el mismo estilo antes); DirectWrite la elige por escritura e idioma con
   el peso pedido. Con el japonés de `international` los dos llegan a Yu Gothic, pero a otra cara.
-  Imitar a DirectWrite cambiaría también la salida de C#. Es una decisión de producto (¿qué motor
-  manda en la reserva?), de Toni.
+  Imitar a DirectWrite cambiaría también la salida de C#. Decidido: se queda como está (decisión
+  9.11).
 - **veraPDF**: es una herramienta Java que hay que descargar; pide permiso. El PDF/A-3B ya es
   igual byte a byte al de C# salvo los subconjuntos.
 - **Fuentes Type 1** (`.pfb`/`.pfa`): el driver FreeType de C# las abre si fontconfig o el escaneo
@@ -1131,6 +1131,12 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
    abreviaturas de Windows; los demás siguen con las máscaras de .NET. Descartadas: una propiedad
    nueva del informe (los `.rep` de Delphi que ya existen no la tendrían) y las dos juntas (se puede
    añadir si alguien necesita forzarlo). Hecho en C# y TypeScript (F2).
+11. **La fuente CJK de reserva** — **DECIDIDO (22-11-2026)**: se queda como está. El motor
+   TypeScript la elige como el driver FreeType de C#, y C# no cambia; con el japonés de
+   `international` llega a la misma familia que DirectWrite (Yu Gothic), con otra cara. Solo afecta
+   a textos en escrituras que la fuente pedida no tiene, y es una diferencia visual (las mismas
+   palabras). Si un usuario de Delphi lo pide, la vía sería imitar a DirectWrite solo en los
+   informes convertidos de Delphi.
 
 ## 10. Lo que falta del patrocinador (bloquea la F1, no la F0)
 
