@@ -570,8 +570,36 @@ los tests de `tests/` del motor C# están portados.
 **Estado (22-11-2026)**: adelantado en el prototipo: todas las funciones y formatos de C#, columnas,
 dos pasadas, `GROUPPAGECOUNT`, subinformes, uniones MyBase, códigos de barras 1D, PDF417 y QR,
 gráficos, imágenes, `IMAGEOP`/`GRAPHICOP`/`TEXTOP`, y `GETVALUEFROMSQL`/`REOPEN` con driver síncrono.
-Falta: lo que solo tiene Delphi (arriba), el streaming con `AbortSignal`, el `.rpmf`, las pruebas en
-el navegador, la diferencia de metafile sobre todo el corpus y el port de los tests de C#.
+En la noche del 22-11-2026:
+
+- **Funciones de Delphi**: las 10 portables, en C# y en TS a la vez, comparadas con el evaluador de
+  Delphi (un programa de consola con `TRpEvaluator`): los casos de las fixtures y 1.030 aleatorios
+  de `FORMATMASK`, `DECODE64` y `HOURMINSEC` en es-ES, en-US y de-DE, todos iguales; TS da el
+  resultado de C# en todos. `LOADFILE` da los bytes como caracteres ANSI (en Delphi 2009 y
+  posteriores daba basura: corregido también en Delphi, y el paquete FPC compila).
+  `LOADFILE`/`GETINIVALUE` solo leen ficheros si el anfitrión lo permite
+  (`Evaluator.AllowFileFunctions`, desactivado por defecto; `allowFileAccess` en Node). Un campo
+  llamado `TIME` sin dataset sigue ganando a la función nueva. `FLOATTODATETIME` fallaba siempre
+  en C# (`Convert.ToDateTime(double)`): ahora da la fecha de su valor OLE, como Delphi.
+- Quedan `CHSTOCHT`/`CHTTOCHS`, que en Delphi usan `LCMapString` de Windows (en JS haría falta una
+  tabla de caracteres, de Unihan por ejemplo; además `CHTTOCHS` de Delphi convierte también a
+  tradicional, un error).
+- **Máscaras de fecha**: comparadas con Delphi en 188 casos. Difieren las máscaras de una sola
+  letra (`d`, `m`, `h`... que .NET lee como formatos estándar), `c`, `t`/`tt`, `ddddd`/`dddddd`, el
+  caso de `a/p` y `am/pm`, y las abreviaturas de `ddd`/`mmm` (datos de Windows frente a ICU). La
+  máscara vacía ya coincide. Arreglarlo sin romper informes de C# pide un «modo de máscaras de
+  Delphi» que solo activen los informes convertidos de Delphi y que llegue a todos los sitios que
+  formatean: queda como trabajo aparte.
+- **Cancelación y progreso** en `@reportman/node` (`signal`, `onProgress`).
+- **`.rpmf`** (`writeRpmf`/`readRpmf`): byte a byte igual a C# en 13 casos; los comprimidos se
+  leen en los dos sentidos. Se encontraron y documentaron errores del formato en C# (polígonos,
+  exportación, el pool que crece una posición en cada lectura).
+- **En el navegador**: `npm run check:browser` ejecuta los 33.332 casos de expresiones en un
+  Chromium del equipo (Edge sin ventana) y dan lo mismo que C#. Firefox no se ha probado.
+
+Falta: el modo de máscaras de Delphi, `CHSTOCHT`/`CHTTOCHS`, el streaming de datasets solo hacia
+delante, la diferencia de metafile sobre todo el corpus y el port de los 23 tests de `tests/` de C#
+(programas de consola por error; casi todos ya cubiertos por las pruebas de paridad).
 
 ### F3 — Tipografía y PDF completo · 2-3 semanas
 
@@ -601,8 +629,19 @@ el navegador, la diferencia de metafile sobre todo el corpus y el port de los te
 
 **Estado (22-11-2026)**: casi hecha en el prototipo: TrueType/OpenType con fontkit, shaping, bidi,
 texto HTML, fuentes incrustadas como subconjuntos y PDF/A-3B, iguales al driver FreeType de C# salvo
-los bytes de los subconjuntos. Falta: WOFF/WOFF2, la comparación con la salida de Delphi
-(DirectWrite) y la validación con veraPDF.
+los bytes de los subconjuntos. En la noche del 22-11-2026:
+
+- **WOFF**: un fichero `wOFF` se reconstruye como el sfnt del que salió (las tablas descomprimidas
+  con fflate) y se mide, se incrusta y se subconjunta como un TrueType; las carpetas se escanean
+  también por `.woff`. WOFF2 no (Brotli y tablas transformadas): se salta como un fichero que no es
+  fuente.
+- **Comparación con Delphi** (`printreptopdf`, DirectWrite) en `international` y `letter`: las mismas
+  palabras; píxeles distintos 4,4 % y 1,5 %. La diferencia visible es la fuente: el japonés sale con
+  otra fuente CJK de reserva (más abajo y más fino) y el título con otra fuente; el shaping de las
+  demás escrituras coincide a la vista.
+
+Falta: WOFF2, la elección de la fuente CJK de reserva como DirectWrite, y la validación con veraPDF
+(es una herramienta Java que hay que descargar).
 
 ### F4 — Datos · 2 semanas
 
@@ -637,9 +676,16 @@ esquema de `samples.db`, y el Agent funciona contra la base de ejemplo de la nub
 
 **Estado (22-11-2026)**: los drivers de PostgreSQL, Firebird, MySQL/MariaDB, SQL Server, SQLite y el
 Agent están hechos y comprobados contra C# en Docker (la CI local los prueba si las bases están
-levantadas); Oracle se deja para cuando un cliente lo pida. Falta: la traducción de las conexiones
-de Delphi y `dbxconnections.ini` para las conexiones directas, y el Agent contra la base de la
-nube (sin tocar producción hasta entonces).
+levantadas); Oracle se deja para cuando un cliente lo pida. En la noche del 22-11-2026,
+`dbxConnections()` de `@reportman/node`: las secciones `DriverName=ADO.NET` del
+`dbxconnections.ini` compartido (el formato de Reportman.Server y de los diseñadores; port de
+`DbxDirectConnections` y de la regla de codificación de `DbxIniDocument`) como conexiones por alias
+que el anfitrión pasa a `openReport`, así que se sigue abriendo solo lo que el anfitrión da. SQLite
+va integrado; los demás toman la función de su driver. Las contraseñas DPAPI se piden con una
+retrollamada. Las secciones DBExpress de Delphi no se traducen, igual que en C# (que solo abre las
+`ADO.NET` y las del Agent): sería una función nueva.
+
+Falta: el Agent contra la base de la nube (sin tocar producción hasta entonces).
 
 ### F5 — Otras salidas y vista previa en el navegador · 2 semanas
 
@@ -652,6 +698,21 @@ nube (sin tocar producción hasta entonces).
 
 **Hecho cuando**: las salidas coinciden con los drivers de Delphi en el corpus, y la vista previa en
 canvas coincide con el raster del PDF.
+
+**Estado (22-11-2026)**: `@reportman/export` con:
+
+- **CSV** (port de `PrintOutCSV`): igual carácter a carácter que C# en 9 ejemplos.
+- **SVG y HTML** (ports de `rpsvgdriver.pas` y `rphtmldriver.pas`, también la página única):
+  comprobados contra Delphi con `tools/golden-delphi` (un programa de consola que ejecuta el informe
+  como `printreptopdf` y escribe su metafile y los documentos de Delphi). En 13 informes, a partir del
+  mismo metafile, los bytes de Delphi; desde la ejecución del motor TypeScript, byte a byte en 8 (los
+  demás difieren donde difiere la maquetación de los motores: el lápiz de las barras de los códigos,
+  la altura de dos secciones de `fishes` y el gráfico sin TeeChart). Se conservan las rarezas de Delphi
+  (sin escapar el texto del SVG, los BMP de color real que Delphi escribe como «Bad bitmap stream»...);
+  lo único no reproducible son los BMP indexados en SVG, donde Delphi escribe memoria sin inicializar.
+- **Texto plano** (`PrintOutText` PLAIN): en curso.
+
+Falta: el texto, XLSX (opcional) y `reportman-canvas`, la vista previa en el navegador.
 
 ### F6 — Servidor Node: `reportman-server` · 1-2 semanas
 
@@ -667,6 +728,22 @@ canvas coincide con el raster del PDF.
 
 **Hecho cuando**: las fotos de contrato de `Reportman.Server.Tests` (el subconjunto de rutas
 implementado) pasan contra Node, y `<reportman-designer>` funciona contra él.
+
+**Estado (22-11-2026)**: la API de informes, hecha en `@reportman/server` (MPL 2.0): `health`, la
+lista de alias, el árbol de un alias, los parámetros (la forma congelada de Reportman.Server y la
+ruta nueva `parameters/describe` con el `ParameterDescription`) y `execute` por GET y POST (JSON,
+formulario o multipart) a PDF, metafile `.rpmf` comprimido, CSV con `;` y BOM y texto (cuando hay
+salida de texto). Los parámetros se asignan como `ApplyParameters` de Reportman.Server (cualquier
+parámetro por alias o nombre; opción `assign` de `@reportman/node`). Las mismas rutas, respuestas y
+códigos de error (los de `Wrap`: 400, 403, 404, 422 con `noData` o el componente, 500; más 401
+sin clave válida y 501 para `text` sin salida de texto), las claves
+(`X-ReportmanServer-ApiKey` o `apikey`, por alias), el almacén de carpetas con sus reglas de rutas
+(sin `..` ni `.versions`). Adaptadores para `node:http`, Express y Fastify. Pruebas con un servidor
+real sobre los ejemplos.
+
+Falta: guardar, renombrar y borrar informes, el protocolo `/api/designer/*` (necesita el escritor XML
+de `@reportman/lib`), la consola, usuarios y sesiones, la API de conexiones y el puente de la IA; y
+pasar las fotos de contrato (`openapi.v1.json`) contra Node.
 
 ### F7 — El diseñador web en npm · 3-4 semanas
 
@@ -789,8 +866,9 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
    `export`, `canvas`, `server` y `ngx`. Los `reportman-lib` (0.0.26) y `ngx-reportman-lib` (0.0.37)
    de 2025 siguen obsoletos y no se reutilizan.
 3. **Licencia** — **DECIDIDO**: MPL-2.0 para todos los paquetes del motor (`lib`, `metafile`,
-   `text`, `pdf`, `engine`, `node` y los drivers), como el motor C#. El diseñador y el servidor
-   Node se deciden aparte (la F7 depende de la licencia del diseñador). El repositorio C# entero
+   `text`, `pdf`, `engine`, `node` y los drivers), como el motor C#. El servidor Node
+   (`@reportman/server`) también, **DECIDIDO (22-11-2026)**: MPL 2.0, en el repositorio público. El
+   diseñador se decide aparte (la F7 depende de su licencia). El repositorio C# entero
    pasó a MPL 2.0 el 21-11-2026 (`LICENSE.TXT`, `NOTICE.TXT` con los créditos y las cabeceras de
    los fuentes); hasta entonces el texto era la MPL 1.1 con la GPL como alternativa, aunque los
    paquetes NuGet ya declaraban MPL-2.0. La MPL 2.0 es compatible con la GPL, así que la doble
