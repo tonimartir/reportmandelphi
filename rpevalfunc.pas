@@ -2870,8 +2870,9 @@ begin
     -1,
     nil,
     0);
-  GetMem(buf, len);
-  ZeroMemory(buf, len);
+  // len counts characters (LCMapStringW in Unicode Delphi)
+  GetMem(buf, len*SizeOf(Char));
+  ZeroMemory(buf, len*SizeOf(Char));
   LCMapString($804, //LCID_CHINESE_SIMPLIFIED
     LCMAP_TRADITIONAL_CHINESE,
     Pchar(src),
@@ -2910,15 +2911,17 @@ begin
   exiT;
  end;
   len := LCMapString($804,
-    LCMAP_TRADITIONAL_CHINESE,
+    LCMAP_SIMPLIFIED_CHINESE,
     PChar(src),
     -1,
     nil,
     0);
-  GetMem(buf, len);
-  ZeroMemory(buf, len);
+  // len counts characters (LCMapStringW in Unicode Delphi)
+  GetMem(buf, len*SizeOf(Char));
+  ZeroMemory(buf, len*SizeOf(Char));
+  // To simplified Chinese: it used LCMAP_TRADITIONAL_CHINESE, as CHSTOCHT
   LCMapString($804, //LCID_CHINESE_SIMPLIFIED
-    LCMAP_TRADITIONAL_CHINESE,
+    LCMAP_SIMPLIFIED_CHINESE,
     PChar(src),
     -1,
     buf,
