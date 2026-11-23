@@ -59,8 +59,7 @@ type
     function SourcePos: Longint;
     function TokenComponentIdent: string;
     function TokenFloat: Double;
-//    function TokenInt: Int64;
-    function TokenInt: Integer;
+    function TokenInt: Int64;
     function TokenString: string;
     function TokenWideString: WideString;
     function TokenSymbolIs(const S: string): Boolean;
@@ -498,9 +497,14 @@ begin
     Inc(FSourcePtr);
 end;
 
-function TRpParser.TokenInt: Integer;
+function TRpParser.TokenInt: Int64;
 begin
   Result := StrToInt64(TokenString);
+  // A hex literal of 32 bits is the bit pattern of an Integer, as StrToInt
+  // reads it and as it always was here: $FFFFFFFF is -1
+  if (FBuffer[FTokenPtr] = '$') and (Result > High(Integer)) and
+    (Result <= High(Cardinal)) then
+    Result := Result - 4294967296;
 end;
 
 function TRpParser.TokenString: string;

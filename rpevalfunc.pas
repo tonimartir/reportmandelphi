@@ -1007,19 +1007,48 @@ end;
 
 {**************************************************************************}
 
-function TIdenInt.GeTRpValue:TRpValue;
+// The integer part of a number for INT: an Integer when it fits in 32 bits,
+// as it always was; an Int64 beyond (it was cut to its low 32 bits), and the
+// number without its fraction, still a Double, when not even an Int64 holds it
+function TruncNumber(const avalue:Double):Variant;
+var
+ aint:Double;
 begin
- if (not (VarType(Params[0]) in [varSmallInt..varDate,varVariant])) then
+ aint:=Int(avalue);
+ if (aint>=-2147483648.0) and (aint<=2147483647.0) then
+  Result:=Integer(Trunc(aint))
+ else
+  if (aint>=-9223372036854775808.0) and (aint<9223372036854775808.0) then
+   Result:=Trunc(aint)
+  else
+   Result:=aint;
+end;
+
+function TIdenInt.GeTRpValue:TRpValue;
+var
+ aint64:Int64;
+begin
+ if (not (VarType(Params[0]) in [varSmallInt..varDate,varVariant,varInt64])) then
    Raise TRpNamedException.Create(SRpEvalType,
          IdenName);
  case Vartype(Params[0]) of
   varSmallInt..varDate:
    begin
-    Result:=Integer(Trunc(Int(Double(Params[0]))));
+    Result:=TruncNumber(Double(Params[0]));
    end;
   varVariant:
    begin
-    Result:=Integer(Trunc(Int(Double(Params[0]))));
+    Result:=TruncNumber(Double(Params[0]));
+   end;
+  // An Int64 (a literal above 32 bits) is already an integer, and a Double
+  // does not hold all its digits: the same value, an Integer when it fits
+  varInt64:
+   begin
+    aint64:=Params[0];
+    if (aint64>=Low(Integer)) and (aint64<=High(Integer)) then
+     Result:=Integer(aint64)
+    else
+     Result:=aint64;
    end;
   else
    Raise TRpNamedException.Create(SRpEvalType,

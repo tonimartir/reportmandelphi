@@ -4974,10 +4974,17 @@ end;
 // Rounding a number with not balanced system
 // always the upper value if in the middle
 function Roundfloat(num:double;redondeo:double):double;
+const
+ // The limits of the Currency arithmetic below (a Currency holds up to
+ // 922337203685477.5807): the largest Double that converts to a Currency,
+ // and the largest Currency that can still be multiplied by 10. Both are
+ // exact as a Double, so every compiler reads the same limit
+ MAXROUNDNUM=922337203685477.5;
+ MAXROUNDSCALE:Currency=92233720368547.75;
 var
  provanum,provaredon,quocient:currency;
  intnum,intredon:Comp;
- reste:integer;
+ reste:Int64;
  signenum,escala:integer;
 begin
  if ((redondeo=0) or (num=0)) then
@@ -4988,6 +4995,14 @@ begin
  if redondeo<0.0001 then
  begin
   redondeo:=0.0001;
+ end;
+ // A number or a multiple that does not fit a Currency (or is not a number)
+ // is returned as it is: the conversion overflowed, and the loops below
+ // never ended
+ if not ((abs(num)<=MAXROUNDNUM) and (abs(redondeo)<=MAXROUNDNUM)) then
+ begin
+  result:=num;
+  exit;
  end;
 
  // Original number
@@ -5000,12 +5015,23 @@ begin
  escala:=1;
  While (frac(provanum)<>0) do
  begin
+  // The same when the scaled number or multiple would not fit
+  if (provanum>MAXROUNDSCALE) or (provaredon>MAXROUNDSCALE) then
+  begin
+   result:=num;
+   exit;
+  end;
   provanum:=provanum*10;
   provaredon:=provaredon*10;
   escala:=escala*10;
  end;
  While (frac(provaredon)<>0) do
  begin
+  if (provanum>MAXROUNDSCALE) or (provaredon>MAXROUNDSCALE) then
+  begin
+   result:=num;
+   exit;
+  end;
   provanum:=provanum*10;
   provaredon:=provaredon*10;
   escala:=escala*10;

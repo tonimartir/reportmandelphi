@@ -1008,6 +1008,7 @@ end;
 procedure TRpCustomEvaluator.Operand(var Value:TRpValue);
 VAR
     iden:TRpIdentifier;
+    intvalue:Int64;
 begin
  case Rpparser.Token of
   toSymbol:
@@ -1036,7 +1037,13 @@ begin
    end;
   toInteger:
    begin
-    Value:=Rpparser.TokenInt;
+    // A literal that fits in 32 bits is an Integer, as it always was; a
+    // larger one is an Int64 (it was cut to its low 32 bits)
+    intvalue:=Rpparser.TokenInt;
+    if (intvalue>=Low(Integer)) and (intvalue<=High(Integer)) then
+     Value:=Integer(intvalue)
+    else
+     Value:=intvalue;
     Rpparser.NextToken;
    end;
   toFloat:
