@@ -1130,7 +1130,9 @@ típica muestral; y el orden (Top, Left) de `GRAPHICOP`, `TEXTOP`, `IMAGEOP` y `
   códigos de carácter; las barras cortas de PostNet colgaban de arriba; el PDF417 perdía un último
   carácter suelto, escribía dos veces un carácter y leía al revés las tablas de los niveles de
   corrección 6 a 8 (ningún lector los aceptaba); el QR perdía los caracteres fuera de la página
-  ANSI.
+  ANSI. Al día siguiente (puntos 8 y 10 de abajo): el Code 128 C con un carácter de control daba un
+  *access violation*, y el PDF417 escribía cambios de modo de más que @zxing/library leía como
+  caracteres.
 - Con esto, los tres motores dibujan las mismas barras en las pruebas (lineales 24 de 24, PDF417 54
   de 55, QR 36 de 36) y todos los símbolos se leen de vuelta.
 
@@ -1160,15 +1162,33 @@ objeto a objeto.
    Code 39 con suma de control no tiene carácter de parada en ningún motor.
 7. En Delphi quedan: `FORMATSTR` ignora la máscara de un Int64, `MOD` trabaja en 32 bits, y el
    analizador rechaza `1E-10`.
-8. Con datos que el código de barras no admite (letras en EAN-8, 2 de 5 intercalado, 2 de 5 matriz
-   o Codabar; nivel de corrección 9 en PDF417; `BARCODEOP` con esos datos) C# y TypeScript paran el
-   informe con un error —en cinco casos con el mensaje interno «Index was outside the bounds of the
-   array»— y Delphi lo termina sin error. Lo mismo con un color o un cambio de serie de gráfico de
-   otro tipo («Type conversion error») y con un valor infinito negativo en un gráfico
-   (`OverflowException`). Son 11 informes de prueba; el error se deja (mejor que un código que no
-   se lee), pero el mensaje podría ser claro.
-9. Los códigos de barras girados (`bc-rotation`): parte de los rectángulos difieren entre Delphi y
-   C# en 5-14 twips de alto o de ancho. Sin analizar.
+8. ~~Datos que el código de barras no admite~~: hecho el 23-11-2026 (Toni: «C# y TypeScript
+   deberían dar el error exacto, no index out of bounds»). Probados todos los tipos con 1.787 datos
+   incorrectos (`barcode-bad-data.test.ts`, contra C#): ninguno da ya un mensaje interno de .NET.
+   EAN-8, EAN-13 (con y sin suma de control) y los tres 2 de 5 dicen «EAN8 bad Data: 1234567X»,
+   como ya decían Codabar, Code 93, MSI y PostNet (Delphi dibuja barras sin sentido). Code 128 C
+   con un carácter de control lo escribe en el juego A (Delphi daba un *access violation*:
+   corregido también allí). PDF417: un nivel de corrección por encima de 8 es 8, como en Delphi;
+   `\X` cortado al final y `\C-12` dan el error de Delphi; un tamaño de más de 2.700 codewords lo
+   dice. Un valor infinito en un gráfico llega al borde del área (era una barra de 2^31 twips o
+   una `OverflowException`) y NaN no se dibuja. Los «Type conversion error» de gráficos quedan.
+9. **Los códigos de barras girados** (`bc-rotation`, leídos con ZXing tras deshacer el giro): a 0,
+   90, 180 y 270 grados los dos motores dibujan las mismas barras y se leen. En ángulos oblicuos
+   (30, 45, 135, 315, 12,5 grados) ningún motor da un código legible, ni lineal ni PDF417: cada barra
+   se dibuja como una caja recta (Delphi, la caja entre dos esquinas opuestas de la barra girada;
+   C#, la que envuelve las cuatro; de ahí los 5-21 twips), y las cajas se pisan. Delphi no gira el
+   QR en ningún ángulo (siempre recto, así que se lee); C# y TypeScript lo giran (legible a 90, 180 y
+   270 grados, no en los oblicuos). **Para decidir:** girar el QR también en Delphi (cambia la salida
+   de los informes de Delphi que tengan un QR con giro) o no girarlo en un informe convertido; y si
+   los ángulos oblicuos merecen dibujar barras giradas de verdad (un polígono en el metafile, en los
+   tres motores y en todos los drivers) o quedarse en múltiplos de 90.
+10. **PDF417 con un carácter de más** (encontrado al leer los girados con ZXing; corregido en los tres
+   motores el 23-11-2026): el bucle principal escribía un cambio a compactación byte (901) además del
+   que escribe la propia compactación (901 o 924), y la corrección de la noche anterior (codificar
+   hasta el último carácter) añadía otro 901 vacío antes del relleno en 422 de los 500 textos de
+   prueba. Según la norma son válidos, pero el `PDF417Reader` de @zxing/library (el de los lectores
+   web) leía un carácter de más («…» delante, «„» detrás) o basura con cinco bytes. Ahora
+   `pdf417-codewords.test.ts` dibuja los 500 textos y ZXing los lee todos como el texto.
 
 **La última comparación de maquetación** (driver estándar, después de las correcciones): de 146
 informes, 70 se ejecutan en los dos motores y se comparan objeto a objeto; 17 salen idénticos, 16
