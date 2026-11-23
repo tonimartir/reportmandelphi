@@ -1329,7 +1329,7 @@ begin
 		Inc(weightC);
 		if weightC > 20 then weightC := 1;
 		Inc(weightK);
-		if weightK > 15 then weightC := 1;
+		if weightK > 15 then weightK := 1;
 	end;
 
 	Inc(checkK, checkC);
@@ -1384,7 +1384,7 @@ begin
 	FText := '';
 
 
-	for i:=0 to Length(save)-1 do
+	for i:=1 to Length(save) do
 	begin
 		if ord(save[i]) <= 127 then
 			FText := FText + code93x[ord(save[i])];
@@ -1423,24 +1423,27 @@ var
 begin
         FText:=CurrentText;
 	result := '60';    // Startcode
-	check_even := 0;
-	check_odd  := 0;
-
 	for i:=1 to Length(FText) do
 	begin
-		if odd(i-1) then
-			check_odd := check_odd*10+ord(FText[i])
-		else
-			check_even := check_even+ord(FText[i]);
-
 		result := result + tabelle_MSI[TRpDigit(FText[i])];
 	end;
 
-	checksum := quersumme(check_odd*2) + check_even;
-
-	checksum := checksum mod 10;
-	if checksum > 0 then
-		checksum := 10-checksum;
+	// Mod 10 (Luhn): from the right, every other digit doubled, the digits of the doubles added
+	check_even := 0;
+	check_odd  := 1;
+	for i:=Length(FText) downto 1 do
+	begin
+		checksum := ord(FText[i])-ord('0');
+		if check_odd = 1 then
+		begin
+			checksum := checksum*2;
+			if checksum > 9 then
+				checksum := checksum-9;
+		end;
+		check_even := check_even+checksum;
+		check_odd := 1-check_odd;
+	end;
+	checksum := (10-(check_even mod 10)) mod 10;
 
 	result := result + tabelle_MSI[TRpDigit(chr(ord('0')+checksum))];
 
@@ -1762,16 +1765,16 @@ begin
         aheight := PrintHeight;
 
       A.x := xadd;
-      A.y := 0;
+      A.y := PrintHeight - aheight;
 
       b.x := xadd;
-      b.y := aheight;
+      b.y := PrintHeight;
 
       c.x := xadd + awidth;
-      c.y := aheight;
+      c.y := PrintHeight;
 
       d.x := xadd + awidth;
-      d.y := 0;
+      d.y := PrintHeight - aheight;
 
       // a,b,c,d builds the rectangle we want to draw
 
@@ -1955,6 +1958,7 @@ var
   CodeLen            : Integer;
   CurrentMode        : TStDataMode;
   Count              : Integer;
+  Before             : Integer;
   Code: AnsiString;
 
 const
@@ -1989,7 +1993,8 @@ begin
     AddCodeword (BinaryCompaction);
   end;
 
-  while i < CodeLen do begin
+  while i <= CodeLen do begin
+    Before := i;
     case CurrentMode of
       dmBinary :
         EncodeBinary (i, CodeLen);
@@ -2014,7 +2019,9 @@ begin
      begin
        AddCodeword (TextCompaction);
        CurrentMode := dmText;
-     end;
+     end
+     else if i = Before then
+       raise Exception.Create ('PDF417: the text compaction cannot write the escape at character ' + IntToStr (i) + ' of the text');
     end
     else
     begin
@@ -2101,13 +2108,13 @@ begin
   else begin
     if ECClen = 128 then
       for i := 0 to ECCLen - 1 do
-        CoeffReg[i] := StMods128[i]
+        CoeffReg[i] := StMods128[ECCLen - 1 - i]
     else if ECClen = 256 then
       for i := 0 to ECCLen - 1 do
-        CoeffReg[i] := StMods256[i]
+        CoeffReg[i] := StMods256[ECCLen - 1 - i]
     else if ECClen = 512 then
       for i := 0 to ECCLen - 1 do
-        CoeffReg[i] := StMods512[i];
+        CoeffReg[i] := StMods512[ECCLen - 1 - i];
   end;
 
   for i := 0 to ECCLen - 1 do
@@ -2470,6 +2477,7 @@ var
   NewChar            : Integer;
   Codeword           : Boolean;
   validtext:boolean;
+  OldPosition        : Integer;
 
 const
   EndingPadChar      = 29;
@@ -2481,11 +2489,13 @@ begin
   CurrentTextSubmode := cmAlpha;
   Done := False;
 
+  CurChar.Value := 0;
   { get characters until it is necessary to step out of text mode }
   while (Position <= CodeLen) and (CurChar.Value >= 0) and
         (not Done) do begin
     if (Position <= CodeLen) then
     begin
+      OldPosition := Position;
       GetNextCharacter (NewChar, Codeword, Position, CodeLen);
       if NewChar>127 then
        validtext:=false
@@ -2493,12 +2503,12 @@ begin
       begin
        validtext:=(TSPDF417TextCompaction[NewChar].Value>=0);
       end;
-      if (not validtext) then
+      if (not validtext) and (not Codeword) then
       begin
-       Position:=Position-2;
+       Position:=OldPosition;
        break;
       end
-      else
+      else if not Codeword then
        CurChar := TSPDF417TextCompaction[NewChar];
     end;
 
@@ -2518,7 +2528,7 @@ begin
         { if the text submode is different, see if it remains different.  If
           it does, use a latch, otherwise just shift }
         if Position < CodeLen then begin
-          if not (CurrentTextSubmode in
+          if (Code[Position + 1] > #127) or not (CurrentTextSubmode in
              TSPDF417TextCompaction[Integer (Code[Position + 1])].Mode) then
             UseShift := False
           else
@@ -3203,7 +3213,7 @@ begin
         QRCode.ErrorCorrectionLevel := 0; // 0=L (7%); 1=M (15%); 2=Q (25%); 3=H (35%)
 
     end;
-    QRCode.Data := WideString(CurrentText);
+    QRCode.Data := CurrentTextW;
     squareWidth:=Width div QRCode.Columns;
     squareHeight:=Height div QRCode.Rows;
     // Center barcode in rectangle
