@@ -1278,6 +1278,13 @@ solo en C# (el punto 8).
    versión nueva en espera (*staged publishing*): queda en la pestaña **Staged Packages** de los
    ajustes de la cuenta hasta que se aprueba con 2FA, y para un paquete nuevo publica un marcador
    público `0.0.0-stage`. La primera publicación (`0.1.0-alpha.1`) quedó en espera sin aprobar.
+   **Publicación en espera (Toni, 23-11-2026: «para no tener que hacer 2FA cada paquete»)**:
+   `tools/release.mjs` deja las versiones en espera con `npm stage publish` (npm 11.15 o posterior),
+   que no pide 2FA, y se aprueban todas juntas en **Staged Packages** con un solo 2FA; ejecutado de
+   nuevo después, mueve `latest`. Con `NPM_STAGE_TOKEN` (un token granular «Read and write (stage
+   only)» con «Bypass two-factor authentication», que crea Toni en npmjs.com) mover las etiquetas
+   tampoco pide 2FA; sin él, la sesión de `npm login` lo pide una vez por paquete. `--direct`
+   publica como antes.
 8. **Errores de C# o de Delphi encontrados al portar** — **DECIDIDO**: se corrigen en los tres
    motores, revisando a fondo que cada corrección sea compatible con los informes existentes; si no
    puede serlo, se discute antes de hacerla.
