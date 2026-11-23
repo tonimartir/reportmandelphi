@@ -241,10 +241,12 @@
       <li> Set at page setup, options tab the preferred save method to XML or XML
         compressed. The .net runtime read and save the reports in this new
         formats.</li>
-      <li>There are small differences, for example when executing in .net, the
-        format property for dates will behave like in .Net framework so the M
-        represents the month and the m the minutes, and the H is the 24 hour
-        format hour.</li>
+      <li>A report converted from Delphi (one whose connections use a driver of the
+        Delphi engine, such as FireDAC, Zeos, IBX or dbExpress, converted by
+        <code>ConvertToDotNet</code>) formats dates and numbers with the Delphi masks.
+        Any other report uses the .Net format strings: M is the month, m the minutes and
+        H the 24 hour format hour. See <a href="#engine-differences">Differences from
+        the Delphi engine</a>.</li>
       <li>For linked queries, the parameters of the child dataset must be defined
         in Parameters definition and must be assigned to the child dataset.</li>
     </ul>
@@ -252,9 +254,6 @@
     <ul>
       <li>Native .net Report Designer is not implemented (Win32/Win64 designer
         can be used)</li>
-      <li>PDF437 barcode is not implemented but QrCode barcodes are available
-        instead(.net only)</li>
-      <li>Charting is not implemented </li>
     </ul>
     <p><strong>Different behaviour</strong></p>
     <ul>
@@ -262,7 +261,72 @@
         parameters will be assigned by position, not by name, parameters by name
         are not supported by odbc dot net driver, so make sure to sort the
         parameters to match query position when you use odbc.</li>
-      <li>Format property for expressions use the .net format strings.</li>
+      <li>Format property for expressions use the .net format strings, except in a
+        report converted from Delphi.</li>
+    </ul>
+    <h3 id="engine-differences">Differences from the Delphi engine</h3>
+    <p>The .Net engine and the TypeScript engine (the <code>@reportman</code> npm
+      packages, a translation of the .Net one) give the same output for the same
+      report, and are checked against the Delphi engine. Where .Net already had a
+      behaviour of its own, a report converted from Delphi gets the Delphi one and
+      any other report keeps the .Net one. These are the differences that remain
+      (version 4.1):</p>
+    <p><strong>Text and layout</strong></p>
+    <ul>
+      <li>The line spacing of the standard PDF fonts is the same in the three engines:
+        a text of n lines measures n line spacings (1.143 times the font size for
+        Helvetica, 1.131 for Times, 1.139 for Courier). Before version 4.1 the .Net
+        engine added a leading (0.135 times the size) to the height of every text.</li>
+      <li>The FreeType text device of .Net measures the standard PDF fonts with
+        TrueType metrics: up to one twip per line of difference.</li>
+      <li>With FireDAC, the Delphi engine receives text fields without their
+        trailing spaces and line breaks (FireDAC trims them by default,
+        <code>FormatOptions.StrsTrim</code>). The .Net and TypeScript drivers return
+        the text as it is stored, so a memo that ends in blank lines makes its
+        section that much taller.</li>
+    </ul>
+    <p><strong>Expressions and formats</strong></p>
+    <ul>
+      <li>A report converted from Delphi follows the Delphi engine in display
+        formats (<code>FormatFloat</code>, <code>FormatDateTime</code> and
+        <code>Format</code> masks, numbers and dates without a mask), comparisons with
+        NULL (NULL is less than any value, and '' equals NULL), REPLACESTR (not case
+        sensitive), SUBSTR, MONTHNAME, VAL and ISNUMERIC, the sample standard
+        deviation, and the parameter order (Top, Left) of GRAPHICOP, TEXTOP, IMAGEOP
+        and BARCODEOP.</li>
+      <li>By design the .Net engine uses decimal numbers where Delphi uses Double or
+        Currency (a rounding of a half may differ), compares texts by culture,
+        applies AND and OR to numbers, carries NULL through arithmetic and sets the
+        culture from the language of the report.</li>
+      <li>The .Net expression parser stops at a character it does not know
+        (<code>1 != 2</code> evaluates as 1) where Delphi gives a syntax error.</li>
+      <li>MONTH and YEAR of a number return a value in .Net; Delphi gives an
+        error.</li>
+      <li>Masks with <code>*</code> (FORMATNUM) are not supported by .Net.</li>
+      <li>In the Delphi engine FORMATSTR ignores the mask of a 64 bit integer, MOD
+        works with 32 bit integers and a literal such as <code>1E-10</code> is a
+        syntax error.</li>
+    </ul>
+    <p><strong>Barcodes</strong></p>
+    <ul>
+      <li>The error correction level of a QR code is numbered differently: 2 L,
+        3 M, 4 Q and 5 H in .Net (any other value is L), 0 L, 1 M, 2 Q and 3 H in
+        Delphi.</li>
+      <li>Data a symbology cannot encode (letters in an EAN-8, for example) stops
+        the .Net report with an error that names the symbology and the data
+        (<code>EAN8 bad Data: 1234567X</code>); Delphi draws bars that no reader
+        reads.</li>
+      <li>A rotated barcode reads back at 90, 180 and 270 degrees in every engine;
+        at other angles no engine draws a readable symbol.</li>
+      <li>Code 39 with checksum has no stop character in any engine.</li>
+      <li>A receipt printer that draws barcodes by itself does not get PDF417
+        symbols from the TypeScript engine yet.</li>
+    </ul>
+    <p><strong>Charts</strong></p>
+    <ul>
+      <li>Delphi draws charts with TeeChart and .Net with its own drawing: the same
+        data, a different look. A color or a series change expression of another
+        type stops the .Net report with a type conversion error.</li>
     </ul>
     <p><strong>Using the library</strong></p>
     <p>To use the libraries provided, you should include a reference to them in

@@ -1145,11 +1145,19 @@ objeto a objeto.
 
 **Sin tocar, para decidir (Toni):**
 
-1. **El interlineado de las fuentes estándar.** Delphi lo cambió el 10-12-2025 («Normalize line
-   spacing», `rppdffile.pas`: la altura de un texto ya no suma el *leading*) y C# y TypeScript siguen
-   con el anterior: cada texto medido es 16-35 twips más alto, se acumula en las secciones que se
-   expanden y puede mover saltos de página (`fishes`, `syn-layout`). Portarlo cambia la maquetación
-   de todos los informes de C# con fuentes estándar: o para todos, o solo para los convertidos.
+1. ~~El interlineado de las fuentes estándar~~: hecho el 23-11-2026, para todos los informes
+   (Toni: «Sí, para todos»). La distancia entre líneas ya era la misma en los tres motores (1,143
+   veces el tamaño en Helvetica, 1,131 Times, 1,139 Courier); C# y TypeScript sumaban además el
+   *leading* (0,135 veces el tamaño) una vez a la altura de cada texto y lo restaban de la posición
+   de cada línea, que el dibujo devolvía. Ahora `GetStdLineSpacing` da *leading* 0, como Delphi desde
+   su «Normalize line spacing» del 10-12-2025: las líneas se dibujan donde se dibujaban, y cambian la
+   altura medida, la alineación vertical abajo o centrada y el fondo de cada línea. Contra Delphi,
+   `syn-layout` pasa de 31 a 94 objetos idénticos y `fishes` de 134 a 262. Lo que queda en esos dos
+   son las notas de los peces que acaban en dos saltos de línea: FireDAC recorta los espacios y
+   saltos finales de los campos de texto (`FormatOptions.StrsTrim`, por defecto) y los drivers de C#
+   y TypeScript no, así que la nota mide una línea más. Es del driver de datos, no del motor, y queda
+   anotado en la página de la web de .NET («Differences from the Delphi engine», `dotnetport.html`),
+   con el resto de diferencias.
 2. El driver FreeType de C# mide las fuentes estándar como TrueType (Delphi no): 1 twip por línea.
 3. El analizador de C# acepta caracteres desconocidos y corta la expresión (`1 != 2` da 1, `2^3` da
    2); Delphi da error de sintaxis. Dar error rompería informes de C# que hoy se ejecutan.
