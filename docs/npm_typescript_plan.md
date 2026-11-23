@@ -1160,6 +1160,26 @@ objeto a objeto.
    Code 39 con suma de control no tiene carácter de parada en ningún motor.
 7. En Delphi quedan: `FORMATSTR` ignora la máscara de un Int64, `MOD` trabaja en 32 bits, y el
    analizador rechaza `1E-10`.
+8. Con datos que el código de barras no admite (letras en EAN-8, 2 de 5 intercalado, 2 de 5 matriz
+   o Codabar; nivel de corrección 9 en PDF417; `BARCODEOP` con esos datos) C# y TypeScript paran el
+   informe con un error —en cinco casos con el mensaje interno «Index was outside the bounds of the
+   array»— y Delphi lo termina sin error. Lo mismo con un color o un cambio de serie de gráfico de
+   otro tipo («Type conversion error») y con un valor infinito negativo en un gráfico
+   (`OverflowException`). Son 11 informes de prueba; el error se deja (mejor que un código que no
+   se lee), pero el mensaje podría ser claro.
+9. Los códigos de barras girados (`bc-rotation`): parte de los rectángulos difieren entre Delphi y
+   C# en 5-14 twips de alto o de ancho. Sin analizar.
+
+**La última comparación de maquetación** (driver estándar, después de las correcciones): de 146
+informes, 70 se ejecutan en los dos motores y se comparan objeto a objeto; 17 salen idénticos, 16
+difieren solo en indicadores guardados que no se dibujan (`penStyle`, `alignment`, `copyMode`) y 37
+tienen diferencias: 17 de gráficos (Delphi dibuja con TeeChart), 7 de códigos de barras (la
+numeración del nivel del QR, el orden de `BARCODEOP` en un informe no convertido, los girados) y
+13 de maquetación y formato (el interlineado del punto 1, y los informes de prueba hechos para
+mostrar lo que solo cambia en un informe convertido). De los 76 que no se comparan, 37 fallan en
+los dos motores (son casos de error a propósito), 14 necesitan fuentes con el driver estándar, 14
+fallan solo en Delphi (bases de datos que no tiene, uniones de tipos, un QR de versión 40) y 11
+solo en C# (el punto 8).
 
 ## 8. Riesgos
 
