@@ -3,12 +3,13 @@
 Fecha: 21-11-2026 (revisado el mismo día: sin lector DFM y sin WebAssembly). Estado:
 **prototipo en marcha** (ver «Estado del prototipo»); quedan decisiones de la sección 9.
 
-## Estado del prototipo (22-11-2026)
+## Estado del prototipo (23-11-2026)
 
-Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), unas 71.700
-líneas de TypeScript sin contar las pruebas, 1.924 pruebas (`npm run ci` pasa en Windows y en Linux
+Código en `typescript/` del repositorio C# (`tonimartir/reportman`, rama `main`), unas 72.700
+líneas de TypeScript sin contar las pruebas, 2.206 pruebas (`npm run ci` pasa en Windows y en Linux
 con Node 22 y 24). Paquetes `@reportman/*` en la versión `4.1.0-alpha.1` (todos la misma, decisión
-9.7), publicados con la etiqueta `next` y pendientes de aprobar en npm (estado de cada fase en la
+9.7), publicados en npm con las etiquetas `next` y `latest`; las correcciones de la comprobación
+de paridad (sección 7.1) son posteriores a esa versión (estado de cada fase en la
 sección 5). Cada parte se ha portado entera y
 comprobado contra el motor C# con el arnés `typescript/tools/golden-cs` (o contra Delphi con
 `golden-delphi`, en lo que solo tiene Delphi); las partes que faltan fallan con un error claro («not supported
@@ -77,6 +78,13 @@ en la paridad con C#, la CI que levanta y exige las bases de datos, `CHSTOCHT`/`
 últimas funciones de Delphi, en C# y TypeScript), los tests de consola de C# que faltaban, WOFF2, el
 shaping comprobado contra HarfBuzz, los códigos lineales que dibujan las impresoras de tickets, y
 Symbol y ZapfDingbats en la vista previa.
+
+Noche del 23-11-2026: comprobación de paridad de los tres motores (sección 7.1). Delphi frente a C#
+en expresiones, formato de valores, maquetación y códigos de barras, con arneses nuevos
+(`golden-delphi-eval`, `golden-delphi-dates`); unas cuarenta correcciones en C# y TypeScript, y dos
+tandas en Delphi (evaluador y códigos de barras). Los informes convertidos de Delphi siguen las
+reglas de Delphi donde C# hacía otra cosa (máscaras de fecha y de número, NULL, textos sin máscara),
+y los de C# no cambian.
 
 ## 0. Resumen
 
@@ -1057,6 +1065,101 @@ Delphi, C# y TypeScript ejecutarán el mismo `.rep`. Las reglas:
 3. Las rarezas de C# (anexo B) se deciden una vez, para los tres motores.
 4. Si TypeScript vive junto a C# (decisión 9.1), un mismo commit puede cambiar los dos con sus
    pruebas.
+
+### 7.1 Comprobación de paridad de los tres motores (noche del 23-11-2026)
+
+**Cómo se midió.** TypeScript ya se prueba contra C# en la CI, así que se comparó Delphi con C#, en
+cuatro frentes, con arneses que quedan en `typescript/tools/` del repositorio C#:
+
+- **Expresiones** (`golden-delphi-eval`, un programa de consola con `TRpEvaluator`): los 6.598
+  casos de las fixtures y 2.978 sondeos de cada función con entradas límite, en es-ES, en-US y
+  de-DE.
+- **Formato de valores**: 30.236 casos de valor, tipo, máscara, cultura, tipo de parámetro y
+  `PrintNulls`, con `FormatVariant` de Delphi frente a `Variant.ToString` de C#.
+- **Maquetación**: el metafile de `golden-delphi` frente al de `golden-cs`, objeto a objeto, en los
+  78 informes que ejecutan los dos motores (ejemplos, `repsamples` y los sintéticos).
+- **Códigos de barras**: las barras una a una y, además, leídas de vuelta con un lector (los de
+  `@zxing/library` y lectores escritos en las pruebas), que es como se vio que en varios casos el
+  que estaba mal era Delphi.
+
+**La regla aplicada.** Donde C# daba un error, basura o nada, la corrección es para todos los
+informes. Donde C# funciona hoy de otra manera que Delphi, el comportamiento de Delphi se aplica solo
+a los informes convertidos de Delphi (`ConvertedFromDelphi`, que en el evaluador es `DelphiMasks`),
+como se decidió para las máscaras de fecha (9.10): los informes de C# no cambian.
+
+**Corregido en C# y TypeScript, para todos los informes:**
+
+- Agregados de grupo y de página: la media dividía por las filas de todos los grupos anteriores, la
+  desviación típica conservaba sus valores y el mínimo y el máximo partían del valor inicial (el
+  mínimo de valores positivos era 0). `PAGECOUNT` y `GROUPPAGECOUNT` compartían un texto por página
+  (el último escrito era el de todos). Una sección con estilo de fondo y sin imagen no imprimía sus
+  elementos.
+- Evaluador: `ROUND` no redondeaba (leía el primer parámetro dos veces); un entero que no cabe en 32
+  bits daba la vuelta (`1000000*1000000` era `-727379968`); un texto numérico en `-`, `*` y `/`
+  daba error; `LEFT`/`RIGHT` con cuenta negativa y `REPLACESTR` con patrón vacío lanzaban una
+  excepción; `POS` usaba la búsqueda sensible a la cultura; `COMPAREVALUE(1,1,0)` daba 1;
+  `MONTHNAME`, `DAY`, `MONTH`, `YEAR` e `INT` rechazaban números o fechas que Delphi acepta;
+  `VAL('1e3')` fallaba; fecha más fecha (`TODAY+TIME`) fallaba, y fecha menos hora sin fecha daba
+  los días desde el año 1.
+- Formato: un negativo que la máscara redondea a cero salía «-0,00»; un número en un parámetro de
+  tipo fecha lanzaba una excepción; los patrones por defecto de .NET pasaban por la traducción de
+  máscaras (en-US: «13:45:34 PM»); una fecha sin máscara cambiaba de formato con `PrintNulls`; un
+  double sin máscara salía con 16-17 dígitos (`0,30000000000000004`); un decimal o un entero largo
+  de más de 15 dígitos perdía cifras.
+- Imágenes: el estilo recortar con una imagen que Skia no decodifica (un BMP de 15 bits) paraba el
+  informe con una `NullReferenceException`; se dibuja estirada.
+- Códigos de barras: MSI, PostNet y Codabar no dibujaban nada y 2 de 5 matriz lanzaba una excepción;
+  el PDF417 tenía tres errores del port (números de más de 38 dígitos ilegibles, un índice fuera de
+  rango, caracteres por encima de U+00FF); el QR escribía `?` para lo que no es ISO-8859-1.
+
+**Solo para informes convertidos de Delphi:** las máscaras numéricas como `FormatFloat` (`%` y `‰`
+literales, una coma en cualquier sitio agrupa: `0,.00`); un texto con máscara como `Format` (`%s`);
+números y fechas sin máscara como los escribe Delphi (15 dígitos, `1E20`, la fecha corta de
+Windows); `STR` y la concatenación igual; las comparaciones con NULL (NULL es menor que todo:
+`NULL>0` es falso) y `''=NULL`; `REPLACESTR` sin distinguir mayúsculas; `SUBSTR` con índice menor
+que 1; los nombres de mes de `MONTHNAME`; `VAL` e `ISNUMERIC` sin separadores de miles; la desviación
+típica muestral; y el orden (Top, Left) de `GRAPHICOP`, `TEXTOP`, `IMAGEOP` y `BARCODEOP`.
+
+**Corregido en Delphi** (errores del propio Delphi, comprobados con sus resultados):
+
+- Evaluador: un literal entero de más de 32 bits se cortaba (`1000000000000` era `-727379968`, y
+  un error de rango en el diseñador), `INT()` truncaba a 32 bits, y `ROUND` con un número que no
+  cabe en un Currency no terminaba nunca (`ROUND(1E15,0.01)` colgaba el motor).
+- Códigos de barras: el Code 93 extendido escribía un NUL delante y perdía el último carácter, y el
+  carácter de control K era erróneo a partir de 15 símbolos; el dígito de control de MSI sumaba los
+  códigos de carácter; las barras cortas de PostNet colgaban de arriba; el PDF417 perdía un último
+  carácter suelto, escribía dos veces un carácter y leía al revés las tablas de los niveles de
+  corrección 6 a 8 (ningún lector los aceptaba); el QR perdía los caracteres fuera de la página
+  ANSI.
+- Con esto, los tres motores dibujan las mismas barras en las pruebas (lineales 24 de 24, PDF417 54
+  de 55, QR 36 de 36) y todos los símbolos se leen de vuelta.
+
+**Medido después.** Formato de valores de un informe convertido: de 11.585 a 7.776 casos distintos de
+30.236; lo que queda son rarezas de Delphi (empates de redondeo que difieren entre Win32 y Win64,
+Currency redondeado al par, desbordamiento por encima de 9,2E14) y las máscaras `*`. Expresiones en
+modo convertido: 623 de 643 iguales (lo demás es Delphi rechazando NULL u otro tipo donde C# es
+tolerante). Los informes sintéticos de contadores de página, grupos y fondo de sección salen iguales
+objeto a objeto.
+
+**Sin tocar, para decidir (Toni):**
+
+1. **El interlineado de las fuentes estándar.** Delphi lo cambió el 10-12-2025 («Normalize line
+   spacing», `rppdffile.pas`: la altura de un texto ya no suma el *leading*) y C# y TypeScript siguen
+   con el anterior: cada texto medido es 16-35 twips más alto, se acumula en las secciones que se
+   expanden y puede mover saltos de página (`fishes`, `syn-layout`). Portarlo cambia la maquetación
+   de todos los informes de C# con fuentes estándar: o para todos, o solo para los convertidos.
+2. El driver FreeType de C# mide las fuentes estándar como TrueType (Delphi no): 1 twip por línea.
+3. El analizador de C# acepta caracteres desconocidos y corta la expresión (`1 != 2` da 1, `2^3` da
+   2); Delphi da error de sintaxis. Dar error rompería informes de C# que hoy se ejecutan.
+4. Lo que se dejó solo para informes convertidos podría unificarse (la desviación típica, el orden de
+   `GRAPHICOP`, `REPLACESTR`...), y lo de diseño que sigue distinto: decimal frente a double, el
+   orden de textos según la cultura, AND/OR de números, NULL en la aritmética, el idioma del informe
+   que en C# cambia la cultura.
+5. Las máscaras `*` (`FormatCurrAdv`, `FORMATNUM`) no están portadas; ningún informe conocido las usa.
+6. La numeración del nivel de corrección del QR difiere (C# 2/3/4/5 = L/M/Q/H, Delphi 0/1/2/3), y el
+   Code 39 con suma de control no tiene carácter de parada en ningún motor.
+7. En Delphi quedan: `FORMATSTR` ignora la máscara de un Int64, `MOD` trabaja en 32 bits, y el
+   analizador rechaza `1E-10`.
 
 ## 8. Riesgos
 
