@@ -9,3 +9,6 @@ build/linux/** text eol=lf
 build/linux/*.ps1 text eol=crlf
 # macOS build scripts (build/macos) run on the Mac
 build/macos/** text eol=lf
+# The live demo (doc/demo) is built in the C# repository: its files are kept byte for byte as the
+# build writes them, so the website serves exactly what was tested.
+doc/demo/** -text

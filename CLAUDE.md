@@ -68,6 +68,11 @@ pages **in place**, inside the repository, when the navigation changes, and it i
 `Disallow` at all, on purpose, because blocking the crawl is what keeps a URL in the index instead
 of taking it out (the file explains it).
 
+`doc/demo/` (the live demo, `https://reportman.es/demo/`) is the one folder that is **built**, in
+the C# repository (`typescript/demo`, the samples run by the npm packages in the browser): rebuild
+it there with `npm run demo -- build --out <this repository>/doc/demo` and commit the result here.
+Do not edit its files by hand; they are overwritten.
+
 ## Source layout (important)
 
 The engine source — ~200 `rp*.pas` units — lives in the **repository root**, not
