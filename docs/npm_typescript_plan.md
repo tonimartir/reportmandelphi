@@ -1176,12 +1176,12 @@ objeto a objeto.
    90, 180 y 270 grados los dos motores dibujan las mismas barras y se leen. En ángulos oblicuos
    (30, 45, 135, 315, 12,5 grados) ningún motor da un código legible, ni lineal ni PDF417: cada barra
    se dibuja como una caja recta (Delphi, la caja entre dos esquinas opuestas de la barra girada;
-   C#, la que envuelve las cuatro; de ahí los 5-21 twips), y las cajas se pisan. Delphi no gira el
-   QR en ningún ángulo (siempre recto, así que se lee); C# y TypeScript lo giran (legible a 90, 180 y
-   270 grados, no en los oblicuos). **Para decidir:** girar el QR también en Delphi (cambia la salida
-   de los informes de Delphi que tengan un QR con giro) o no girarlo en un informe convertido; y si
-   los ángulos oblicuos merecen dibujar barras giradas de verdad (un polígono en el metafile, en los
-   tres motores y en todos los drivers) o quedarse en múltiplos de 90.
+   C#, la que envuelve las cuatro; de ahí los 5-21 twips), y las cajas se pisan. Delphi no giraba
+   el QR en ningún ángulo; **decidido (Toni, 23-11-2026): Delphi gira el QR como C#**, sobre el
+   centro del símbolo, y los tres motores dibujan los mismos módulos en todos los ángulos
+   (`bc-delphi-qr-rotation`; legible a 90, 180 y 270 grados, no en los oblicuos). **Para decidir:**
+   si los ángulos oblicuos merecen dibujar barras giradas de verdad (un polígono en el metafile, en
+   los tres motores y en todos los drivers) o quedarse en múltiplos de 90.
 10. **PDF417 con un carácter de más** (encontrado al leer los girados con ZXing; corregido en los tres
    motores el 23-11-2026): el bucle principal escribía un cambio a compactación byte (901) además del
    que escribe la propia compactación (901 o 924), y la corrección de la noche anterior (codificar

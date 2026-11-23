@@ -3209,6 +3209,19 @@ var
   PenWidth:Integer;
   dif:integer;
   isBlack:boolean;
+  alpha:double;
+  orgin,a,b,c,d:TPoint;
+  xadd,yadd,aleft,atop,aright,abottom:integer;
+
+  function Corner(x,y:integer):TPoint;
+  var
+   p:TPoint;
+  begin
+   p.x:=x;
+   p.y:=y;
+   Result:=Translate2D(Rotate2D(p,alpha),orgin);
+  end;
+
 begin
   PenWidth:= 0;
   QRCode := TRpDelphiZXingQRCode.Create;
@@ -3257,6 +3270,12 @@ begin
     end;
     PenColor := BColor;
     BrushColor := PenColor;
+    // The Rotation turns the symbol about its centre, as in the C# engine: each
+    // module is the box around its turned corners (exact at multiples of 90
+    // degrees). The QR used to be drawn upright whatever the Rotation.
+    alpha := Rotation / 10 * pi / 180.0;
+    orgin.x := FLeft + squareWidth * QRCode.Columns div 2;
+    orgin.y := FTop + squareHeight * QRCode.Rows div 2;
     for Row := 0 to QRCode.Rows - 1 do
     begin
       for Column := 0 to QRCode.Columns - 1 do
@@ -3265,9 +3284,28 @@ begin
         // Solo los oscuros: el fondo ya esta puesto.
         if (isBlack) then
         begin
-          meta.Pages[meta.CurrentPage].NewDrawObject(
-              FTop+Row*squareHeight,FLeft+Column*squareWidth,squareWidth,squareHeight,
-              integer(rpsRectangle),0,BrushColor,0,PenWidth,PenColor,'');
+          if Rotation = 0 then
+          begin
+            meta.Pages[meta.CurrentPage].NewDrawObject(
+                FTop+Row*squareHeight,FLeft+Column*squareWidth,squareWidth,squareHeight,
+                integer(rpsRectangle),0,BrushColor,0,PenWidth,PenColor,'');
+          end
+          else
+          begin
+            xadd := squareWidth * Column - squareWidth * QRCode.Columns div 2;
+            yadd := squareHeight * Row - squareHeight * QRCode.Rows div 2;
+            a := Corner(xadd, yadd);
+            b := Corner(xadd, yadd + squareHeight);
+            c := Corner(xadd + squareWidth, yadd + squareHeight);
+            d := Corner(xadd + squareWidth, yadd);
+            aleft := Min(Min(a.x, b.x), Min(c.x, d.x));
+            atop := Min(Min(a.y, b.y), Min(c.y, d.y));
+            aright := Max(Max(a.x, b.x), Max(c.x, d.x));
+            abottom := Max(Max(a.y, b.y), Max(c.y, d.y));
+            meta.Pages[meta.CurrentPage].NewDrawObject(
+                atop,aleft,aright-aleft,abottom-atop,
+                integer(rpsRectangle),0,BrushColor,0,PenWidth,PenColor,'');
+          end;
         end;
        end;
     end;
