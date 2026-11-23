@@ -952,7 +952,8 @@ Stop   = '2331112';
 // - Code128A and Code128B write the whole text in that code set (a character
 //   the set does not have is written as a space).
 // - Code128C writes the digits in pairs; a character that does not make a pair
-//   goes in code set B and the symbol switches back to C after it.
+//   goes in code set B (in code set A when it is a control character, which B
+//   does not have) and the symbol switches back to C after it.
 // - Code128 chooses the code sets that give the shortest symbol, switching
 //   between A, B and C as often as it pays off (GS1-128 data such as
 //   (00)...(10)L2511 needs C and B in the same symbol).
@@ -1057,7 +1058,7 @@ end;
 
 procedure EncodeFixed(aset: integer);
 var
- p, current: integer;
+ p, current, other: integer;
 begin
  current:=aset;
  p:=0;
@@ -1084,12 +1085,18 @@ begin
   end
   else
   begin
-   if current<>C128_SETB then
+   // A control character is in code set A only: written in B it was the value
+   // -1, an access violation reading the table of symbols
+   if ValueIn(C128_SETB,codes[p])>=0 then
+    other:=C128_SETB
+   else
+    other:=C128_SETA;
+   if current<>other then
    begin
-    SwitchTo(C128_SETB);
-    current:=C128_SETB;
+    SwitchTo(other);
+    current:=other;
    end;
-   p:=WriteAt(C128_SETB,p);
+   p:=WriteAt(other,p);
   end;
  end;
 end;
@@ -1989,8 +1996,11 @@ begin
   end
   else
   begin
+    // No latch here: EncodeBinary writes it (901, or 924 for a multiple of six
+    // bytes). Written here too, the symbol began 901 901 (or 901 924), and a
+    // reader of ZXing reads the second one as a byte: one more character, or
+    // garbage
     CurrentMode := dmBinary;
-    AddCodeword (BinaryCompaction);
   end;
 
   while i <= CodeLen do begin
@@ -2003,6 +2013,12 @@ begin
       dmNumeric :
         EncodeNumeric (i, CodeLen);
     end;
+    // The whole text written: no latch to a mode for nothing (after the last
+    // character nothing is good for the numeric or the text compaction, and it
+    // was a latch to the byte compaction, 901, before the padding: a reader of
+    // ZXing reads it as one more character, 0x84)
+    if i > CodeLen then
+      Break;
 
     if GoodForNumericCompaction (i, CodeLen, Count) then
     begin
@@ -2025,11 +2041,8 @@ begin
     end
     else
     begin
-     if CurrentMode<>dmBinary then
-     begin
-      AddCodeword (BinaryCompaction);
-      CurrentMode := dmBinary;
-     end;
+     // EncodeBinary writes the latch
+     CurrentMode := dmBinary;
     end;
   end;
 end;
