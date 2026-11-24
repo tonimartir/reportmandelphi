@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report Manager in JavaScript: the npm packages - Report Manager Docs</title>
+<meta name="description" content="The Report Manager engine in pure JavaScript for Node.js and the browser: the @reportman packages on npm, with no native code.">
+<link rel="canonical" href="https://reportman.es/doc/npm.html">
+<link rel="alternate" hreflang="en" href="https://reportman.es/doc/npm.html">
+<link rel="alternate" hreflang="es" href="https://reportman.es/doc/npmes.html">
+<link rel="alternate" hreflang="x-default" href="https://reportman.es/doc/npm.html">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="stylesheet" href="/doc/docs.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://reportman.es/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Documentation",
+      "item": "https://reportman.es/doc/index.html"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Report Manager in JavaScript: the npm packages",
+      "item": "https://reportman.es/doc/npm.html"
+    }
+  ]
+}
+</script>
+</head>
+<body class="doc">
+<header class="doc-top">
+<a class="doc-brand" href="/">Report Manager</a>
+<a class="doc-back" href="/">&larr; Back to site</a>
+</header>
+<div class="doc-layout">
+<div class="doc-nav-wrap">
+<input type="checkbox" id="docnav" class="doc-nav-cb">
+<label for="docnav" class="doc-nav-btn">Documentation menu</label>
+<nav class="doc-nav" aria-label="Documentation menu">
+<details class="doc-sec" open>
+<summary>Introduction</summary>
+<ul>
+<li><a href="/doc/index.html">Application description</a></li>
+<li><a href="/doc/requirements.html">Hardware and software requirements</a></li>
+<li><a href="/doc/features.html">Features</a></li>
+<li><a href="/docnet/index.html">.NET library</a></li>
+<li><a href="/doc/npm.html" class="current" aria-current="page">JavaScript engine (npm)</a></li>
+<li><a href="/doc/howitwork.html">Engine overview</a></li>
+<li><a href="/doc/interoperability.html">Interoperability and standards</a></li>
+<li><a href="/tutorial/index.html">Quick tutorial</a></li>
+<li><a href="/doc/success.html">Successful projects</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Installation</summary>
+<ul>
+<li><a href="/doc/installwin.html">Microsoft Windows</a></li>
+<li><a href="/doc/installlin.html">Linux desktop designer</a></li>
+<li><a href="/doc/installmac.html">macOS (Lazarus, Cocoa)</a></li>
+<li><a href="/doc/compileropts.html">Compilation options</a></li>
+<li><a href="/doc/delphicomp.html">Delphi</a></li>
+<li><a href="/doc/buildercomp.html">C++Builder</a></li>
+<li><a href="/doc/lazaruscomp.html">Lazarus / Free Pascal</a></li>
+<li><a href="/doc/axtivexcomp.html">ActiveX</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Other languages</summary>
+<ul>
+<li><a href="/doc/otherlang.html">Other languages</a></li>
+<li><a href="/doc/gnuc.html">GNU C</a></li>
+<li><a href="/doc/php.html">PHP</a></li>
+<li><a href="/doc/python.html">Python</a></li>
+<li><a href="/doc/python_bind.html">Python binding (reportman.py)</a></li>
+<li><a href="/doc/javascript.html">JavaScript</a></li>
+</ul>
+</details></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Linux printreptopdf</summary>
+<ul>
+<li><a href="/doc/linuxcomp.html">Linux printreptopdf</a></li>
+<li><a href="/doc/linuxprintreptopdf.html">printreptopdf command line</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/visualnetcomp.html">Visual Studio .NET</a></li>
+<li><a href="/doc/delphinetcomp.html">Delphi for .NET (deprecated)</a></li>
+<li><a href="/doc/kylixcomp.html">Kylix (deprecated)</a></li>
+<li><a href="/doc/installwebreport.html">ActiveX IE plugin (deprecated)</a></li>
+<li><a href="/doc/deploy.html">Deploying Report Manager</a></li>
+<li><a href="/doc/installserver.html">Report Manager Server</a></li>
+<li><a href="/doc/dotnetport.html">.NET library setup</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>TCP Report Server</summary>
+<ul>
+<li><a href="/doc/serverintro.html">Introduction</a></li>
+<li><a href="/doc/serverserver.html">Report server</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Report client</summary>
+<ul>
+<li><a href="/doc/serverclient.html">Report client</a></li>
+<li><a href="/doc/serverclientcustom.html">Custom client</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/serverconfig.html">Configuration</a></li>
+<li><a href="/doc/serversmp.html">Multiprocessor support</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Web Report Server</summary>
+<ul>
+<li><a href="/doc/webserverintro.html">Introduction</a></li>
+<li><a href="/doc/webserverinstall.html">Installation</a></li>
+<li><a href="/doc/webserveroperations.html">Operations</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Basic report design</summary>
+<ul>
+<li><a href="/doc/openingdata.html">Opening the dataset</a></li>
+<li><a href="/doc/droppingfields.html">Dropping fields</a></li>
+<li><a href="/doc/pageheader.html">Page header and footer</a></li>
+<li><a href="/doc/reportheader.html">Subreport header and summary</a></li>
+<li><a href="/doc/groupheader.html">Group header and footer</a></li>
+<li><a href="/doc/pagesetup.html">Page setup and print options</a></li>
+<li><a href="/doc/reportgrid.html">Report grid</a></li>
+<li><a href="/doc/preferences.html">Designer preferences</a></li>
+<li><a href="/doc/usingcompo.html">Components in Delphi/Kylix/Builder</a></li>
+<li><a href="/doc/commandline.html">Command line tools</a></li>
+<li><a href="/doc/replibraries.html">Report libraries</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Advanced report design</summary>
+<ul>
+<li><a href="/doc/repparams.html">Using report parameters</a></li>
+<li><a href="/doc/linkedquerys.html">Linked queries</a></li>
+<li><a href="/doc/childsubreports.html">Child subreports</a></li>
+<li><a href="/doc/labels.html">Printing labels</a></li>
+<li><a href="/doc/externalsec.html">Report files sharing sections</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>Expression evaluator</summary>
+<ul>
+<li><a href="/doc/exevaluator.html">Expression evaluator</a></li>
+<li><a href="/doc/drawfunctions.html">Draw functions</a></li>
+</ul>
+</details></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>HTML and interpolation</summary>
+<ul>
+<li><a href="/doc/htmlformat.html">HTML and interpolation</a></li>
+<li><a href="/doc/htmloutput.html">Export to HTML</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/barcodes.html">Barcode printing</a></li>
+<li><a href="/doc/teechart.html">TeeChart support</a></li>
+<li><a href="/doc/internatsupport.html">International support</a></li>
+<li><a href="/doc/bidi_behavior.html">Bidirectional text and complex scripts</a></li>
+<li><a href="/doc/compsiterep.html">Composite reports</a></li>
+<li><a href="/doc/dotmatrix.html">Dot matrix and POS devices</a></li>
+<li><a href="/doc/openingdatatrouble.html">Database access information</a></li>
+<li><a href="/doc/formfilling.html">Form filling</a></li>
+<li><a href="/doc/customoutput.html">Custom text output</a></li>
+<li><a href="/doc/inmemorydata.html">In memory datasets</a></li>
+<li><a href="/doc/parallel.html">Parallel unions</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Component reference</summary>
+<ul>
+<li><a href="/doc/refcommon.html">Common properties</a></li>
+<li><a href="/doc/refcommontext.html">Text components</a></li>
+<li class="has-sub"><details class="doc-sub">
+<summary>TRpReport</summary>
+<ul>
+<li><a href="/doc/refreport.html">TRpReport</a></li>
+<li><a href="/doc/refparameters.html">Report parameters (TRpParamList)</a></li>
+<li><a href="/doc/refdatainfo.html">Connection &amp; dataset collections</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/refsubreport.html">TRpSubReport</a></li>
+<li><a href="/doc/refsection.html">TRpSection</a></li>
+<li><a href="/doc/reflabel.html">TRpLabel</a></li>
+<li><a href="/doc/refexpression.html">TRpExpression</a></li>
+<li><a href="/doc/refdraw.html">TRpShape</a></li>
+<li><a href="/doc/refimage.html">TRpImage</a></li>
+<li><a href="/doc/refchart.html">TRpChart</a></li>
+<li><a href="/doc/refbarcode.html">TRpBarcode</a></li>
+<li><a href="/doc/refdatabaseinfo.html">Database connections</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Developer</summary>
+<ul>
+<li class="has-sub"><details class="doc-sub">
+<summary>License questions</summary>
+<ul>
+<li><a href="/doc/licensequestions.html">License questions</a></li>
+<li><a href="/doc/license.html">MPL 1.1 full text</a></li>
+</ul>
+</details></li>
+<li><a href="/doc/translation.html">Translating Report Manager</a></li>
+<li><a href="/doc/building.html">Building binaries and tools</a></li>
+<li><a href="/doc/devdriver.html">Driver architecture</a></li>
+<li><a href="/doc/pdfoutput.html">PDF output implementation</a></li>
+<li><a href="/doc/units.html">Source code units</a></li>
+<li><a href="/doc/devnotes.html">Developer notes</a></li>
+</ul>
+</details>
+<details class="doc-sec">
+<summary>Release notes</summary>
+<ul>
+<li><a href="/doc/whatisnew.html">What is new</a></li>
+<li><a href="/doc/faq.html">F.A.Q.</a></li>
+<li><a href="/doc/knownissues.html">Known issues (deprecated)</a></li>
+</ul>
+</details>
+</nav>
+</div>
+<main class="doc-main">
+<nav class="doc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/doc/index.html">Documentation</a> &rsaquo; <span>Report Manager in JavaScript: the npm packages</span></nav>
+<h1>Report Manager in JavaScript: the npm packages</h1>
+<p><a href="npmes.html" hreflang="es" lang="es">Esta p&aacute;gina en espa&ntilde;ol</a></p>
+
+<p>The <code>@reportman/*</code> packages on npm are the Report Manager engine written in
+<b>JavaScript</b>: they open a <code>.rep</code> report, lay it out and write its PDF with no native
+binaries, no WebAssembly, no Docker and no operating-system dependencies. They run in
+<b>Node.js</b> and in the <b>browser</b>, and they are a translation of the .NET engine of the same
+release: the two are meant to give the same output for the same report.</p>
+
+<p class="doc-note"><b>Preview.</b> This is the 4.1.0 preview, published under the npm tag
+<code>next</code> (<code>npm install @reportman/node@next</code>). <b>The API may still change</b>
+before the final 4.1.0, so pin the exact version you install if you build on it now.</p>
+
+<h2>Requirements</h2>
+
+<p><b>Node 22.12 or later.</b> The packages are ES modules and there is no CommonJS build; a
+CommonJS program loads them with <code>require()</code>, which Node supports for ES modules. In the
+browser they need no bundler plugin: they are plain JavaScript.</p>
+
+<h2>The two steps: describe the parameters, then run</h2>
+
+<p>A report is run in two steps, as in the other engines. First you ask it what parameters it has,
+so your program (or your user) can fill them in; then you run it with their values. The host gives
+the engine the report bytes, the data access and the fonts &mdash; the engine itself does no I/O.</p>
+
+<pre><code>import { writeFileSync } from 'node:fs';
+import { openReport, sqlite } from '@reportman/node';
+
+const report = await openReport('invoices.rep', {
+  connections: { SAMPLES: sqlite('samples.db') },
+  fonts: {}, // the TrueType fonts of the system; without it, the 14 standard PDF fonts
+});
+
+// Step 1: what the report asks for
+console.log(await report.describeParameters());
+
+// Step 2: run it with their values
+writeFileSync('invoices.pdf', await report.executeToPdf({ FIRST_ORDER: 7, LAST_ORDER: 9 }));</code></pre>
+
+<h2>From the command line, and without writing code</h2>
+
+<p><code>@reportman/node</code> installs <b><code>reportman-pdf</code></b>, which does the same two
+steps from a shell:</p>
+
+<pre><code>npm install @reportman/node@next
+npx reportman-pdf invoices.rep --describe --sqlite SAMPLES=samples.db
+npx reportman-pdf invoices.rep -o invoices.pdf --sqlite SAMPLES=samples.db -paramFIRST_ORDER=7 -paramLAST_ORDER=9</code></pre>
+
+<p>And to see the sample reports running without installing anything or writing a line of code,
+<code>@reportman/server</code> serves them with its own console and API explorer:</p>
+
+<pre><code>npx @reportman/server --samples</code></pre>
+
+<p>It writes the samples and their database into <code>./reportman-data</code>, prints the console
+key and listens on <code>http://127.0.0.1:8080/</code>. The explorer runs each sample to PDF,
+metafile, text or CSV, and shows the same call for curl, PowerShell, JavaScript, C# and Delphi.</p>
+
+<h2>Databases</h2>
+
+<p>The engine reads its data through a driver package, one per backend, with the same behaviour as
+the .NET providers. Install the one you need next to <code>@reportman/node</code>:</p>
+
+<table>
+<tr><th>Database</th><th>Package</th></tr>
+<tr><td>PostgreSQL</td><td><code>@reportman/driver-postgres</code></td></tr>
+<tr><td>MySQL and MariaDB</td><td><code>@reportman/driver-mysql</code></td></tr>
+<tr><td>Microsoft SQL Server</td><td><code>@reportman/driver-mssql</code></td></tr>
+<tr><td>Firebird</td><td><code>@reportman/driver-firebird</code></td></tr>
+<tr><td>Reportman DB Agent, through the Hub</td><td><code>@reportman/driver-http</code></td></tr>
+</table>
+
+<p>SQLite needs no driver: <code>@reportman/node</code> reads it with Node's own
+<code>node:sqlite</code>. The Agent driver is the only one that also works in the browser, because
+it talks HTTP to the Reportman DB Agent through the Hub instead of opening a
+database connection itself.</p>
+
+<h2>Reports saved as XML, and reports saved as DFM</h2>
+
+<p>As in the .NET engine, the readers take <b>XML</b> <code>.rep</code> files, plain or compressed,
+and those need nothing extra. A report that Delphi saved in a <b>DFM</b> form needs the optional
+<code>@reportman/dfm</code> package, which converts it to the XML Delphi writes for it;
+<code>@reportman/node</code> uses it on its own when it is installed. The other way out is to save
+the report again as XML, from the designer or with <code>reptotxt -xml</code>.</p>
+
+<h2>Try it, and the reference</h2>
+
+<ul>
+  <li><a href="/demo/">The live demo</a> &mdash; the sample reports run in your own browser, with
+      these same packages: the form of the parameters, the preview of the pages and the PDF.</li>
+  <li><a href="https://github.com/tonimartir/reportman/tree/master/typescript/examples" target="_blank" rel="noopener">The
+      examples gallery</a> &mdash; the eleven sample reports with a picture of their first page,
+      their <code>.rep</code> files, the PDFs the engine makes of them and how to run each one.</li>
+  <li><a href="https://www.npmjs.com/package/@reportman/node" target="_blank" rel="noopener"><code>@reportman/node</code>
+      on npm</a> &mdash; and from there every other package of the set.</li>
+  <li><a href="https://github.com/tonimartir/reportman/tree/master/typescript" target="_blank" rel="noopener">The
+      engine in TypeScript</a> &mdash; what each package does, the rules it is built under and how
+      it is tested against the .NET and Delphi engines. Each package has its own README with its
+      API.</li>
+</ul>
+
+<p>The report files are the same ones the Delphi and .NET designers open, so a report designed with
+either of them runs here unchanged. See also <a href="dotnetport.html">the .NET library</a> and
+<a href="commandline.html">the command line tools</a>.</p>
+</main>
+</div>
+<footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; REPORTMAN AI, S.L. &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
+</body>
+</html>

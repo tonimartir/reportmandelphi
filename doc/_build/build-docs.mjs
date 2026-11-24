@@ -23,12 +23,34 @@ try {
   if (fs.existsSync(mp)) META_OVERRIDES = JSON.parse(fs.readFileSync(mp, 'utf-8'));
 } catch (e) { console.log('! page-meta.json: ' + e.message); }
 
+// THE SPANISH TWINS of /doc/. The documentation is in English, so this is not a
+// translated site: it is a page that has a twin, and the pair has to tell Google
+// so (rel=alternate hreflang in both, as the pages of the root do). The twin gets
+// lang="es" --a Spanish page that says lang="en" is worse than no twin at all--
+// and the chrome around it in Spanish; the sidebar stays in English, because the
+// pages it points at are in English.
+const TWINS = {
+  '/doc/npm.html': '/doc/npmes.html',
+};
+const TWIN_OF = Object.fromEntries(Object.entries(TWINS).map(([en, es]) => [es, en]));
+const LANG_OF = webPath => (TWIN_OF[webPath] ? 'es' : 'en');
+
+const CHROME = {
+  en: { suffix: 'Report Manager Docs', menu: 'Documentation menu',
+        back: '&larr; Back to site', home: 'Home', docs: 'Documentation',
+        license: 'MPL License' },
+  es: { suffix: 'Documentación de Report Manager', menu: 'Menú de documentación',
+        back: '&larr; Volver al sitio', home: 'Inicio', docs: 'Documentación',
+        license: 'Licencia MPL' },
+};
+
 const NAV = [
   ['Introduction', [
     ['Application description', '/doc/index.html'],
     ['Hardware and software requirements', '/doc/requirements.html'],
     ['Features', '/doc/features.html'],
     ['.NET library', '/docnet/index.html'],
+    ['JavaScript engine (npm)', '/doc/npm.html'],
     ['Engine overview', '/doc/howitwork.html'],
     ['Interoperability and standards', '/doc/interoperability.html'],
     ['Quick tutorial', '/tutorial/index.html'],
@@ -217,7 +239,8 @@ function navHtmlFrom(sections, currentPath, menuLabel){
 function extractTitle(html, fallback){
   const m = html.match(/<title>([\s\S]*?)<\/title>/i);
   let t = m ? m[1].replace(/\s+/g,' ').trim() : '';
-  t = t.replace(/\s*-\s*Report Manager Docs\s*$/i, ''); // drop our own suffix on re-runs
+  // drop our own suffix on re-runs, in either language
+  t = t.replace(/\s*-\s*(?:Report Manager Docs|Documentaci\u00f3n de Report Manager)\s*$/i, '');
   return t || fallback;
 }
 
@@ -297,7 +320,8 @@ function makeDescription(existing, body, title){
   return d || `Report Manager documentation: ${title}.`;
 }
 
-function render({title, desc, canonicalPath, nav, crumbs, content, extraLd}){
+function render({title, desc, canonicalPath, nav, crumbs, content, extraLd, lang = 'en', alternates = null}){
+  const ch = CHROME[lang] || CHROME.en;
   const crumb = `<nav class="doc-crumb" aria-label="Breadcrumb">` +
     crumbs.map((c,i)=> (i===crumbs.length-1 || !c.href) ? `<span>${escText(c.name)}</span>` : `<a href="${c.href}">${escText(c.name)}</a>`).join(' &rsaquo; ') +
     `</nav>`;
@@ -307,15 +331,22 @@ function render({title, desc, canonicalPath, nav, crumbs, content, extraLd}){
   };
   let ld = `<script type="application/ld+json">\n${JSON.stringify(breadcrumbLd, null, 2)}\n</script>`;
   for (const e of extraLd) ld += `\n<script type="application/ld+json">\n${e}\n</script>`;
+  // Both twins carry the same three links, the English one as x-default: that is
+  // what makes Google serve the Spanish page to a Spanish reader instead of
+  // treating it as a duplicate of the English one.
+  const alt = alternates ? `<link rel="alternate" hreflang="en" href="https://reportman.es${alternates.en}">
+<link rel="alternate" hreflang="es" href="https://reportman.es${alternates.es}">
+<link rel="alternate" hreflang="x-default" href="https://reportman.es${alternates.en}">
+` : '';
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escText(title)} - Report Manager Docs</title>
+<title>${escText(title)} - ${ch.suffix}</title>
 <meta name="description" content="${escAttr(desc)}">
 <link rel="canonical" href="https://reportman.es${canonicalPath}">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+${alt}<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="stylesheet" href="/doc/docs.css">
 ${ld}
@@ -323,7 +354,7 @@ ${ld}
 <body class="doc">
 <header class="doc-top">
 <a class="doc-brand" href="/">Report Manager</a>
-<a class="doc-back" href="/">&larr; Back to site</a>
+<a class="doc-back" href="/">${ch.back}</a>
 </header>
 <div class="doc-layout">
 ${nav}
@@ -333,7 +364,7 @@ ${crumb}
 ${content}
 </main>
 </div>
-<footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; REPORTMAN AI, S.L. &middot; <a href="/doc/license.html">MPL License</a> &middot; <a href="/">reportman.es</a></footer>
+<footer class="doc-foot">&copy; 1994&ndash;2026 Toni Martir &middot; REPORTMAN AI, S.L. &middot; <a href="/doc/license.html">${ch.license}</a> &middot; <a href="/">reportman.es</a></footer>
 </body>
 </html>
 `;
@@ -348,9 +379,16 @@ function buildPage(absFile, webPath, opts){
   const content = transformContent(raw, title);
   const desc = ov.desc || makeDescription(extractDescription(html), content, title);
   const extraLd = extractLdJson(html);
-  const nav = navHtmlFrom(opts.sections, webPath, opts.menuLabel);
-  const crumbs = opts.crumbs(title, webPath);
-  fs.writeFileSync(absFile, render({title, desc, canonicalPath: webPath, nav, crumbs, content, extraLd}), 'utf-8');
+  const lang = LANG_OF(webPath);
+  // A twin is not in NAV --the sidebar has one entry per subject, not per
+  // language--, so it marks the entry of its English twin as the current one.
+  const navPath = TWIN_OF[webPath] || webPath;
+  const menuLabel = lang === 'en' ? opts.menuLabel : CHROME[lang].menu;
+  const en = TWIN_OF[webPath] || webPath;
+  const alternates = TWINS[en] ? {en, es: TWINS[en]} : null;
+  const nav = navHtmlFrom(opts.sections, navPath, menuLabel);
+  const crumbs = opts.crumbs(title, webPath, lang);
+  fs.writeFileSync(absFile, render({title, desc, canonicalPath: webPath, nav, crumbs, content, extraLd, lang, alternates}), 'utf-8');
   return {file: webPath, title, bodyLen: content.length, extraLd: extraLd.length};
 }
 
@@ -384,17 +422,17 @@ const TUTDIR = path.join(WEBROOT, 'tutorial'); // /tutorial/
 const A = p => 'https://reportman.es' + p;
 const DOCS_OPTS = {
   sections: NAV, menuLabel: 'Documentation menu',
-  crumbs: (title, webPath) => [
-    {name:'Home', href:'/', item:A('/')},
-    {name:'Documentation', href:'/doc/index.html', item:A('/doc/index.html')},
+  crumbs: (title, webPath, lang = 'en') => [
+    {name:CHROME[lang].home, href:'/', item:A('/')},
+    {name:CHROME[lang].docs, href:'/doc/index.html', item:A('/doc/index.html')},
     {name:title, item:A(webPath)},
   ],
 };
 const TUT_OPTS = {
   sections: TUT_NAV, menuLabel: 'Tutorial menu',
-  crumbs: (title, webPath) => [
-    {name:'Home', href:'/', item:A('/')},
-    {name:'Documentation', href:'/doc/index.html', item:A('/doc/index.html')},
+  crumbs: (title, webPath, lang = 'en') => [
+    {name:CHROME[lang].home, href:'/', item:A('/')},
+    {name:CHROME[lang].docs, href:'/doc/index.html', item:A('/doc/index.html')},
     {name:'Quick tutorial', href:'/tutorial/index.html', item:A('/tutorial/index.html')},
     {name:title, item:A(webPath)},
   ],

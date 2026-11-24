@@ -94,6 +94,11 @@
       </ul>
       <p>La aplicación está firmada con un Developer ID de Apple y notarizada por Apple: se abre con un doble clic. Incluye OpenSSL 3 para HTTPS (el inicio de sesión, los asistentes de IA y el driver Reportman DB Agent). Los paquetes de Lazarus y el diseñador también se compilan desde el código fuente: consulte <a href="doc/installmac.html">macOS (Lazarus, Cocoa)</a> (en inglés).</p>
 
+      <h2>npm</h2>
+      <p>El motor funciona también en <b>JavaScript</b>, sin código nativo, en Node.js y en el navegador. Es una versión preliminar, publicada con la etiqueta de npm <code>next</code>:</p>
+      <pre><code>npm install @reportman/node@next</code></pre>
+      <p>Los paquetes están en <a href="https://www.npmjs.com/package/@reportman/node" target="_blank" rel="noopener">npm</a>; consulte <a href="doc/npmes.html">Report Manager en JavaScript: los paquetes de npm</a>. Para ejecutar los informes de ejemplo sin instalar nada, <code>npx @reportman/server --samples</code>.</p>
+
       <h2>Servidor web de informes en Docker</h2>
       <p>El servidor web de informes también se publica como imagen Docker, <a href="https://hub.docker.com/r/tonimartir/reportman-web" target="_blank" rel="noopener">tonimartir/reportman-web</a>. Consulte <a href="webserveres.html">Servidor web</a>.</p>
 
