@@ -56,12 +56,12 @@
       <section class="hero">
         <div class="hero-inner">
           <h1>Servidores de Report Manager</h1>
-          <p class="tagline">Tres formas de servir informes. Se diferencian en <em>qui&eacute;n dise&ntilde;a los informes</em> y en <em>c&oacute;mo se integran</em>.</p>
+          <p class="tagline">Tres formas de servir informes, cuatro servidores que instalar. Se diferencian en <em>qui&eacute;n dise&ntilde;a los informes</em> y en <em>c&oacute;mo se integran</em>.</p>
         </div>
       </section>
 
       <section class="page">
-        <p>Los tres ejecutan los mismos ficheros <code>.rep</code>, dise&ntilde;ados con cualquier
+        <p>Los cuatro ejecutan los mismos ficheros <code>.rep</code>, dise&ntilde;ados con cualquier
         dise&ntilde;ador de Report Manager. Empiece por lo que necesite hacer con ellos &mdash; y puede
         usar m&aacute;s de uno.</p>
 
@@ -86,12 +86,30 @@
             <td>sus clientes son <strong>aplicaciones de escritorio</strong> y quiere que el servidor
                 haga el trabajo: multiproceso, sin web por medio.</td>
           </tr>
+          <tr>
+            <td><a href="doc/npmes.html"><strong><code>@reportman/server</code></strong><br>(npm)</a></td>
+            <td>La misma API de informes, en JavaScript puro, dentro de su propia aplicaci&oacute;n Node.js.</td>
+            <td>trabaja en <strong>Node.js</strong> y quiere la API de informes <strong>en su propio
+                proceso</strong> &mdash;con <code>node:http</code>, Express o Fastify&mdash;, sin
+                contenedor y sin binario nativo. Habla la API de Reportman Server, y no
+                dise&ntilde;a.</td>
+          </tr>
         </table>
 
-        <h2>Los dos servidores web, uno al lado del otro</h2>
-        <p>Se confunden a menudo porque los dos son &laquo;un servidor de informes&raquo; y los dos
-        pueden correr en Docker. La diferencia no es la edad: es si los informes se
-        <em>dise&ntilde;an</em> ah&iacute;.</p>
+        <h2>Tres motores, las mismas p&aacute;ginas</h2>
+        <p>Debajo de los servidores no hay un motor, sino <strong>tres implementaciones</strong> de
+        &eacute;l, escritas para dar la <em>misma salida con el mismo informe</em>: la nativa en
+        Delphi y Free Pascal (el dise&ntilde;ador, <code>printreptopdf</code>, los servidores web y
+        TCP), la de <a href="docnet/index.html">.NET</a> y la de
+        <a href="doc/npmes.html">JavaScript</a>, la de los paquetes de npm. Los informes de ejemplo
+        se comprueban entre los tres, hasta los bytes del PDF donde las fuentes lo permiten.
+        As&iacute; que elegir servidor &mdash;y motor&mdash; es elegir <em>d&oacute;nde corre el
+        trabajo</em>, nunca qu&eacute; aspecto tiene el informe.</p>
+
+        <h2>Los servidores web, uno al lado del otro</h2>
+        <p>Se confunden con facilidad, porque los tres son &laquo;un servidor de informes&raquo; y dos
+        de ellos corren en Docker. La diferencia no es la edad: es si los informes se
+        <em>dise&ntilde;an</em> ah&iacute;, y de qu&eacute; est&aacute; hecho el servidor.</p>
         <ul>
           <li>El <strong>servidor de informes web (<code>repwebexe</code>)</strong> es el veterano: un
           binario nativo para Windows y Linux, desplegado cl&aacute;sicamente como <strong>CGI</strong>
@@ -102,6 +120,14 @@
           almac&eacute;n de informes y un <strong>dise&ntilde;ador en el navegador</strong> con
           copiloto de IA, m&aacute;s su API. Es donde los informes nacen y cambian.
           <a href="serveres.html">Detalles</a>.</li>
+          <li><strong><code>@reportman/server</code></strong> es el de JavaScript: el motor y la
+          API de informes como paquetes de npm, sin c&oacute;digo nativo, montados dentro de su propia
+          aplicaci&oacute;n Node.js o ejecutados por su cuenta con
+          <code>npx @reportman/server --samples</code>. Habla la <em>misma API</em> que Reportman
+          Server y lee la <em>misma carpeta de datos</em>, as&iacute; que una carpeta pasa de uno al
+          otro &mdash;pero tampoco dise&ntilde;a: no hay almac&eacute;n con usuarios, grupos y
+          permisos, ni copiloto. Es una versi&oacute;n preliminar, con la etiqueta de npm
+          <code>next</code>. <a href="doc/npmes.html">Detalles</a>.</li>
         </ul>
         <p><strong>Puede usar los dos, y muchas instalaciones lo har&aacute;n.</strong> Si viene de
         <code>repwebexe</code>, no tiene que cambiar nada: sigue sirviendo exactamente lo que sirve hoy.

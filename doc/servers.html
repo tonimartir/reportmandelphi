@@ -56,12 +56,12 @@
       <section class="hero">
         <div class="hero-inner">
           <h1>Report Manager servers</h1>
-          <p class="tagline">Three ways to serve reports. They differ in <em>who designs the reports</em> and in <em>how you integrate them</em>.</p>
+          <p class="tagline">Three ways to serve reports, four servers to install. They differ in <em>who designs the reports</em> and in <em>how you integrate them</em>.</p>
         </div>
       </section>
 
       <section class="page">
-        <p>All three run the same <code>.rep</code> files, designed with any Report Manager designer.
+        <p>All four run the same <code>.rep</code> files, designed with any Report Manager designer.
         Start from what you need to do with them &mdash; and you can run more than one.</p>
 
         <table>
@@ -85,11 +85,29 @@
             <td>your clients are <strong>desktop applications</strong> and you want the server to do
                 the work: multiprocessor, no web in the middle.</td>
           </tr>
+          <tr>
+            <td><a href="doc/npm.html"><strong><code>@reportman/server</code></strong><br>(npm)</a></td>
+            <td>The same reports API, in pure JavaScript, inside your own Node.js application.</td>
+            <td>you work in <strong>Node.js</strong> and want the reports API <strong>in your own
+                process</strong> &mdash; with <code>node:http</code>, Express or Fastify &mdash; with
+                no container and no native binary. It speaks the API of Reportman Server, and it does
+                not design.</td>
+          </tr>
         </table>
 
-        <h2>The two web servers, side by side</h2>
-        <p>They are often confused because both are &laquo;a report server&raquo; and both can run in
-        Docker. The difference is not age: it is whether reports are <em>designed</em> there.</p>
+        <h2>Three engines, the same pages</h2>
+        <p>Under the servers there is not one engine but <strong>three implementations</strong> of it,
+        written to give the <em>same output for the same report</em>: the native one in Delphi and
+        Free Pascal (the designer, <code>printreptopdf</code>, the web and TCP servers), the
+        <a href="docnet/index.html">.NET</a> one, and the <a href="doc/npm.html">JavaScript</a> one
+        of the npm packages. The sample reports are checked between the three, down to the bytes of
+        the PDF where the fonts allow it. So choosing a server &mdash; and an engine &mdash; is
+        choosing <em>where the work runs</em>, never what the report looks like.</p>
+
+        <h2>The web servers, side by side</h2>
+        <p>They are easily confused, because all three are &laquo;a report server&raquo; and two of them
+        run in Docker. The difference is not age: it is whether reports are <em>designed</em> there,
+        and what the server is made of.</p>
         <ul>
           <li><strong>Web Report Server (<code>repwebexe</code>)</strong> is the veteran: a native
           binary for Windows and Linux, classically deployed as <strong>CGI</strong> behind Apache or
@@ -100,6 +118,13 @@
           report store and a <strong>designer in the browser</strong> with an AI copilot, plus its
           API. It is where reports are born and changed.
           <a href="server.html">Details</a>.</li>
+          <li><strong><code>@reportman/server</code></strong> is the JavaScript one: the engine
+          and the reports API as npm packages, with no native code, mounted inside your own Node.js
+          application or run on its own with <code>npx @reportman/server --samples</code>. It speaks
+          the <em>same API</em> as Reportman Server and reads the <em>same data folder</em>, so a
+          folder moves between the two &mdash; but it does not design either: no store with users,
+          groups and permissions, and no copilot. It is a preview, under the npm tag
+          <code>next</code>. <a href="doc/npm.html">Details</a>.</li>
         </ul>
         <p><strong>You can run both, and many installations will.</strong> If you come from
         <code>repwebexe</code>, nothing has to change: it keeps serving exactly what it serves today.

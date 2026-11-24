@@ -287,6 +287,10 @@ npx reportman-pdf invoices.rep -o invoices.pdf --sqlite SAMPLES=samples.db -para
 key and listens on <code>http://127.0.0.1:8080/</code>. The explorer runs each sample to PDF,
 metafile, text or CSV, and shows the same call for curl, PowerShell, JavaScript, C# and Delphi.</p>
 
+<p>That server speaks the same API as Reportman Server and reads the same data folder, but it
+does not design reports: see <a href="/servers.html">the four Report Manager servers side by
+side</a>.</p>
+
 <h2>Databases</h2>
 
 <p>The engine reads its data through a driver package, one per backend, with the same behaviour as
