@@ -928,6 +928,40 @@ de `@reportman/lib`), usuarios, grupos y sesiones (la consola tiene una sola cla
 esquemas SQL de las conexiones y el puente de la IA; y pasar las fotos de contrato
 (`openapi.v1.json`) contra Node.
 
+**Estado (25-11-2026, el encargo «el diseñador web, público y sin fricción para Node»; Toni: «es mi
+decisión que el designer sea público, pero no la api del asistente AI»)**:
+
+- **golden-http** (en lugar de las fotos de contrato): las mismas 113 peticiones a Reportman.Server y a
+  Node, en orden, sobre una carpeta de datos nueva con los ejemplos. Las respuestas de C# las graba una
+  prueba de Reportman.Server (`GoldenHttpRecorder`, en el repositorio privado, con
+  `REPORTMAN_GOLDEN_HTTP`) en `typescript/packages/reportman-designer-server/test/golden-http` del
+  repositorio C#, en en-US y con la carpeta de datos y la fecha normalizadas; las pruebas de Node las
+  repiten y comparan (C# es la referencia). Cubre la API de informes, la consola común y el protocolo
+  del diseñador; el README lista lo que no se compara (rutas solo de C#: ficheros JSON, renombrar,
+  usuarios, auditoría, esquemas de conexión, IA) y lo que solo tiene Node (`parameters/describe`,
+  `console/status`, el 501 de `text`). Salieron fallos en los dos lados, corregidos: en Node, `dataPath`
+  en `health`, la hora de los ficheros a 100 ns como .NET, el valor de un parámetro como
+  `Variant.ToString` (una fecha salía como texto de JavaScript) y la cabecera de una descarga como la
+  escribe ASP.NET; en C#, un cuerpo que no es JSON daba 500 con la excepción (ahora 400) y los nombres
+  de los parámetros de un cuerpo JSON se comparaban exactos (en la query, en cualquier caja).
+- **El escritor XML** en `@reportman/lib` (`writeReportXml`, `exportSubReport`, `importReport`,
+  `updateReferences`, `convertToDotNet`): una adaptación del `ReportWriter` de C#, idéntica byte a byte en
+  343 informes del repositorio (más los de este repositorio en local), con la herramienta `golden-cs`
+  (`write-xml`, `json-to-xml`, `export-subreport`, `import-report`). Diferencias que quedan: los bytes
+  zlib de un XMLZlib y un parámetro de texto con forma de fecha que C# convierte al leer el JSON. La
+  lista de defectos de C# que encontró está en la sección 7.1 (pendientes de Toni).
+- **`@reportman/designer-server`**: el protocolo del diseñador de Reportman.Server (`ReadReport` con sus
+  operaciones, `WriteReport`, `ExecuteReport`, `SqlSchema`) sobre `@reportman/server`, con el JSON del
+  informe que manda C# (todos sus miembros), la caché de columnas, el esquema local `dbxschemas/` y el
+  catálogo de SQLite (como C#), PostgreSQL, MySQL, SQL Server y Firebird (sin servidores en las pruebas).
+  Seguridad: un gancho `authorize(check, request)` con las tres comprobaciones de C# (ejecutar un alias,
+  diseñar un alias, ser diseñador) y, sin él, solo responde a la propia máquina; nunca abre una conexión
+  que el anfitrión no define, `ADOCONNECTIONSTRING` no cambia la conexión y los informes no leen el disco.
+  Sirve también el elemento, Monaco y una página con el diseñador en `/designer/?report=`.
+  `examples/designer-express`: el diseñador dentro de una aplicación Express.
+- Las rutas de la IA (`ToXml`, `FromXml`, `SqlColumns`, `AiContext`, `/api/ai`) no están: responden 404
+  y el diseñador va con `no-ai`.
+
 ### F7 — El diseñador web en npm · 3-4 semanas
 
 Enlaza con la F8 de `server-componentes-plan.md`.
@@ -942,6 +976,19 @@ Enlaza con la F8 de `server-componentes-plan.md`.
 - **Lo nuevo**: vista previa, evaluación y comprobación de sintaxis **en el navegador**, con
   `reportman-engine` + `reportman-canvas`/`reportman-pdf`, sin ida y vuelta al servidor cuando los
   datos vienen de REST, del Agent o de memoria.
+
+**Estado (25-11-2026)**: el código del diseñador se fue al repositorio C# (MPL 2.0), en
+`typescript/designer`: un espacio de trabajo de Angular propio (no es un workspace de npm de
+`typescript/`, así que el motor sigue compilando sin Angular) con la biblioteca
+(`@reportman/ngx-designer`, sin publicar todavía) y el elemento `<reportman-designer>`. Entró como un
+commit nuevo, sin la historia privada, con los comentarios en inglés y sin menciones a clientes. El
+paquete npm del elemento es `@reportman/designer` (`typescript/packages/reportman-designer`, 2,6 MB:
+Monaco es una dependencia, no una copia, y las fuentes Roboto y Material Icons van dentro, sin Google
+Fonts). Con `no-ai` el diseñador no enseña nada de la IA (`DesignerHost.aiEnabled`). La CI y
+`release:next` compilan y prueban el espacio de trabajo. Reportman.Server compila la biblioteca desde
+aquí (un enlace y `preserveSymlinks`, para que el paquete lleve un solo Angular) y el despliegue de
+ReportmanFiscal no cambia. Lo de `reportman-designer-core` y la vista previa en el navegador siguen
+pendientes. Publicar es de Toni (`release:next`): 17 paquetes con estos dos nuevos.
 - Puerta: la licencia del diseñador (decisión 1 de aquel plan).
 
 ### Al final — Conversor DFM → XML: `reptotxt -xml` · 1-2 días
@@ -1208,6 +1255,32 @@ mostrar lo que solo cambia en un informe convertido). De los 76 que no se compar
 los dos motores (son casos de error a propósito), 14 necesitan fuentes con el driver estándar, 14
 fallan solo en Delphi (bases de datos que no tiene, uniones de tipos, un QR de versión 40) y 11
 solo en C# (el punto 8).
+
+**Defectos del escritor y del protocolo del diseñador en C#** (encontrados el 25-11-2026 al adaptar el
+escritor XML y el servidor del diseñador a TypeScript; TypeScript los reproduce para dar los mismos
+bytes, y ninguno está corregido: para decidir, Toni):
+
+1. El escritor guarda solo el mensaje de error del idioma actual de un parámetro (se pierden los demás),
+   y su getter compara la longitud del texto con el índice del idioma, no el número de líneas.
+2. Al leer, un subinforme hijo queda como su propio padre (`ChildSubReport.ParentSubReport =
+   ChildSubReport`): PARENTSUBREPORT se guarda con su propio nombre.
+3. Un parámetro SubstExpre pierde su valor al guardar (falta en el `switch` de VALUE).
+4. Una fecha anterior al 30-12-1899 se desplaza en cada guardado (se escribe `TotalDays`, no el valor
+   OLE: -700,3 → -699,7 → -698,3), y un parámetro de fecha negativa con hora pasa al día siguiente.
+5. Un texto de idioma vacío de una etiqueta se pierde al releer y los idiomas siguientes se desplazan.
+6. Guardar un fichero incrustado sin contenido da una referencia nula; uno con contenido no se puede
+   pasar a JSON (`MemoryStream`).
+7. `ExportSubReport`: quita todos los parámetros que tienen algún dataset; borra los nietos pero deja
+   CHILDSUBREPORT apuntando a ellos, así que el `.rep` exportado no se puede volver a leer («The given
+   key 'TRPSUBREPORT2' was not present in the dictionary»); puede borrar un dataset que comparte.
+8. `ImportReport`: la mezcla de datasets de un parámetro existente no hace nada; un dataset renombrado a
+   `_1` no se propaga; y las colisiones de nombres se detectan distinto si el destino se leyó de XML o de
+   JSON (con XML, `TRpSection0` no se detecta y se duplica).
+9. El servidor del diseñador convierte a .NET cada informe de Delphi que abre y guarda (`:X` → `@X`,
+   drivers, máscaras), y el setter del SQL borra su explicación.
+10. Tras pasar por JSON, `UpdateReferences` no repone PARENTSUBREPORT/PARENTSECTION, y las variantes
+    enteras vuelven como Long (Evaluate de un parámetro Integer dice `Int64`).
+11. `SubReport.DetailCount` es 1 en un subinforme con secciones pero sin detalle.
 
 ## 8. Riesgos
 
