@@ -2233,10 +2233,19 @@ begin
    memStream.Write(asize,sizeOf(asize));
 
 
-   efile.Stream.Position:=0;
-   asize:=efile.Stream.Size;
-   memStream.Write(asize,sizeOf(asize));
-   memStream.Write(efile.Stream.Memory^,asize);
+   // A file without contents (made by code) is written empty
+   if efile.Stream=nil then
+   begin
+    asize:=0;
+    memStream.Write(asize,sizeOf(asize));
+   end
+   else
+   begin
+    efile.Stream.Position:=0;
+    asize:=efile.Stream.Size;
+    memStream.Write(asize,sizeOf(asize));
+    memStream.Write(efile.Stream.Memory^,asize);
+   end;
   end;
   memStream.Position:=0;
   abufsource:=AllocMem(memStream.Size);

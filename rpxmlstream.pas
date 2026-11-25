@@ -56,6 +56,11 @@ procedure WritePropertyD(propname:Ansistring;propvalue:double;stream:TStream);
 procedure WritePropertyBool(propname:Ansistring;propvalue:Boolean;stream:TStream);
 procedure WritePropertyS(propname:Ansistring;propvalue:AnsiString;stream:TStream);
 procedure WritePropertyW(propname:Ansistring;propvalue:WideString;stream:TStream);
+// A text property: as WritePropertyS when the ANSI code page holds the text (the bytes older
+// versions write and read), else as WritePropertyW, so that no character is lost
+procedure WritePropertyT(propname:Ansistring;const propvalue:String;stream:TStream);
+// The text of a property written by WritePropertyT, WritePropertyS or the .Net engine
+function RpPropToString(const propvalue,proptype:AnsiString):String;
 procedure WritePropertyB(propname:Ansistring;propvalue:TStream;stream:TStream);
 procedure WriteReportXML(areport:TComponent;Stream:TStream);
 procedure ReadReportXML(areport:TComponent;Stream:TStream);
@@ -119,28 +124,28 @@ end;
 
 procedure WriteDatabaseInfoXML(dbinfo:TRpDatabaseInfoItem;Stream:TStream);
 begin
- WritePropertyS('ALIAS',AnsiString(dbinfo.Alias),Stream);
- WritePropertyS('NAME',AnsiString(dbinfo.Name),Stream);
- WritePropertyS('CONFIGFILE',AnsiString(dbinfo.Configfile),Stream);
+ WritePropertyT('ALIAS',dbinfo.Alias,Stream);
+ WritePropertyT('NAME',dbinfo.Name,Stream);
+ WritePropertyT('CONFIGFILE',dbinfo.Configfile,Stream);
  WritePropertyBool('LOADPARAMS',dbinfo.LoadParams,Stream);
  WritePropertyBool('LOADDRIVERPARAMS',dbinfo.LoadDriverParams,Stream);
  WritePropertyBool('LOGINPROMPT',dbinfo.LoginPrompt,Stream);
  WritePropertyI('DRIVER',Integer(dbinfo.Driver),Stream);
- WritePropertyS('REPORTTABLE',AnsiString(dbinfo.ReportTable),Stream);
- WritePropertyS('REPORTSEARCHFIELD',AnsiString(dbinfo.ReportSearchField),Stream);
- WritePropertyS('REPORTFIELD',AnsiString(dbinfo.ReportField),Stream);
- WritePropertyS('REPORTGROUPSTABLE',AnsiString(dbinfo.ReportGroupsTable),Stream);
+ WritePropertyT('REPORTTABLE',dbinfo.ReportTable,Stream);
+ WritePropertyT('REPORTSEARCHFIELD',dbinfo.ReportSearchField,Stream);
+ WritePropertyT('REPORTFIELD',dbinfo.ReportField,Stream);
+ WritePropertyT('REPORTGROUPSTABLE',dbinfo.ReportGroupsTable,Stream);
  WritePropertyW('ADOCONNECTIONSTRING',dbinfo.ADOConnectionString,Stream);
  WritePropertyI('DOTNETDRIVER',dbinfo.DotNetDriver,Stream);
- WritePropertyS('PROVIDERFACTORY',AnsiString(dbinfo.ProviderFactory),Stream);
+ WritePropertyT('PROVIDERFACTORY',dbinfo.ProviderFactory,Stream);
 
 end;
 
 procedure WriteDataInfoXML(dinfo:TRpDataInfoItem;Stream:TStream);
 begin
- WritePropertyS('ALIAS',AnsiString(dinfo.Alias),Stream);
- WritePropertyS('NAME',AnsiString(dinfo.Name),Stream);
- WritePropertyS('DATABASEALIAS',AnsiString(dinfo.DatabaseAlias),Stream);
+ WritePropertyT('ALIAS',dinfo.Alias,Stream);
+ WritePropertyT('NAME',dinfo.Name,Stream);
+ WritePropertyT('DATABASEALIAS',dinfo.DatabaseAlias,Stream);
  WritePropertyW('SQL',dinfo.SQL,Stream);
  if Trim(dinfo.SQLExplanation)<>'' then
   WritePropertyW('SQLEXPLANATION',dinfo.SQLExplanation,Stream);
@@ -151,20 +156,20 @@ begin
   WritePropertyI64('HUBSCHEMAID',dinfo.HubSchemaId,Stream);
  if dinfo.SchemaName<>'' then
   WritePropertyW('SCHEMANAME',dinfo.SchemaName,Stream);
- WritePropertyS('DATASOURCE',AnsiString(dinfo.DataSource),Stream);
- WritePropertyS('MYBASEFILENAME',AnsiString(dinfo.MyBaseFileName),Stream);
- WritePropertyS('MYBASEFIELDS',AnsiString(dinfo.MyBaseFields),Stream);
- WritePropertyS('MYBASEINDEXFIELDS',AnsiString(dinfo.MyBaseIndexFields),Stream);
- WritePropertyS('MYBASEMASTERFIELDS',AnsiString(dinfo.MyBaseMasterFields),Stream);
- WritePropertyS('BDEINDEXFIELDS',AnsiString(dinfo.BDEIndexFields),Stream);
- WritePropertyS('BDEINDEXNAME',AnsiString(dinfo.BDEIndexName),Stream);
- WritePropertyS('BDETABLE',AnsiString(dinfo.BDETable),Stream);
+ WritePropertyT('DATASOURCE',dinfo.DataSource,Stream);
+ WritePropertyT('MYBASEFILENAME',dinfo.MyBaseFileName,Stream);
+ WritePropertyT('MYBASEFIELDS',dinfo.MyBaseFields,Stream);
+ WritePropertyT('MYBASEINDEXFIELDS',dinfo.MyBaseIndexFields,Stream);
+ WritePropertyT('MYBASEMASTERFIELDS',dinfo.MyBaseMasterFields,Stream);
+ WritePropertyT('BDEINDEXFIELDS',dinfo.BDEIndexFields,Stream);
+ WritePropertyT('BDEINDEXNAME',dinfo.BDEIndexName,Stream);
+ WritePropertyT('BDETABLE',dinfo.BDETable,Stream);
  WritePropertyI('BDETYPE',Integer(dinfo.BDEType),Stream);
- WritePropertyS('BDEFILTER',AnsiString(dinfo.BDEFilter),Stream);
- WritePropertyS('BDEMASTERFIELDS',AnsiString(dinfo.BDEMasterFields),Stream);
- WritePropertyS('BDEFIRSTRANGE',AnsiString(dinfo.BDEFirstRange),Stream);
- WritePropertyS('BDELASTRANGE',AnsiString(dinfo.BDELastRange),Stream);
- WritePropertyS('DATAUNIONS',AnsiString(dinfo.DataUnions.Text),Stream);
+ WritePropertyT('BDEFILTER',dinfo.BDEFilter,Stream);
+ WritePropertyT('BDEMASTERFIELDS',dinfo.BDEMasterFields,Stream);
+ WritePropertyT('BDEFIRSTRANGE',dinfo.BDEFirstRange,Stream);
+ WritePropertyT('BDELASTRANGE',dinfo.BDELastRange,Stream);
+ WritePropertyT('DATAUNIONS',dinfo.DataUnions.Text,Stream);
  WritePropertyBool('GROUPUNION',dinfo.GroupUnion,Stream);
  WritePropertyBool('OPENONSTART',dinfo.OpenOnStart,Stream);
  WritePropertyBool('PARALLELUNION',dinfo.ParallelUnion,Stream);
@@ -269,29 +274,30 @@ begin
  WritePropertyI('PRINTSTEP',Integer(report.PrintStep),Stream);
  WritePropertyI('PAPERSOURCE',report.PaperSource,Stream);
  WritePropertyI('DUPLEX',report.duplex,Stream);
- WritePropertyS('FORCEPAPERNAME',AnsiString(report.ForcePaperName),Stream);
+ WritePropertyT('FORCEPAPERNAME',report.ForcePaperName,Stream);
  WritePropertyI('LINESPERINCH',report.LinesPerInch,Stream);
  WritePropertyI('PDFCONFORMANCE',Integer(report.PDFConformance),Stream);
  WritePropertyBool('PDFCOMPRESSED',report.PDFCompressed,Stream);
- WritePropertyS('DOCAUTHOR',AnsiString(report.DocAuthor),Stream);
- WritePropertyS('DOCCREATOR',AnsiString(report.DocCreator),Stream);
- WritePropertyS('DOCPRODUCER',AnsiString(report.DocProducer),Stream);
- WritePropertyS('DOCSUBJECT',AnsiString(report.DocSubject),Stream);
- WritePropertyS('DOCTITLE',AnsiString(report.DocTitle),Stream);
- WritePropertyS('DOCCREATIONDATE',AnsiString(report.DocCreationDate),Stream);
- WritePropertyS('DOCMODIFICATIONDATE',AnsiString(report.DocModificationDate),Stream);
- WritePropertyS('DOCKEYWORDS',AnsiString(report.DocKeywords),Stream);
- WritePropertyS('DOCXMPCONTENT',AnsiString(report.DocXMPContent),Stream);
+ WritePropertyT('DOCAUTHOR',report.DocAuthor,Stream);
+ WritePropertyT('DOCCREATOR',report.DocCreator,Stream);
+ WritePropertyT('DOCPRODUCER',report.DocProducer,Stream);
+ WritePropertyT('DOCSUBJECT',report.DocSubject,Stream);
+ WritePropertyT('DOCTITLE',report.DocTitle,Stream);
+ WritePropertyT('DOCCREATIONDATE',report.DocCreationDate,Stream);
+ WritePropertyT('DOCMODIFICATIONDATE',report.DocModificationDate,Stream);
+ WritePropertyT('DOCKEYWORDS',report.DocKeywords,Stream);
+ WritePropertyT('DOCXMPCONTENT',report.DocXMPContent,Stream);
 
 end;
 
 procedure WriteParamXML(aparam:TRpParam;Stream:TStream);
 begin
- WritePropertyS('NAME',AnsiString(aparam.Name),Stream);
- WritePropertyS('INTNAME',AnsiString(aparam.IntName),Stream);
+ WritePropertyT('NAME',aparam.Name,Stream);
+ WritePropertyT('INTNAME',aparam.IntName,Stream);
  WritePropertyW('DESCRIPTION',aparam.Descriptions,Stream);
  WritePropertyW('HINT',aparam.Hints,Stream);
- WritePropertyW('ERRORMESSAGE',aparam.ErrorMessage,Stream);
+ // Every language, as DESCRIPTION and HINT (ErrorMessage is the one of the current language)
+ WritePropertyW('ERRORMESSAGE',aparam.ErrorMessages,Stream);
  WritePropertyW('VALIDATION',aparam.Validation,Stream);
  WritePropertyW('SEARCH',aparam.Search,Stream);
  WritePropertyBool('VISIBLE',aparam.Visible,Stream);
@@ -299,19 +305,20 @@ begin
  WritePropertyBool('NEVERVISIBLE',aparam.NeverVisible,Stream);
  WritePropertyBool('ALLOWNULLS',aparam.AllowNulls,Stream);
  WritePropertyI('PARAMTYPE',Integer(aparam.ParamType),Stream);
- WritePropertyS('DATASETS',AnsiString(aparam.Datasets.Text),Stream);
- WritePropertyS('ITEMS',AnsiString(aparam.Items.Text),Stream);
- WritePropertyS('VALUES',AnsiString(aparam.Values.Text),Stream);
- WritePropertyS('SELECTED',AnsiString(aparam.Selected.Text),Stream);
- WritePropertyS('LOOKUPDATASET',AnsiString(aparam.LookupDataset),Stream);
- WritePropertyS('SEARCHDATASET',AnsiString(aparam.SearchDataset),Stream);
- WritePropertyS('SEARCHPARAM',AnsiString(aparam.Searchparam),Stream);
+ WritePropertyT('DATASETS',aparam.Datasets.Text,Stream);
+ WritePropertyT('ITEMS',aparam.Items.Text,Stream);
+ WritePropertyT('VALUES',aparam.Values.Text,Stream);
+ WritePropertyT('SELECTED',aparam.Selected.Text,Stream);
+ WritePropertyT('LOOKUPDATASET',aparam.LookupDataset,Stream);
+ WritePropertyT('SEARCHDATASET',aparam.SearchDataset,Stream);
+ WritePropertyT('SEARCHPARAM',aparam.Searchparam,Stream);
 
  if (aparam.Value<>Null) then
  begin
   case aparam.ParamType of
-   rpParamString,rpParamExpreA,rpParamExpreB,rpParamSubst,rpParamList,rpParamSubstList,rpParamInitialExpression,rpParamUnknown:
-    WritePropertyS('VALUE',AnsiString(String(aparam.Value)),Stream);
+   rpParamString,rpParamExpreA,rpParamExpreB,rpParamSubst,rpParamSubstE,rpParamList,rpParamSubstList,
+   rpParamInitialExpression,rpParamUnknown:
+    WritePropertyT('VALUE',String(aparam.Value),Stream);
    rpParamInteger:
     begin
      WritePropertyI('VALUE',aparam.Value,Stream);
@@ -334,15 +341,15 @@ end;
 
 procedure WriteSubreportXML(subrep:TRpSubReport;Stream:TStream);
 begin
- WritePropertyS('NAME',AnsiString(subrep.Name),Stream);
- WritePropertyS('ALIAS',AnsiString(subrep.Alias),Stream);
+ WritePropertyT('NAME',subrep.Name,Stream);
+ WritePropertyT('ALIAS',subrep.Alias,Stream);
  if assigned(subrep.ParentSubReport) then
  begin
-  WritePropertyS('PARENTSUBREPORT',AnsiString(subrep.ParentSubReport.Name),Stream);
+  WritePropertyT('PARENTSUBREPORT',subrep.ParentSubReport.Name,Stream);
  end;
  if assigned(subrep.ParentSection) then
  begin
-  WritePropertyS('PARENTSECTION',AnsiString(subrep.ParentSection.Name),Stream);
+  WritePropertyT('PARENTSECTION',subrep.ParentSection.Name,Stream);
  end;
  WritePropertyBool('PRINTONLYIFDATAAVAILABLE',subrep.PrintOnlyIfDataAvailable,Stream);
  WritePropertyBool('REOPENONPRINT',subrep.ReOpenOnPrint,Stream);
@@ -355,7 +362,7 @@ var
 begin
  WriteStringToStream('<SECTION>'+CRLF,Stream);
 
- WritePropertyS('NAME',AnsiString(section.Name),Stream);
+ WritePropertyT('NAME',section.Name,Stream);
  WritePropertyI('WIDTH',section.Width,Stream);
  WritePropertyI('HEIGHT',section.height,Stream);
  WritePropertyW('PRINTCONDITION',section.PrintCondition,Stream);
@@ -363,9 +370,9 @@ begin
  WritePropertyW('DOAFTERPRINT',section.DoAfterPrint,Stream);
  if assigned(section.SubReport) then
  begin
-  WritePropertyS('SUBREPORT',AnsiString(section.Subreport.Name),Stream);
+  WritePropertyT('SUBREPORT',section.Subreport.Name,Stream);
  end;
- WritePropertyS('GROUPNAME',AnsiString(section.GroupName),Stream);
+ WritePropertyT('GROUPNAME',section.GroupName,Stream);
  WritePropertyW('CHANGEEXPRESSION',section.ChangeExpression,Stream);
  WritePropertyW('BEGINPAGEEXPRESSION',section.BeginPageExpression,Stream);
  // Kept by the DFM format, and written by the .Net writer the same way: only when it is true
@@ -385,16 +392,16 @@ begin
  WritePropertyBool('AUTOCONTRACT',section.AutoContract,Stream);
  WritePropertyBool('HORZDESP',section.HorzDesp,Stream);
  WritePropertyBool('VERTDESP',section.VertDesp,Stream);
- WritePropertyS('EXTERNALFILENAME',AnsiString(section.ExternalFilename),Stream);
- WritePropertyS('EXTERNALCONNECTION',AnsiString(section.ExternalConnection),Stream);
- WritePropertyS('EXTERNALTABLE',AnsiString(section.ExternalTable),Stream);
- WritePropertyS('EXTERNALFIELD',AnsiString(section.ExternalField),Stream);
- WritePropertyS('EXTERNALSEARCHFIELD',AnsiString(section.ExternalSearchField),Stream);
- WritePropertyS('EXTERNALSEARCHVALUE',AnsiString(section.ExternalSearchValue),Stream);
+ WritePropertyT('EXTERNALFILENAME',section.ExternalFilename,Stream);
+ WritePropertyT('EXTERNALCONNECTION',section.ExternalConnection,Stream);
+ WritePropertyT('EXTERNALTABLE',section.ExternalTable,Stream);
+ WritePropertyT('EXTERNALFIELD',section.ExternalField,Stream);
+ WritePropertyT('EXTERNALSEARCHFIELD',section.ExternalSearchField,Stream);
+ WritePropertyT('EXTERNALSEARCHVALUE',section.ExternalSearchValue,Stream);
  WritePropertyI('STREAMFORMAT',Integer(section.StreamFormat),Stream);
  if assigned(section.ChildSubReport) then
  begin
-  WritePropertyS('CHILDSUBREPORT',AnsiString(section.ChildSubreport.Name),Stream);
+  WritePropertyT('CHILDSUBREPORT',section.ChildSubreport.Name,Stream);
  end;
  WritePropertyBool('SKIPRELATIVEH',section.SkipRelativeH,Stream);
  WritePropertyBool('SKIPRELATIVEV',section.SkipRelativeV,Stream);
@@ -506,14 +513,14 @@ var
 begin
  WriteStringToStream('<COMPONENT>'+CRLF,Stream);
 
- WritePropertyS('NAME',AnsiString(comp.Name),Stream);
- WritePropertyS('CLASSNAME',AnsiString(UpperCase(comp.ClassName)),Stream);
+ WritePropertyT('NAME',comp.Name,Stream);
+ WritePropertyT('CLASSNAME',UpperCase(comp.ClassName),Stream);
  WritePropertyI('WIDTH',comp.Width,Stream);
  WritePropertyI('HEIGHT',comp.height,Stream);
  WritePropertyW('PRINTCONDITION',comp.PrintCondition,Stream);
  WritePropertyW('DOBEFOREPRINT',comp.DoBeforePrint,Stream);
  WritePropertyW('DOAFTERPRINT',comp.DoAfterPrint,Stream);
- WritePropertyS('ANNOTATION',AnsiString(comp.AnnotationExpression),Stream);
+ WritePropertyT('ANNOTATION',comp.AnnotationExpression,Stream);
  // CommonPos
  WritePropertyI('POSX',comp.PosX,Stream);
  WritePropertyI('POSY',comp.PosY,Stream);
@@ -544,7 +551,7 @@ begin
   WritePropertyBool('SINGLELINE',compt.SingleLine,Stream);
   // After BIDIMODE: the reader reads it later, so it wins
   if NeedsBidiModes(compt) then
-   WritePropertyS('BIDIMODES',AnsiString(BidiModesText(compt)),Stream);
+   WritePropertyT('BIDIMODES',BidiModesText(compt),Stream);
   WritePropertyBool('MULTIPAGE',compt.Multipage,Stream);
   WritePropertyI('PRINTSTEP',Integer(compt.PrintStep),Stream);
   if compt.IsHtml then
@@ -568,9 +575,9 @@ begin
   WritePropertyW('EXPORTEXPRESSION',compe.ExportExpression,Stream);
   WritePropertyI('DATATYPE',Integer(compe.DataType),Stream);
   WritePropertyW('DISPLAYFORMAT',compe.DisplayFormat,Stream);
-  WritePropertyS('IDENTIFIER',AnsiString(compe.Identifier),Stream);
+  WritePropertyT('IDENTIFIER',compe.Identifier,Stream);
   WritePropertyI('AGGREGATE',Integer(compe.Aggregate),Stream);
-  WritePropertyS('GROUPNAME',AnsiString(compe.GroupName),Stream);
+  WritePropertyT('GROUPNAME',compe.GroupName,Stream);
   WritePropertyI('AGTYPE',Integer(compe.AgType),Stream);
   WritePropertyBool('AUTOEXPAND',compe.AutoExpand,Stream);
   WritePropertyBool('AUTOCONTRACT',compe.AutoContract,Stream);
@@ -630,7 +637,7 @@ begin
   WritePropertyW('CLEAREXPRESSION',compc.ClearExpression,Stream);
 //  WritePropertyI('SERIES',Integer(compc.Series),Stream);
   if compc.Series.Count>0 then
-   WritePropertyS('SERIESCOLORS',AnsiString(SeriesColorsText(compc)),Stream);
+   WritePropertyT('SERIESCOLORS',SeriesColorsText(compc),Stream);
   WritePropertyBool('CHANGESERIEBOOL',compc.ChangeSerieBool,Stream);
   WritePropertyI('CHARTTYPE',Integer(compc.ChartType),Stream);
   WritePropertyW('IDENTIFIER',compc.Identifier,Stream);
@@ -827,7 +834,8 @@ begin
       end;
      end;
      inc(outindex);
-     Result[outindex]:=WideChar(anumber mod 65535);
+     // A UTF-16 code unit: U+FFFF is 65535 (mod 65535 read it as U+0000)
+     Result[outindex]:=WideChar(anumber mod 65536);
     end
     else
     begin
@@ -858,29 +866,88 @@ begin
  WriteStringToStream(astring,stream);
 end;
 
+{$IFDEF FPC}
+// FloatToStrF of FPC 3.2 gives at most 15 digits of a double; Str gives up to 17, in the
+// exponent form (" 3.0000000000000004E-001"): the same text as ffGeneral with that precision
+function RpDoubleToGeneral(avalue:double;precision:integer):string;
+var
+ s,digits:string;
+ epos,exponent:integer;
+ negative:boolean;
+begin
+ Str(avalue:precision+7,s);
+ s:=Trim(s);
+ epos:=Pos('E',s);
+ if (epos<3) or (not (s[Length(s)] in ['0'..'9'])) then
+ begin
+  // NaN or infinity
+  Result:=FloatToStrF(avalue,ffGeneral,15,0);
+  exit;
+ end;
+ negative:=s[1]='-';
+ if negative then
+ begin
+  Delete(s,1,1);
+  dec(epos);
+ end;
+ exponent:=StrToInt(Copy(s,epos+1,Length(s)));
+ digits:=s[1]+Copy(s,3,epos-3);
+ while (Length(digits)>1) and (digits[Length(digits)]='0') do
+  Delete(digits,Length(digits),1);
+ if (exponent<-5) or (exponent>=precision) then
+ begin
+  Result:=digits[1];
+  if Length(digits)>1 then
+   Result:=Result+'.'+Copy(digits,2,Length(digits));
+  Result:=Result+'E'+IntToStr(exponent);
+ end
+ else
+ if exponent<0 then
+  Result:='0.'+StringOfChar('0',-exponent-1)+digits
+ else
+ begin
+  while Length(digits)<exponent+1 do
+   digits:=digits+'0';
+  Result:=Copy(digits,1,exponent+1);
+  if Length(digits)>exponent+1 then
+   Result:=Result+'.'+Copy(digits,exponent+2,Length(digits));
+ end;
+ if negative then
+  Result:='-'+Result;
+end;
+{$ENDIF}
+
+// The shortest text that reads back as the same double, as the .Net engine writes it: with 15
+// digits (FloatToStr) the last ones were lost, 0.30000000000000004 was written 0.3
 function RpDoubleToStr(avalue:double):Ansistring;
 var
- olddec:char;
+ fs:TFormatSettings;
+ precision:integer;
+ atext:string;
+ back:double;
 begin
-{$IFDEF DELPHI2009UP}
- olddec:=FormatSettings.DecimalSeparator;
+{$IFDEF FPC}
+ fs:=DefaultFormatSettings;
 {$ELSE}
- olddec:=DecimalSeparator;
+ fs:=FormatSettings;
 {$ENDIF}
- try
-{$IFDEF DELPHI2009UP}
-  FormatSettings.DecimalSeparator:='.';
-{$ELSE}
-  DecimalSeparator:='.';
+ fs.DecimalSeparator:='.';
+ fs.ThousandSeparator:=',';
+ atext:='';
+ for precision:=15 to 17 do
+ begin
+{$IFDEF FPC}
+  if precision>15 then
+   atext:=RpDoubleToGeneral(avalue,precision)
+  else
 {$ENDIF}
-  Result:=AnsiString(FloatToStr(avalue));
- finally
-{$IFDEF DELPHI2009UP}
-  FormatSettings.DecimalSeparator:=olddec;
-{$ELSE}
-  DecimalSeparator:=olddec;
-{$ENDIF}
+  atext:=FloatToStrF(avalue,ffGeneral,precision,0,fs);
+  if not SysUtils.TryStrToFloat(atext,back,fs) then
+   break;
+  if back=avalue then
+   break;
  end;
+ Result:=AnsiString(atext);
 end;
 
 
@@ -955,6 +1022,140 @@ var
 begin
  astring:='<'+propname+' type="WideString">'+WStringToRpString(propvalue)+'</'+propname+'>'+CRLF;
  WriteStringToStream(astring,stream);
+end;
+
+procedure WritePropertyT(propname:Ansistring;const propvalue:String;stream:TStream);
+{$IFDEF FPC}
+var
+ i:integer;
+{$ENDIF}
+begin
+{$IFDEF FPC}
+ // The strings of FPC are UTF-8: ASCII is written as before, the rest as UTF-16 (the UTF-8 bytes
+ // written as a String were read as ANSI by Delphi and as Latin-1 by .Net)
+ for i:=1 to Length(propvalue) do
+ begin
+  if Ord(propvalue[i])>127 then
+  begin
+   WritePropertyW(propname,WideString(UnicodeString(propvalue)),stream);
+   exit;
+  end;
+ end;
+ WritePropertyS(propname,AnsiString(propvalue),stream);
+{$ELSE}
+ if String(AnsiString(propvalue))=propvalue then
+  WritePropertyS(propname,AnsiString(propvalue),stream)
+ else
+  WritePropertyW(propname,propvalue,stream);
+{$ENDIF}
+end;
+
+// Whether a value holds a character code above 255: the .Net engine writes the UTF-16 code units
+// of every text with the type String, Delphi the bytes of the ANSI code page
+function RpHasWideCode(const rpstring:AnsiString):Boolean;
+var
+ i,anumber:integer;
+begin
+ Result:=false;
+ i:=1;
+ while i<=Length(rpstring) do
+ begin
+  if rpstring[i]='#' then
+  begin
+   anumber:=0;
+   inc(i);
+   while (i<=Length(rpstring)) and (rpstring[i]<>'#') do
+   begin
+    if anumber<=65535 then
+     anumber:=(anumber*10)+(Ord(rpstring[i])-Ord('0'));
+    inc(i);
+   end;
+   if anumber>255 then
+   begin
+    Result:=true;
+    exit;
+   end;
+  end;
+  inc(i);
+ end;
+end;
+
+{$IFDEF FPC}
+// The bytes of a String value written by older versions: UTF-8 when FPC wrote them, else the
+// Windows-1252 of a Delphi engine (Latin-1 for the .Net one, the same but for 128 to 159)
+function RpLegacyBytesToString(const bytes:AnsiString):String;
+const
+ Cp1252:array[$80..$9F] of Word=($20AC,$0081,$201A,$0192,$201E,$2026,$2020,$2021,
+  $02C6,$2030,$0160,$2039,$0152,$008D,$017D,$008F,$0090,$2018,$2019,$201C,$201D,$2022,
+  $2013,$2014,$02DC,$2122,$0161,$203A,$0153,$009D,$017E,$0178);
+var
+ i,j,follow:integer;
+ b:Byte;
+ isutf8:boolean;
+ wide:UnicodeString;
+begin
+ wide:='';
+ isutf8:=true;
+ i:=1;
+ while i<=Length(bytes) do
+ begin
+  b:=Ord(bytes[i]);
+  if b<$80 then
+   follow:=0
+  else if (b>=$C2) and (b<=$DF) then
+   follow:=1
+  else if (b>=$E0) and (b<=$EF) then
+   follow:=2
+  else if (b>=$F0) and (b<=$F4) then
+   follow:=3
+  else
+  begin
+   isutf8:=false;
+   break;
+  end;
+  for j:=1 to follow do
+  begin
+   if (i+j>Length(bytes)) or ((Ord(bytes[i+j]) and $C0)<>$80) then
+   begin
+    isutf8:=false;
+    break;
+   end;
+  end;
+  if not isutf8 then
+   break;
+  inc(i,follow+1);
+ end;
+ if isutf8 then
+ begin
+  Result:=bytes;
+  exit;
+ end;
+ SetLength(wide,Length(bytes));
+ for i:=1 to Length(bytes) do
+ begin
+  b:=Ord(bytes[i]);
+  if (b>=$80) and (b<=$9F) then
+   wide[i]:=WideChar(Cp1252[b])
+  else
+   wide[i]:=WideChar(b);
+ end;
+ Result:=String(wide);
+end;
+{$ENDIF}
+
+function RpPropToString(const propvalue,proptype:AnsiString):String;
+begin
+{$IFDEF FPC}
+ if (proptype='WideString') or RpHasWideCode(propvalue) then
+  Result:=String(UnicodeString(RpStringToWString(propvalue)))
+ else
+  Result:=RpLegacyBytesToString(RpStringToString(propvalue));
+{$ELSE}
+ if (proptype='WideString') or RpHasWideCode(propvalue) then
+  Result:=RpStringToWString(propvalue)
+ else
+  Result:=String(RpStringToString(propvalue));
+{$ENDIF}
 end;
 
 
@@ -1052,6 +1253,7 @@ var
  asubrep:TRpSubReport;
  asec:TRpSection;
  efile:TEmbeddedFile;
+ emptystream:TMemoryStream;
 begin
  report:=TRpReport(areport);
  // Write header
@@ -1112,14 +1314,27 @@ begin
   efile:=report.EmbeddedFiles[i];
   astring:='<EMBEDDEDFILE>'+CRLF;
   WriteStringToStream(astring,stream);
-  WritePropertyS('FILENAME', AnsiString(efile.FileName),Stream);
-  WritePropertyS('MIMETYPE', AnsiString(efile.MimeType), Stream);
-  WritePropertyS('DESCRIPTION', AnsiString(efile.Description), Stream);
-  WritePropertyS('CREATIONDATE', AnsiString(efile.CreationDate), Stream);
-  WritePropertyS('MODIFICATIONDATE', AnsiString(efile.ModificationDate), Stream);
+  WritePropertyT('FILENAME',efile.FileName,Stream);
+  WritePropertyT('MIMETYPE',efile.MimeType,Stream);
+  WritePropertyT('DESCRIPTION',efile.Description,Stream);
+  WritePropertyT('CREATIONDATE',efile.CreationDate,Stream);
+  WritePropertyT('MODIFICATIONDATE',efile.ModificationDate,Stream);
   WritePropertyI('RELATIONSHIP', Integer(efile.AFRelationShip), Stream);
-  efile.Stream.Position:=0;
-  WritePropertyB('STREAM', efile.Stream, Stream);
+  // A file without contents (made by code) is written empty
+  if efile.Stream=nil then
+  begin
+   emptystream:=TMemoryStream.Create;
+   try
+    WritePropertyB('STREAM', emptystream, Stream);
+   finally
+    emptystream.Free;
+   end;
+  end
+  else
+  begin
+   efile.Stream.Position:=0;
+   WritePropertyB('STREAM', efile.Stream, Stream);
+  end;
   astring:='</EMBEDDEDFILE>'+CRLF;
   WriteStringToStream(astring,stream);
  end;
@@ -1134,10 +1349,10 @@ procedure ReadPropDBInfo(dbitem:TRpDatabaseInfoItem;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
  if propname='NAME' then
-  dbitem.Name:=String(RpStringToString(propvalue))
+  dbitem.Name:=RpPropToString(propvalue,proptype)
  else
  if propname='CONFIGFILE' then
-  dbitem.Configfile:=String(RpStringToString(propvalue))
+  dbitem.Configfile:=RpPropToString(propvalue,proptype)
  else
  if propname='LOADPARAMS' then
   dbitem.LoadParams:=RpStrToBool(propvalue)
@@ -1155,19 +1370,19 @@ begin
   dbitem.DotNetDriver:=StrToInt(String(propvalue))
  else
  if propname='PROVIDERFACTORY' then
-  dbitem.ProviderFactory:=String(RpStringToString(propvalue))
+  dbitem.ProviderFactory:=RpPropToString(propvalue,proptype)
  else
  if propname='REPORTTABLE' then
-  dbitem.ReportTable:=String(RpStringToString(propvalue))
+  dbitem.ReportTable:=RpPropToString(propvalue,proptype)
  else
  if propname='REPORTSEARCHFIELD' then
-  dbitem.ReportSearchField:=String(RpStringToString(propvalue))
+  dbitem.ReportSearchField:=RpPropToString(propvalue,proptype)
  else
  if propname='REPORTFIELD' then
-  dbitem.ReportField:=String(RpStringToString(propvalue))
+  dbitem.ReportField:=RpPropToString(propvalue,proptype)
  else
  if propname='REPORTGROUPSTABLE' then
-  dbitem.ReportGroupsTable:=String(RpStringToString(propvalue))
+  dbitem.ReportGroupsTable:=RpPropToString(propvalue,proptype)
  else
  if propname='ADOCONNECTIONSTRING' then
   dbitem.ADOConnectionString:=RpStringToWString(propvalue);
@@ -1177,13 +1392,13 @@ procedure ReadPropSubReport(subrep:TRpSubReport;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
  if propname='ALIAS' then
-  subrep.Alias:=String(RpStringToString(propvalue))
+  subrep.Alias:=RpPropToString(propvalue,proptype)
  else
  if propname='PARENTSUBREPORT' then
-  subrep.ParentSub:=String(RpStringToString(propvalue))
+  subrep.ParentSub:=RpPropToString(propvalue,proptype)
  else
  if propname='PARENTSECTION' then
-  subrep.ParentSec:=String(RpStringToString(propvalue))
+  subrep.ParentSec:=RpPropToString(propvalue,proptype)
  else
  if propname='PRINTONLYIFDATAAVAILABLE' then
   subrep.PrintOnlyIfDataAvailable:=RpStrToBool(propvalue)
@@ -1234,10 +1449,10 @@ begin
   sec.Height:=StrToInt(String(propvalue))
  else
  if propname='SUBREPORT' then
-  sec.SubReportName:=String(RPStringToString(propvalue))
+  sec.SubReportName:=RpPropToString(propvalue,proptype)
  else
  if propname='GROUPNAME' then
-  sec.GroupName:=String(RPStringToString(propvalue))
+  sec.GroupName:=RpPropToString(propvalue,proptype)
  else
  if propname='CHANGEBOOL' then
   sec.ChangeBool:=RPStrToBool(propvalue)
@@ -1270,28 +1485,28 @@ begin
   sec.VertDesp:=RPStrToBool(propvalue)
  else
  if propname='EXTERNALFILENAME' then
-  sec.ExternalFileName:=String(RPStringToString(propvalue))
+  sec.ExternalFileName:=RpPropToString(propvalue,proptype)
  else
  if propname='EXTERNALCONNECTION' then
-  sec.ExternalConnection:=String(RPStringToString(propvalue))
+  sec.ExternalConnection:=RpPropToString(propvalue,proptype)
  else
  if propname='EXTERNALTABLE' then
-  sec.ExternalTable:=String(RPStringToString(propvalue))
+  sec.ExternalTable:=RpPropToString(propvalue,proptype)
  else
  if propname='EXTERNALFIELD' then
-  sec.ExternalField:=String(RPStringToString(propvalue))
+  sec.ExternalField:=RpPropToString(propvalue,proptype)
  else
  if propname='EXTERNALSEARCHFIELD' then
-  sec.ExternalSearchField:=String(RPStringToString(propvalue))
+  sec.ExternalSearchField:=RpPropToString(propvalue,proptype)
  else
  if propname='EXTERNALSEARCHVALUE' then
-  sec.ExternalSearchValue:=String(RPStringToString(propvalue))
+  sec.ExternalSearchValue:=RpPropToString(propvalue,proptype)
  else
  if propname='STREAMFORMAT' then
   sec.StreamFormat:=TRpStreamFormat(StrToInt(String(propvalue)))
  else
  if propname='CHILDSUBREPORT' then
-  sec.ChildSubReportName:=String(RPStringToString(propvalue))
+  sec.ChildSubReportName:=RpPropToString(propvalue,proptype)
  else
  if propname='SKIPRELATIVEH' then
   sec.SkipRelativeH:=RPStrToBool(propvalue)
@@ -1341,10 +1556,10 @@ procedure ReadPropDataInfo(ditem:TRpDataInfoItem;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
  if propname='NAME' then
-  ditem.Name:=String(RpStringToString(propvalue))
+  ditem.Name:=RpPropToString(propvalue,proptype)
  else
  if propname='DATABASEALIAS' then
-  ditem.DataBaseAlias:=String(RpStringToString(propvalue))
+  ditem.DataBaseAlias:=RpPropToString(propvalue,proptype)
  else
  if propname='SQL' then
   ditem.SQL:=RpStringToWString(propvalue)
@@ -1362,49 +1577,49 @@ begin
    ditem.SchemaName:=RpStringToWString(propvalue)
  else
  if propname='DATASOURCE' then
-  ditem.DataSource:=String(RpStringToString(propvalue))
+  ditem.DataSource:=RpPropToString(propvalue,proptype)
  else
  if propname='MYBASEFILENAME' then
-  ditem.MyBaseFileName:=String(RpStringToString(propvalue))
+  ditem.MyBaseFileName:=RpPropToString(propvalue,proptype)
  else
  if propname='MYBASEFIELDS' then
-  ditem.MyBaseFields:=String(RpStringToString(propvalue))
+  ditem.MyBaseFields:=RpPropToString(propvalue,proptype)
  else
  if propname='MYBASEINDEXFIELDS' then
-  ditem.MyBaseIndexFields:=String(RpStringToString(propvalue))
+  ditem.MyBaseIndexFields:=RpPropToString(propvalue,proptype)
  else
  if propname='MYBASEINDEXFIELDS' then
-  ditem.MyBaseIndexFields:=String(RpStringToString(propvalue))
+  ditem.MyBaseIndexFields:=RpPropToString(propvalue,proptype)
  else
  if propname='MYBASEMASTERFIELDS' then
-  ditem.MyBaseMasterFields:=String(RpStringToString(propvalue))
+  ditem.MyBaseMasterFields:=RpPropToString(propvalue,proptype)
  else
  if propname='BDEINDEXFIELDS' then
-  ditem.BDEIndexFields:=String(RpStringToString(propvalue))
+  ditem.BDEIndexFields:=RpPropToString(propvalue,proptype)
  else
  if propname='BDEINDEXNAME' then
-  ditem.BDEIndexName:=String(RpStringToString(propvalue))
+  ditem.BDEIndexName:=RpPropToString(propvalue,proptype)
  else
  if propname='BDETABLE' then
-  ditem.BDETable:=String(RpStringToString(propvalue))
+  ditem.BDETable:=RpPropToString(propvalue,proptype)
  else
  if propname='BDETYPE' then
   ditem.BDEType:=TRpDatasetType(StrToInt(String(propvalue)))
  else
  if propname='BDEFILTER' then
-  ditem.BDEFilter:=String(RpStringToString(propvalue))
+  ditem.BDEFilter:=RpPropToString(propvalue,proptype)
  else
  if propname='BDEMASTERFIELDS' then
-  ditem.BDEMasterFields:=String(RpStringToString(propvalue))
+  ditem.BDEMasterFields:=RpPropToString(propvalue,proptype)
  else
  if propname='BDEFIRSTRANGE' then
-  ditem.BDEFirstRange:=String(RpStringToString(propvalue))
+  ditem.BDEFirstRange:=RpPropToString(propvalue,proptype)
  else
  if propname='BDELASTRANGE' then
-  ditem.BDELastRange:=String(RpStringToString(propvalue))
+  ditem.BDELastRange:=RpPropToString(propvalue,proptype)
  else
  if propname='DATAUNIONS' then
-  ditem.DataUnions.Text:=String(RpStringToString(propvalue))
+  ditem.DataUnions.Text:=RpPropToString(propvalue,proptype)
  else
  if propname='GROUPUNION' then
   ditem.GroupUnion:=RpStrToBool(propvalue)
@@ -1420,7 +1635,7 @@ procedure ReadPropParam(aparam:TRpParam;
  propname,propvalue,proptype,propsize:Ansistring);
 begin
  if propname='INTNAME' then
-  aparam.IntName:=String(RpStringToString(propvalue))
+  aparam.IntName:=RpPropToString(propvalue,proptype)
  else
  if propname='DESCRIPTION' then
   aparam.Descriptions:=RpStringToWString(propvalue)
@@ -1453,25 +1668,25 @@ begin
   aparam.ParamType:=TrpPAramType(StrToInt(String(propvalue)))
  else
  if propname='DATASETS' then
-  aparam.Datasets.Text:=String(RpStringToString(propvalue))
+  aparam.Datasets.Text:=RpPropToString(propvalue,proptype)
  else
  if propname='ITEMS' then
-  aparam.Items.Text:=String(RpStringToString(propvalue))
+  aparam.Items.Text:=RpPropToString(propvalue,proptype)
  else
  if propname='VALUES' then
-  aparam.Values.Text:=String(RpStringToString(propvalue))
+  aparam.Values.Text:=RpPropToString(propvalue,proptype)
  else
  if propname='SELECTED' then
-  aparam.Selected.Text:=String(RpStringToString(propvalue))
+  aparam.Selected.Text:=RpPropToString(propvalue,proptype)
  else
  if propname='LOOKUPDATASET' then
-  aparam.LookupDataset:=String(RpStringToString(propvalue))
+  aparam.LookupDataset:=RpPropToString(propvalue,proptype)
  else
  if propname='SEARCHDATASET' then
-  aparam.SearchDataset:=String(RpStringToString(propvalue))
+  aparam.SearchDataset:=RpPropToString(propvalue,proptype)
  else
  if propname='SEARCHPARAM' then
-  aparam.SearchParam:=String(RpStringToString(propvalue))
+  aparam.SearchParam:=RpPropToString(propvalue,proptype)
  else
  if propname='VALUE' then
  begin
@@ -1479,9 +1694,9 @@ begin
   case aparam.ParamType of
    // The text types the writer saves (substitution lists and initial expressions were written
    // but not read back: their value was lost; the .Net and TypeScript readers read them)
-   rpParamString,rpParamExpreA,rpParamExpreB,rpParamSubst,rpParamList,rpParamSubstList,
+   rpParamString,rpParamExpreA,rpParamExpreB,rpParamSubst,rpParamSubstE,rpParamList,rpParamSubstList,
    rpParamInitialExpression,rpParamUnknown:
-    aparam.Value:=RpStringToString(propvalue);
+    aparam.Value:=WideString(RpPropToString(propvalue,proptype));
    rpParamInteger:
     begin
      aparam.Value:=StrToInt(String(propvalue));
@@ -1507,7 +1722,6 @@ procedure ReadPropReport(report:TRpReport;
 var
  actions:TRpReportActions;
 begin
- actions:=[];
  if propname='WFONTNAME' then
   report.WFontName:=RpStringToWString(AnsiString(propvalue))
  else
@@ -1603,14 +1817,24 @@ begin
  else
  if propname='REPORTACTIONDRAWERBEFORE' then
  begin
+  // On the report: every property read set it to the actions of that property only, so the
+  // drawer actions were always lost
+  actions:=report.ReportAction;
   if RpStrToBool(AnsiString(propvalue)) then
-  include(actions,rpDrawerBefore);
+   include(actions,rpDrawerBefore)
+  else
+   exclude(actions,rpDrawerBefore);
+  report.ReportAction:=actions;
  end
  else
  if propname='REPORTACTIONDRAWERAFTER' then
  begin
+  actions:=report.ReportAction;
   if RpStrToBool(AnsiString(propvalue)) then
-  include(actions,rpDrawerAfter);
+   include(actions,rpDrawerAfter)
+  else
+   exclude(actions,rpDrawerAfter);
+  report.ReportAction:=actions;
  end
  else
  if propname='PREVIEWABOUT' then
@@ -1653,7 +1877,7 @@ begin
   report.SingleLine:=RpStrToBool(AnsiString(propvalue))
  else
  if propname='BIDIMODES' then
-  report.BidiModes.Text:=String(RpStringToString(AnsiString(propvalue)))
+  report.BidiModes.Text:=RpPropToString(AnsiString(propvalue),AnsiString(proptype))
  else
  if propname='MULTIPAGE' then
   report.MultiPage:=RpStrToBool(AnsiString(propvalue))
@@ -1668,7 +1892,7 @@ begin
   report.Duplex:=StrToInt(propvalue)
  else
  if propname='FORCEPAPERNAME' then
-  report.ForcePaperName:=String(RpStringToString(AnsiString(propvalue)))
+  report.ForcePaperName:=RpPropToString(AnsiString(propvalue),AnsiString(proptype))
  else
  if propname='LINESPERINCH' then
   report.LinesPerInch:=StrToInt(propvalue)
@@ -1680,31 +1904,31 @@ begin
   report.PDFCompressed:=RpStrToBool(AnsiString(propValue))
  else
  if propname='DOCAUTHOR' then
-  report.DocAuthor:=String(RpStringToString(AnsiString(propValue)))
+  report.DocAuthor:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCCREATOR' then
-  report.DocCreator:=String(RpStringToString(AnsiString(propValue)))
+  report.DocCreator:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCPRODUCER' then
-  report.DocProducer:=String(RpStringToString(AnsiString(propValue)))
+  report.DocProducer:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCSUBJECT' then
-  report.DocSubject:=String(RpStringToString(AnsiString(propValue)))
+  report.DocSubject:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCTITLE' then
-  report.DocTitle:=String(RpStringToString(AnsiString(propValue)))
+  report.DocTitle:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCCREATIONDATE' then
-  report.DocCreationDate:=String(RpStringToString(AnsiString(propValue)))
+  report.DocCreationDate:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCMODIFICATIONDATE' then
-  report.DocModificationDate:=String(RpStringToString(AnsiString(propValue)))
+  report.DocModificationDate:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCKEYWORDS' then
-  report.DocKeywords:=String(RpStringToString(AnsiString(propValue)))
+  report.DocKeywords:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='DOCXMPCONTENT' then
-  report.DocXMPContent:=String(RpStringToString(AnsiString(propValue)))
+  report.DocXMPContent:=RpPropToString(AnsiString(propValue),AnsiString(proptype))
  else
  if propname='BINCUE' then
  begin
@@ -1736,8 +1960,6 @@ begin
   end;
 {$ENDIF}
  end;
-
- report.ReportAction:=actions;
 end;
 
 procedure ReadCompProp(comp:TRpCommonPosComponent;
@@ -1762,7 +1984,8 @@ begin
   comp.DoBeforePrint:=RpStringToWString(propvalue)
  else
  if propname='ANNOTATION' then
-  comp.AnnotationExpression:=RpStringToWString(propvalue)
+  // Written as a String (the ANSI bytes), it was read as UTF-16 code units
+  comp.AnnotationExpression:=RpPropToString(propvalue,proptype)
  else
  if propname='WIDTH' then
   comp.Width:=StrToInt(String(propvalue))
@@ -1833,7 +2056,7 @@ begin
    compt.SingleLine:=RpStrToBool(propvalue)
   else
   if propname='BIDIMODES' then
-   compt.BidiModes.Text:=String(RpStringToString(propvalue))
+   compt.BidiModes.Text:=RpPropToString(propvalue,proptype)
   else
   if propname='MULTIPAGE' then
    compt.MultiPage:=RpStrToBool(propvalue)
@@ -1875,13 +2098,13 @@ begin
    compe.DisplayFormat:=RpStringToWString(propvalue)
   else
   if propname='IDENTIFIER' then
-   compe.Identifier:=String(RpStringToString(propvalue))
+   compe.Identifier:=RpPropToString(propvalue,proptype)
   else
   if propname='AGGREGATE' then
    compe.Aggregate:=TRpAggregate(StrToInt(String(propvalue)))
   else
   if propname='GROUPNAME' then
-   compe.GroupName:=String(RpStringToString(propvalue))
+   compe.GroupName:=RpPropToString(propvalue,proptype)
   else
   if propname='AGTYPE' then
    compe.AgType:=TRpAggregateType(StrToInt(String(propvalue)))
@@ -2009,7 +2232,7 @@ begin
    compc.ClearExpression:=RpStringToWString(propvalue)
   else
   if propname='SERIESCOLORS' then
-   ReadSeriesColors(compc,String(RpStringToString(propvalue)))
+   ReadSeriesColors(compc,RpPropToString(propvalue,proptype))
   else
   if propname='CHANGESERIEBOOL' then
    compc.ChangeSerieBool:=RpStrToBool(propvalue)
@@ -2018,7 +2241,7 @@ begin
    compc.ChartType:=TRpChartType(StrToInt(String(propvalue)))
   else
   if propname='IDENTIFIER' then
-   compc.Identifier:=String(RpStringToString(propvalue))
+   compc.Identifier:=RpPropToString(propvalue,proptype)
   else
   if propname='CLEAREXPRESSIONBOOL' then
    compc.ClearExpressionBool:=RpStrToBool(propvalue)
@@ -2152,7 +2375,8 @@ var
  dbitem:TRpDatabaseInfoItem;
  ditem:TRpDataInfoItem;
  comp:TRpCommonPosComponent;
- compname,compclass:AnsiString;
+ compname:String;
+ compclass:AnsiString;
  aclass:TPersistentClass;
  aparam:TRpParam;
  report:TRpReport;
@@ -2261,7 +2485,7 @@ begin
    FindNextName;
    if propname<>'ALIAS' then
     Raise Exception.Create(SRpStreamFormat);
-   dbitem:=report.DatabaseInfo.Add(String(RpStringToString(propvalue)));
+   dbitem:=report.DatabaseInfo.Add(RpPropToString(propvalue,proptype));
    while propname<>'/DATABASEINFO' do
    begin
     ReadPropDBInfo(dbitem,propname,propvalue,proptype,propsize);
@@ -2274,7 +2498,7 @@ begin
    FindNextName;
    if propname<>'ALIAS' then
     Raise Exception.Create(SRpStreamFormat);
-   ditem:=report.DataInfo.Add(String(RpStringToString(propvalue)));
+   ditem:=report.DataInfo.Add(RpPropToString(propvalue,proptype));
    while propname<>'/DATAINFO' do
    begin
     ReadPropDataInfo(ditem,propname,propvalue,proptype,propsize);
@@ -2288,7 +2512,7 @@ begin
    FindNextName;
    if propname<>'NAME' then
     Raise Exception.Create(SRpStreamFormat);
-   aparam:=report.Params.Add(String(RpStringToString(propvalue)));
+   aparam:=report.Params.Add(RpPropToString(propvalue,proptype));
    while propname<>'/PARAMETER' do
    begin
     ReadPropParam(aparam,propname,propvalue,proptype,propsize);
@@ -2304,19 +2528,19 @@ begin
    while (propname<>'/EMBEDDEDFILE') do
    begin
     if propname='FILENAME' then
-      efile.FileName:=String(RpStringToString(propvalue))
+      efile.FileName:=RpPropToString(propvalue,proptype)
     else
      if propname='MIMETYPE' then
-      efile.MimeType:=String(RpStringToString(propvalue))
+      efile.MimeType:=RpPropToString(propvalue,proptype)
      else
       if propname='DESCRIPTION' then
-       efile.Description:=String(RpStringToString(propvalue))
+       efile.Description:=RpPropToString(propvalue,proptype)
       else
        if propname='CREATIONDATE' then
-        efile.CreationDate:=String(RpStringToString(propvalue))
+        efile.CreationDate:=RpPropToString(propvalue,proptype)
        else
         if propname='MODIFICATIONDATE' then
-         efile.ModificationDate:=String(RpStringToString(propvalue))
+         efile.ModificationDate:=RpPropToString(propvalue,proptype)
         else
          if propname='RELATIONSHIP' then
            efile.AFRelationShip:=TPDFAFRelationShip(StrToInt(String(propvalue)))
@@ -2338,6 +2562,10 @@ begin
    end;
    if propname<>'/EMBEDDEDFILE' then
     Raise Exception.Create(SRpStreamFormat);
+   // Without STREAM (other writers, a hand edit) the file is empty: the writers and the PDF
+   // driver read its stream
+   if efile.Stream=nil then
+    efile.Stream:=TMemoryStream.Create;
    SetLength(Report.EmbeddedFiles, Length(Report.EmbeddedFiles)+1);
    Report.EmbeddedFiles[Length(Report.EmbeddedFiles)-1]:=efile;
   end
@@ -2349,7 +2577,7 @@ begin
     Raise Exception.Create(SRpStreamFormat);
    subrep:=TRpSubReport.Create(report);
    report.SubReports.Add.SubReport:=subrep;
-   subrep.Name:=String(RpStringToString(propvalue));
+   subrep.Name:=RpPropToString(propvalue,proptype);
    FindNextName;
 
    while propname<>'/SUBREPORT' do
@@ -2362,7 +2590,7 @@ begin
       Raise Exception.Create(SRpStreamFormat);
      sec:=TRpSection.Create(report);
      subrep.Sections.Add.Section:=sec;;
-     sec.Name:=String(RpStringToString(propvalue));
+     sec.Name:=RpPropToString(propvalue,proptype);
      FindNextName;
      while propname<>'/SECTION' do
      begin
@@ -2372,7 +2600,7 @@ begin
        FindNextName;
        if propname<>'NAME' then
         Raise Exception.Create(SRpStreamFormat);
-       compname:=propvalue;
+       compname:=RpPropToString(propvalue,proptype);
        FindNextName;
        FindNextName;
        if propname<>'CLASSNAME' then
@@ -2385,7 +2613,7 @@ begin
 
        compitem:=sec.Components.Add;
        compitem.Component:=comp;
-       comp.Name:=String(compname);
+       comp.Name:=compname;
        while propname<>'/COMPONENT' do
        begin
         // Read component props
@@ -2395,7 +2623,15 @@ begin
        end;
       end
       else
-       ReadPropSection(sec,propname,propvalue,proptype,propsize);
+      begin
+       // As the .Net reader: a section property that can not be read keeps its default (a value
+       // that is not a number aborted the whole report)
+       try
+        ReadPropSection(sec,propname,propvalue,proptype,propsize);
+       except
+        // The default stays
+       end;
+      end;
       FindNextName;
      end;
     end

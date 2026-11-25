@@ -525,6 +525,12 @@ begin
   end;
   inc(i);
  end;
+ // None: -1, as FirstSectionThatIs (it was the last section)
+ if i>=Sections.Count then
+ begin
+  Result:=-1;
+  exit;
+ end;
  while i<Sections.Count do
  begin
   if Sections.Items[i].Section.SectionType<>atype then

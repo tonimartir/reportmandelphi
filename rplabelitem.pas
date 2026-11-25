@@ -499,10 +499,13 @@ begin
    tempwide:='';
   end
   else
+  // The .Net engine separates the languages with CR LF: that CR is not part of the text
+  if (FWideText[i]<>WideChar(chr(13))) or (i=alength) or (FWideText[i+1]<>WideChar(chr(10))) then
    tempwide:=tempwide+FWideText[i];
   inc(i);
  end;
- if Length(tempwide)>0 then
+ // A text that ends with the separator has an empty last language (UpdateWideText writes it so)
+ if (Length(tempwide)>0) or ((alength>0) and (FWideText[alength]=WideChar(chr(10)))) then
   FAllStrings.Add(tempwide);
 end;
 
