@@ -1105,6 +1105,14 @@ var
   posComp: TRpSizePosInterface;
   item: TRpSizePosInterface;
 begin
+  // A click on the background of a section selects the section, as the VCL
+  // designer does (freportstructure.SelectDataItem): Paste needs it
+  if AComp is TRpSectionInterface then
+  begin
+    ClearSelection;
+    SelectDataItem(TRpSectionInterface(AComp).printitem);
+    Exit;
+  end;
   if not Assigned(AComp) or not (AComp is TRpSizePosInterface) then
   begin
     ClearSelection;

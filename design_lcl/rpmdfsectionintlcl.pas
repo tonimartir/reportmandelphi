@@ -813,10 +813,13 @@ begin
   end
   else
   begin
-    // Simple click on section background -> deselect items if not Shift
+    // Simple click on section background -> deselect items and select the
+    // section (as the VCL designer), if not Shift
     if not ((ssShift in Shift) or (ssCtrl in Shift)) then
     begin
-      if Assigned(FOnClearSelection) then
+      if Assigned(OnSelectComponent) then
+        OnSelectComponent(Self, False)
+      else if Assigned(FOnClearSelection) then
         FOnClearSelection(Self);
     end;
   end;
@@ -853,7 +856,10 @@ begin
 
     if selectedList.Count = 0 then
     begin
-      if Assigned(FOnClearSelection) then
+      // An empty rectangle selects the section, as the VCL designer
+      if Assigned(OnSelectComponent) then
+        OnSelectComponent(Self, False)
+      else if Assigned(FOnClearSelection) then
         FOnClearSelection(Self);
     end
     else if selectedList.Count = 1 then

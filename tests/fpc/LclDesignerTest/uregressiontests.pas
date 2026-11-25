@@ -2130,6 +2130,23 @@ begin
     CheckInt(cnt + 1, detail.ReportComponents.Count, 'Paste from the context menu');
     mf.DoUndo;
     CheckInt(cnt, detail.ReportComponents.Count, 'Undo of the paste');
+    // A click on the background of a section selects the section (VCL
+    // designer), so the surface menu can paste into it
+    frame.SelectComponent(ChildInt(frame, nLab), False);
+    mf.BtnCopy.OnClick(mf.BtnCopy);
+    SecIntOf(frame, detail).ExecuteMouseDown(mbLeft, [], 1, 1);
+    SecIntOf(frame, detail).ExecuteMouseUp(mbLeft, [], 1, 1);
+    Check((mf.ObjInsp.SelectedItems.Count = 1) and
+      (mf.ObjInsp.SelectedItems.Objects[0] = SecIntOf(frame, detail)),
+      'Click on the section background selects the section');
+    frame.DesignPopupMenu.OnPopup(frame.DesignPopupMenu);
+    Check(FindCommandItem(frame.DesignPopupMenu.Items, dcPaste).Enabled,
+      'Surface menu: paste enabled after a click on the section');
+    cnt := detail.ReportComponents.Count;
+    FindCommandItem(frame.DesignPopupMenu.Items, dcPaste).Click;
+    CheckInt(cnt + 1, detail.ReportComponents.Count, 'Paste into the clicked section');
+    mf.DoUndo;
+    CheckInt(cnt, detail.ReportComponents.Count, 'Undo of the paste into the section');
     // Select all from the design surface menu
     frame.DesignPopupMenu.OnPopup(frame.DesignPopupMenu);
     Check(FindCommandItem(frame.DesignPopupMenu.Items, dcSelectAll).Enabled, 'Surface menu: select all enabled');
