@@ -3366,6 +3366,7 @@ var
   area: TRect;
 {$IFDEF MSWINDOWS}
   i: Integer;
+  mainMon: TMonitor;
 {$ENDIF}
 
   procedure CheckCentered(const Context: string);
@@ -3452,14 +3453,29 @@ begin
     CheckNativeDialogCentered(parent, 'Message box of Windows');
 
     // The Data Link of ADO centers itself inside the primary monitor: the
-    // form on another monitor when there is one
-    for i := 0 to Screen.MonitorCount - 1 do
-      if not Screen.Monitors[i].Primary then
+    // form on a monitor that is not the primary one. The windows of the test
+    // stay on the monitor of its main form, so that is the monitor used when
+    // it is not the primary one; moving the form to another monitor is only
+    // done when RP_TEST_OTHER_MONITOR=1.
+    mainMon := Screen.MonitorFromRect(Application.MainForm.BoundsRect);
+    area := mainMon.WorkareaRect;
+    if mainMon.Primary and (Screen.MonitorCount > 1) then
+    begin
+      if GetEnvironmentVariable('RP_TEST_OTHER_MONITOR') = '1' then
       begin
-        area := Screen.Monitors[i].WorkareaRect;
-        parent.SetBounds(area.Left + 60, area.Top + 60, 800, 600);
-        Break;
-      end;
+        for i := 0 to Screen.MonitorCount - 1 do
+          if not Screen.Monitors[i].Primary then
+          begin
+            area := Screen.Monitors[i].WorkareaRect;
+            Break;
+          end;
+      end
+      else
+        LogMsg('[TEST_SKIPPED] Data Link dialog on a monitor that is not the primary one: ' +
+          'the test window is on the primary monitor (RP_TEST_OTHER_MONITOR=1 moves ' +
+          'a form to another one)');
+    end;
+    parent.SetBounds(area.Left + 60, area.Top + 60, 800, 600);
     Application.ProcessMessages;
     LogMsg(Format('Data Link dialog on a form at %d,%d (%d monitors)',
       [parent.Left, parent.Top, Screen.MonitorCount]));
