@@ -1256,31 +1256,80 @@ los dos motores (son casos de error a propósito), 14 necesitan fuentes con el d
 fallan solo en Delphi (bases de datos que no tiene, uniones de tipos, un QR de versión 40) y 11
 solo en C# (el punto 8).
 
-**Defectos del escritor y del protocolo del diseñador en C#** (encontrados el 25-11-2026 al adaptar el
-escritor XML y el servidor del diseñador a TypeScript; TypeScript los reproduce para dar los mismos
-bytes, y ninguno está corregido: para decidir, Toni):
+**Defectos del escritor y del protocolo del diseñador** (encontrados el 25-11-2026 al adaptar el
+escritor XML y el servidor del diseñador a TypeScript, comprobados después en Delphi con un arnés que
+lee y guarda con el motor). **Corregidos el 26-11-2026** (Toni: «Corrige todos los de delphi luego
+los de c# y traslada los fixes a typescript»), en Delphi, C# y TypeScript a la vez donde los tenían:
 
-1. El escritor guarda solo el mensaje de error del idioma actual de un parámetro (se pierden los demás),
-   y su getter compara la longitud del texto con el índice del idioma, no el número de líneas.
-2. Al leer, un subinforme hijo queda como su propio padre (`ChildSubReport.ParentSubReport =
-   ChildSubReport`): PARENTSUBREPORT se guarda con su propio nombre.
-3. Un parámetro SubstExpre pierde su valor al guardar (falta en el `switch` de VALUE).
-4. Una fecha anterior al 30-12-1899 se desplaza en cada guardado (se escribe `TotalDays`, no el valor
-   OLE: -700,3 → -699,7 → -698,3), y un parámetro de fecha negativa con hora pasa al día siguiente.
-5. Un texto de idioma vacío de una etiqueta se pierde al releer y los idiomas siguientes se desplazan.
-6. Guardar un fichero incrustado sin contenido da una referencia nula; uno con contenido no se puede
-   pasar a JSON (`MemoryStream`).
-7. `ExportSubReport`: quita todos los parámetros que tienen algún dataset; borra los nietos pero deja
-   CHILDSUBREPORT apuntando a ellos, así que el `.rep` exportado no se puede volver a leer («The given
-   key 'TRPSUBREPORT2' was not present in the dictionary»); puede borrar un dataset que comparte.
-8. `ImportReport`: la mezcla de datasets de un parámetro existente no hace nada; un dataset renombrado a
-   `_1` no se propaga; y las colisiones de nombres se detectan distinto si el destino se leyó de XML o de
-   JSON (con XML, `TRpSection0` no se detecta y se duplica).
-9. El servidor del diseñador convierte a .NET cada informe de Delphi que abre y guarda (`:X` → `@X`,
-   drivers, máscaras), y el setter del SQL borra su explicación.
-10. Tras pasar por JSON, `UpdateReferences` no repone PARENTSUBREPORT/PARENTSECTION, y las variantes
-    enteras vuelven como Long (Evaluate de un parámetro Integer dice `Int64`).
-11. `SubReport.DetailCount` es 1 en un subinforme con secciones pero sin detalle.
+1. El escritor guardaba solo el mensaje de error del idioma actual de un parámetro (los tres motores):
+   ahora todos, como la descripción y la ayuda. En C# y TypeScript, además, el getter comparaba la
+   longitud del texto con el índice del idioma y `Param.Clone` copiaba solo el actual.
+2. Al leer, un subinforme hijo quedaba como su propio padre (C#, TypeScript): ahora su padre es el
+   subinforme de la sección, también cuando el hijo va antes que el padre en el fichero.
+3. Un parámetro SubstExpre perdía su valor al guardar (los tres; Delphi tampoco lo leía).
+4. Una fecha anterior al 30-12-1899 se desplazaba en cada guardado (C#, TypeScript): se escribe el
+   valor OLE (-700,3 se queda en -700,3), y una fecha negativa con hora ya no pasa al día siguiente.
+5. Un idioma vacío de una etiqueta se perdía al releer y los siguientes se desplazaban (C#,
+   TypeScript); Delphi perdía un último idioma vacío y no quitaba el CR de los idiomas que C# separa
+   con CRLF.
+6. Un fichero incrustado sin contenido (sin STREAM) daba una referencia nula al guardar, en XML y DFM
+   y al imprimir a PDF (los tres): se lee como un fichero vacío y se guarda vacío. En C#, uno con
+   contenido ya se puede pasar a JSON (`streamBase64`, como TypeScript).
+7. `ExportSubReport` (C#, TypeScript): conserva los parámetros de los datasets exportados (quitaba todos
+   los que tenían alguno), los nietos (el `.rep` exportado no se podía volver a leer), el dataset
+   maestro y los de las uniones; un hijo exportado solo queda como subinforme principal. Y
+   `DeleteSubReport` (borrar un subinforme en el diseñador WinForms) ya no borra un dataset que usa
+   otro subinforme ni quita a los parámetros sus otros datasets. `BaseReport.DeleteSubReport` borraba
+   solo una de cada dos secciones.
+8. `ImportReport` (C#, TypeScript): un parámetro que ya existe pasa a tener también los datasets del
+   importado; un dataset renombrado a `_1` lo siguen los subinformes, parámetros, maestros y uniones
+   del informe importado (sus expresiones no); las colisiones de nombres se detectan sin distinguir
+   mayúsculas (con un destino leído de XML, `TRpSection0` no se detectaba y se duplicaba), un nombre
+   nuevo no le quita el suyo a un elemento que viene después, y los enlaces entre subinformes y
+   secciones llevan los nombres nuevos.
+9. El servidor del diseñador (C# de ReportmanAI y `@reportman/designer-server`) abre los informes sin
+   convertirlos a .NET: se convierten solo para ejecutar, así que un informe de Delphi guardado desde
+   el diseñador web sigue funcionando en Delphi. La conversión, además, ya no borra la explicación
+   del SQL. Exportar un subinforme tampoco lo convierte.
+10. Tras pasar por JSON, `UpdateReferences` repone el padre y la sección padre de cada hijo, y una
+    variante Integer o Byte vuelve con su tipo (Evaluate de un parámetro Integer decía `Int64`).
+11. `SubReport.DetailCount` es 0 en un subinforme sin detalle (era 1), y en Delphi `LastDetail` es -1
+    (era la última sección).
+
+**Defectos propios de Delphi, corregidos el mismo día** (en `rpxmlstream.pas`, `rplabelitem.pas`,
+`rpsubreport.pas` y `rpbasereport.pas`; los 45 `.rep` del repositorio se guardan con los mismos bytes
+que antes):
+
+- Los textos que se guardan como String (nombres, alias, valores y listas de parámetros, grupos,
+  metadatos del documento, ficheros incrustados) pasaban por `AnsiString`, y lo que la página de
+  códigos ANSI no tiene se guardaba como `?`. Ahora se escriben como antes cuando la página de códigos
+  los tiene (los Delphi antiguos los siguen leyendo) y como WideString cuando no. Al leer, un String
+  con algún código por encima de 255 es UTF-16 (lo escribió .NET). FPC escribe como WideString lo que
+  no es ASCII y lee como UTF-8 lo que escribieron versiones anteriores de FPC.
+- `ReportAction` (acciones del cajón portamonedas) se perdía siempre al leer un XML: cada propiedad del
+  informe lo ponía a vacío.
+- Los números con decimales se guardaban con 15 cifras (0,30000000000000004 como 0,3): ahora con el
+  texto más corto que se lee como el mismo número, como .NET. FPC 3.2 no da más de 15 cifras con
+  `FloatToStrF`, así que para 16 y 17 se usa `Str`. El destino net48 de C# tenía el mismo defecto
+  (`double.ToString()` da 15 cifras en .NET Framework): ahora `R`, y `G17` si no vuelve igual.
+- Un valor mal formado en una propiedad de sección abortaba la carga del informe entero: se queda el
+  valor por defecto, como en C#.
+- U+FFFF se leía como U+0000 (`mod 65535`).
+- ANNOTATION se escribía como String (bytes ANSI) y se leía como UTF-16: se lee según su tipo.
+
+**En C# y TypeScript, por el mismo motivo**: un String sin códigos por encima de 255 tiene los 128 a 159
+leídos como Windows-1252, que es como los escribe Delphi en Occidente (el euro, las comillas y los
+guiones salían como caracteres de control). Un informe de Delphi escrito con otra página de códigos
+(cirílico, griego) y sin WideString no se puede distinguir: se lee como Windows-1252.
+
+**Revisado y sin defecto**: el editor Monaco del diseñador VCL solo cambia el SQL (y borra su
+explicación) cuando el usuario lo edita; las diferencias de saltos de línea entre el editor y el
+informe se normalizan antes de comparar.
+
+**Queda, conocido**: al importar, las expresiones del informe importado siguen nombrando el alias
+antiguo de un dataset renombrado; una variante String que parece una fecha vuelve del JSON como
+DateTime (Newtonsoft ya la convierte al leer); y Delphi no admite dos componentes con el mismo nombre,
+que C# sí lee.
 
 ## 8. Riesgos
 
