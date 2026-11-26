@@ -239,8 +239,8 @@ nativos, sin WebAssembly, sin Docker y sin dependencias del sistema operativo. F
 <b>Node.js</b> y en el <b>navegador</b>, y son una traducción del motor .NET de la misma versión:
 los dos están hechos para dar la misma salida con el mismo informe.</p>
 
-<p class="doc-note"><b>Versión preliminar.</b> Ésta es la preliminar de la 4.1.0, publicada con la
-etiqueta de npm <code>next</code> (<code>npm install @reportman/node@next</code>). <b>La API todavía
+<p class="doc-note"><b>Versión preliminar.</b> Ésta es la preliminar de la 4.1.0: hasta la 4.1.0 definitiva, cada preliminar se publica con la
+etiqueta de npm <code>latest</code> (<code>npm install @reportman/node</code>). <b>La API todavía
 puede cambiar</b> antes de la 4.1.0 definitiva, así que fije la versión exacta que instale si va a
 construir sobre ella ahora.</p>
 
@@ -276,7 +276,7 @@ writeFileSync('invoices.pdf', await report.executeToPdf({ FIRST_ORDER: 7, LAST_O
 <p><code>@reportman/node</code> instala <b><code>reportman-pdf</code></b>, que hace los mismos dos
 pasos desde una consola:</p>
 
-<pre><code>npm install @reportman/node@next
+<pre><code>npm install @reportman/node
 npx reportman-pdf invoices.rep --describe --sqlite SAMPLES=samples.db
 npx reportman-pdf invoices.rep -o invoices.pdf --sqlite SAMPLES=samples.db -paramFIRST_ORDER=7 -paramLAST_ORDER=9</code></pre>
 

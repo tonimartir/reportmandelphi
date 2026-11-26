@@ -239,8 +239,8 @@ binaries, no WebAssembly, no Docker and no operating-system dependencies. They r
 <b>Node.js</b> and in the <b>browser</b>, and they are a translation of the .NET engine of the same
 release: the two are meant to give the same output for the same report.</p>
 
-<p class="doc-note"><b>Preview.</b> This is the 4.1.0 preview, published under the npm tag
-<code>next</code> (<code>npm install @reportman/node@next</code>). <b>The API may still change</b>
+<p class="doc-note"><b>Preview.</b> This is the 4.1.0 preview: until the final 4.1.0, each preview is published under the npm tag
+<code>latest</code> (<code>npm install @reportman/node</code>). <b>The API may still change</b>
 before the final 4.1.0, so pin the exact version you install if you build on it now.</p>
 
 <h2>Requirements</h2>
@@ -274,7 +274,7 @@ writeFileSync('invoices.pdf', await report.executeToPdf({ FIRST_ORDER: 7, LAST_O
 <p><code>@reportman/node</code> installs <b><code>reportman-pdf</code></b>, which does the same two
 steps from a shell:</p>
 
-<pre><code>npm install @reportman/node@next
+<pre><code>npm install @reportman/node
 npx reportman-pdf invoices.rep --describe --sqlite SAMPLES=samples.db
 npx reportman-pdf invoices.rep -o invoices.pdf --sqlite SAMPLES=samples.db -paramFIRST_ORDER=7 -paramLAST_ORDER=9</code></pre>
 

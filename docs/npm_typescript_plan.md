@@ -1469,6 +1469,16 @@ Mac real el motor TypeScript aún no se ha probado.
    only)» con «Bypass two-factor authentication», que crea Toni en npmjs.com) mover las etiquetas
    tampoco pide 2FA; sin él, la sesión de `npm login` lo pide una vez por paquete. `--direct`
    publica como antes.
+   **Un solo 2FA por entrega, sin excepciones (Toni, 27-11-2026)**: en la 4.1.0-alpha.4 mover
+   `latest` y marcar como obsoletos los marcadores `0.0.0-stage` le pidió más de treinta 2FA: desde
+   julio de 2026 npm ya no deja que un token que salta el 2FA mueva etiquetas ni marque versiones
+   obsoletas, y `npm dist-tag` y `npm deprecate` lo piden una vez por paquete. Desde entonces
+   `release.mjs` elige la etiqueta al poner la versión en espera y no la mueve nunca: `latest`
+   mientras un paquete no tenga versión definitiva (así `npm install` sin etiqueta da la última
+   preliminar), y `next` solo para una preliminar de un paquete cuyo `latest` ya sea definitivo. Se
+   retiraron `--tag`, `--direct` y `--deprecate-0x`, y el script se niega a ejecutar cualquier orden
+   de npm que no sea `view` o `stage`. La etiqueta `next` se queda en `4.1.0-alpha.4`; la web y los
+   README instalan sin etiqueta.
 8. **Errores de C# o de Delphi encontrados al portar** — **DECIDIDO**: se corrigen en los tres
    motores, revisando a fondo que cada corrección sea compatible con los informes existentes; si no
    puede serlo, se discute antes de hacerla.
