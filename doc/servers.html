@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="The three Report Manager servers compared: Web Report Server (repwebexe), Reportman Server with its web designer, and the TCP Report Server. Which one to choose.">
+  <meta name="description" content="The four Report Manager servers compared: Web Report Server (repwebexe), Reportman Server with its web designer, the TCP server and @reportman/server for Node.">
   <title>Report Manager - Servers</title>
   <link rel="stylesheet" href="responsive.css?v=20261010">
   <link rel="canonical" href="https://reportman.es/servers.html">
@@ -18,7 +18,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Report Manager">
   <meta property="og:title" content="Report Manager - Servers">
-  <meta property="og:description" content="The three Report Manager servers compared: Web Report Server (repwebexe), Reportman Server with its web design">
+  <meta property="og:description" content="The four Report Manager servers compared: Web Report Server (repwebexe), Reportman Server, TCP and Node.js.">
   <meta property="og:url" content="https://reportman.es/servers.html">
   <meta property="og:image" content="https://reportman.es/og-reportman.png">
   <meta property="og:image:width" content="1200">
@@ -28,7 +28,7 @@
   <meta property="og:locale:alternate" content="es_ES">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Report Manager - Servers">
-  <meta name="twitter:description" content="The three Report Manager servers compared: Web Report Server (repwebexe), Reportman Server with its web design">
+  <meta name="twitter:description" content="The four Report Manager servers compared: Web Report Server (repwebexe), Reportman Server, TCP and Node.js.">
   <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
 </head>
 <body>
@@ -90,8 +90,9 @@
             <td>The same reports API, in pure JavaScript, inside your own Node.js application.</td>
             <td>you work in <strong>Node.js</strong> and want the reports API <strong>in your own
                 process</strong> &mdash; with <code>node:http</code>, Express or Fastify &mdash; with
-                no container and no native binary. It speaks the API of Reportman Server, and it does
-                not design.</td>
+                no container and no native binary. It speaks the API of Reportman Server, and
+                the <a href="doc/npm.html">web designer mounts next to it</a>, in the same
+                process.</td>
           </tr>
         </table>
 
@@ -122,8 +123,12 @@
           and the reports API as npm packages, with no native code, mounted inside your own Node.js
           application or run on its own with <code>npx @reportman/server --samples</code>. It speaks
           the <em>same API</em> as Reportman Server and reads the <em>same data folder</em>, so a
-          folder moves between the two &mdash; but it does not design either: no store with users,
-          groups and permissions, and no copilot. It is a preview, under the npm tag
+          folder moves between the two. By itself it does not design, but the <strong>web designer
+          mounts next to it</strong>, on a route of your own application: the
+          <code>&lt;reportman-designer&gt;</code> element with
+          <code>@reportman/designer-server</code>, which saves the same <code>.rep</code> files
+          &mdash; without the store of users, groups and permissions, and without the copilot, which
+          stay in Reportman Server. It is a preview, under the npm tag
           <code>next</code>. <a href="doc/npm.html">Details</a>.</li>
         </ul>
         <p><strong>You can run both, and many installations will.</strong> If you come from

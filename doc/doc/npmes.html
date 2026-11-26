@@ -294,6 +294,45 @@ Delphi.</p>
 diseña informes: véase <a href="/serverses.html">los cuatro servidores de Report Manager, uno al
 lado del otro</a>.</p>
 
+<h2>El diseñador web, dentro de su propia aplicación</h2>
+
+<p>El diseñador de informes funciona también en el navegador, y una aplicación de Node.js puede
+servirlo ella misma. El diseñador es un elemento propio, <code>&lt;reportman-designer&gt;</code>
+(<code>@reportman/designer</code>), y su parte de servidor es
+<code>@reportman/designer-server</code>, montada en una ruta de su propia aplicación &mdash;con
+<code>node:http</code>, Express o Fastify&mdash;. Se sirve desde su mismo origen, así que comparte
+su sesión, y no necesita contenedor ni .NET:</p>
+
+<pre><code>import express from 'express';
+import { createDesignerServer, nodeHandler } from '@reportman/designer-server';
+
+const designer = createDesignerServer({
+  dataPath: './reportman-data',          // los informes y las conexiones
+  authorize: (check, request) =&gt; request.raw.user?.canDesignReports === true,
+});
+
+const app = express();
+app.use(nodeHandler(designer));          // /api/designer/* y el diseñador en /designer/
+app.listen(3000);</code></pre>
+
+<p>Abre los informes de una carpeta de datos con la misma disposición que la de
+<a href="../serveres.html">Reportman Server</a>, los guarda en el mismo <code>.rep</code> XML llano
+que leen los diseñadores de Delphi y .NET, previsualiza su PDF con el motor de JavaScript y lee el
+esquema de sus conexiones para el editor de SQL. <b>Quién puede diseñar es cosa de su
+aplicación</b>: sin <code>authorize</code>, el diseñador contesta solo a la máquina en la que corre,
+y la comprobación que recibe dice qué se está pidiendo &mdash;abrir o ejecutar los informes de un
+alias, guardar en él, o abrir datos y evaluar expresiones&mdash;.</p>
+
+<p>El <b>copiloto de IA no forma parte de esto</b>: el asistente vive en Reportman Server, y aquí el
+diseñador se abre sin él (<code>no-ai</code>).</p>
+
+<p class="doc-note"><b><code>@reportman/designer</code> y <code>@reportman/designer-server</code>
+llegan a npm con la siguiente publicación de la versión preliminar.</b> Su código fuente ya está en
+el repositorio, y <a href="/demo/designer/indexes.html">la demo del diseñador en vivo</a> los
+ejecuta en su propio navegador: allí el diseñador entero &mdash;su parte de servidor también&mdash;
+funciona dentro de la página, sin servidor ninguno, y esa página pasa su copiloto al servicio de IA
+de Report Manager.</p>
+
 <h2>Bases de datos</h2>
 
 <p>El motor lee los datos a través de un paquete de acceso, uno por sistema, con el mismo
@@ -328,6 +367,9 @@ volver a guardar el informe en XML, desde el diseñador o con <code>reptotxt -xm
   <li><a href="/demo/indexes.html">La demostración en vivo</a> &mdash; los informes de ejemplo
       ejecutados en su propio navegador, con estos mismos paquetes: el formulario de los parámetros,
       la vista previa de las páginas y el PDF.</li>
+  <li><a href="/demo/designer/indexes.html">La demo del diseñador en vivo</a> &mdash; el diseñador
+      web en su navegador: abra un informe de ejemplo, cambie sus elementos, sus expresiones y su
+      SQL, previsualice su PDF y guárdelo.</li>
   <li><a href="https://github.com/tonimartir/reportman/tree/master/typescript/examples" target="_blank" rel="noopener">La
       galería de ejemplos</a> &mdash; los once informes de ejemplo con una imagen de su primera
       página, sus ficheros <code>.rep</code>, los PDF que el motor hace de ellos y cómo ejecutar cada

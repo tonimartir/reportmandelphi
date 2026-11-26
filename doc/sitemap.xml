@@ -3,21 +3,21 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://reportman.es/</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/indexes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/"/>
   </url>
   <url>
     <loc>https://reportman.es/indexes.html</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/indexes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/"/>
   </url>
   <url>
     <loc>https://reportman.es/download.html</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/download.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/downloades.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/download.html"/>
@@ -66,7 +66,7 @@
   </url>
   <url>
     <loc>https://reportman.es/downloades.html</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/download.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/downloades.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/download.html"/>
@@ -101,14 +101,14 @@
   </url>
   <url>
     <loc>https://reportman.es/servers.html</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/servers.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/serverses.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/servers.html"/>
   </url>
   <url>
     <loc>https://reportman.es/serverses.html</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/servers.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/serverses.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/servers.html"/>
@@ -377,14 +377,14 @@
   </url>
   <url>
     <loc>https://reportman.es/doc/npm.html</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/doc/npm.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/doc/npmes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/doc/npm.html"/>
   </url>
   <url>
     <loc>https://reportman.es/doc/npmes.html</loc>
-    <lastmod>2026-11-24</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://reportman.es/doc/npm.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://reportman.es/doc/npmes.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://reportman.es/doc/npm.html"/>

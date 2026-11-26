@@ -291,6 +291,43 @@ metafile, text or CSV, and shows the same call for curl, PowerShell, JavaScript,
 does not design reports: see <a href="/servers.html">the four Report Manager servers side by
 side</a>.</p>
 
+<h2>The web designer, inside your own application</h2>
+
+<p>The report designer also runs in the browser, and a Node.js application can serve it itself. The
+designer is a custom element, <code>&lt;reportman-designer&gt;</code>
+(<code>@reportman/designer</code>), and its server side is <code>@reportman/designer-server</code>,
+mounted on a route of your own application &mdash; <code>node:http</code>, Express or Fastify. It is
+served from your own origin, so it shares your session, and it needs no container and no .NET:</p>
+
+<pre><code>import express from 'express';
+import { createDesignerServer, nodeHandler } from '@reportman/designer-server';
+
+const designer = createDesignerServer({
+  dataPath: './reportman-data',          // the reports and the connections
+  authorize: (check, request) =&gt; request.raw.user?.canDesignReports === true,
+});
+
+const app = express();
+app.use(nodeHandler(designer));          // /api/designer/* and the designer at /designer/
+app.listen(3000);</code></pre>
+
+<p>It opens the reports of a data folder laid out as the one of <a href="../server.html">Reportman
+Server</a>, saves them as the same plain <code>.rep</code> XML the Delphi and .NET designers read,
+previews their PDF with the JavaScript engine, and reads the schema of your connections for the SQL
+editor. <b>Who may design is your application&rsquo;s business</b>: without <code>authorize</code>
+the designer answers only the machine it runs on, and the check it is given says what is being
+asked &mdash; open or run the reports of an alias, save in it, or open data and evaluate
+expressions.</p>
+
+<p>The <b>AI copilot is not part of it</b>: the assistant lives in Reportman Server, and the
+designer opens without it here (<code>no-ai</code>).</p>
+
+<p class="doc-note"><b><code>@reportman/designer</code> and <code>@reportman/designer-server</code>
+arrive on npm with the next publish of the preview.</b> Their sources are already in the
+repository, and <a href="/demo/designer/">the designer live demo</a> runs them in your own browser:
+there the whole designer &mdash;its server side too&mdash; works inside the page, with no server at
+all, and that page relays its copilot to the Report Manager AI service.</p>
+
 <h2>Databases</h2>
 
 <p>The engine reads its data through a driver package, one per backend, with the same behaviour as
@@ -323,6 +360,9 @@ the report again as XML, from the designer or with <code>reptotxt -xml</code>.</
 <ul>
   <li><a href="/demo/">The live demo</a> &mdash; the sample reports run in your own browser, with
       these same packages: the form of the parameters, the preview of the pages and the PDF.</li>
+  <li><a href="/demo/designer/">The designer live demo</a> &mdash; the web designer itself in your
+      browser: open a sample report, change its items, expressions and SQL, preview its PDF and
+      save it.</li>
   <li><a href="https://github.com/tonimartir/reportman/tree/master/typescript/examples" target="_blank" rel="noopener">The
       examples gallery</a> &mdash; the eleven sample reports with a picture of their first page,
       their <code>.rep</code> files, the PDFs the engine makes of them and how to run each one.</li>

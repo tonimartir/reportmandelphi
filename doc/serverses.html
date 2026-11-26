@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Los tres servidores de Report Manager comparados: servidor de informes web (repwebexe), Reportman Server con su dise&ntilde;ador web y el TCP Report Server. Cu&aacute;l elegir.">
+  <meta name="description" content="Los cuatro servidores de Report Manager comparados: servidor de informes web (repwebexe), Reportman Server con su dise&ntilde;ador web, el TCP y @reportman/server.">
   <title>Report Manager - Servidores</title>
   <link rel="stylesheet" href="responsive.css?v=20261010">
   <link rel="canonical" href="https://reportman.es/serverses.html">
@@ -18,7 +18,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Report Manager">
   <meta property="og:title" content="Report Manager - Servidores">
-  <meta property="og:description" content="Los tres servidores de Report Manager comparados: cu&aacute;l elegir.">
+  <meta property="og:description" content="Los cuatro servidores de Report Manager comparados: cu&aacute;l elegir.">
   <meta property="og:url" content="https://reportman.es/serverses.html">
   <meta property="og:image" content="https://reportman.es/og-reportman.png">
   <meta property="og:image:width" content="1200">
@@ -28,7 +28,7 @@
   <meta property="og:locale:alternate" content="en_US">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Report Manager - Servidores">
-  <meta name="twitter:description" content="Los tres servidores de Report Manager comparados: cu&aacute;l elegir.">
+  <meta name="twitter:description" content="Los cuatro servidores de Report Manager comparados: cu&aacute;l elegir.">
   <meta name="twitter:image" content="https://reportman.es/og-reportman.png">
 </head>
 <body>
@@ -91,8 +91,9 @@
             <td>La misma API de informes, en JavaScript puro, dentro de su propia aplicaci&oacute;n Node.js.</td>
             <td>trabaja en <strong>Node.js</strong> y quiere la API de informes <strong>en su propio
                 proceso</strong> &mdash;con <code>node:http</code>, Express o Fastify&mdash;, sin
-                contenedor y sin binario nativo. Habla la API de Reportman Server, y no
-                dise&ntilde;a.</td>
+                contenedor y sin binario nativo. Habla la API de Reportman Server, y
+                el <a href="doc/npmes.html">dise&ntilde;ador web se monta a su lado</a>, en el mismo
+                proceso.</td>
           </tr>
         </table>
 
@@ -125,8 +126,12 @@
           aplicaci&oacute;n Node.js o ejecutados por su cuenta con
           <code>npx @reportman/server --samples</code>. Habla la <em>misma API</em> que Reportman
           Server y lee la <em>misma carpeta de datos</em>, as&iacute; que una carpeta pasa de uno al
-          otro &mdash;pero tampoco dise&ntilde;a: no hay almac&eacute;n con usuarios, grupos y
-          permisos, ni copiloto. Es una versi&oacute;n preliminar, con la etiqueta de npm
+          otro. Por s&iacute; solo no dise&ntilde;a, pero el <strong>dise&ntilde;ador web se monta a
+          su lado</strong>, en una ruta de su propia aplicaci&oacute;n: el elemento
+          <code>&lt;reportman-designer&gt;</code> con <code>@reportman/designer-server</code>, que
+          guarda los mismos ficheros <code>.rep</code> &mdash;sin el almac&eacute;n con usuarios,
+          grupos y permisos, y sin copiloto, que se quedan en Reportman Server&mdash;. Es una
+          versi&oacute;n preliminar, con la etiqueta de npm
           <code>next</code>. <a href="doc/npmes.html">Detalles</a>.</li>
         </ul>
         <p><strong>Puede usar los dos, y muchas instalaciones lo har&aacute;n.</strong> Si viene de
