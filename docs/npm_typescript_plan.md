@@ -1003,6 +1003,30 @@ unos 11 MB más en `doc/demo`. Se construye con el resto de la demo (`npm run de
 <repositorio Delphi>/doc/demo`, que necesita antes `npm run build:designer`). Necesita un navegador
 con *service workers*: el navegador integrado de la app de Claude no los admite, y algunas ventanas
 privadas tampoco; la página lo dice.
+
+**La IA del diseñador también con Node (26-11-2026, Toni: «añadimos la IA»)**: `@reportman/designer-server`
+tiene la opción `ai` (`ai: true`): el puente de `Reportman.Designer.Server.Ai` traducido (`ai.ts`, sin
+API de Node: `fetch` y streams web, así que va también en el *service worker* de la demo). Pasa a
+`aiapi.reportman.es` solo las rutas del diseñador (`/api/ai/*`, la misma lista), como la instalación
+del servidor (el `server-id` de la carpeta de datos, como Reportman.Server, o `installId`), con la
+sesión de IA de la página como Bearer, y devuelve la respuesta a trozos (`ServerResponse.stream` y
+`ServerRequest.signal` en `@reportman/server`: parar en la página para la llamada a la nube). También
+el login de la IA (`/api/ai-login/*`), `/api/session/config` y las cuatro operaciones del copiloto
+del protocolo: `ToXml`, `FromXml`, `AiContext` (funciones, parámetros y columnas de cada dataset, como
+`AiContextBuilder`) y `SqlColumns` (la SQL que escribe la IA, solo un `SELECT`/`WITH` según
+`AiSqlGuard`, cerrada sin commit). El elemento tiene `design-prompt` y `design-subschema` (el
+asistente de nuevo informe de Reportman.Server: el copiloto diseña el informe nuevo con ese
+subesquema en cuanto abre). Probado de punta a punta con la nube real desde Node (invitado de una
+instalación nueva: el copiloto diseñó un catálogo con el subesquema Catalog).
+La demo tiene IA y «Nuevo informe»: nombre, subesquema de `samples/dbxschemas/SAMPLES.json` (Sales,
+Catalog, Fishes, Greetings) y petición; cada ejemplo abre con el subesquema de sus datasets
+(`SCHEMANAME`). Cada navegador es una instalación `web-demo-<aleatorio>` (su propia caché, que
+«Restaurar los ejemplos» no borra). **Falta, en la nube (privada, la despliega Toni)**: aceptar el
+origen `https://reportman.es` en `Cors:AllowedOrigins` de Reportman.AI.Api; hasta entonces su
+`OriginGateMiddleware` rechaza las llamadas de la demo (desde Node no hay origen y pasan).
+De paso: el elemento ya puede cerrarse y abrirse otro en la misma página (la demo lo hace al cambiar
+de informe): el `<link>` de su hoja de estilos en una sombra nueva no terminaba de cargar en Chrome y
+el diseñador se quedaba esperando; ahora la hoja se lee una vez y va como `<style>`.
 - Puerta: la licencia del diseñador (decisión 1 de aquel plan).
 
 ### Al final — Conversor DFM → XML: `reptotxt -xml` · 1-2 días

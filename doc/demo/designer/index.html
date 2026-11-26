@@ -13,8 +13,8 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../../responsive.css?v=20261010">
   <script type="module" crossorigin src="../assets/sample-list-BI5s3D7l.js"></script>
-  <script type="module" crossorigin src="../assets/page-BCCddHoD.js"></script>
-  <link rel="stylesheet" crossorigin href="../assets/page-D3vwXPwD.css">
+  <script type="module" crossorigin src="../assets/page-BnFKMcVi.js"></script>
+  <link rel="stylesheet" crossorigin href="../assets/page-D9lh1GcM.css">
 </head>
 <body>
   <header class="topbar">
@@ -41,13 +41,16 @@
     <p class="lead">The web report designer of Report Manager
       (<a href="https://www.npmjs.com/package/@reportman/designer" target="_blank" rel="noopener">@reportman/designer</a> on npm)
       <strong>in your browser</strong>: open a sample report, change its sections, items, expressions and SQL,
-      preview its PDF and save it. Its server is this page itself: a service worker answers the designer with
+      preview its PDF and save it, or make a <strong>new report</strong> and let the <strong>AI copilot</strong> design it
+      from a sentence, with one of the schemas of the sample database. Its server is this page itself: a service worker answers the designer with
       <a href="https://www.npmjs.com/package/@reportman/designer-server" target="_blank" rel="noopener">@reportman/designer-server</a>
-      and the JavaScript engine, on the sample SQLite database. What you save stays in this browser.
+      and the JavaScript engine, on the sample SQLite database. What you save stays in this browser; what you ask the copilot
+      goes to Reportman AI, with this browser's free credits or the account you log into in its chat.
       See also <a href="../">the reports run by the engine</a>.</p>
 
     <div class="designer-toolbar">
-      <label><span id="designer-sample-label">Sample report</span> <select id="designer-sample"></select></label>
+      <label><span id="designer-sample-label">Report</span> <select id="designer-sample"></select></label>
+      <button id="designer-new" type="button" class="btn btn-primary"></button>
       <button id="designer-download" type="button" class="btn"></button>
       <button id="designer-restore" type="button" class="btn"></button>
       <p id="designer-status" class="designer-status muted note" role="status"></p>

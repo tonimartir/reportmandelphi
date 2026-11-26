@@ -13,8 +13,8 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="stylesheet" href="../../responsive.css?v=20261010">
   <script type="module" crossorigin src="../assets/sample-list-BI5s3D7l.js"></script>
-  <script type="module" crossorigin src="../assets/page-BCCddHoD.js"></script>
-  <link rel="stylesheet" crossorigin href="../assets/page-D3vwXPwD.css">
+  <script type="module" crossorigin src="../assets/page-BnFKMcVi.js"></script>
+  <link rel="stylesheet" crossorigin href="../assets/page-D9lh1GcM.css">
 </head>
 <body>
   <header class="topbar">
@@ -41,13 +41,16 @@
     <p class="lead">El diseñador web de informes de Report Manager
       (<a href="https://www.npmjs.com/package/@reportman/designer" target="_blank" rel="noopener">@reportman/designer</a> en npm)
       <strong>en tu navegador</strong>: abre un informe de ejemplo, cambia sus secciones, elementos, expresiones y SQL,
-      mira su PDF y guárdalo. Su servidor es esta misma página: un service worker contesta al diseñador con
+      mira su PDF y guárdalo, o crea un <strong>informe nuevo</strong> y deja que el <strong>copiloto de IA</strong> lo diseñe
+      a partir de una frase, con uno de los esquemas de la base de datos de ejemplo. Su servidor es esta misma página: un service worker contesta al diseñador con
       <a href="https://www.npmjs.com/package/@reportman/designer-server" target="_blank" rel="noopener">@reportman/designer-server</a>
-      y el motor JavaScript, sobre la base de datos SQLite de ejemplo. Lo que guardes se queda en este navegador.
+      y el motor JavaScript, sobre la base de datos SQLite de ejemplo. Lo que guardes se queda en este navegador; lo que pidas al copiloto
+      va a Reportman AI, con los créditos gratuitos de este navegador o con la cuenta con la que entres en su chat.
       Mira también <a href="../indexes.html">los informes ejecutados por el motor</a>.</p>
 
     <div class="designer-toolbar">
-      <label><span id="designer-sample-label">Informe de ejemplo</span> <select id="designer-sample"></select></label>
+      <label><span id="designer-sample-label">Informe</span> <select id="designer-sample"></select></label>
+      <button id="designer-new" type="button" class="btn btn-primary"></button>
       <button id="designer-download" type="button" class="btn"></button>
       <button id="designer-restore" type="button" class="btn"></button>
       <p id="designer-status" class="designer-status muted note" role="status"></p>
