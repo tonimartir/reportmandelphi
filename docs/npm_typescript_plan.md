@@ -1345,7 +1345,7 @@ antiguo de un dataset renombrado; una variante String que parece una fecha vuelv
 DateTime (Newtonsoft ya la convierte al leer); y Delphi no admite dos componentes con el mismo nombre,
 que C# sí lee.
 
-**Fuentes en Node.js (26-11-2026, a raíz de las pruebas de Franklin)**: `@reportman/node` sin la opción
+**Fuentes en Node.js (26-11-2026, a raíz de las pruebas de un patrocinador)**: `@reportman/node` sin la opción
 `fonts` imprime con las 14 fuentes estándar del PDF (como `PrintOutPDFStandard`), así que `letter.rep`
 fallaba con «HTML text … is not supported yet» y el griego, el cirílico y demás salían como `?`. El
 motor sí tiene texto HTML y escrituras complejas: necesitan las fuentes TrueType. Ahora el error dice
