@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Reportman AI</title>
+</head>
+<body>
+  <!--
+    Where Google and Microsoft come back to after the AI's login started by <reportman-designer>,
+    inside the popup it opened: ?token=…&email=… or ?error=…. It hands the result to the page that
+    opened it (same origin only) and closes. It has to be on the page's origin.
+  -->
+  <p id="text" style="padding:24px;font-family:Roboto,sans-serif">…</p>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const email = params.get('email');
+    const error = params.get('error') || (token && email ? null : 'no_token');
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ type: 'rpsrv-ai-login', token, email, error }, location.origin);
+      window.close();
+    } else {
+      document.getElementById('text').textContent = error ? 'Reportman AI: ' + error : 'Reportman AI: ✓';
+    }
+  </script>
+</body>
+</html>

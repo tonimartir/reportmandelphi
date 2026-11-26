@@ -989,6 +989,20 @@ Fonts). Con `no-ai` el diseñador no enseña nada de la IA (`DesignerHost.aiEnab
 aquí (un enlace y `preserveSymlinks`, para que el paquete lleve un solo Angular) y el despliegue de
 ReportmanFiscal no cambia. Lo de `reportman-designer-core` y la vista previa en el navegador siguen
 pendientes. Publicar es de Toni (`release:next`): 17 paquetes con estos dos nuevos.
+
+**Demo en vivo (26-11-2026)**: `https://reportman.es/demo/designer/` (y `indexes.html` en
+español), enlazada desde los README de `@reportman/designer` y `@reportman/designer-server`. Es
+estática, como la demo del motor: el servidor del diseñador es un *service worker* de la página
+(`typescript/demo/src/designer/sw.ts`) con el protocolo de `@reportman/designer-server/browser`,
+la entrada nueva sin Node (el protocolo y las operaciones sobre un `DesignerBackend`; el servidor
+de Node es ese protocolo sobre `nodeDesignerBackend`, y golden-http sigue igual). Los informes de
+cada visitante se guardan en el Cache Storage de su navegador, los datos son la base SQLite de
+ejemplo en sql.js y la vista previa la hace el motor con las fuentes libres de la demo. El elemento y
+Monaco van como ficheros de la carpeta (Monaco sin los workers de TypeScript, CSS, HTML y JSON):
+unos 11 MB más en `doc/demo`. Se construye con el resto de la demo (`npm run demo -- build --out
+<repositorio Delphi>/doc/demo`, que necesita antes `npm run build:designer`). Necesita un navegador
+con *service workers*: el navegador integrado de la app de Claude no los admite, y algunas ventanas
+privadas tampoco; la página lo dice.
 - Puerta: la licencia del diseñador (decisión 1 de aquel plan).
 
 ### Al final — Conversor DFM → XML: `reptotxt -xml` · 1-2 días

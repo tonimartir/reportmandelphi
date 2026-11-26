@@ -1,0 +1,1 @@
+async function e(){globalThis.Zone||await import("./chunk-OKJGNWOE.js");let{defineDesignerElement:a}=await import("./chunk-Y3BKDXXR.js");await a()}e().catch(a=>console.error("[reportman-designer]",a));

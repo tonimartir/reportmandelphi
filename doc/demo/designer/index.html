@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Designer live demo | Report Manager</title>
+  <meta name="description" content="The web report designer of Report Manager (@reportman/designer) in your browser: open the sample reports, change them, preview their PDF and save them, with nothing installed and no server.">
+  <link rel="canonical" href="https://reportman.es/demo/designer/">
+  <link rel="alternate" hreflang="en" href="https://reportman.es/demo/designer/">
+  <link rel="alternate" hreflang="es" href="https://reportman.es/demo/designer/indexes.html">
+  <link rel="alternate" hreflang="x-default" href="https://reportman.es/demo/designer/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="../../responsive.css?v=20261010">
+  <script type="module" crossorigin src="../assets/sample-list-BI5s3D7l.js"></script>
+  <script type="module" crossorigin src="../assets/page-BCCddHoD.js"></script>
+  <link rel="stylesheet" crossorigin href="../assets/page-D3vwXPwD.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">Report Manager</a>
+      <nav class="nav-links">
+        <a href="../../index.html">Home</a>
+        <a href="../../download.html">Download</a>
+        <a href="../" class="active">Demo</a>
+        <a href="../../servers.html">Servers</a>
+        <a href="../../docnet/index.html">.NET</a>
+        <a href="../../doc/index.html" target="_blank" rel="noopener">Docs</a>
+        <a href="/blog/">Blog</a>
+        <a href="../../support.html">Support</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="lang-switch"><span class="current">EN</span><a href="indexes.html">ES</a></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page designer-demo">
+    <h1>Designer live demo</h1>
+    <p class="lead">The web report designer of Report Manager
+      (<a href="https://www.npmjs.com/package/@reportman/designer" target="_blank" rel="noopener">@reportman/designer</a> on npm)
+      <strong>in your browser</strong>: open a sample report, change its sections, items, expressions and SQL,
+      preview its PDF and save it. Its server is this page itself: a service worker answers the designer with
+      <a href="https://www.npmjs.com/package/@reportman/designer-server" target="_blank" rel="noopener">@reportman/designer-server</a>
+      and the JavaScript engine, on the sample SQLite database. What you save stays in this browser.
+      See also <a href="../">the reports run by the engine</a>.</p>
+
+    <div class="designer-toolbar">
+      <label><span id="designer-sample-label">Sample report</span> <select id="designer-sample"></select></label>
+      <button id="designer-download" type="button" class="btn"></button>
+      <button id="designer-restore" type="button" class="btn"></button>
+      <p id="designer-status" class="designer-status muted note" role="status"></p>
+    </div>
+    <div id="designer"></div>
+
+    <p class="demo-credits muted">Made with the <a href="https://github.com/tonimartir/reportman/tree/main/typescript" target="_blank" rel="noopener">@reportman packages</a> (MPL 2.0),
+      <a href="https://angular.dev/" target="_blank" rel="noopener">Angular</a>, <a href="https://material.angular.dev/" target="_blank" rel="noopener">Angular Material</a> and
+      <a href="https://microsoft.github.io/monaco-editor/" target="_blank" rel="noopener">Monaco</a> (MIT; see <a href="element/3rdpartylicenses.txt">their licences</a>).
+      The data is read with <a href="https://sql.js.org/" target="_blank" rel="noopener">sql.js</a>, SQLite compiled to WebAssembly, used only by this page.</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>&copy; 1994&ndash;2026 Toni Martir &middot; REPORTMAN AI, S.L.</span>
+      <span class="sep">&middot;</span>
+      <a href="../../doc/license.html" target="_blank" rel="noopener">MPL License</a>
+      <span class="sep">&middot;</span>
+      <a href="../../company.html">Company</a>
+      <span class="sep">&middot;</span>
+      <a href="../../legal.html">Legal notice</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/tonimartir/reportman" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+</body>
+</html>
