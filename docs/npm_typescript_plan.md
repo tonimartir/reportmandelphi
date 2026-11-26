@@ -1027,6 +1027,19 @@ origen `https://reportman.es` en `Cors:AllowedOrigins` de Reportman.AI.Api; hast
 De paso: el elemento ya puede cerrarse y abrirse otro en la misma página (la demo lo hace al cambiar
 de informe): el `<link>` de su hoja de estilos en una sombra nueva no terminaba de cargar en Chrome y
 el diseñador se quedaba esperando; ahora la hoja se lee una vez y va como `<style>`.
+
+**Rotación y propiedades que faltaban (26-11-2026)**: la rotación del texto se trajo de `don6web2`
+(commit `a7948df41`): el control del inspector (ninguna, ±45°, ±90° y ángulos personalizados) y el
+dibujo en el lienzo, que gira el elemento sobre su esquina superior izquierda como el motor, con un
+contorno discontinuo; se amplió al código de barras (el QR, sobre su centro). Arreglado de paso: la
+rotación se guardaba en grados en vez de décimas, `eccLevel` iba desplazado en uno (también en
+`don6web2`), el deshacer de los valores convertidos y el texto de los botones de menú. Comparado con el
+inspector de Delphi solo faltaban tres cosas, y Toni decidió: las seis propiedades de exportación a
+texto de la expresión, sin uso (`@deprecated` en el modelo, el diseñador no las muestra) hasta que
+alguien las pida; las secciones externas, solo compatibilidad como en C# (que no las carga:
+`IsExternal` es siempre `false`): se leen y se escriben, se imprime la copia que lleva el `.rep` y el
+diseñador no las muestra (prueba `external-sections.test.ts`); y `CopyMode` de la imagen, nada (en C#
+es «para uso futuro»). Las diferencias, en `doc/doc/dotnetport.html#engine-differences`.
 - Puerta: la licencia del diseñador (decisión 1 de aquel plan).
 
 ### Al final — Conversor DFM → XML: `reptotxt -xml` · 1-2 días

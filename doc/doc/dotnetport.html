@@ -340,6 +340,19 @@
         data, a different look. A color or a series change expression of another
         type stops the .Net report with a type conversion error.</li>
     </ul>
+    <p><strong>Report structure</strong></p>
+    <ul>
+      <li>External sections (<a href="externalsec.html">report files sharing
+        sections</a>) are loaded only by the Delphi engine. The .Net engine and the
+        TypeScript engine keep their properties, so the report keeps them, and print
+        the items the report file carries: the copy of the section the Delphi designer
+        saved with the report. The web designer does not show these properties.</li>
+      <li>The six properties of an expression for the plain text printing of Delphi
+        (Export Expression, Exp. Format, Exp. Line, Exp. Position, Exp. Size, Exp. New
+        Line) go into the metafile in the Delphi and .Net engines; the TypeScript engine
+        keeps them in the report but does not use them, and the web designer does not
+        show them.</li>
+    </ul>
     <p><strong>Using the library</strong></p>
     <p>To use the libraries provided, you should include a reference to them in
       your project. It' better if you include the .csproj to your project and
