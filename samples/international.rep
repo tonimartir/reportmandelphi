@@ -426,6 +426,216 @@ the PDF</WIDETEXT>
 </COMPONENT>
 </SECTION>
 <SECTION>
+<NAME type="String">TRpSection5</NAME>
+<WIDTH type="Integer">10758</WIDTH>
+<HEIGHT type="Integer">1780</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<SUBREPORT type="String">TRpSubReport0</SUBREPORT>
+<GROUPNAME type="String">FONTS</GROUPNAME>
+<CHANGEEXPRESSION type="WideString"></CHANGEEXPRESSION>
+<BEGINPAGEEXPRESSION type="WideString"></BEGINPAGEEXPRESSION>
+<SKIPEXPREV type="WideString"></SKIPEXPREV>
+<SKIPEXPREH type="WideString"></SKIPEXPREH>
+<SKIPTOPAGEEXPRE type="WideString"></SKIPTOPAGEEXPRE>
+<BACKEXPRESSION type="WideString"></BACKEXPRESSION>
+<CHANGEBOOL type="Boolean">False</CHANGEBOOL>
+<PAGEREPEAT type="Boolean">False</PAGEREPEAT>
+<FORCEPRINT type="Boolean">False</FORCEPRINT>
+<SKIPPAGE type="Boolean">False</SKIPPAGE>
+<ALIGNBOTTOM type="Boolean">False</ALIGNBOTTOM>
+<SECTIONTYPE type="Integer">1</SECTIONTYPE>
+<AUTOEXPAND type="Boolean">False</AUTOEXPAND>
+<AUTOCONTRACT type="Boolean">False</AUTOCONTRACT>
+<HORZDESP type="Boolean">False</HORZDESP>
+<VERTDESP type="Boolean">False</VERTDESP>
+<EXTERNALFILENAME type="String"></EXTERNALFILENAME>
+<EXTERNALCONNECTION type="String"></EXTERNALCONNECTION>
+<EXTERNALTABLE type="String">REPMAN_REPORTS</EXTERNALTABLE>
+<EXTERNALFIELD type="String">REPORT</EXTERNALFIELD>
+<EXTERNALSEARCHFIELD type="String">REPORT_NAME</EXTERNALSEARCHFIELD>
+<EXTERNALSEARCHVALUE type="String"></EXTERNALSEARCHVALUE>
+<STREAMFORMAT type="Integer">1</STREAMFORMAT>
+<SKIPRELATIVEH type="Boolean">False</SKIPRELATIVEH>
+<SKIPRELATIVEV type="Boolean">False</SKIPRELATIVEV>
+<SKIPTYPE type="Integer">0</SKIPTYPE>
+<ININUMPAGE type="Boolean">False</ININUMPAGE>
+<GLOBAL type="Boolean">False</GLOBAL>
+<DPIRES type="Integer">100</DPIRES>
+<CACHEDIMAGE type="Integer">0</CACHEDIMAGE>
+<BACKSTYLE type="Integer">0</BACKSTYLE>
+<DRAWSTYLE type="Integer">2</DRAWSTYLE>
+<COMPONENT>
+<NAME type="String">TRpShape4</NAME>
+<CLASSNAME type="String">TRPSHAPE</CLASSNAME>
+<WIDTH type="Integer">10758</WIDTH>
+<HEIGHT type="Integer">1680</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">0</POSX>
+<POSY type="Integer">0</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<SHAPE type="Integer">0</SHAPE>
+<BRUSHSTYLE type="Integer">0</BRUSHSTYLE>
+<BRUSHCOLOR type="Integer">16315374</BRUSHCOLOR>
+<PENSTYLE type="Integer">0</PENSTYLE>
+<PENCOLOR type="Integer">16315374</PENCOLOR>
+<PENWIDTH type="Integer">0</PENWIDTH>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpLabel7</NAME>
+<CLASSNAME type="String">TRPLABEL</CLASSNAME>
+<WIDTH type="Integer">6000</WIDTH>
+<HEIGHT type="Integer">230</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">200</POSX>
+<POSY type="Integer">100</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<WFONTNAME type="WideString">Arial</WFONTNAME>
+<LFONTNAME type="WideString">Helvetica</LFONTNAME>
+<BIDIMODE type="Integer">0</BIDIMODE>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">8</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">1</FONTSTYLE>
+<FONTCOLOR type="Integer">7949855</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">0</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<INTERLINE type="Integer">0</INTERLINE>
+<WORDWRAP type="Boolean">False</WORDWRAP>
+<WORDBREAK type="Boolean">False</WORDBREAK>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<WIDETEXT type="WideString">The fonts of this report</WIDETEXT>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpLabel8</NAME>
+<CLASSNAME type="String">TRPLABEL</CLASSNAME>
+<WIDTH type="Integer">10358</WIDTH>
+<HEIGHT type="Integer">210</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">200</POSX>
+<POSY type="Integer">330</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<WFONTNAME type="WideString">Arial</WFONTNAME>
+<LFONTNAME type="WideString">Helvetica</LFONTNAME>
+<BIDIMODE type="Integer">0</BIDIMODE>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">8</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">0</FONTSTYLE>
+<FONTCOLOR type="Integer">5855577</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">0</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<INTERLINE type="Integer">0</INTERLINE>
+<WORDWRAP type="Boolean">True</WORDWRAP>
+<WORDBREAK type="Boolean">False</WORDBREAK>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<WIDETEXT type="WideString">Windows: Arial#44# Nirmala UI#44# Leelawa
+dee UI and Yu Gothic#44# which come with 
+Windows.</WIDETEXT>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpLabel9</NAME>
+<CLASSNAME type="String">TRPLABEL</CLASSNAME>
+<WIDTH type="Integer">10358</WIDTH>
+<HEIGHT type="Integer">410</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">200</POSX>
+<POSY type="Integer">545</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<WFONTNAME type="WideString">Arial</WFONTNAME>
+<LFONTNAME type="WideString">Helvetica</LFONTNAME>
+<BIDIMODE type="Integer">0</BIDIMODE>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">8</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">0</FONTSTYLE>
+<FONTCOLOR type="Integer">5855577</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">0</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<INTERLINE type="Integer">0</INTERLINE>
+<WORDWRAP type="Boolean">True</WORDWRAP>
+<WORDBREAK type="Boolean">False</WORDBREAK>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<WIDETEXT type="WideString">Linux and macOS: DejaVu Sans and Noto San
+s Arabic#44# Hebrew#44# Devanagari#44# Th
+ai and CJK JP#44# or another installed fo
+nt with those characters (Debian and Ubun
+tu: apt install fonts#45#dejavu#45#core f
+onts#45#noto#45#core fonts#45#noto#45#cjk
+).</WIDETEXT>
+</COMPONENT>
+<COMPONENT>
+<NAME type="String">TRpLabel10</NAME>
+<CLASSNAME type="String">TRPLABEL</CLASSNAME>
+<WIDTH type="Integer">10358</WIDTH>
+<HEIGHT type="Integer">620</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<ANNOTATION type="String"></ANNOTATION>
+<POSX type="Integer">200</POSX>
+<POSY type="Integer">960</POSY>
+<ALIGN type="Integer">0</ALIGN>
+<WFONTNAME type="WideString">Arial</WFONTNAME>
+<LFONTNAME type="WideString">Helvetica</LFONTNAME>
+<BIDIMODE type="Integer">0</BIDIMODE>
+<TYPE1FONT type="Integer">0</TYPE1FONT>
+<FONTSIZE type="Integer">8</FONTSIZE>
+<FONTROTATION type="Integer">0</FONTROTATION>
+<FONTSTYLE type="Integer">0</FONTSTYLE>
+<FONTCOLOR type="Integer">5855577</FONTCOLOR>
+<BACKCOLOR type="Integer">16777215</BACKCOLOR>
+<TRANSPARENT type="Boolean">True</TRANSPARENT>
+<CUTTEXT type="Boolean">False</CUTTEXT>
+<ALIGNMENT type="Integer">0</ALIGNMENT>
+<VALIGNMENT type="Integer">0</VALIGNMENT>
+<INTERLINE type="Integer">0</INTERLINE>
+<WORDWRAP type="Boolean">True</WORDWRAP>
+<WORDBREAK type="Boolean">False</WORDBREAK>
+<SINGLELINE type="Boolean">False</SINGLELINE>
+<MULTIPAGE type="Boolean">False</MULTIPAGE>
+<PRINTSTEP type="Integer">0</PRINTSTEP>
+<WIDETEXT type="WideString">Node.js (#64#reportman#47#node) embeds Tr
+ueType fonts only when asked: openReport(
+file#44# #123# fonts: #123##125# #125#) t
+akes those of the system#44# fonts: #123#
+ folders: #91##34#.#47#fonts#34##93# #125#
+ those of a folder of the application#44#
+ and reportman#45#pdf #45##45#fonts does 
+it on the command line. Without them the 
+PDF has only the 14 standard PDF fonts#44#
+ which have none of these scripts.</WIDETEXT>
+</COMPONENT>
+</SECTION>
+<SECTION>
 <NAME type="String">TRpSection1</NAME>
 <WIDTH type="Integer">10758</WIDTH>
 <HEIGHT type="Integer">560</HEIGHT>
@@ -1327,6 +1537,48 @@ Greek#39#) OR (G.SCRIPT=#39#Cyrillic#39#)
 <DOAFTERPRINT type="WideString"></DOAFTERPRINT>
 <SUBREPORT type="String">TRpSubReport0</SUBREPORT>
 <GROUPNAME type="String">TOTAL</GROUPNAME>
+<CHANGEEXPRESSION type="WideString"></CHANGEEXPRESSION>
+<BEGINPAGEEXPRESSION type="WideString"></BEGINPAGEEXPRESSION>
+<SKIPEXPREV type="WideString"></SKIPEXPREV>
+<SKIPEXPREH type="WideString"></SKIPEXPREH>
+<SKIPTOPAGEEXPRE type="WideString"></SKIPTOPAGEEXPRE>
+<BACKEXPRESSION type="WideString"></BACKEXPRESSION>
+<CHANGEBOOL type="Boolean">False</CHANGEBOOL>
+<PAGEREPEAT type="Boolean">False</PAGEREPEAT>
+<FORCEPRINT type="Boolean">False</FORCEPRINT>
+<SKIPPAGE type="Boolean">False</SKIPPAGE>
+<ALIGNBOTTOM type="Boolean">False</ALIGNBOTTOM>
+<SECTIONTYPE type="Integer">3</SECTIONTYPE>
+<AUTOEXPAND type="Boolean">False</AUTOEXPAND>
+<AUTOCONTRACT type="Boolean">False</AUTOCONTRACT>
+<HORZDESP type="Boolean">False</HORZDESP>
+<VERTDESP type="Boolean">False</VERTDESP>
+<EXTERNALFILENAME type="String"></EXTERNALFILENAME>
+<EXTERNALCONNECTION type="String"></EXTERNALCONNECTION>
+<EXTERNALTABLE type="String">REPMAN_REPORTS</EXTERNALTABLE>
+<EXTERNALFIELD type="String">REPORT</EXTERNALFIELD>
+<EXTERNALSEARCHFIELD type="String">REPORT_NAME</EXTERNALSEARCHFIELD>
+<EXTERNALSEARCHVALUE type="String"></EXTERNALSEARCHVALUE>
+<STREAMFORMAT type="Integer">1</STREAMFORMAT>
+<SKIPRELATIVEH type="Boolean">False</SKIPRELATIVEH>
+<SKIPRELATIVEV type="Boolean">False</SKIPRELATIVEV>
+<SKIPTYPE type="Integer">0</SKIPTYPE>
+<ININUMPAGE type="Boolean">False</ININUMPAGE>
+<GLOBAL type="Boolean">False</GLOBAL>
+<DPIRES type="Integer">100</DPIRES>
+<CACHEDIMAGE type="Integer">0</CACHEDIMAGE>
+<BACKSTYLE type="Integer">0</BACKSTYLE>
+<DRAWSTYLE type="Integer">2</DRAWSTYLE>
+</SECTION>
+<SECTION>
+<NAME type="String">TRpSection6</NAME>
+<WIDTH type="Integer">10758</WIDTH>
+<HEIGHT type="Integer">0</HEIGHT>
+<PRINTCONDITION type="WideString"></PRINTCONDITION>
+<DOBEFOREPRINT type="WideString"></DOBEFOREPRINT>
+<DOAFTERPRINT type="WideString"></DOAFTERPRINT>
+<SUBREPORT type="String">TRpSubReport0</SUBREPORT>
+<GROUPNAME type="String">FONTS</GROUPNAME>
 <CHANGEEXPRESSION type="WideString"></CHANGEEXPRESSION>
 <BEGINPAGEEXPRESSION type="WideString"></BEGINPAGEEXPRESSION>
 <SKIPEXPREV type="WideString"></SKIPEXPREV>

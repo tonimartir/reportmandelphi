@@ -280,6 +280,17 @@
         engine added a leading (0.135 times the size) to the height of every text.</li>
       <li>The FreeType text device of .Net measures the standard PDF fonts with
         TrueType metrics: up to one twip per line of difference.</li>
+      <li>The TypeScript engine in Node.js embeds the TrueType fonts of the machine
+        only when it is given them: the <code>fonts</code> option of
+        <code>@reportman/node</code> or <code>reportman-pdf --fonts</code>
+        (<code>@reportman/server</code> gives them by default). Without them it
+        prints with the 14 standard PDF fonts, as the standard PDF device of .Net:
+        the characters outside Windows-1252 print as <code>?</code>, and HTML text
+        and right to left text stop the report with an error that says so. The
+        Delphi engine on Windows always takes the fonts of the system. Which fonts to
+        install on Windows, Linux, macOS and in Docker:
+        <a href="https://github.com/tonimartir/reportman/tree/main/typescript/packages/reportman-node#fonts">Fonts</a>
+        in the README of <code>@reportman/node</code>.</li>
       <li>With FireDAC, the Delphi engine receives text fields without their
         trailing spaces and line breaks (FireDAC trims them by default,
         <code>FormatOptions.StrsTrim</code>). The .Net and TypeScript drivers return

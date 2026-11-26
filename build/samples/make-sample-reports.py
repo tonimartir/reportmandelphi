@@ -1064,6 +1064,39 @@ EMBEDDED = 6
 BIDI_PARTIAL = 1
 ALIGN_BOTTOM = 1
 
+# The note at the top of the international sample: the fonts above, and how
+# to give them to each engine. Plain text in the standard fonts (no HTML, no
+# embedded font), so it prints even where the scripts below cannot. One label
+# per paragraph, with room for its lines (y, height): the lines of the text of
+# a label are its languages, not paragraphs.
+FONTS_NOTE = [
+    (330, 210, 'Windows: Arial, Nirmala UI, Leelawadee UI and Yu Gothic, which come with Windows.'),
+    (545, 410, 'Linux and macOS: DejaVu Sans and Noto Sans Arabic, Hebrew, Devanagari, Thai and '
+               'CJK JP, or another installed font with those characters (Debian and Ubuntu: apt '
+               'install fonts-dejavu-core fonts-noto-core fonts-noto-cjk).'),
+    (960, 620, 'Node.js (@reportman/node) embeds TrueType fonts only when asked: openReport(file, '
+               '{ fonts: {} }) takes those of the system, fonts: { folders: ["./fonts"] } those of '
+               'a folder of the application, and reportman-pdf --fonts does it on the command '
+               'line. Without them the PDF has only the 14 standard PDF fonts, which have none of '
+               'these scripts.'),
+]
+
+
+def fonts_note(sub):
+    """A group without a change expression around the others, whose header
+    prints the note once, under the title. Its sections and items are created
+    last, so the names of the rest of the report do not change, and the group
+    is then moved outermost."""
+    head, foot = sub.group('FONTS', '', 1780, 0)
+    sub.gheaders.remove(head)
+    sub.gheaders.insert(0, head)
+    sub.gfooters.remove(foot)
+    sub.gfooters.append(foot)
+    head.rect(0, 0, WIDTH, 1680, fill=LIGHT)
+    head.label(200, 100, 6000, 230, 'The fonts of this report', size=8, style=BOLD, color=DARK)
+    for y, h, text in FONTS_NOTE:
+        head.label(200, y, WIDTH - 400, h, text, size=8, color=GRAY, wordwrap=True)
+
 
 def international():
     rep = Report('International text', 'The same message in nine languages and eight scripts')
@@ -1090,6 +1123,7 @@ def international():
                  autoexpand=True, **common)
     det.rect(0, 1175, WIDTH, 10, fill=ROWLINE, align_pos=ALIGN_BOTTOM)
     page_footer(sub)
+    fonts_note(sub)
     return rep
 
 

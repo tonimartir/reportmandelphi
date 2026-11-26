@@ -1345,6 +1345,17 @@ antiguo de un dataset renombrado; una variante String que parece una fecha vuelv
 DateTime (Newtonsoft ya la convierte al leer); y Delphi no admite dos componentes con el mismo nombre,
 que C# sí lee.
 
+**Fuentes en Node.js (26-11-2026, a raíz de las pruebas de Franklin)**: `@reportman/node` sin la opción
+`fonts` imprime con las 14 fuentes estándar del PDF (como `PrintOutPDFStandard`), así que `letter.rep`
+fallaba con «HTML text … is not supported yet» y el griego, el cirílico y demás salían como `?`. El
+motor sí tiene texto HTML y escrituras complejas: necesitan las fuentes TrueType. Ahora el error dice
+qué hacer (`NeedsFontsError` y `ShaperNotSupportedError`: «needs TrueType fonts… fonts: {}»),
+`reportman-pdf` tiene `--fonts` y `--font-folder`, el README de `@reportman/node` explica qué fuentes
+instalar en Windows, Linux, macOS y Docker, y `international.rep` lleva arriba una nota con sus
+fuentes y cómo dárselas al motor (generada en `build/samples/make-sample-reports.py`). El respaldo
+por caracteres está probado con los nombres de Linux y macOS sobre solo las fuentes de Windows; en un
+Mac real el motor TypeScript aún no se ha probado.
+
 ## 8. Riesgos
 
 | Riesgo | Qué se hace |
